@@ -13,7 +13,7 @@ from msb_v3.observability.metrics import Metrics
 router = APIRouter(tags=["metrics"])
 
 
-@router.get("/metrics")
+@router.get("/")
 async def metrics_json() -> Dict[str, Any]:
     return {
         "ready": Metrics._ready,

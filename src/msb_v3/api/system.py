@@ -11,7 +11,7 @@ from msb_v3.core.config import settings
 router = APIRouter(tags=["system"])
 
 
-@router.get("/system/info")
+@router.get("/info")
 async def system_info() -> Dict[str, Any]:
     return {
         "service": "msb-v3",
