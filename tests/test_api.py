@@ -117,3 +117,18 @@ def test_chat_includes_memory_history(monkeypatch):
     assert calls["session"] == "c1"
     assert "history" in calls["context"]
     assert "user: hi" in calls["context"]["history"]
+
+
+def test_dispatcher_metrics_increment():
+    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+    from msb_v3.observability.metrics import Metrics, DISPATCHER_EVENTS
+
+    class FakeClient:
+        def generate(self, *args, **kwargs):
+            raise ConnectionError("ollama unreachable")
+
+    harness = ChatHarness(client=FakeClient())
+    result = harness.execute("probe", session="metrics")
+    assert result.ok is True
+    assert result.telemetry.get("dispatcher") == "fallback"
+    assert result.telemetry.get("model") == "local-fallback"

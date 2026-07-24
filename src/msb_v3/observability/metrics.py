@@ -12,6 +12,11 @@ QUERIES = Counter(
     "Total queries processed",
     ["harness", "event"],
 )
+DISPATCHER_EVENTS = Counter(
+    "msb_v3_dispatcher_total",
+    "Dispatcher events",
+    ["dispatcher"],
+)
 LATENCY = Histogram(
     "msb_v3_latency_seconds",
     "Query latency in seconds",
@@ -38,6 +43,10 @@ class Metrics:
     @classmethod
     def inc(cls, harness: str, event: str) -> None:
         QUERIES.labels(harness=harness, event=event).inc()
+
+    @classmethod
+    def inc_dispatcher(cls, dispatcher: str) -> None:
+        DISPATCHER_EVENTS.labels(dispatcher=dispatcher).inc()
 
     @classmethod
     def latency(cls, harness: str, seconds: float) -> None:

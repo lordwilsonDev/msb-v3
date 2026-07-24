@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
 from msb_v3.local_ai.ollama import LocalAIClient, LocalAIResponse
+from msb_v3.observability.metrics import Metrics
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,7 @@ class ChatHarness(BaseHarness):
                 system=system,
                 tools=[t for t in tools] if tools else None,
             )
+            Metrics.inc_dispatcher(dispatcher)
             text = resp.text
             telemetry = {
                 "latency_s": resp.latency_s,
@@ -72,6 +74,7 @@ class ChatHarness(BaseHarness):
             )
         except Exception:
             dispatcher = "fallback"
+            Metrics.inc_dispatcher(dispatcher)
             text, telemetry = self._fallback(query, system)
             return HarnessResult(
                 ok=True,
