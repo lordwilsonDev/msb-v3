@@ -13,6 +13,7 @@ from msb_v3.api.chat import router as chat_router
 from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.studio import router as studio_router
 from msb_v3.api.system import router as system_router
+from msb_v3.api.status import router as status_router
 from msb_v3.core.config import settings
 
 
