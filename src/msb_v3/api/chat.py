@@ -36,7 +36,7 @@ async def chat(request: Request, req: ChatRequest) -> Dict[str, Any]:
 
     try:
         store = MemoryStore()
-        recent = store.recent(session, limit=10)
+        recent = store.recent(req.session, limit=10)
         hist = "\n".join([f"{m.role}: {m.content}" for m in recent])
         if hist:
             ctx["history"] = hist

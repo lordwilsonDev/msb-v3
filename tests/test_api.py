@@ -6,7 +6,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,3 +23,63 @@ def test_registry_items_are_unique():
 
     prefixes = [entry["prefix"] for entry in REGISTRY]
     assert len(prefixes) == len(set(prefixes))
+
+
+def test_status_endpoint():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.get("/status")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["service"] == "msb-v3"
+    assert "ready" in body
+
+
+def test_chat_fallback_when_ollama_unreachable(monkeypatch):
+    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+
+    class FakeClient:
+        def generate(self, prompt, *, system=None, tools=None, temperature=0.2, max_tokens=2048):
+            raise ConnectionError("ollama unreachable")
+
+    harness = ChatHarness(client=FakeClient())
+    result = harness.execute("hello", session="s1")
+    assert isinstance(result, HarnessResult)
+    assert result.ok is True
+    assert result.event == "chat:completed"
+    assert result.payload["text"].startswith("[fallback]")
+    assert result.payload["model"] == "local-fallback"
+
+
+def test_chat_includes_memory_history(monkeypatch):
+    from msb_v3.api.app import create_app
+    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+    from msb_v3.memory import store as memory_store
+    from msb_v3.memory.store import Message
+
+    captured = {}
+
+    def fake_recent(self, session, limit=50):
+        return [Message("user", "hi"), Message("assistant", "hello")]
+
+    monkeypatch.setattr(memory_store.MemoryStore, "recent", fake_recent)
+
+    calls = {}
+
+    class FakeHarness(ChatHarness):
+        def execute(self, query, context=None, *, session="default", **kwargs):
+            calls["session"] = session
+            calls["context"] = context or {}
+            return HarnessResult(ok=True, event="chat:completed", payload={"query": query, "text": "fake", "model": "fake"})
+
+    app = create_app()
+    app.state.chat = FakeHarness()
+
+    client = TestClient(app)
+    r = client.post("/chat", json={"query": "remember?", "session": "c1"})
+    assert r.status_code == 200
+    assert calls["session"] == "c1"
+    assert "history" in calls["context"]
+    assert "user: hi" in calls["context"]["history"]
