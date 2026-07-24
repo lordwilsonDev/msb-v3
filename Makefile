@@ -1,21 +1,21 @@
-.PHONY: test verify server clean
+.PHONY: test server smoke
 
-help:
-	@echo "MSB v3 — sovereign core"
-	@echo "  make test     - pytest (miniforge python)"
-	@echo "  make verify   - pytest + ruff"
-	@echo "  make server   - uvicorn with local env"
+REPO := $(shell pwd)
+PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
+
+export VIRTUAL_ENV :=
+export PATH := /opt/homebrew/Caskroom/miniforge/base/bin:$(PATH)
+export PYTHONPATH := $(REPO)/src
+export OLLAMA_MODEL ?= qwen3:latest
+export MSB_DB_PATH ?= $(REPO)/data/msb_v3.db
+export MSB_HOST ?= 127.0.0.1
+export MSB_PORT ?= 8766
 
 test:
-	/opt/homebrew/Caskroom/miniforge/base/bin/python -m pytest -q
-
-verify:
-	/opt/homebrew/Caskroom/miniforge/base/bin/python -m pytest -q --tb=short
-	ruff check src/ tests/
+	$(PY) -m pytest -q tests/
 
 server:
-	MSB_RELOAD=$(MSB_RELOAD) \
-	/opt/homebrew/Caskroom/miniforge/base/bin/python -m msb_v3
+	$(PY) -m msb_v3
 
-clean:
-	rm -rf **/__pycache__ .ruff_cache .pytest_cache logs/*
+smoke:
+	bash scripts/smoke.sh
