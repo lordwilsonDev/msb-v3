@@ -48,7 +48,7 @@ def test_metrics_endpoint():
 
     app = create_app()
     client = TestClient(app)
-    r = client.get("/metrics")
+    r = client.get("/metrics/")
     assert r.status_code == 200
     assert "prometheus" in r.json()
 
