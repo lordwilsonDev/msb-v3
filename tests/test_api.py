@@ -35,6 +35,40 @@ def test_status_endpoint():
     body = r.json()
     assert body["service"] == "msb-v3"
     assert "ready" in body
+    assert body["model"] == "qwen3:latest"
+
+
+def test_system_routes():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.get("/system/routes")
+    assert r.status_code == 200
+    body = r.json()
+    assert "routes" in body
+    tags = [route["tags"] for route in body["routes"]]
+    assert any("chat" in t for t in tags)
+
+
+def test_memory_api():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    session = "test-session"
+
+    r = client.get(f"/memory/{session}")
+    assert r.status_code == 200
+    assert r.json()["messages"] == []
+
+    r = client.post(f"/memory/{session}", json={"role": "user", "content": "hello"})
+    assert r.status_code == 200
+    assert r.json()["messages"][0]["content"] == "hello"
+
+    r = client.delete(f"/memory/{session}")
+    assert r.status_code == 200
+    assert r.json()["status"] == "cleared"
 
 
 def test_chat_fallback_when_ollama_unreachable(monkeypatch):

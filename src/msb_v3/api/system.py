@@ -1,4 +1,4 @@
-"""System router — version, host, ports."""
+"""System router — routes registry + info."""
 
 from __future__ import annotations
 
@@ -6,19 +6,16 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from msb_v3.core.config import settings
-
 router = APIRouter(tags=["system"])
 
 
 @router.get("/info")
-async def system_info() -> Dict[str, Any]:
-    return {
-        "service": "msb-v3",
-        "version": "0.1.0",
-        "host": settings.host,
-        "port": settings.port,
-        "model": settings.ollama_model,
-        "ollama_url": settings.ollama_url,
-        "db_path": settings.db_path,
-    }
+def system_info() -> Dict[str, Any]:
+    return {"service": "msb-v3", "version": "0.1.0"}
+
+
+@router.get("/routes")
+def list_routes() -> Dict[str, Any]:
+    from msb_v3.api.registry import REGISTRY
+
+    return {"routes": [{"prefix": e["prefix"], "tags": e["tags"]} for e in REGISTRY]}
