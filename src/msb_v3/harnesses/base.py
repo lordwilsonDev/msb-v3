@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from msb_v3.local_ai.ollama import LocalAIClient, LocalAIResponse
 
@@ -14,21 +14,17 @@ class HarnessResult:
     ok: bool
     event: str
     payload: Dict[str, Any] = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
     telemetry: Dict[str, Any] = field(default_factory=dict)
 
 
 class BaseHarness(ABC):
-    """All domain harnesses must return HarnessResult."""
-
     @abstractmethod
-    def execute(self, query: str, context: Dict[str, Any] | None = None) -> HarnessResult:
+    def execute(self, query: str, context: Dict[str, Any] | None = None, **kwargs: Any) -> HarnessResult:
         ...
 
 
 class ChatHarness(BaseHarness):
-    """Default local chat — prompt → Ollama → text."""
-
     def __init__(self, *, client: LocalAIClient | None = None) -> None:
         self.client = client or LocalAIClient()
 
@@ -36,24 +32,29 @@ class ChatHarness(BaseHarness):
         self,
         query: str,
         context: Dict[str, Any] | None = None,
+        *,
+        session: str = "default",
+        **kwargs: Any,
     ) -> HarnessResult:
-        system = context.get("system") if context else None
-        tools = context.get("tools") if context else None
+        context = context or {}
+        hist = context.get("history")
+        prompt = query
+        if hist:
+            prompt = f"{hist}\nUser: {query}"
+
+        system = context.get("system")
+        tools = context.get("tools")
         try:
             resp = self.client.generate(
-                query,
+                prompt,
                 system=system,
                 tools=[t for t in tools] if tools else None,
             )
             return HarnessResult(
                 ok=True,
                 event="chat:completed",
-                payload={
-                    "query": query,
-                    "text": resp.text,
-                    "model": resp.model,
-                },
-                telemetry={"latency_s": resp.latency_s},
+                payload={"query": query, "text": resp.text, "model": resp.model},
+                telemetry={"latency_s": resp.latency_s, "session": session},
             )
         except Exception as exc:
-            return HarnessResult(ok=False, event="chat:error", error=str(exc))
+            return HarnessResult(ok=False, event="chat:error", error=str(exc), telemetry={"session": session})

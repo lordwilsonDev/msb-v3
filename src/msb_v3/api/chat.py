@@ -8,12 +8,14 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from msb_v3.harnesses.base import ChatHarness, HarnessResult
+from msb_v3.memory.store import MemoryStore
 
 router = APIRouter(tags=["chat"])
 
 
 class ChatRequest(BaseModel):
     query: str
+    session: str = "default"
     system: str | None = None
     tools: list[Dict[str, Any]] | None = None
 
@@ -32,5 +34,14 @@ async def chat(request: Request, req: ChatRequest) -> Dict[str, Any]:
         harness = ChatHarness()
         app.state.chat = harness
 
-    result: HarnessResult = harness.execute(req.query, ctx)
+    try:
+        store = MemoryStore()
+        recent = store.recent(session, limit=10)
+        hist = "\n".join([f"{m.role}: {m.content}" for m in recent])
+        if hist:
+            ctx["history"] = hist
+    except Exception:
+        pass
+
+    result: HarnessResult = harness.execute(req.query, ctx, session=req.session)
     return {"ok": result.ok, "event": result.event, "payload": result.payload, "error": result.error}
