@@ -20,3 +20,11 @@ async def metrics_json() -> Dict[str, Any]:
         "prometheus": "/metrics/prometheus",
         "ts": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
     }
+
+
+@router.get("/prometheus")
+async def metrics_prometheus() -> str:
+    from msb_v3.observability.metrics import QUERIES, DISPATCHER_EVENTS, LATENCY, READY, ACTIVE_CONNECTIONS
+    from prometheus_client import generate_latest
+
+    return generate_latest()

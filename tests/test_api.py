@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -93,8 +94,6 @@ def test_chat_includes_memory_history(monkeypatch):
     from msb_v3.memory import store as memory_store
     from msb_v3.memory.store import Message
 
-    captured = {}
-
     def fake_recent(self, session, limit=50):
         return [Message("user", "hi"), Message("assistant", "hello")]
 
@@ -121,7 +120,6 @@ def test_chat_includes_memory_history(monkeypatch):
 
 def test_dispatcher_metrics_increment():
     from msb_v3.harnesses.base import ChatHarness, HarnessResult
-    from msb_v3.observability.metrics import Metrics, DISPATCHER_EVENTS
 
     class FakeClient:
         def generate(self, *args, **kwargs):
@@ -132,3 +130,16 @@ def test_dispatcher_metrics_increment():
     assert result.ok is True
     assert result.telemetry.get("dispatcher") == "fallback"
     assert result.telemetry.get("model") == "local-fallback"
+
+
+def test_prometheus_scrape():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.get("/metrics/prometheus")
+    assert r.status_code == 200
+    text = r.text
+    assert "msb_v3_queries_total" in text
+    assert "msb_v3_dispatcher_total" in text
+    assert "msb_v3_ready" in text
