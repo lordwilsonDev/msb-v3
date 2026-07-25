@@ -116,6 +116,7 @@ def test_chat_includes_memory_history(monkeypatch):
     assert calls["session"] == "c1"
     assert "history" in calls["context"]
     assert "user: hi" in calls["context"]["history"]
+    assert r.json()["history_count"] == 2
 
 
 def test_dispatcher_metrics_increment():
