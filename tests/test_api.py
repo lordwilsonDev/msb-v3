@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import re
 import sys
 from pathlib import Path
 
@@ -159,3 +158,33 @@ def test_prometheus_scrape():
     assert "msb_v3_queries_total" in text
     assert "msb_v3_dispatcher_total" in text
     assert "msb_v3_ready" in text
+
+
+def test_execute_tool_loop_single_tool():
+    from msb_v3.local_ai.ollama import LocalAIClient
+
+    class FakeClient(LocalAIClient):
+        calls = []
+
+        def generate(self, prompt, *, system=None, tools=None, temperature=0.2, max_tokens=2048):
+            self.calls.append({"prompt": prompt, "tools": tools})
+
+            class Resp:
+                text = "[tool-call]"
+                model = "fake"
+                latency_s = 0.0
+                tool_calls = [{"function": {"name": "echo", "arguments": {"value": "ping"}}}]
+
+            return Resp()
+
+    client = FakeClient()
+    client.register_tool("echo", lambda value: f"echo:{value}")
+    resp = client.execute_tool_loop(
+        "run echo",
+        tools=[{"type": "function", "name": "echo", "parameters": {}}],
+        max_tokens=2048,
+        max_steps=1,
+    )
+    assert resp.text == "[tool-call]"
+    assert len(client.calls) >= 1
+    assert client.calls[0]["tools"][0]["name"] == "echo"
