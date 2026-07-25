@@ -53,8 +53,8 @@ class ChatHarness(BaseHarness):
         tools = context.get("tools")
         dispatcher = "ollama"
         try:
-            resp = self.client.generate(
-                prompt,
+            resp = self.client.execute_tool_loop(
+                query,
                 system=system,
                 tools=[t for t in tools] if tools else None,
             )

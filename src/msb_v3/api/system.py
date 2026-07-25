@@ -54,7 +54,7 @@ def system_config() -> Dict[str, Any]:
         "version": "0.1.0",
         "host": settings.host,
         "port": settings.port,
-        "ollama_url": settings.ollama_url,
+        "ollama_url": settings.ollama_url.replace("http://", "").replace("https://", "").split("@")[-1] if settings.ollama_url else "hidden",
         "ollama_model": settings.ollama_model,
         "db_path": settings.db_path,
         "log_level": settings.log_level,
