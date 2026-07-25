@@ -40,8 +40,15 @@ async def chat(request: Request, req: ChatRequest) -> Dict[str, Any]:
         hist = "\n".join([f"{m.role}: {m.content}" for m in recent])
         if hist:
             ctx["history"] = hist
+        used = len(recent)
     except Exception:
-        pass
+        used = 0
 
     result: HarnessResult = harness.execute(req.query, ctx, session=req.session)
-    return {"ok": result.ok, "event": result.event, "payload": result.payload, "error": result.error}
+    return {
+        "ok": result.ok,
+        "event": result.event,
+        "payload": result.payload,
+        "error": result.error,
+        "history_count": used,
+    }
