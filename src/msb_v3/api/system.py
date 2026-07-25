@@ -6,6 +6,8 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
+from msb_v3.core.config import settings
+
 router = APIRouter(tags=["system"])
 
 
@@ -41,3 +43,22 @@ def list_routes() -> Dict[str, Any]:
     from msb_v3.api.registry import REGISTRY
 
     return {"routes": [{"prefix": e["prefix"], "tags": e["tags"]} for e in REGISTRY]}
+
+
+@router.get("/config")
+def system_config() -> Dict[str, Any]:
+    from msb_v3.observability.metrics import Metrics
+
+    return {
+        "service": "msb-v3",
+        "version": "0.1.0",
+        "host": settings.host,
+        "port": settings.port,
+        "ollama_url": settings.ollama_url,
+        "ollama_model": settings.ollama_model,
+        "db_path": settings.db_path,
+        "log_level": settings.log_level,
+        "cors_origins": settings.cors_origins,
+        "request_timeout_s": settings.request_timeout_s,
+        "ready": Metrics._ready,
+    }

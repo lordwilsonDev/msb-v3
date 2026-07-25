@@ -52,6 +52,21 @@ def test_system_routes():
     assert any("chat" in t for t in tags)
 
 
+def test_system_config():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.get("/system/config")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["service"] == "msb-v3"
+    assert body["version"] == "0.1.0"
+    assert "ready" in body
+    assert "ollama_url" in body
+    assert "ollama_model" in body
+
+
 def test_memory_api():
     from msb_v3.api.app import create_app
 
