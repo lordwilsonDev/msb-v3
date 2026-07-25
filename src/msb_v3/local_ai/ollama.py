@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 import httpx
 
 from msb_v3.core.config import settings
+from msb_v3.guardrails.fold import StepEnforcer
 
 
 @dataclass
@@ -101,11 +102,16 @@ class LocalAIClient:
         messages.append({"role": "user", "content": query})
 
         final_text = ""
+        enforcer = StepEnforcer(required_steps=[], terminal_tools=frozenset([t["name"] for t in (tools or [])]))
         for _ in range(max_steps):
             resp = self.generate(query, system=system, tools=tools, max_tokens=max_tokens)
             final_text = resp.text
             tool_calls = resp.tool_calls
             if not tool_calls:
+                break
+
+            nudge = enforcer.check(tool_calls)
+            if nudge is not None:
                 break
 
             assistant_msg: Dict[str, Any] = {"role": "assistant", "content": resp.text}
@@ -119,7 +125,10 @@ class LocalAIClient:
             for tc in tool_calls:
                 name = tc["function"]["name"]
                 args = tc["function"].get("arguments", {}) or {}
+                if not isinstance(args, dict):
+                    args = {}
                 result = self.run_tool(name, args)
+                enforcer.record(name, args)
                 messages.append({"role": "tool", "content": result})
 
         return LocalAIResponse(text=final_text, model=self.model, latency_s=0.0, tool_calls=[])
