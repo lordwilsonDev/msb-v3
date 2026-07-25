@@ -36,3 +36,15 @@ def transaction() -> Generator[sqlite3.Connection, None, None]:
         raise
     finally:
         conn.close()
+
+
+def healthcheck() -> str:
+    try:
+        conn = get_connection()
+        try:
+            conn.execute("SELECT 1")
+            return "ok"
+        finally:
+            conn.close()
+    except Exception as exc:
+        return f"error: {exc}"
