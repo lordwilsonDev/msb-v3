@@ -22,6 +22,10 @@ def test_health():
     _get("/health")
 
 
+def test_ready():
+    _get("/ready")
+
+
 def test_research_assistant_preflight():
     _get("/research/assistant/preflight")
 
