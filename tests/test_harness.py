@@ -58,6 +58,10 @@ def test_research_assistant_runs_queue():
     _get("/research/assistant/runs/_queue")
 
 
+def test_research_assistant_runs_active():
+    _get("/research/assistant/runs/_active")
+
+
 def test_research_assistant_runs_state():
     _get("/research/assistant/runs/sovereign-ai-orchestration/state")
 
