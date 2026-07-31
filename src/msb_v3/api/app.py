@@ -26,6 +26,7 @@ from msb_v3.api.evolution import router as evolution_router
 from msb_v3.api.notify import router as notify_router
 from msb_v3.api.home import router as home_router
 from msb_v3.api.triumvirate import router as triumvirate_router
+from msb_v3.api.skill_router import router as skill_router
 from msb_v3.core.config import settings
 
 
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(safety_router, prefix="/safety", tags=["safety"])
     app.include_router(notify_router, prefix="/notify", tags=["notify"])
     app.include_router(triumvirate_router, prefix="/triumvirate", tags=["triumvirate"])
+    app.include_router(skill_router, prefix="/skills", tags=["skills"])
     app.include_router(safety_router, prefix="/sac", tags=["safety"])
     app.include_router(safety_router, prefix="/echo", tags=["safety"])
     app.include_router(safety_router, prefix="/schh", tags=["safety"])
