@@ -1,10 +1,7 @@
 """Lightweight home dashboard for msb-v3."""
 from __future__ import annotations
 
-import concurrent.futures
-import urllib.error
-import urllib.request
-from typing import Dict, Tuple
+from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -12,43 +9,18 @@ from fastapi.responses import HTMLResponse
 router = APIRouter(tags=["ui"])
 
 
-def _fetch_status(url: str) -> Tuple[str, str]:
-    try:
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=1) as r:
-            return (url, str(r.status))
-    except urllib.error.HTTPError as exc:
-        return (url, str(exc.code))
-    except Exception as exc:
-        return (url, f"ERR:{exc}")
-
-
 @router.get("/", include_in_schema=False)
 async def home() -> HTMLResponse:
-    base = "http://127.0.0.1:8766"
-    endpoints: Dict[str, str] = {
-        "health": f"{base}/health",
-        "preflight": f"{base}/research/assistant/preflight",
-        "safety": f"{base}/safety/status",
-        "evolution": f"{base}/evolution/scan",
-        "notify": f"{base}/notify/telegram",
-    }
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
-        futures = {name: pool.submit(_fetch_status, url) for name, url in endpoints.items()}
-        statuses = {name: future.result(timeout=2) for name, future in futures.items()}
+    try:
+        run_path = Path("/Users/lordwilson/msb-v3/runtime/research")
+        runs = sorted([p.name for p in run_path.iterdir() if p.is_dir()]) if run_path.exists() else []
+    except Exception:
+        runs = []
 
-    # home route itself: `/notify/telegram` is POST-only in the API,
-    # report 405 for the snapshot instead of hanging.
-    normalized = {}
-    for name, (url, status) in statuses.items():
-        if name == "notify" and status == "405":
-            status = "POST:405"
-        normalized[name] = (url, status)
-
-    items = []
-    for name, (url, status) in normalized.items():
-        css = "ok" if status.startswith("200") else "bad"
-        items.append(f'<li><a href="{url}">{name}</a>: <span class="{css}">{status}</span></li>')
+    items = (
+        f'<li><a href="/research/assistant/latest">latest</a>: <span class="ok">ready</span></li>'
+        + "".join(f"<li>{name}</li>" for name in runs[:20])
+    )
 
     html = f"""<!doctype html>
 <html>
@@ -69,8 +41,14 @@ li {{ margin:0.4rem 0; }}
 </head>
 <body>
 <h1>MSB v3</h1>
-<ul>{"".join(items)}</ul>
-<div class="footer">Base: <a href="{base}">{base}</a></div>
+<ul>{items}
+<li><a href="/health">health</a>: <span class="ok">/health</span></li>
+<li><a href="/research/assistant/preflight">preflight</a>: <span class="ok">/research/assistant/preflight</span></li>
+<li><a href="/safety/status">safety</a>: <span class="ok">/safety/status</span></li>
+<li><a href="/evolution/scan">evolution</a>: <span class="ok">/evolution/scan</span></li>
+<li>notify: <span class="ok">/notify/telegram [POST]</span></li>
+</ul>
+<div class="footer">Base: /</div>
 </body>
 </html>"""
     return HTMLResponse(content=html)
