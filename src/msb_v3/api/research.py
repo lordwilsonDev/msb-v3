@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from msb_v3.harnesses.research_assistant import SovereignResearchAssistant
@@ -117,8 +117,24 @@ def _append_history(slug: str) -> None:
         _RUN_STATE["history"].append(slug)
 
 
+def _complete_run_background(slug: str, topic: str, assistant: SovereignResearchAssistant, result: dict) -> None:
+    try:
+        _append_history(slug)
+        _RUN_STATE["active"] = None
+        _write_state(slug, "completed", {"result": result})
+        deliver = [
+            f"Sovereign research complete: {topic}",
+            f"Slug: {assistant.slug}",
+            f"Artifacts: {result.get('slug', '')}_*.json|md",
+            f"Status: {result.get('status')}",
+        ]
+        _send_telegram("\n".join(deliver))
+    except Exception:
+        pass
+
+
 @router.post("/assistant/run")
-async def run_research(body: RunRequest) -> dict:
+async def run_research(body: RunRequest, background_tasks: BackgroundTasks) -> dict:
     safety = _safety_check(body.topic)
     if not safety.get("allowed"):
         return {
@@ -134,16 +150,7 @@ async def run_research(body: RunRequest) -> dict:
     sources = [Path(p) for p in body.sources if Path(p).exists()]
     assistant = SovereignResearchAssistant(topic=body.topic, slug=body.slug)
     result = assistant.run_full_pipeline(sources=sources)
-    _append_history(body.slug)
-    _RUN_STATE["active"] = None
-    _write_state(body.slug, "completed", {"result": result})
-    deliver = [
-        f"Sovereign research complete: {body.topic}",
-        f"Slug: {assistant.slug}",
-        f"Artifacts: {result.get('slug', '')}_*.json|md",
-        f"Status: {result.get('status')}",
-    ]
-    await _send_telegram_async("\n".join(deliver))
+    background_tasks.add_task(_complete_run_background, body.slug, body.topic, assistant, result)
     result["notify"] = {"ok": True, "async": True}
     return result
 
