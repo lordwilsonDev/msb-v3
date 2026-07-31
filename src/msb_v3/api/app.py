@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
+from ipaddress import ip_address
+from threading import Lock
+from typing import Dict, Tuple
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from msb_v3.api.health import router as health_router
@@ -21,9 +26,27 @@ from msb_v3.api.notify import router as notify_router
 from msb_v3.api.home import router as home_router
 from msb_v3.core.config import settings
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+
+
+_RUN_RATE_LIMIT_WINDOW_S = 60
+_RUN_RATE_LIMIT_MAX = 10
+_RUN_RATE_WINDOW: Dict[str, Tuple[float, int]] = defaultdict(lambda: (0.0, 0))
+_RUN_RATE_LOCK = Lock()
+
+
+def _client_key(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    host = request.client.host if request.client else "unknown"
+    try:
+        return str(ip_address(host))
+    except ValueError:
+        return host
 
 
 def create_app() -> FastAPI:
@@ -40,6 +63,28 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next):
+        request_id = request.headers.get("x-request-id") or f"{time.time():.0f}"
+        response = await call_next(request)
+        response.headers["x-request-id"] = request_id
+        return response
+
+    @app.middleware("http")
+    async def run_rate_limit_middleware(request: Request, call_next):
+        if request.method == "POST" and request.url.path == "/research/assistant/run":
+            key = _client_key(request)
+            with _RUN_RATE_LOCK:
+                window_start, count = _RUN_RATE_WINDOW[key]
+                now = time.time()
+                if now - window_start > _RUN_RATE_LIMIT_WINDOW_S:
+                    _RUN_RATE_WINDOW[key] = (now, 1)
+                elif count >= _RUN_RATE_LIMIT_MAX:
+                    return Response(content='{"detail":"rate_limit_exceeded"}', status_code=429, media_type="application/json")
+                else:
+                    _RUN_RATE_WINDOW[key] = (window_start, count + 1)
+        return await call_next(request)
 
     app.include_router(health_router, tags=["health"])
     app.include_router(home_router, tags=["ui"])
