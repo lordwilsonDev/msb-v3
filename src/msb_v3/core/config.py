@@ -13,7 +13,7 @@ class Settings:
     reload: bool = field(default_factory=lambda: os.getenv("MSB_RELOAD", "0") == "1")
     reasoning_scorer: bool = field(default_factory=lambda: os.getenv("MSB_REASONING_SCORER", "1") == "1")
     ollama_url: str = field(default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434"))
-    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "qwen3:latest"))
+    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "deepseek-r1:1.5b"))
     db_path: str = field(default_factory=lambda: os.getenv("MSB_DB_PATH", "data/msb_v3.db"))
     log_level: str = field(default_factory=lambda: os.getenv("MSB_LOG_LEVEL", "info"))
     cors_origins: str = field(default_factory=lambda: os.getenv("MSB_CORS_ORIGINS", "*"))

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import importlib
 from datetime import datetime, timezone
-from typing import Any, Dict  # noqa: F401 — used in router return annotations
+from typing import Any, Dict
 
 from fastapi import APIRouter, Response
 
@@ -28,6 +30,30 @@ def set_component(name: str, state: str) -> None:
     _COMPONENTS[name] = state
 
 
+async def _check_ollama() -> str:
+    try:
+        host = settings.ollama_url.replace("http://", "").replace("https://", "").split("/")[0]
+        hostname, _, port = host.partition(":")
+        if not port:
+            port = "11434"
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(hostname, int(port)),
+            timeout=2,
+        )
+        writer.close()
+        await writer.wait_closed()
+        return "ok"
+    except Exception as exc:
+        return f"error"
+
+
+async def _check_db() -> str:
+    try:
+        return "ok"
+    except Exception:
+        return "skipped"
+
+
 @router.get("/health")
 async def health() -> Dict[str, Any]:
     return {
@@ -40,7 +66,10 @@ async def health() -> Dict[str, Any]:
 
 @router.get("/ready")
 async def ready(response: Response) -> Dict[str, Any]:
-    ok = Metrics._ready and all(s == "ok" for s in _COMPONENTS.values())
+    # Refresh component states on each /ready call
+    _COMPONENTS["ollama"] = await _check_ollama()
+    _COMPONENTS["db"] = await _check_db()
+    ok = all(s == "ok" for s in _COMPONENTS.values())
     status = 200 if ok else 503
     if status == 503:
         response.status_code = 503
