@@ -1,0 +1,1 @@
+Axiom inversion logic challenges consensus assumptions by inverting constraints into design requirements.

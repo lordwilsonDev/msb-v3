@@ -203,3 +203,16 @@ class SovereignResearchAssistant(BaseHarness):
             payload={"query": query, "text": text},
             telemetry={"slug": self.slug},
         )
+
+    def evidence_status(self) -> Dict[str, Any]:
+        if not self.runtime_root.exists():
+            return {"status": "empty", "slug": self.slug, "files": []}
+        files = sorted(p.name for p in self.runtime_root.iterdir() if p.is_file())
+        state = self.runtime_root / f"{self.slug}_state.json"
+        status = "unknown"
+        if state.exists():
+            try:
+                status = json.loads(state.read_text()).get("status", status)
+            except Exception:
+                pass
+        return {"status": status, "slug": self.slug, "files": files}

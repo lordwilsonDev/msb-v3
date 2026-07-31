@@ -1,0 +1,1 @@
+Long-horizon research harnesses must persist artifacts, append memory, and support safety evaluation before execution.

@@ -36,6 +36,10 @@ def test_research_assistant_state():
     _get("/research/assistant/state")
 
 
+def test_research_assistant_latest():
+    _get("/research/assistant/latest")
+
+
 def test_research_assistant_runs():
     _get("/research/assistant/runs")
 
@@ -88,6 +92,10 @@ def test_evolution_memory_record():
     _post("/evolution/memory/record")
 
 
+def test_evolution_memory_batch_update():
+    _post("/evolution/memory/batch-update")
+
+
 def test_evolution_continuity_resume_prompt():
     _post("/evolution/continuity/resume-prompt")
 
@@ -108,7 +116,7 @@ def test_echo_evaluate():
     _get("/echo/evaluate")
 
 
-def test_schh_status():
+def test_schh_health():
     _get("/schh/health")
 
 
