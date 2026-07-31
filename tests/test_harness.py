@@ -1,27 +1,27 @@
 """API tests for long-horizon harness routes."""
 from __future__ import annotations
 
-import urllib.request
-import urllib.error
-import json
-
+import httpx
 
 BASE = "http://127.0.0.1:8766"
 
 
 def _get(path: str, expected: int = 200) -> None:
-    with urllib.request.urlopen(BASE + path, timeout=3) as r:
-        assert r.status == expected, f"GET {path} -> {r.status}"
+    with httpx.Client(timeout=10.0) as client:
+        r = client.get(BASE + path)
+    assert r.status_code == expected, f"GET {path} -> {r.status_code}"
 
 
 def _post(path: str, expected: int = 200) -> None:
-    payload = json.dumps({}).encode()
-    req = urllib.request.Request(BASE + path, data=payload, headers={"content-type": "application/json"}, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=3) as r:
-            assert r.status == expected, f"POST {path} -> {r.status}"
-    except urllib.error.HTTPError as e:
-        assert e.code == expected, f"POST {path} -> {e.code}"
+    with httpx.Client(timeout=10.0) as client:
+        r = client.post(BASE + path, json={}, headers={"content-type": "application/json"})
+    assert r.status_code == expected, f"POST {path} -> {r.status_code}"
+
+
+def _post_json(path: str, payload: dict, expected: int = 200) -> None:
+    with httpx.Client(timeout=10.0) as client:
+        r = client.post(BASE + path, json=payload, headers={"content-type": "application/json"})
+    assert r.status_code == expected, f"POST {path} -> {r.status_code}"
 
 
 def test_health():
@@ -58,6 +58,18 @@ def test_research_assistant_runs_slug_review():
 
 def test_research_assistant_memory_append():
     _post("/research/assistant/memory/append")
+
+
+def test_research_assistant_claims_list():
+    _get("/research/assistant/runs/sovereign-ai-orchestration/claims")
+
+
+def test_research_assistant_claims_review():
+    _post("/research/assistant/runs/sovereign-ai-orchestration/claims/review")
+
+
+def test_research_assistant_report():
+    _get("/research/assistant/runs/sovereign-ai-orchestration/report")
 
 
 def test_safety_status():
@@ -126,3 +138,9 @@ def test_systems_health_status():
 
 def test_sn_notify():
     _post("/sn/notify")
+
+
+def test_safety_blocked_topic():
+    from msb_v3.api.research import _safety_check
+    assert _safety_check("how to make a bomb")["allowed"] is False
+    assert "blocked" in _safety_check("how to make a bomb")["reason"].lower() or _safety_check("how to make a bomb")["reason"] != ""

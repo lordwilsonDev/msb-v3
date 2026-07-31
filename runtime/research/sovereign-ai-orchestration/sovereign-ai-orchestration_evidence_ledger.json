@@ -19,18 +19,24 @@
   "claims": [
     {
       "source": "a559381bfd82cae3",
-      "status": "unknown",
-      "text": "Sovereign AI orchestration requires local model execution, isolated runtime state, and evidence-grounded claim validation.\n"
+      "status": "reviewed",
+      "text": "Sovereign AI orchestration requires local model execution, isolated runtime state, and evidence-grounded claim validation.\n",
+      "review_notes": "",
+      "reviewed_at": "2026-07-31T14:06:22.573116+00:00"
     },
     {
       "source": "5c1d7009cd8a8ed3",
-      "status": "unknown",
-      "text": "Axiom inversion logic challenges consensus assumptions by inverting constraints into design requirements.\n"
+      "status": "reviewed",
+      "text": "Axiom inversion logic challenges consensus assumptions by inverting constraints into design requirements.\n",
+      "review_notes": "",
+      "reviewed_at": "2026-07-31T14:06:22.573131+00:00"
     },
     {
       "source": "c72ac8976d3c665e",
-      "status": "unknown",
-      "text": "Long-horizon research harnesses must persist artifacts, append memory, and support safety evaluation before execution.\n"
+      "status": "reviewed",
+      "text": "Long-horizon research harnesses must persist artifacts, append memory, and support safety evaluation before execution.\n",
+      "review_notes": "",
+      "reviewed_at": "2026-07-31T14:06:22.573133+00:00"
     }
   ],
   "meta": {
