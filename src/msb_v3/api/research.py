@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
 from pydantic import BaseModel
 
 from msb_v3.harnesses.research_assistant import SovereignResearchAssistant
@@ -21,6 +21,11 @@ router = APIRouter(tags=["research"])
 
 _RESEARCH_ROOT = Path("/Users/lordwilson/msb-v3/runtime/research")
 _RUN_STATE = {"active": None, "queue": [], "history": []}
+_CACHE = "max-age=5"
+
+
+def _cache(response: Response) -> None:
+    response.headers["cache-control"] = _CACHE
 
 
 class RunRequest(BaseModel):
@@ -169,11 +174,13 @@ async def preflight() -> dict:
 
 
 @router.get("/assistant/latest")
-async def latest() -> dict:
+async def latest(response: Response) -> dict:
     if not _RESEARCH_ROOT.exists():
+        response.headers["cache-control"] = "max-age=5"
         return {"status": "no_artifacts"}
     slugs = sorted(p.name for p in _RESEARCH_ROOT.iterdir() if p.is_dir())
     if not slugs:
+        response.headers["cache-control"] = "max-age=5"
         return {"status": "no_artifacts"}
     latest = slugs[-1]
     root = _runtime_root(latest)
@@ -185,6 +192,7 @@ async def latest() -> dict:
             status = json.loads(state.read_text()).get("status", status)
         except Exception:
             pass
+    response.headers["cache-control"] = "max-age=5"
     return {"status": status, "slug": latest, "files": files}
 
 
