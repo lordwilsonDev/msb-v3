@@ -166,6 +166,14 @@ async def argus_mulch() -> Dict[str, Any]:
     }
 
 
+@router.post("/argus/mulch/{mulch_id}/resolve")
+async def argus_mulch_resolve(mulch_id: int) -> Dict[str, Any]:
+    import sqlite3
+    with sqlite3.connect(_MULCH_DB) as conn:
+        cur = conn.execute("UPDATE mulch_learnings SET resolution_status='resolved' WHERE id=?", (mulch_id,))
+        return {"ok": cur.rowcount == 1, "id": mulch_id}
+
+
 @router.post("/cluster/peers")
 async def cluster_register_peer(body: Dict[str, Any]) -> Dict[str, Any]:
     node = PeerNode(
