@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import httpx
+from typing import Any
 
 BASE = "http://127.0.0.1:8766"
 
@@ -12,9 +13,10 @@ def _get(path: str, expected: int = 200) -> None:
     assert r.status_code == expected, f"GET {path} -> {r.status_code}"
 
 
-def _post(path: str, expected: int = 200) -> None:
+def _post(path: str, body: Any = None, expected: int = 200) -> None:
+    payload = body if body is not None else {}
     with httpx.Client(timeout=10.0) as client:
-        r = client.post(BASE + path, json={}, headers={"content-type": "application/json"})
+        r = client.post(BASE + path, json=payload, headers={"content-type": "application/json"})
     assert r.status_code == expected, f"POST {path} -> {r.status_code}"
 
 
@@ -154,3 +156,39 @@ def test_safety_blocked_topic():
     from msb_v3.api.research import _safety_check
     assert _safety_check("how to make a bomb")["allowed"] is False
     assert "blocked" in _safety_check("how to make a bomb")["reason"].lower() or _safety_check("how to make a bomb")["reason"] != ""
+
+
+def test_triumvirate_plan():
+    _post("/triumvirate/plan", {"goal": "deploy sovereign cluster"})
+
+
+def test_triumvirate_status_lock():
+    _post("/triumvirate/status/lock", {"goal": "lock mission"})
+
+
+def test_triumvirate_status():
+    _get("/triumvirate/status")
+
+
+def test_triumvirate_verify():
+    _get("/triumvirate/status/verify")
+
+
+def test_triumvirate_guardian_scan():
+    _post("/triumvirate/guardian/scan", {"script": "print('hello')"})
+
+
+def test_triumvirate_poison_pill():
+    _post("/triumvirate/guardian/poison-pill/arm", {})
+
+
+def test_triumvirate_argus_audit():
+    _post("/triumvirate/argus/audit", {})
+
+
+def test_triumvirate_cluster():
+    _post("/triumvirate/cluster/peers", {"node_id": "n1", "host": "mac-mini.local", "port": 8766, "capacity": 1, "cluster_role": "primary"})
+
+
+def test_triumvirate_hippocampus():
+    _post("/triumvirate/hippocampus/upsert", {"doc_id": "doc1", "chunk_id": "c1", "text": "alpha", "embedding": [1.0, 0.0]})
