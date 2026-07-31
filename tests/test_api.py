@@ -35,7 +35,7 @@ def test_status_endpoint():
     body = r.json()
     assert body["service"] == "msb-v3"
     assert "ready" in body
-    assert body["model"] == "qwen3:latest"
+    assert body["model"] == "deepseek-r1:1.5b"
 
 
 def test_system_routes():
