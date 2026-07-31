@@ -20,6 +20,7 @@ NOTIFY_URL = "https://api.telegram.org/bot{token}/sendMessage"
 router = APIRouter(tags=["research"])
 
 _RESEARCH_ROOT = Path("/Users/lordwilson/msb-v3/runtime/research")
+_RUN_STATE = {"active": None, "queue": [], "history": []}
 
 
 class RunRequest(BaseModel):
@@ -34,8 +35,8 @@ class ReviewRequest(BaseModel):
 
 
 _SAFETY_BLOCKLIST = [
-    (re.compile(r"how\\s+to\\s+(make|build|create)\\s+a\\s+(bomb|weapon|explosive|malware|ransomware|virus)", re.I), "dangerous/weapon instruction blocked"),
-    (re.compile(r"(instruction|guide)\\s+to\\s+(harm|injure|kill|attack)", re.I), "harm instruction blocked"),
+    (re.compile(r"how\s+to\s+(make|build|create)\s+a\s+(bomb|weapon|explosive|malware|ransomware|virus)", re.I), "dangerous/weapon instruction blocked"),
+    (re.compile(r"(instruction|guide)\s+to\s+(harm|injure|kill|attack)", re.I), "harm instruction blocked"),
     (re.compile(r"(bypass|disable|hack).+(security|authentication|verification|firewall|antivirus)", re.I), "security bypass blocked"),
 ]
 
@@ -100,6 +101,22 @@ def _state_path(slug: str) -> Path:
     return _runtime_root(slug) / f"{slug}_state.json"
 
 
+def _write_state(slug: str, status: str, extra: Dict[str, Any] | None = None) -> Path:
+    root = _runtime_root(slug)
+    root.mkdir(parents=True, exist_ok=True)
+    path = _state_path(slug)
+    data = {"slug": slug, "status": status, "ts": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    if extra:
+        data.update(extra)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return path
+
+
+def _append_history(slug: str) -> None:
+    if slug not in _RUN_STATE["history"]:
+        _RUN_STATE["history"].append(slug)
+
+
 @router.post("/assistant/run")
 async def run_research(body: RunRequest) -> dict:
     safety = _safety_check(body.topic)
@@ -110,9 +127,16 @@ async def run_research(body: RunRequest) -> dict:
             "slug": body.slug,
             "reason": safety.get("reason"),
         }
+    body.slug = body.slug or re.sub(r"[^a-z0-9]+", "-", body.topic.lower()).strip("-")
+    _RUN_STATE["active"] = body.slug
+    _RUN_STATE["queue"] = [slug for slug in _RUN_STATE.get("queue", []) if slug != body.slug]
+    _write_state(body.slug, "running")
     sources = [Path(p) for p in body.sources if Path(p).exists()]
     assistant = SovereignResearchAssistant(topic=body.topic, slug=body.slug)
     result = assistant.run_full_pipeline(sources=sources)
+    _append_history(body.slug)
+    _RUN_STATE["active"] = None
+    _write_state(body.slug, "completed", {"result": result})
     deliver = [
         f"Sovereign research complete: {body.topic}",
         f"Slug: {assistant.slug}",
@@ -132,7 +156,7 @@ async def preflight() -> dict:
     try:
         client.generate("ok", max_tokens=1)
         checks["ollama"] = "ok"
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         checks["ollama"] = f"error: {exc}"
     return {"checks": checks, "passed": checks["ollama"] == "ok", "failed": [k for k, v in checks.items() if v != "ok"]}
 
@@ -159,7 +183,12 @@ async def latest() -> dict:
 
 @router.get("/assistant/state")
 async def assistant_state() -> dict:
-    return {"status": "idle", "active_run": None}
+    return {"status": "idle", "active_run": _RUN_STATE["active"]}
+
+
+@router.post("/assistant/memory/append")
+async def append_memory(body: dict) -> dict:
+    return {"ok": True, "received": body}
 
 
 @router.post("/assistant/runs/{slug}/complete")
@@ -191,6 +220,18 @@ async def get_run(slug: str) -> dict:
         except Exception:
             pass
     return {"slug": slug, "status": status, "files": files}
+
+
+@router.get("/assistant/runs/{slug}/state")
+async def run_state(slug: str) -> dict:
+    path = _state_path(slug)
+    if not path.exists():
+        return {"slug": slug, "status": "not_found"}
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        return {"slug": slug, "status": "unreadable"}
+    return data
 
 
 @router.get("/assistant/runs/{slug}/claims")
@@ -245,11 +286,39 @@ async def get_report(slug: str) -> dict:
     return {"slug": slug, "status": "ok", "markdown": content, "path": str(report_path)}
 
 
-@router.post("/assistant/memory/append")
-async def append_memory(body: dict) -> dict:
-    return {"ok": True, "received": body}
-
-
 @router.post("/assistant/runs/{slug}/review")
 async def review_run(slug: str, body: dict) -> dict:
-    return {"slug": slug, "decision": body.get("decision", "pending"), "notes": body.get("notes", "")}
+    decision = body.get("decision", "pending")
+    notes = body.get("notes", "")
+    state_path = _state_path(slug)
+    status = "reviewed"
+    if state_path.exists():
+        try:
+            data = json.loads(state_path.read_text())
+            data["status"] = status
+            data["review_decision"] = decision
+            data["review_notes"] = notes
+            data["reviewed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            state_path.write_text(json.dumps(data, indent=2) + "\n")
+        except Exception:
+            pass
+    return {"slug": slug, "decision": decision, "status": status}
+
+
+@router.post("/assistant/runs/{slug}/restart")
+async def restart_run(slug: str, body: dict) -> dict:
+    topic = body.get("topic") or slug.replace("-", " ")
+    _RUN_STATE["queue"] = [s for s in _RUN_STATE.get("queue", []) if s != slug]
+    _RUN_STATE["queue"].append(slug)
+    _write_state(slug, "queued", {"topic": topic})
+    return {"slug": slug, "status": "queued", "active": _RUN_STATE.get("active")}
+
+
+@router.post("/assistant/runs/{slug}/cancel")
+async def cancel_run(slug: str, body: dict) -> dict:
+    reason = body.get("reason", "cancelled")
+    _RUN_STATE["queue"] = [s for s in _RUN_STATE.get("queue", []) if s != slug]
+    _write_state(slug, "cancelled", {"reason": reason})
+    if _RUN_STATE.get("active") == slug:
+        _RUN_STATE["active"] = None
+    return {"slug": slug, "status": "cancelled", "reason": reason}

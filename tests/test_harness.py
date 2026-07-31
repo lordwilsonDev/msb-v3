@@ -18,22 +18,12 @@ def _post(path: str, expected: int = 200) -> None:
     assert r.status_code == expected, f"POST {path} -> {r.status_code}"
 
 
-def _post_json(path: str, payload: dict, expected: int = 200) -> None:
-    with httpx.Client(timeout=10.0) as client:
-        r = client.post(BASE + path, json=payload, headers={"content-type": "application/json"})
-    assert r.status_code == expected, f"POST {path} -> {r.status_code}"
-
-
 def test_health():
     _get("/health")
 
 
 def test_research_assistant_preflight():
     _get("/research/assistant/preflight")
-
-
-def test_research_assistant_state():
-    _get("/research/assistant/state")
 
 
 def test_research_assistant_latest():
@@ -45,19 +35,31 @@ def test_research_assistant_runs():
 
 
 def test_research_assistant_runs_slug():
-    _get("/research/assistant/runs/test-slug")
+    _get("/research/assistant/runs/test-runs")
 
 
 def test_research_assistant_runs_slug_complete():
-    _post("/research/assistant/runs/test-slug/complete")
+    _post("/research/assistant/runs/test-runs/complete")
 
 
 def test_research_assistant_runs_slug_review():
-    _post("/research/assistant/runs/test-slug/review")
+    _post("/research/assistant/runs/test-runs/review")
 
 
-def test_research_assistant_memory_append():
-    _post("/research/assistant/memory/append")
+def test_research_assistant_runs_slug_restart():
+    _post("/research/assistant/runs/test-runs/restart")
+
+
+def test_research_assistant_runs_slug_cancel():
+    _post("/research/assistant/runs/test-runs/cancel")
+
+
+def test_research_assistant_runs_queue():
+    _get("/research/assistant/runs/_queue")
+
+
+def test_research_assistant_runs_state():
+    _get("/research/assistant/runs/sovereign-ai-orchestration/state")
 
 
 def test_research_assistant_claims_list():
