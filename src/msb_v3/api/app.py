@@ -18,6 +18,7 @@ from msb_v3.api.research import router as research_router
 from msb_v3.api.safety import router as safety_router
 from msb_v3.api.evolution import router as evolution_router
 from msb_v3.api.notify import router as notify_router
+from msb_v3.api.home import router as home_router
 from msb_v3.core.config import settings
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router, tags=["health"])
+    app.include_router(home_router, tags=["ui"])
     app.include_router(memory_router, prefix="/memory", tags=["memory"])
     app.include_router(chat_router, tags=["chat"])
     app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
