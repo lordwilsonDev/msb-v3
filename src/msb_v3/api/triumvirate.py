@@ -12,6 +12,15 @@ from msb_v3.triumvirate.guardian_scanner import GuardianScanner, PoisonPill, SBO
 from msb_v3.triumvirate.argus_auditor import ArgusAuditor, _MULCH_DB
 from msb_v3.triumvirate.hardware_sovereignty import ClusterAwareDiscovery, VectorHippocampus, PeerNode, DocumentChunk
 from msb_v3.triumvirate.multimodal_interfaces import VisionClaw, HapticHeartbeat, SpeechFunctions
+from msb_v3.observability.metrics import (
+    TRIUMVIRATE_PLAN,
+    TRIUMVIRATE_LOCK,
+    TRIUMVIRATE_AUDIT,
+    TRIUMVIRATE_SCAN,
+    TRIUMVIRATE_PEER_OPS,
+    TRIUMVIRATE_HIPPOCAMPUS,
+    TRIUMVIRATE_MULTIMODAL,
+)
 
 router = APIRouter(tags=["triumvirate"])
 planner = MetaCognitivePlanner()
@@ -38,6 +47,8 @@ async def plan_goal(body: PlanRequestModel) -> Dict[str, Any]:
         sources=body.sources,
     )
     plan = planner.plan(request)
+    status = "ok" if plan else "error"
+    TRIUMVIRATE_PLAN.labels(status=status).inc()
     return {
         "slug": plan.slug,
         "goal": plan.goal,
@@ -65,6 +76,7 @@ async def status_lock(body: Dict[str, Any]) -> Dict[str, Any]:
     goal = body.get("goal") or ""
     parameters = body.get("parameters")
     status = anchor.scope_lock(goal, parameters)
+    TRIUMVIRATE_LOCK.labels(status="ok").inc()
     return status
 
 
@@ -104,6 +116,7 @@ async def status_dashboard() -> Dict[str, Any]:
 async def guardian_scan(body: Dict[str, Any]) -> Dict[str, Any]:
     script = body.get("script") or ""
     report = guardian.scan_script(script)
+    TRIUMVIRATE_SCAN.labels(risk=report.risk or "UNKNOWN").inc()
     return {
         "risk": report.risk,
         "findings": report.findings,
@@ -143,7 +156,11 @@ async def guardian_poison_detonate() -> Dict[str, Any]:
 
 @router.post("/argus/audit")
 async def argus_audit() -> Dict[str, Any]:
-    return argus.run()
+    result = argus.run()
+    count = result.get("count", 0) if isinstance(result, dict) else 0
+    bucket = "0" if count == 0 else "1-5" if count <= 5 else "6+"
+    TRIUMVIRATE_AUDIT.labels(count_bucket=bucket).inc()
+    return result
 
 
 @router.get("/argus/mulch")
@@ -183,11 +200,14 @@ async def cluster_register_peer(body: Dict[str, Any]) -> Dict[str, Any]:
         capacity=int(body.get("capacity") or 1),
         cluster_role=body.get("cluster_role") or "worker",
     )
-    return cluster_discovery.register_peer(node)
+    cluster_discovery.register_peer(node)
+    TRIUMVIRATE_PEER_OPS.labels(op="register").inc()
+    return {"ok": True, "node_id": node.node_id}
 
 
 @router.get("/cluster/peers")
 async def cluster_list_peers() -> Dict[str, Any]:
+    TRIUMVIRATE_PEER_OPS.labels(op="list").inc()
     return {"peers": cluster_discovery.peers()}
 
 
@@ -201,6 +221,7 @@ async def hippocampus_upsert(body: Dict[str, Any]) -> Dict[str, Any]:
         metadata=body.get("metadata") or {},
     )
     hippocampus.upsert(chunk)
+    TRIUMVIRATE_HIPPOCAMPUS.labels(op="upsert").inc()
     return {"ok": True, "doc_id": chunk.doc_id, "chunk_id": chunk.chunk_id}
 
 
@@ -209,16 +230,19 @@ async def hippocampus_search(body: Dict[str, Any]) -> Dict[str, Any]:
     embedding = body.get("embedding") or []
     limit = int(body.get("limit") or 5)
     results = hippocampus.search(embedding, limit=limit)
+    TRIUMVIRATE_HIPPOCAMPUS.labels(op="search").inc()
     return {"results": results}
 
 
 @router.post("/multimodal/vision/capture")
 async def vision_capture() -> Dict[str, Any]:
+    TRIUMVIRATE_MULTIMODAL.labels(interface="vision").inc()
     return VisionClaw().capture_screen()
 
 
 @router.post("/multimodal/haptic/heartbeat")
 async def haptic_heartbeat() -> Dict[str, Any]:
+    TRIUMVIRATE_MULTIMODAL.labels(interface="haptic").inc()
     hh = HapticHeartbeat()
     return hh.poll_sac()
 
@@ -226,6 +250,7 @@ async def haptic_heartbeat() -> Dict[str, Any]:
 @router.post("/multimodal/speech/command")
 async def speech_command(body: Dict[str, Any]) -> Dict[str, Any]:
     transcript = body.get("transcript") or ""
+    TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
     return SpeechFunctions().map_command(transcript)
 
 

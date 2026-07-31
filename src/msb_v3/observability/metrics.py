@@ -30,6 +30,41 @@ ACTIVE_CONNECTIONS = Gauge(
     "msb_v3_active_connections",
     "Open HTTP connections",
 )
+TRIUMVIRATE_PLAN = Counter(
+    "msb_v3_triumvirate_plan_total",
+    "Triumvirate plan calls",
+    ["status"],
+)
+TRIUMVIRATE_LOCK = Counter(
+    "msb_v3_triumvirate_lock_total",
+    "Triumvirate lock calls",
+    ["status"],
+)
+TRIUMVIRATE_AUDIT = Counter(
+    "msb_v3_triumvirate_audit_total",
+    "Argus audit runs",
+    ["count_bucket"],
+)
+TRIUMVIRATE_SCAN = Counter(
+    "msb_v3_triumvirate_scan_total",
+    "Guardian scan calls",
+    ["risk"],
+)
+TRIUMVIRATE_PEER_OPS = Counter(
+    "msb_v3_triumvirate_peer_ops_total",
+    "Cluster peer operations",
+    ["op"],
+)
+TRIUMVIRATE_HIPPOCAMPUS = Counter(
+    "msb_v3_triumvirate_hippocampus_total",
+    "Hippocampus upsert/search ops",
+    ["op"],
+)
+TRIUMVIRATE_MULTIMODAL = Counter(
+    "msb_v3_triumvirate_multimodal_total",
+    "Multimodal interface calls",
+    ["interface"],
+)
 
 
 class Metrics:
