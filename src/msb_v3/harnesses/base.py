@@ -6,7 +6,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
-from msb_v3.local_ai.ollama import LocalAIClient, LocalAIResponse
+from msb_v3.local_ai.client_factory import active_backend, get_client
+from msb_v3.local_ai.llama_client import LlamaCPPClient
+from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
 
 
@@ -26,8 +28,8 @@ class BaseHarness(ABC):
 
 
 class ChatHarness(BaseHarness):
-    def __init__(self, *, client: LocalAIClient | None = None) -> None:
-        self.client = client or LocalAIClient()
+    def __init__(self, *, client: LocalAIClient | LlamaCPPClient | None = None) -> None:
+        self.client = client or get_client()
 
     @staticmethod
     def _fallback(query: str, system: str | None = None) -> tuple[str, dict]:
@@ -47,11 +49,11 @@ class ChatHarness(BaseHarness):
         hist = context.get("history")
         prompt = query
         if hist:
-            prompt = f"{hist}\nUser: {query}"
+            prompt = f"{hist}\\nUser: {query}"
 
         system = context.get("system")
         tools = context.get("tools")
-        dispatcher = "ollama"
+        dispatcher = active_backend()
         try:
             resp = self.client.execute_tool_loop(
                 query,
