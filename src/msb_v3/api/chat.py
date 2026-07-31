@@ -49,6 +49,8 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
     if req.tools:
         ctx["tools"] = [t.model_dump() for t in req.tools]
 
+    from msb_v3.harnesses.base import ChatHarness
+
     app = request.app
     harness: ChatHarness | None = getattr(app.state, "chat", None)
     if harness is None:

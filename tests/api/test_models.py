@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 
 from msb_v3.core.config import settings
-from msb_v3.api.models import _list_models, _switch_backend, get_client, _active_backend
+from msb_v3.api.models import _list_models, _switch_backend, get_model_client
+from msb_v3.local_ai.client_factory import _active_backend
 
 
 def test_list_models():
@@ -35,12 +36,12 @@ def test_switch_backend_invalid():
 
 
 def test_get_client_ollama(monkeypatch):
-    monkeypatch.setattr("msb_v3.api.models._active_backend", "ollama", raising=False)
-    client = get_client()
+    monkeypatch.setattr("msb_v3.local_ai.client_factory._active_backend", "ollama", raising=False)
+    client = get_model_client()
     assert client.__class__.__name__ == "LocalAIClient"
 
 
 def test_get_client_llamacpp(monkeypatch):
-    monkeypatch.setattr("msb_v3.api.models._active_backend", "llamacpp", raising=False)
-    client = get_client()
+    monkeypatch.setattr("msb_v3.local_ai.client_factory._active_backend", "llamacpp", raising=False)
+    client = get_model_client()
     assert client.__class__.__name__ == "LlamaCPPClient"

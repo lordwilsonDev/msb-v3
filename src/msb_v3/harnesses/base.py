@@ -31,6 +31,9 @@ class ChatHarness(BaseHarness):
     def __init__(self, *, client: LocalAIClient | LlamaCPPClient | None = None) -> None:
         self._client = client
 
+    def use_factory_client(self) -> None:
+        self._client = None
+
     @staticmethod
     def _fallback(query: str, system: str | None = None) -> tuple[str, dict]:
         text = f"[fallback] {query}"
