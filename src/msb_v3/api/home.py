@@ -20,10 +20,17 @@ def _list_research_runs() -> list[str]:
 
 def _get_triumvirate_dashboard() -> dict:
     try:
-        import urllib.request
-        with urllib.request.urlopen("http://127.0.0.1:8766/triumvirate/status/dashboard", timeout=3) as r:
-            import json
-            return json.loads(r.read().decode())
+        from msb_v3.triumvirate.mission_anchor import MissionAnchor
+        anchor = MissionAnchor()
+        status = anchor.read()
+        verify = anchor.verify()
+        return {
+            "goal": status.get("goal"),
+            "phase": status.get("current_phase"),
+            "valid": verify.get("valid", False),
+            "scope_hash": verify.get("scope_hash"),
+            "iteration_count": status.get("iteration_count", 0),
+        }
     except Exception:
         return {}
 
