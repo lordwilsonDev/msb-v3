@@ -196,3 +196,13 @@ def test_triumvirate_cluster():
 
 def test_triumvirate_hippocampus():
     _post("/triumvirate/hippocampus/upsert", {"doc_id": "doc1", "chunk_id": "c1", "text": "alpha", "embedding": [1.0, 0.0]})
+
+
+def test_home_dashboard_contains_triumvirate():
+    import httpx
+    with httpx.Client(timeout=10.0) as client:
+        r = client.get("http://127.0.0.1:8766/")
+    assert r.status_code == 200
+    html = r.text
+    assert "Triumvirate" in html
+    assert "Argus" in html or "mulch" in html
