@@ -87,6 +87,19 @@ async def status_verify() -> Dict[str, Any]:
     return anchor.verify()
 
 
+@router.get("/status/dashboard")
+async def status_dashboard() -> Dict[str, Any]:
+    status = anchor.read()
+    verify = anchor.verify()
+    return {
+        "goal": status.get("goal"),
+        "phase": status.get("current_phase"),
+        "valid": verify.get("valid", False),
+        "scope_hash": verify.get("scope_hash"),
+        "iteration_count": status.get("iteration_count", 0),
+    }
+
+
 @router.post("/guardian/scan")
 async def guardian_scan(body: Dict[str, Any]) -> Dict[str, Any]:
     script = body.get("script") or ""

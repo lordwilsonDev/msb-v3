@@ -13,6 +13,8 @@ from msb_v3.core.config import settings
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _MULCH_DB = _RUNTIME_ROOT / "mulch_learnings.db"
+_MAX_RETRIES = 3
+_RETRY_BACKOFF = 0.1
 
 
 def _now_iso() -> str:
