@@ -20,6 +20,7 @@ class Settings:
     request_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_REQUEST_TIMEOUT_S", "60.0")))
     llama_cpp_url: str = field(default_factory=lambda: os.getenv("LLAMA_CPP_URL", "http://127.0.0.1:8080"))
     llama_cpp_model: str = field(default_factory=lambda: os.getenv("LLAMA_CPP_MODEL", "/Users/lordwilson/models/gemma-4-12b-it/gemma-4-12b-it-q4_k_m.gguf"))
+    _active_backend: str = field(default_factory=lambda: os.getenv("MSB_ACTIVE_BACKEND", "ollama"))
 
 
 settings = Settings()
