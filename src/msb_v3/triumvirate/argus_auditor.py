@@ -128,14 +128,27 @@ class ArgusAuditor:
         logs_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
         started = _now_iso()
-        findings = []
-        findings.extend(self.audit_directives(directives_dir))
-        findings.extend(self.audit_memory(memory_file))
-        findings.extend(self.audit_soul(soul_file))
-        findings.extend(self.audit_run_logs(logs_dir))
+        last_exc: Optional[Exception] = None
+        for attempt in range(_MAX_RETRIES):
+            try:
+                findings: List[Dict[str, Any]] = []
+                findings.extend(self.audit_directives(directives_dir))
+                findings.extend(self.audit_memory(memory_file))
+                findings.extend(self.audit_soul(soul_file))
+                findings.extend(self.audit_run_logs(logs_dir))
+                return {
+                    "started_at": started,
+                    "finished_at": _now_iso(),
+                    "findings": findings,
+                    "count": len(findings),
+                }
+            except Exception as exc:
+                last_exc = exc
+                time.sleep(_RETRY_BACKOFF)
         return {
             "started_at": started,
             "finished_at": _now_iso(),
-            "findings": findings,
-            "count": len(findings),
+            "findings": [],
+            "count": 0,
+            "error": str(last_exc),
         }

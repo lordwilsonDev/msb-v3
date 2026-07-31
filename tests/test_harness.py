@@ -174,6 +174,10 @@ def test_triumvirate_verify():
     _get("/triumvirate/status/verify")
 
 
+def test_triumvirate_dashboard():
+    _get("/triumvirate/status/dashboard")
+
+
 def test_triumvirate_guardian_scan():
     _post("/triumvirate/guardian/scan", {"script": "print('hello')"})
 
