@@ -11,6 +11,7 @@ from typing import Dict, Tuple
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from msb_v3.api.health import router as health_router
 from msb_v3.api.memory import router as memory_router
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(GZipMiddleware, minimum_size=500)
 
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):
