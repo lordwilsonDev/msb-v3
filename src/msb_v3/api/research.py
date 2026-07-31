@@ -306,8 +306,8 @@ async def review_run(slug: str, body: dict) -> dict:
 
 
 @router.post("/assistant/runs/{slug}/restart")
-async def restart_run(slug: str, body: dict) -> dict:
-    topic = body.get("topic") or slug.replace("-", " ")
+async def restart_run(slug: str) -> dict:
+    topic = slug.replace("-", " ")
     _RUN_STATE["queue"] = [s for s in _RUN_STATE.get("queue", []) if s != slug]
     _RUN_STATE["queue"].append(slug)
     _write_state(slug, "queued", {"topic": topic})
@@ -315,8 +315,8 @@ async def restart_run(slug: str, body: dict) -> dict:
 
 
 @router.post("/assistant/runs/{slug}/cancel")
-async def cancel_run(slug: str, body: dict) -> dict:
-    reason = body.get("reason", "cancelled")
+async def cancel_run(slug: str) -> dict:
+    reason = "cancelled"
     _RUN_STATE["queue"] = [s for s in _RUN_STATE.get("queue", []) if s != slug]
     _write_state(slug, "cancelled", {"reason": reason})
     if _RUN_STATE.get("active") == slug:
