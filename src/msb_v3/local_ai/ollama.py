@@ -67,13 +67,19 @@ class LocalAIClient:
             payload["tools"] = tools
 
         t0 = time.perf_counter()
-        with httpx.Client(timeout=settings.request_timeout_s) as client:
+        last_exc: Exception | None = None
+        for attempt in range(3):
             try:
-                resp = client.post(f"{self.base_url}/api/generate", json=payload)
-                resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                raise ConnectionError(f"ollama unreachable: {self.base_url} ({exc})")
-            data = resp.json()
+                with httpx.Client(timeout=settings.request_timeout_s) as client:
+                    resp = client.post(f"{self.base_url}/api/generate", json=payload)
+                    resp.raise_for_status()
+                    data = resp.json()
+                break
+            except Exception as exc:
+                last_exc = exc
+                time.sleep(0.15 * (attempt + 1))
+        else:
+            raise ConnectionError(f"ollama unreachable: {self.base_url} ({last_exc})")
         latency = round(time.perf_counter() - t0, 4)
 
         text = data.get("response", "")
