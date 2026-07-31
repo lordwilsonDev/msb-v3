@@ -14,8 +14,10 @@ from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.studio import router as studio_router
 from msb_v3.api.system import router as system_router
 from msb_v3.api.status import router as status_router
+from msb_v3.api.research import router as research_router
+from msb_v3.api.safety import router as safety_router
+from msb_v3.api.evolution import router as evolution_router
 from msb_v3.core.config import settings
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,5 +45,16 @@ def create_app() -> FastAPI:
     app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
     app.include_router(studio_router, tags=["studio"])
     app.include_router(system_router, prefix="/system", tags=["system"])
+    app.include_router(research_router, prefix="/research", tags=["research"])
+    app.include_router(evolution_router, prefix="/evolution", tags=["evolution"])
+    app.include_router(safety_router, prefix="/safety", tags=["safety"])
+    app.include_router(safety_router, prefix="/sac", tags=["safety"])
+    app.include_router(safety_router, prefix="/echo", tags=["safety"])
+    app.include_router(safety_router, prefix="/schh", tags=["safety"])
+    app.include_router(safety_router, prefix="/systems-health", tags=["safety"])
+    app.include_router(safety_router, prefix="/sn", tags=["safety"])
+    app.include_router(evolution_router, prefix="/continuity", tags=["evolution"])
+    app.include_router(evolution_router, prefix="/memory", tags=["evolution"])
+    app.include_router(evolution_router, prefix="/mesh/discovery", tags=["evolution"])
 
     return app
