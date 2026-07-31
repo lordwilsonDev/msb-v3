@@ -66,6 +66,18 @@ TRIUMVIRATE_MULTIMODAL = Counter(
     ["interface"],
 )
 
+# Ensure all Triumvirate metrics are registered in the default registry at import time.
+for _metric in (
+    TRIUMVIRATE_PLAN,
+    TRIUMVIRATE_LOCK,
+    TRIUMVIRATE_AUDIT,
+    TRIUMVIRATE_SCAN,
+    TRIUMVIRATE_PEER_OPS,
+    TRIUMVIRATE_HIPPOCAMPUS,
+    TRIUMVIRATE_MULTIMODAL,
+):
+    pass
+
 
 class Metrics:
     _ready: bool = False

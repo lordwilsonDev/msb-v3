@@ -24,7 +24,20 @@ async def metrics_json() -> Dict[str, Any]:
 
 @router.get("/prometheus")
 async def metrics_prometheus() -> str:
-    from msb_v3.observability.metrics import QUERIES, DISPATCHER_EVENTS, LATENCY, READY, ACTIVE_CONNECTIONS
+    from msb_v3.observability.metrics import (
+        QUERIES,
+        DISPATCHER_EVENTS,
+        LATENCY,
+        READY,
+        ACTIVE_CONNECTIONS,
+        TRIUMVIRATE_PLAN,
+        TRIUMVIRATE_LOCK,
+        TRIUMVIRATE_AUDIT,
+        TRIUMVIRATE_SCAN,
+        TRIUMVIRATE_PEER_OPS,
+        TRIUMVIRATE_HIPPOCAMPUS,
+        TRIUMVIRATE_MULTIMODAL,
+    )
     from prometheus_client import generate_latest
 
     return generate_latest()
