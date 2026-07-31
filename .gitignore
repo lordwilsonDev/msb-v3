@@ -13,3 +13,8 @@ build/
 *.egg-info/
 .venv/
 .venv/
+/runtime/research/*_state.json
+/runtime/research/test-runs/
+/runtime/research/axiom-inversion-logic/
+/runtime/research/sovereign-ai-orchestration/*_state.json
+/runtime/research/test-runs/

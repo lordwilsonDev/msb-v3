@@ -29,7 +29,7 @@ class BaseHarness(ABC):
 
 class ChatHarness(BaseHarness):
     def __init__(self, *, client: LocalAIClient | LlamaCPPClient | None = None) -> None:
-        self.client = client or get_client()
+        self._client = client
 
     @staticmethod
     def _fallback(query: str, system: str | None = None) -> tuple[str, dict]:
@@ -49,13 +49,14 @@ class ChatHarness(BaseHarness):
         hist = context.get("history")
         prompt = query
         if hist:
-            prompt = f"{hist}\\nUser: {query}"
+            prompt = f"{hist}\nUser: {query}"
 
         system = context.get("system")
         tools = context.get("tools")
         dispatcher = active_backend()
+        client = self._client or get_client()
         try:
-            resp = self.client.execute_tool_loop(
+            resp = client.execute_tool_loop(
                 query,
                 system=system,
                 tools=[t for t in tools] if tools else None,
