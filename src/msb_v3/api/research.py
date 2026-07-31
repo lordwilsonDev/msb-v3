@@ -188,9 +188,16 @@ async def latest() -> dict:
     return {"status": status, "slug": latest, "files": files}
 
 
-@router.get("/assistant/state")
-async def assistant_state() -> dict:
-    return {"status": "idle", "active_run": _RUN_STATE["active"]}
+@router.get("/assistant/runs/_active")
+async def active_run() -> dict:
+    active = _RUN_STATE.get("active")
+    state = {}
+    if active:
+        try:
+            state = json.loads(_state_path(active).read_text())
+        except Exception:
+            state = {"slug": active, "status": "running"}
+    return {"active": active, "state": state}
 
 
 @router.post("/assistant/memory/append")
