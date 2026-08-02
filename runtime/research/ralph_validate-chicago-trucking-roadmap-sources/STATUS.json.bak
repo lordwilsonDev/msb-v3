@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "loop_id": "validate-chicago-trucking-roadmap-sources",
+  "status": "READY",
+  "current_action": "",
+  "next_action": "",
+  "result": {},
+  "artifacts_hash": "",
+  "integrity_locks": "IntegrityLocks(scope_hash='', artifacts_hash='', last_result_hash='')",
+  "constraints": "Constraints(budget_spent_usd=0.0, budget_cap_usd=0.5, max_loops=5, stall_threshold=3)",
+  "logs": [],
+  "iterations": 0
+}

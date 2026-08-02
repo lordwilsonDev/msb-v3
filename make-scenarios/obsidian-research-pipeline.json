@@ -1,0 +1,88 @@
+{
+  "name": "Obsidian Research Pipeline",
+  "flow": [
+    {
+      "id": 1,
+      "module": "Schedule",
+      "config": {
+        "interval": "4h"
+      }
+    },
+    {
+      "id": 2,
+      "module": "HTTP",
+      "name": "List Research Topics",
+      "config": {
+        "url": "http://127.0.0.1:8766/mcp/proxy",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tool": "vault_list",
+          "args": {
+            "path": "20_Research"
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "Iterator",
+      "name": "Process Each Topic",
+      "config": {
+        "items": "{{2.body.result.content[0].text | fromJson: 'files' | filter: endsWith('.md')}}"
+      }
+    },
+    {
+      "id": 4,
+      "module": "HTTP",
+      "name": "Run Ralph Loop Research",
+      "config": {
+        "url": "http://127.0.0.1:8766/mcp/proxy",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tool": "ralph_loop_run",
+          "args": {
+            "goal": "Research and expand on: {{3.item | replace: '.md', ''}}",
+            "max_loops": 2,
+            "budget_cap_usd": 0.25,
+            "slug": "research-{{3.item | replace: '.md', '' | replace: ' ', '-' | lower}}"
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "HTTP",
+      "name": "Write Findings to Vault",
+      "config": {
+        "url": "http://127.0.0.1:8766/mcp/proxy",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tool": "vault_write",
+          "args": {
+            "path": "20_Research/Findings/{{3.item | replace: '.md', ''}}.md",
+            "content": "# Research: {{3.item | replace: '.md', ''}}\n\n## Source\nRalph Loop autonomous research via Make.com\n\n## Findings\n\n{{4.body}}\n\n---\n*Generated: {{now}}*"
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "Telegram",
+      "name": "Send Telegram Alert",
+      "config": {
+        "bot_token": "<YOUR_BOT_TOKEN>",
+        "chat_id": "8276057240",
+        "text": "\ud83d\udd2c Research complete: {{3.item | replace: '.md', ''}}\n{{4.body | slice: 0, 200}}..."
+      }
+    }
+  ]
+}

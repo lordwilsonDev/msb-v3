@@ -173,6 +173,64 @@ async def preflight() -> dict:
     return {"checks": checks, "passed": checks["ollama"] == "ok", "failed": [k for k, v in checks.items() if v != "ok"]}
 
 
+@router.get("/assistant/news")
+async def ai_news() -> dict:
+    news_dir = Path.home() / "projects/ai-news-daily/output"
+    try:
+        files = sorted(news_dir.glob("*.md"), reverse=True)
+        latest = files[0].read_text(errors="replace") if files else "No AI news files found."
+    except Exception as exc:
+        latest = f"AI news fetch failed: {exc}"
+    return {"news": latest, "source": str(news_dir)}
+
+
+class RalphLoopRunRequest(BaseModel):
+    goal: str
+    slug: Optional[str] = None
+    budget_cap_usd: float = 1.0
+    max_loops: int = 12
+
+
+@router.post("/assistant/ralph-loop")
+async def run_ralph_loop(body: RalphLoopRunRequest) -> dict:
+    """Execute a Ralph Loop research run with deterministic state guards."""
+    from msb_v3.agent.ralph_loop import create_ralph_loop, Status, Constraints, create_research_action
+    from msb_v3.harnesses.base import ChatHarness
+
+    slug = body.slug or re.sub(r"[^a-z0-9]+", "-", body.goal.lower()).strip("-")
+    workdir = _RESEARCH_ROOT / f"ralph_{slug}"
+    loop = create_ralph_loop(workdir=workdir)
+
+    init_status = Status(
+        loop_id=slug,
+        status="READY",
+        constraints=Constraints(budget_cap_usd=body.budget_cap_usd, max_loops=body.max_loops),
+    )
+    loop._write_status(init_status)
+
+    # Governance gate: mission/ethics/tools bound before execution
+    chat = ChatHarness()
+    action_fn = create_research_action(loop, chat_harness=chat)
+
+    result = loop.execute(
+        body.goal,
+        action_fn=action_fn,
+        session=slug,
+        mission=body.goal,
+        ethics="no_harm; verify_before_act",
+        allowed_tools=["local_llm", "filesystem"],
+    )
+    return {
+        "slug": slug,
+        "workdir": str(workdir),
+        "ok": result.ok,
+        "event": result.event,
+        "payload": result.payload,
+        "telemetry": result.telemetry,
+        "error": result.error,
+    }
+
+
 @router.get("/assistant/latest")
 async def latest(response: Response) -> dict:
     if not _RESEARCH_ROOT.exists():

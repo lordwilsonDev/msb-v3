@@ -1,0 +1,11 @@
+{
+  "name": "Ralph Loop Dashboard Reporter",
+  "flow": [
+    {"id": 1, "module": "Schedule", "config": {"interval": "6h"}},
+    {"id": 2, "module": "HTTP", "name": "Get Dashboard", "config": {"url": "http://127.0.0.1:8766/mcp/proxy", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": {"tool": "ralph_loop_dashboard", "args": {"loop_id": "latest"}}}},
+    {"id": 3, "module": "Router", "name": "Finished?", "config": {"routes": [{"condition": "{{2.body.result.status}} == 'EXHAUSTED' or {{2.body.result.status}} == 'COMPLETED'", "next": 4}, {"condition": "true", "next": 6}]}},
+    {"id": 4, "module": "HTTP", "name": "List Vault", "config": {"url": "http://127.0.0.1:8766/mcp/proxy", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": {"tool": "vault_list", "args": {"path": "20_Research"}}}},
+    {"id": 5, "module": "Telegram", "name": "Send Report", "config": {"bot_token": "<YOUR_BOT_TOKEN>", "chat_id": "8276057240", "text": "🧪 Ralph Loop Report\n\nLoop: {{2.body.result.loop_id}}\nStatus: {{2.body.result.status}}\nIterations: {{2.body.result.iterations}}\nBudget: ${{2.body.result.budget_spent_usd}} / ${{2.body.result.budget_cap_usd}}\nRemaining: {{2.body.result.budget_remaining_pct}}%\n\nLast Eval: {{2.body.result.last_eval}}\n\nLogs:\n{{2.body.result.logs | join: '\\n' | slice: 0, 500}}"}},
+    {"id": 6, "module": "Logger", "name": "Still Running", "config": {"message": "Ralph Loop still running at {{now}}"}}
+  ]
+}

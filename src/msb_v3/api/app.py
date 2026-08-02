@@ -28,6 +28,9 @@ from msb_v3.api.home import router as home_router
 from msb_v3.api.triumvirate import router as triumvirate_router
 from msb_v3.api.skill_router import router as skill_router
 from msb_v3.api.models import router as models_router
+from msb_v3.api.knowledge import router as knowledge_router
+from msb_v3.api.mcp_bridge import router as mcp_router
+from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
 
 
@@ -105,13 +108,15 @@ def create_app() -> FastAPI:
     app.include_router(triumvirate_router, prefix="/triumvirate", tags=["triumvirate"])
     app.include_router(skill_router, prefix="/skills", tags=["skills"])
     app.include_router(models_router, prefix="/models", tags=["models"])
+    app.include_router(knowledge_router, prefix="/knowledge", tags=["knowledge"])
+    app.include_router(mcp_router, prefix="/mcp", tags=["mcp"])
+    app.include_router(business_router, prefix="/business", tags=["business"])
     app.include_router(safety_router, prefix="/sac", tags=["safety"])
     app.include_router(safety_router, prefix="/echo", tags=["safety"])
     app.include_router(safety_router, prefix="/schh", tags=["safety"])
     app.include_router(safety_router, prefix="/systems-health", tags=["safety"])
     app.include_router(safety_router, prefix="/sn", tags=["safety"])
     app.include_router(evolution_router, prefix="/continuity", tags=["evolution"])
-    app.include_router(evolution_router, prefix="/memory", tags=["evolution"])
     app.include_router(evolution_router, prefix="/mesh/discovery", tags=["evolution"])
 
     return app

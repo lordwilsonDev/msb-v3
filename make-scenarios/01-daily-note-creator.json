@@ -1,0 +1,59 @@
+{
+  "name": "Obsidian Daily Note Creator",
+  "flow": [
+    {
+      "id": 1,
+      "module": "Schedule",
+      "config": {"cron": "0 8 * * *", "timezone": "America/Chicago"}
+    },
+    {
+      "id": 2,
+      "module": "HTTP",
+      "name": "Get System Status",
+      "config": {
+        "url": "http://127.0.0.1:8766/mcp/proxy",
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": {"tool": "status", "args": {}}
+      }
+    },
+    {
+      "id": 3,
+      "module": "HTTP",
+      "name": "Get Metrics",
+      "config": {
+        "url": "http://127.0.0.1:8766/mcp/proxy",
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": {"tool": "metrics_json", "args": {}}
+      }
+    },
+    {
+      "id": 4,
+      "module": "HTTP",
+      "name": "Create Daily Note",
+      "config": {
+        "url": "http://127.0.0.1:8766/mcp/proxy",
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": {
+          "tool": "vault_write",
+          "args": {
+            "path": "30_Architecture/Daily/{{now.format('YYYY-MM-DD')}}.md",
+            "content": "# {{now.format('YYYY-MM-DD')}}\n\n## System Status\n- Service: {{2.body.result.service}}\n- Version: {{2.body.result.version}}\n- Model: {{2.body.result.model}}\n- Ready: {{2.body.result.ready}}\n\n## Metrics\n```json\n{{3.body.result}}\n```\n\n## Tasks\n- [ ] \n\n## Notes\n- \n\n## Links\n- \n"
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "Telegram",
+      "name": "Send Daily Brief",
+      "config": {
+        "bot_token": "<YOUR_BOT_TOKEN>",
+        "chat_id": "8276057240",
+        "text": "📋 Daily Note Created\n\nDate: {{now.format('YYYY-MM-DD')}}\nModel: {{2.body.result.model}}\nReady: {{2.body.result.ready}}\n\nPath: 30_Architecture/Daily/{{now.format('YYYY-MM-DD')}}.md"
+      }
+    }
+  ]
+}

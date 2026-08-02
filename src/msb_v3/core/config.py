@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass, field
 
 
-@dataclass(frozen=True)
+@dataclass
 class Settings:
     host: str = field(default_factory=lambda: os.getenv("MSB_HOST", "127.0.0.1"))
     port: int = field(default_factory=lambda: int(os.getenv("MSB_PORT", "8766")))

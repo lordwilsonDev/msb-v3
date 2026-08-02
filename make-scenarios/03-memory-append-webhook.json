@@ -1,0 +1,8 @@
+{
+  "name": "Memory Append from Webhook",
+  "flow": [
+    {"id": 1, "module": "Webhook", "name": "Incoming Trigger", "config": {"path": "/memory-append", "method": "POST"}},
+    {"id": 2, "module": "HTTP", "name": "Append to Memory", "config": {"url": "http://127.0.0.1:8766/mcp/proxy", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": {"tool": "memory_append", "args": {"session": "make-webhook", "role": "{{1.body.role | default: 'user'}}", "content": "{{1.body.content}}"}}}},
+    {"id": 3, "module": "HTTP", "name": "Response", "config": {"status": 200, "body": {"ok": true, "memory": "{{2.body.result}}"}}}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Vault Search to Telegram Alert",
+  "flow": [
+    {"id": 1, "module": "Schedule", "config": {"interval": "2h"}},
+    {"id": 2, "module": "HTTP", "name": "Search Vault", "config": {"url": "http://127.0.0.1:8766/mcp/proxy", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": {"tool": "search_simple", "args": {"query": "urgent"}}}},
+    {"id": 3, "module": "Router", "name": "Has Matches?", "config": {"routes": [{"condition": "{{2.body.result | length}} > 0", "next": 4}, {"condition": "true", "next": 6}]}},
+    {"id": 4, "module": "Iterator", "name": "Process Matches", "config": {"items": "{{2.body.result}}"}},
+    {"id": 5, "module": "Telegram", "name": "Alert", "config": {"bot_token": "<YOUR_BOT_TOKEN>", "chat_id": "8276057240", "text": "🔔 Vault Match: {{4.item.filename}}\n\n{{4.item.content | slice: 0, 300}}...\n\nScore: {{4.item.score}}"}},
+    {"id": 6, "module": "Logger", "name": "No Matches", "config": {"message": "No urgent matches at {{now}}"}}
+  ]
+}

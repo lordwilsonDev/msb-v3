@@ -1,0 +1,11 @@
+{
+  "name": "Status Monitor with Telegram Alert",
+  "flow": [
+    {"id": 1, "module": "Schedule", "config": {"interval": "15m"}},
+    {"id": 2, "module": "HTTP", "name": "Check Status", "config": {"url": "http://127.0.0.1:8766/mcp/proxy", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": {"tool": "status", "args": {}}}},
+    {"id": 3, "module": "Router", "name": "Ready Check", "config": {"routes": [{"condition": "{{2.body.result.ready}} == false", "next": 4}, {"condition": "true", "next": 6}]}},
+    {"id": 4, "module": "HTTP", "name": "Get Metrics Detail", "config": {"url": "http://127.0.0.1:8766/mcp/proxy", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": {"tool": "metrics_json", "args": {}}}},
+    {"id": 5, "module": "Telegram", "name": "Alert Not Ready", "config": {"bot_token": "<YOUR_BOT_TOKEN>", "chat_id": "8276057240", "text": "⚠️ msb-v3 Status Alert\n\nService: {{2.body.result.service}}\nReady: {{2.body.result.ready}}\nModel: {{2.body.result.model}}\n\nMetrics: {{4.body.result}}\n\nTimestamp: {{now}}"}},
+    {"id": 6, "module": "Logger", "name": "All Good", "config": {"message": "Status OK at {{now}}"}}
+  ]
+}

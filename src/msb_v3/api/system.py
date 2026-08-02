@@ -20,7 +20,7 @@ def system_info() -> Dict[str, Any]:
 def system_health() -> Dict[str, Any]:
     from msb_v3.local_ai.ollama import LocalAIClient
     from msb_v3.observability.metrics import Metrics
-    from msb_v3.db.sqlite import Database
+    from msb_v3.db import sqlite as db
 
     checks: Dict[str, Any] = {"app": "ok", "ready": bool(Metrics._ready)}
     try:
@@ -29,7 +29,7 @@ def system_health() -> Dict[str, Any]:
     except Exception as exc:
         checks["ollama"] = f"error: {exc}"
     try:
-        Database().healthcheck()
+        db.healthcheck()
         checks["db"] = "ok"
     except Exception as exc:
         checks["db"] = f"error: {exc}"

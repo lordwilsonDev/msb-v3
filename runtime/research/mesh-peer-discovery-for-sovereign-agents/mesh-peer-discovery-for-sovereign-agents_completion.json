@@ -1,0 +1,63 @@
+{
+  "topic": "mesh peer discovery for sovereign agents",
+  "slug": "mesh-peer-discovery-for-sovereign-agents",
+  "phases": [
+    {
+      "phase": "inversion",
+      "ok": true,
+      "result": {
+        "assumption": "",
+        "inversion": "",
+        "predictions": []
+      },
+      "ts": "2026-08-01T20:25:56.660670+00:00"
+    },
+    {
+      "phase": "evidence",
+      "ok": true,
+      "result": {
+        "evidence": [],
+        "claims": [],
+        "meta": {
+          "source_count": 0,
+          "claim_count": 0
+        }
+      },
+      "ts": "2026-08-01T20:25:56.661259+00:00"
+    },
+    {
+      "phase": "report",
+      "ok": true,
+      "result": {
+        "title": "mesh peer discovery for sovereign agents",
+        "slug": "mesh-peer-discovery-for-sovereign-agents",
+        "abstract": "Autonomous research brief for mesh peer discovery for sovereign agents.",
+        "background": "",
+        "uim": {
+          "assumption": "",
+          "inversion": "",
+          "predictions": []
+        },
+        "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
+        "results": {
+          "source_count": 0,
+          "claim_count": 0
+        },
+        "discussion": "",
+        "reproducibility": {
+          "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/mesh-peer-discovery-for-sovereign-agents",
+          "artifacts": [
+            "mesh-peer-discovery-for-sovereign-agents_UIM.json",
+            "mesh-peer-discovery-for-sovereign-agents_evidence_ledger.json",
+            "mesh-peer-discovery-for-sovereign-agents_state.json"
+          ]
+        },
+        "guard_events": [],
+        "sovereignty_notes": "Local-first artifacts; no external publish step."
+      },
+      "ts": "2026-08-01T20:25:56.661683+00:00"
+    }
+  ],
+  "status": "completed",
+  "ts": "2026-08-01T20:25:56.662270+00:00"
+}

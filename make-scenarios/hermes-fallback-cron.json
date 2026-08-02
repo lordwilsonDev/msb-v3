@@ -1,0 +1,12 @@
+{
+  "name": "Obsidian Research Pipeline",
+  "prompt": "Run the vault-to-research workflow.\n\n1. Call POST http://127.0.0.1:8766/mcp/proxy with body {\"tool\":\"vault_list\",\"args\":{\"path\":\"20_Research\"}}\n2. Parse the files list from the result JSON\n3. For each .md file, call POST http://127.0.0.1:8766/mcp/proxy with body {\"tool\":\"ralph_loop_run\",\"args\":{\"goal\":\"Research and expand on: <filename>\",\"max_loops\":2,\"budget_cap_usd\":0.25,\"slug\":\"research-<slugified-filename>\"}}\n4. Write findings back via POST http://127.0.0.1:8766/mcp/proxy with body {\"tool\":\"vault_write\",\"args\":{\"path\":\"20_Research/Findings/<filename>.md\",\"content\":\"# Research: <filename>\\n\\n## Source\\nRalph Loop autonomous research\\n\\n## Findings\\n\\n<result>\\n\"}}\n5. Summarize what was researched and where files were written",
+  "no_agent": false,
+  "schedule": {
+    "kind": "interval",
+    "minutes": 240,
+    "display": "every 240m"
+  },
+  "deliver": "local",
+  "workdir": "/Users/lordwilson/msb-v3"
+}

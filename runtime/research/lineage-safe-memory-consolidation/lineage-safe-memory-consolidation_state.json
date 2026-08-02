@@ -1,0 +1,79 @@
+{
+  "slug": "lineage-safe-memory-consolidation",
+  "status": "completed",
+  "ts": "2026-08-01T16:25:32.999205+00:00",
+  "result": {
+    "topic": "lineage-safe memory consolidation",
+    "slug": "lineage-safe-memory-consolidation",
+    "phases": [
+      {
+        "phase": "inversion",
+        "ok": true,
+        "result": {
+          "assumption": "Lineage-safe memory consolidation is crucial for maintaining gene regulation and inheritance patterns across generations.",
+          "inversion": "Lineage-safe memory consolidation is not essential for maintaining gene regulation and inheritance patterns across generations.",
+          "predictions": [
+            "Reduced expression of certain genes related to memory in different lineages.",
+            "Increased errors in memory recall due to loss of lineage-specific memories.",
+            "Reduced diversity in inherited traits as memories become less stable."
+          ]
+        },
+        "ts": "2026-08-01T16:25:32.994328+00:00"
+      },
+      {
+        "phase": "evidence",
+        "ok": true,
+        "result": {
+          "evidence": [],
+          "claims": [],
+          "meta": {
+            "source_count": 0,
+            "claim_count": 0
+          }
+        },
+        "ts": "2026-08-01T16:25:32.995036+00:00"
+      },
+      {
+        "phase": "report",
+        "ok": true,
+        "result": {
+          "title": "lineage-safe memory consolidation",
+          "slug": "lineage-safe-memory-consolidation",
+          "abstract": "Autonomous research brief for lineage-safe memory consolidation.",
+          "background": "",
+          "uim": {
+            "assumption": "Lineage-safe memory consolidation is crucial for maintaining gene regulation and inheritance patterns across generations.",
+            "inversion": "Lineage-safe memory consolidation is not essential for maintaining gene regulation and inheritance patterns across generations.",
+            "predictions": [
+              "Reduced expression of certain genes related to memory in different lineages.",
+              "Increased errors in memory recall due to loss of lineage-specific memories.",
+              "Reduced diversity in inherited traits as memories become less stable."
+            ]
+          },
+          "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
+          "results": {
+            "source_count": 0,
+            "claim_count": 0
+          },
+          "discussion": "",
+          "reproducibility": {
+            "runtime_root": "/Users/lordwilson/runtime/research/lineage-safe-memory-consolidation",
+            "artifacts": [
+              "lineage-safe-memory-consolidation_UIM.json",
+              "lineage-safe-memory-consolidation_evidence_ledger.json"
+            ]
+          },
+          "guard_events": [],
+          "sovereignty_notes": "Local-first artifacts; no external publish step."
+        },
+        "ts": "2026-08-01T16:25:32.995429+00:00"
+      }
+    ],
+    "status": "completed",
+    "ts": "2026-08-01T16:25:32.995937+00:00",
+    "notify": {
+      "ok": true,
+      "async": true
+    }
+  }
+}

@@ -6,7 +6,6 @@ import pytest
 
 from msb_v3.core.config import settings
 from msb_v3.api.models import _list_models, _switch_backend, get_model_client
-from msb_v3.local_ai.client_factory import _active_backend
 
 
 def test_list_models():
@@ -17,14 +16,14 @@ def test_list_models():
 
 
 def test_switch_backend_ollama(monkeypatch):
-    monkeypatch.setattr("msb_v3.api.models._active_backend", "llamacpp", raising=False)
+    monkeypatch.setattr("msb_v3.core.config.settings._active_backend", "llamacpp", raising=False)
     result = _switch_backend({"backend": "ollama"})
     assert result["status"] == "ok"
     assert result["backend"] == "ollama"
 
 
 def test_switch_backend_llamacpp(monkeypatch):
-    monkeypatch.setattr("msb_v3.api.models._active_backend", "ollama", raising=False)
+    monkeypatch.setattr("msb_v3.core.config.settings._active_backend", "ollama", raising=False)
     result = _switch_backend({"backend": "llamacpp"})
     assert result["status"] == "ok"
     assert result["backend"] == "llamacpp"
@@ -36,12 +35,12 @@ def test_switch_backend_invalid():
 
 
 def test_get_client_ollama(monkeypatch):
-    monkeypatch.setattr("msb_v3.local_ai.client_factory._active_backend", "ollama", raising=False)
+    monkeypatch.setattr("msb_v3.core.config.settings._active_backend", "ollama", raising=False)
     client = get_model_client()
     assert client.__class__.__name__ == "LocalAIClient"
 
 
 def test_get_client_llamacpp(monkeypatch):
-    monkeypatch.setattr("msb_v3.local_ai.client_factory._active_backend", "llamacpp", raising=False)
+    monkeypatch.setattr("msb_v3.core.config.settings._active_backend", "llamacpp", raising=False)
     client = get_model_client()
     assert client.__class__.__name__ == "LlamaCPPClient"
