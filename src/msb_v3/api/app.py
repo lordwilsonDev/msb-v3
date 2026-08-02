@@ -31,6 +31,7 @@ from msb_v3.api.models import router as models_router
 from msb_v3.api.knowledge import router as knowledge_router
 from msb_v3.api.mcp_bridge import router as mcp_router
 from msb_v3.business.registry import router as business_router
+from msb_v3.api.graph import router as graph_router
 from msb_v3.core.config import settings
 
 
@@ -111,5 +112,6 @@ def create_app() -> FastAPI:
     app.include_router(knowledge_router, prefix="/knowledge", tags=["knowledge"])
     app.include_router(mcp_router, prefix="/mcp", tags=["mcp"])
     app.include_router(business_router, prefix="/business", tags=["business"])
+    app.include_router(graph_router, prefix="/graph", tags=["knowledge-graph"])
 
     return app
