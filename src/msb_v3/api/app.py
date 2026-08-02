@@ -111,12 +111,5 @@ def create_app() -> FastAPI:
     app.include_router(knowledge_router, prefix="/knowledge", tags=["knowledge"])
     app.include_router(mcp_router, prefix="/mcp", tags=["mcp"])
     app.include_router(business_router, prefix="/business", tags=["business"])
-    app.include_router(safety_router, prefix="/sac", tags=["safety"])
-    app.include_router(safety_router, prefix="/echo", tags=["safety"])
-    app.include_router(safety_router, prefix="/schh", tags=["safety"])
-    app.include_router(safety_router, prefix="/systems-health", tags=["safety"])
-    app.include_router(safety_router, prefix="/sn", tags=["safety"])
-    app.include_router(evolution_router, prefix="/continuity", tags=["evolution"])
-    app.include_router(evolution_router, prefix="/mesh/discovery", tags=["evolution"])
 
     return app

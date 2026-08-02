@@ -132,31 +132,10 @@ def test_memory_consolidate():
     _post("/evolution/memory/consolidate")
 
 
-def test_sac_status():
-    _get("/sac/status")
-
-
-def test_echo_evaluate():
-    _get("/echo/evaluate")
-
-
-def test_schh_health():
-    _get("/schh/health")
-
-
-def test_systems_health_status():
-    _get("/systems-health/status")
-
-
-def test_sn_notify():
-    _post("/sn/notify")
-
-
 def test_safety_blocked_topic():
     from msb_v3.api.research import _safety_check
     assert _safety_check("how to make a bomb")["allowed"] is False
     assert "blocked" in _safety_check("how to make a bomb")["reason"].lower() or _safety_check("how to make a bomb")["reason"] != ""
-
 
 def test_triumvirate_plan():
     _post("/triumvirate/plan", {"goal": "deploy sovereign cluster"})

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
+import re
 from typing import Any
 
 import httpx
@@ -14,61 +16,14 @@ router = APIRouter()
 BASE_URL = os.getenv("MSB_MCP_BASE_URL", "http://127.0.0.1:8766")
 REQUEST_TIMEOUT = int(os.getenv("MSB_MCP_REQUEST_TIMEOUT", "120"))
 _MCP_BRIDGE_SECRET = os.getenv("MCP_BRIDGE_SECRET", "")
-_OBSIDIAN_MCP_BASE = os.getenv("OBSIDIAN_MCP_BASE", "http://127.0.0.1:27123/mcp")
-_OBSIDIAN_AUTH = os.getenv("OBSIDIAN_API_KEY", "")
-_OBSIDIAN_SESSION_CACHE: dict[str, str] = {}
 
 
-def _check_auth(request: Request):
+def _check_auth(request: Request) -> None:
     if not _MCP_BRIDGE_SECRET:
         return
     header = request.headers.get("x-mcp-secret")
     if header != _MCP_BRIDGE_SECRET:
         raise HTTPException(status_code=401, detail="unauthorized")
-
-
-async def _obsidian_request(payload: dict[str, Any]) -> dict[str, Any]:
-    """Initialize Obsidian MCP session and forward tool call."""
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as c:
-        headers = {
-            "content-type": "application/json",
-            "accept": "application/json, text/event-stream",
-            "authorization": f"Bearer {_OBSIDIAN_AUTH}",
-        }
-        session_id = _OBSIDIAN_SESSION_CACHE.get("obsidian")
-        if session_id:
-            headers["mcp-session-id"] = session_id
-
-        init_resp = await c.post(_OBSIDIAN_MCP_BASE, json={
-            "jsonrpc": "2.0", "id": 1, "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "bridge", "version": "1.0"},
-            },
-        }, headers=headers)
-
-        new_sid = init_resp.headers.get("mcp-session-id")
-        if new_sid:
-            _OBSIDIAN_SESSION_CACHE["obsidian"] = new_sid
-            headers["mcp-session-id"] = new_sid
-
-        await c.post(_OBSIDIAN_MCP_BASE, json={
-            "jsonrpc": "2.0", "method": "notifications/initialized"
-        }, headers=headers)
-
-        payload["id"] = payload.get("id", 2)
-        r = await c.post(_OBSIDIAN_MCP_BASE, json=payload, headers=headers)
-        r.raise_for_status()
-
-        for line in r.text.splitlines():
-            if line.startswith("data: "):
-                data = json.loads(line[6:])
-                if "result" in data:
-                    return data["result"]
-                if "error" in data:
-                    raise HTTPException(status_code=500, detail=data["error"].get("message", "obsidian error"))
-        raise HTTPException(status_code=502, detail="no data in obsidian response")
 
 
 class ToolCall(BaseModel):
@@ -108,53 +63,129 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                 case "ralph_loop_run":
                     r = await client.post("/research/assistant/ralph-loop", json=call.args)
                 case "vault_list":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_list", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    vault = Path("/Users/lordwilson/Documents/Vault")
+                    try:
+                        files = [p.name + ("/" if p.is_dir() else "") for p in sorted(vault.iterdir())]
+                        return {"ok": True, "tool": call.tool, "result": {"files": files[:100]}}
+                    except Exception as e:
+                        raise HTTPException(status_code=500, detail=f"vault_list failed: {e}")
                 case "vault_read":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_read", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    path = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    if not path.exists() or not path.is_file():
+                        raise HTTPException(status_code=404, detail=f"File not found: {call.args.get('path')}")
+                    return {"ok": True, "tool": call.tool, "result": {"content": path.read_text(encoding="utf-8", errors="replace")}}
                 case "vault_write":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_write", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    target = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(call.args.get("content", ""), encoding="utf-8")
+                    return {"ok": True, "tool": call.tool, "result": {"written": str(target)}}
                 case "vault_append":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_append", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    target = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with target.open("a", encoding="utf-8") as f:
+                        f.write(call.args.get("content", ""))
+                    return {"ok": True, "tool": call.tool, "result": {"appended": str(target)}}
                 case "vault_patch":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_patch", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    import re
+                    target = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    if not target.exists():
+                        raise HTTPException(status_code=404, detail=f"File not found: {target}")
+                    content = target.read_text(encoding="utf-8", errors="replace")
+                    operation = call.args.get("operation", "replace")
+                    pattern = call.args.get("target", "")
+                    replacement = call.args.get("content", "")
+                    if operation == "replace":
+                        new_content = content.replace(pattern, replacement)
+                    elif operation == "regex":
+                        new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+                    else:
+                        raise HTTPException(status_code=400, detail=f"Unknown operation: {operation}")
+                    target.write_text(new_content, encoding="utf-8")
+                    return {"ok": True, "tool": call.tool, "result": {"patched": str(target)}}
                 case "vault_delete":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_delete", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    target = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    if not target.exists():
+                        raise HTTPException(status_code=404, detail=f"File not found: {target}")
+                    target.unlink()
+                    return {"ok": True, "tool": call.tool, "result": {"deleted": str(target)}}
                 case "vault_move":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_move", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    src = Path("/Users/lordwilson/Documents/Vault") / call.args.get("from_path", "")
+                    dst = Path("/Users/lordwilson/Documents/Vault") / call.args.get("to_path", "")
+                    if not src.exists():
+                        raise HTTPException(status_code=404, detail=f"Source not found: {src}")
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    src.rename(dst)
+                    return {"ok": True, "tool": call.tool, "result": {"from": str(src), "to": str(dst)}}
                 case "vault_get_document_map":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "vault_get_document_map", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    root = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    if not root.exists() or not root.is_dir():
+                        raise HTTPException(status_code=404, detail=f"Directory not found: {call.args.get('path')}")
+                    tree = {}
+                    for p in sorted(root.rglob("*.md")):
+                        rel = p.relative_to(root)
+                        parts = rel.parts
+                        node = tree
+                        for part in parts[:-1]:
+                            node = node.setdefault(part, {})
+                        node[parts[-1]] = None
+                    return {"ok": True, "tool": call.tool, "result": {"tree": tree}}
                 case "active_file_get_path":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "active_file_get_path", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    return {"ok": True, "tool": call.tool, "result": {"error": "no active file tracker — use vault_read with a path"}}
                 case "periodic_note_get_path":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "periodic_note_get_path", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    return {"ok": True, "tool": call.tool, "result": {"error": "no periodic note tracker — use vault_write to create one"}}
                 case "search_query":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_query", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    import re
+                    query = call.args.get("query", "")
+                    results = []
+                    root = Path("/Users/lordwilson/Documents/Vault")
+                    for p in root.rglob("*.md"):
+                        text = p.read_text(encoding="utf-8", errors="replace")
+                        if query.lower() in text.lower():
+                            idx = text.lower().index(query.lower())
+                            start = max(0, idx - 60)
+                            end = min(len(text), idx + 140)
+                            snippet = text[start:end]
+                            results.append({"path": str(p.relative_to(root)), "snippet": snippet})
+                    return {"ok": True, "tool": call.tool, "result": {"matches": results[:20]}}
                 case "search_simple":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_simple", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    query = call.args.get("query", "")
+                    results = []
+                    root = Path("/Users/lordwilson/Documents/Vault")
+                    for p in root.rglob("*.md"):
+                        text = p.read_text(encoding="utf-8", errors="replace")
+                        if query.lower() in text.lower():
+                            results.append({"path": str(p.relative_to(root)), "score": 1.0})
+                    return {"ok": True, "tool": call.tool, "result": {"matches": results[:20]}}
                 case "tag_list":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "tag_list", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    import re
+                    tags = set()
+                    root = Path("/Users/lordwilson/Documents/Vault")
+                    for p in root.rglob("*.md"):
+                        text = p.read_text(encoding="utf-8", errors="replace")
+                        for m in re.finditer(r"#([a-zA-Z][a-zA-Z0-9_/-]+)", text):
+                            tags.add(m.group(1))
+                    return {"ok": True, "tool": call.tool, "result": {"tags": sorted(tags)}}
                 case "command_list":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "command_list", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    return {"ok": True, "tool": call.tool, "result": {"commands": []}}
                 case "command_execute":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "command_execute", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    return {"ok": True, "tool": call.tool, "result": {"error": "no Obsidian UI connected"}}
                 case "open_file":
-                    result = await _obsidian_request({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "open_file", "arguments": call.args}})
-                    return {"ok": True, "tool": call.tool, "result": result}
+                    from pathlib import Path
+                    target = Path("/Users/lordwilson/Documents/Vault") / call.args.get("path", "")
+                    if not target.exists():
+                        raise HTTPException(status_code=404, detail=f"File not found: {target}")
+                    return {"ok": True, "tool": call.tool, "result": {"opened": str(target), "note": "no UI connected — path returned for reference"}}
                 case _:
                     raise HTTPException(status_code=404, detail=f"Unknown tool: {call.tool}")
 
