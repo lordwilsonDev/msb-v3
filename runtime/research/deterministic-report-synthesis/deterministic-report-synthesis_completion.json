@@ -1,0 +1,89 @@
+{
+  "topic": "deterministic report synthesis",
+  "slug": "deterministic-report-synthesis",
+  "phases": [
+    {
+      "phase": "inversion",
+      "ok": true,
+      "result": {
+        "assumption": "The majority of people believe in aliens.",
+        "inversion": "Not a single person believes in aliens.",
+        "predictions": [
+          {
+            "description": "Predicted success rate of detecting stars through scientific experiments.",
+            "measurement": "90% of people can see stars."
+          },
+          {
+            "description": "Predicted success rate of detecting black holes through scientific observations.",
+            "measurement": "50% of people can see black holes."
+          },
+          {
+            "description": "Predicted success rate of detecting neutron stars through astronomical surveys.",
+            "measurement": "30% of people can see neutron stars."
+          }
+        ]
+      },
+      "ts": "2026-08-02T04:26:34.468008+00:00"
+    },
+    {
+      "phase": "evidence",
+      "ok": true,
+      "result": {
+        "evidence": [],
+        "claims": [],
+        "meta": {
+          "source_count": 0,
+          "claim_count": 0
+        }
+      },
+      "ts": "2026-08-02T04:26:34.468631+00:00"
+    },
+    {
+      "phase": "report",
+      "ok": true,
+      "result": {
+        "title": "deterministic report synthesis",
+        "slug": "deterministic-report-synthesis",
+        "abstract": "Autonomous research brief for deterministic report synthesis.",
+        "background": "",
+        "uim": {
+          "assumption": "The majority of people believe in aliens.",
+          "inversion": "Not a single person believes in aliens.",
+          "predictions": [
+            {
+              "description": "Predicted success rate of detecting stars through scientific experiments.",
+              "measurement": "90% of people can see stars."
+            },
+            {
+              "description": "Predicted success rate of detecting black holes through scientific observations.",
+              "measurement": "50% of people can see black holes."
+            },
+            {
+              "description": "Predicted success rate of detecting neutron stars through astronomical surveys.",
+              "measurement": "30% of people can see neutron stars."
+            }
+          ]
+        },
+        "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
+        "results": {
+          "source_count": 0,
+          "claim_count": 0
+        },
+        "discussion": "",
+        "reproducibility": {
+          "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/deterministic-report-synthesis",
+          "artifacts": [
+            "deterministic-report-synthesis_UIM.json",
+            "deterministic-report-synthesis_evidence_ledger.json",
+            "deterministic-report-synthesis_state.json"
+          ]
+        },
+        "guard_events": [],
+        "sovereignty_notes": "Local-first artifacts; no external publish step."
+      },
+      "ts": "2026-08-02T04:26:34.469053+00:00"
+    }
+  ],
+  "status": "completed",
+  "ts": "2026-08-02T04:26:34.469492+00:00"
+}
