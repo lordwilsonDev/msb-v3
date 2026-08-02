@@ -142,6 +142,17 @@ jobs:
           git secrets --scan || true
         continue-on-error: true
 
+      - name: Generate SBOM
+        run: |
+          pip install cyclonedx-bom
+          cyclonedx-py . --output sbom.json --format json
+
+      - name: Check license compliance
+        run: |
+          pip install pip-licenses
+          pip-licenses --format=json --output-file=licenses.json
+          grep -i "GPL\|AGPL" licenses.json && echo "::warning::GPL/AGPL license found" || true
+
       - name: Upload security reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -150,6 +161,8 @@ jobs:
           path: |
             .pip-audit/
             .git/secrets/
+            sbom.json
+            licenses.json
           retention-days: 7
 
   docker:
