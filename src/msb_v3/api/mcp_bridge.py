@@ -186,7 +186,14 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                     if not target.exists():
                         raise HTTPException(status_code=404, detail=f"File not found: {target}")
                     return {"ok": True, "tool": call.tool, "result": {"opened": str(target), "note": "no UI connected — path returned for reference"}}
-                case _:
+                case "graph_ingest":
+                    r = await client.post("/graph/ingest", json=call.args)
+                case "graph_get":
+                    r = await client.get(f"/graph/{call.args.get('session', '')}")
+                case "graph_top":
+                    r = await client.get(f"/graph/{call.args.get('session', '')}/top?k={call.args.get('k', 20)}")
+                case "graph_sessions":
+                    r = await client.get("/graph")
                     raise HTTPException(status_code=404, detail=f"Unknown tool: {call.tool}")
 
             r.raise_for_status()
