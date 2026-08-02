@@ -189,3 +189,55 @@ jobs:
           echo "::warning::CI pipeline failed. Check artifacts for details."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: [test, lint, security, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pre-deploy backup
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}' && \
+             cp -r \"\$DEPLOY_PATH\" \"\${DEPLOY_PATH}.bak.\$(date +%Y%m%d-%H%M%S)\"" || true
+
+      - name: Deploy
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd '${{ secrets.DEPLOY_PATH }}' && \
+             git pull origin main && \
+             PYTHONPATH=src python -m pip install -e '.[dev]' --quiet && \
+             PYTHONPATH=src /opt/homebrew/Caskroom/miniforge/base/bin/python -m uvicorn msb_v3.api.app:create_app --host 127.0.0.1 --port 8766 --daemon"
+
+      - name: Health check
+        run: |
+          for _i in $(seq 1 12); do
+            if curl -sf http://${{ secrets.DEPLOY_HOST }}:8766/status; then
+              echo "Deploy healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Deploy failed health check"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd '${{ secrets.DEPLOY_PATH }}' && \
+             git reset --hard HEAD~1 && \
+             PYTHONPATH=src /opt/homebrew/Caskroom/miniforge/base/bin/python -m uvicorn msb_v3.api.app:create_app --host 127.0.0.1 --port 8766 --daemon"
