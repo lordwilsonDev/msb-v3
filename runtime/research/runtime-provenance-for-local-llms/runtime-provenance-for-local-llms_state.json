@@ -1,7 +1,7 @@
 {
   "slug": "runtime-provenance-for-local-llms",
   "status": "completed",
-  "ts": "2026-08-02T00:26:16.025760+00:00",
+  "ts": "2026-08-03T16:29:44.133856+00:00",
   "result": {
     "topic": "runtime provenance for local LLMs",
     "slug": "runtime-provenance-for-local-llms",
@@ -10,25 +10,11 @@
         "phase": "inversion",
         "ok": true,
         "result": {
-          "assumption": {
-            "description": "One dominant claim to test: Runtime provenance can significantly impact the efficiency and scalability of local LLM operations."
-          },
-          "inversion": {
-            "description": "The opposite claim would be that while runtime provenance is important, it should not replace other key performance metrics such as resource utilization or dataset size."
-          },
-          "predictions": [
-            {
-              "description": "1. The time taken for a local LLM to process a given task."
-            },
-            {
-              "description": "2. The number of operations executed per second (operations per minute) by the local LLM."
-            },
-            {
-              "description": "3. The consistency or reliability of runtime provenance across multiple runs and datasets."
-            }
-          ]
+          "assumption": "",
+          "inversion": "",
+          "predictions": []
         },
-        "ts": "2026-08-02T00:26:16.022110+00:00"
+        "ts": "2026-08-03T16:29:44.117201+00:00"
       },
       {
         "phase": "evidence",
@@ -41,7 +27,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-02T00:26:16.022401+00:00"
+        "ts": "2026-08-03T16:29:44.118465+00:00"
       },
       {
         "phase": "report",
@@ -52,23 +38,9 @@
           "abstract": "Autonomous research brief for runtime provenance for local LLMs.",
           "background": "",
           "uim": {
-            "assumption": {
-              "description": "One dominant claim to test: Runtime provenance can significantly impact the efficiency and scalability of local LLM operations."
-            },
-            "inversion": {
-              "description": "The opposite claim would be that while runtime provenance is important, it should not replace other key performance metrics such as resource utilization or dataset size."
-            },
-            "predictions": [
-              {
-                "description": "1. The time taken for a local LLM to process a given task."
-              },
-              {
-                "description": "2. The number of operations executed per second (operations per minute) by the local LLM."
-              },
-              {
-                "description": "3. The consistency or reliability of runtime provenance across multiple runs and datasets."
-              }
-            ]
+            "assumption": "",
+            "inversion": "",
+            "predictions": []
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
           "results": {
@@ -77,20 +49,21 @@
           },
           "discussion": "",
           "reproducibility": {
-            "runtime_root": "/Users/lordwilson/runtime/research/runtime-provenance-for-local-llms",
+            "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/runtime-provenance-for-local-llms",
             "artifacts": [
               "runtime-provenance-for-local-llms_UIM.json",
-              "runtime-provenance-for-local-llms_evidence_ledger.json"
+              "runtime-provenance-for-local-llms_evidence_ledger.json",
+              "runtime-provenance-for-local-llms_state.json"
             ]
           },
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-02T00:26:16.022651+00:00"
+        "ts": "2026-08-03T16:29:44.119176+00:00"
       }
     ],
     "status": "completed",
-    "ts": "2026-08-02T00:26:16.023718+00:00",
+    "ts": "2026-08-03T16:29:44.119714+00:00",
     "notify": {
       "ok": true,
       "async": true

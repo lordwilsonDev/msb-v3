@@ -4,13 +4,9 @@
   "abstract": "Autonomous research brief for evidence-grounded research systems.",
   "background": "",
   "uim": {
-    "assumption": "Global warming is causing more extreme weather events than ever before.",
-    "inversion": "There are no significant changes in extreme weather patterns without global warming.",
-    "predictions": [
-      "Increased frequency of hurricanes and typhoons.",
-      "Higher temperatures leading to more frequent heatwaves.",
-      "More severe flooding due to rising sea levels."
-    ]
+    "assumption": "",
+    "inversion": "",
+    "predictions": []
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
   "results": {
@@ -22,7 +18,10 @@
     "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/evidence-grounded-research-systems",
     "artifacts": [
       "evidence-grounded-research-systems_UIM.json",
+      "evidence-grounded-research-systems_completion.json",
       "evidence-grounded-research-systems_evidence_ledger.json",
+      "evidence-grounded-research-systems_report.md",
+      "evidence-grounded-research-systems_review.md",
       "evidence-grounded-research-systems_state.json"
     ]
   },

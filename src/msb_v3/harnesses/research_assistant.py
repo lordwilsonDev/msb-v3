@@ -66,6 +66,7 @@ class SovereignResearchAssistant(BaseHarness):
 
     def run_inversion(self) -> Dict[str, Any]:
         result: Dict[str, Any] = {"assumption": "", "inversion": "", "predictions": []}
+        error: Optional[str] = None
         try:
             prompt = (
                 "You are a research inversion assistant.\n"
@@ -76,7 +77,9 @@ class SovereignResearchAssistant(BaseHarness):
                 "predictions: a list of 3 measurable predictions."
             )
             text = self._generate(prompt)
-            if text:
+            if not text:
+                error = "no output from local AI client (unreachable, unconfigured, or empty response)"
+            else:
                 cleaned = text[text.find("{"): text.rfind("}") + 1]
                 data = json.loads(cleaned)
                 result = {
@@ -84,16 +87,25 @@ class SovereignResearchAssistant(BaseHarness):
                     "inversion": data.get("inversion", ""),
                     "predictions": data.get("predictions", []),
                 }
-        except Exception:
-            pass
-        phase = {
+                if not result["assumption"] and not result["inversion"]:
+                    error = "model returned JSON but assumption/inversion were both empty"
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+
+        # A phase is only "ok" if it actually produced content — not merely
+        # because nothing raised. A swallowed failure used to be
+        # indistinguishable from a real result here.
+        ok = error is None
+        phase: Dict[str, Any] = {
             "phase": "inversion",
-            "ok": True,
+            "ok": ok,
             "result": result,
             "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
+        if error is not None:
+            phase["error"] = error
         self.phases.append(phase)
-        self._write("UIM.json", {"topic": self.topic, "slug": self.slug, "phase1": result})
+        self._write("UIM.json", {"topic": self.topic, "slug": self.slug, "phase1": result, "ok": ok, **({"error": error} if error else {})})
         return result
 
     def ground_evidence(self, sources: List[Path]) -> Dict[str, Any]:
@@ -165,13 +177,20 @@ class SovereignResearchAssistant(BaseHarness):
         return report
 
     def record_completion(self) -> Dict[str, Any]:
+        # "completed" used to be written unconditionally, even when a phase
+        # (e.g. run_inversion) silently produced nothing — so a hollow run
+        # and a real one were indistinguishable from status alone.
+        failed_phases = [p["phase"] for p in self.phases if not p.get("ok", True)]
+        status = "completed" if not failed_phases else "completed_with_errors"
         completion = {
             "topic": self.topic,
             "slug": self.slug,
             "phases": self.phases,
-            "status": "completed",
+            "status": status,
             "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
+        if failed_phases:
+            completion["failed_phases"] = failed_phases
         self._write("completion.json", completion)
         self._write("state.json", {
             "topic": self.topic,
@@ -198,8 +217,8 @@ class SovereignResearchAssistant(BaseHarness):
         data = self.run_full_pipeline()
         text = json.dumps(data, indent=2)
         return HarnessResult(
-            ok=True,
-            event="research:completed",
+            ok=data.get("status") == "completed",
+            event="research:completed" if data.get("status") == "completed" else "research:completed_with_errors",
             payload={"query": query, "text": text},
             telemetry={"slug": self.slug},
         )

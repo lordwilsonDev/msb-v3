@@ -10,7 +10,7 @@
         "inversion": "",
         "predictions": []
       },
-      "ts": "2026-08-01T20:25:56.660670+00:00"
+      "ts": "2026-08-03T12:29:39.833035+00:00"
     },
     {
       "phase": "evidence",
@@ -23,7 +23,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-01T20:25:56.661259+00:00"
+      "ts": "2026-08-03T12:29:39.836282+00:00"
     },
     {
       "phase": "report",
@@ -48,16 +48,19 @@
           "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/mesh-peer-discovery-for-sovereign-agents",
           "artifacts": [
             "mesh-peer-discovery-for-sovereign-agents_UIM.json",
+            "mesh-peer-discovery-for-sovereign-agents_completion.json",
             "mesh-peer-discovery-for-sovereign-agents_evidence_ledger.json",
+            "mesh-peer-discovery-for-sovereign-agents_report.md",
+            "mesh-peer-discovery-for-sovereign-agents_review.md",
             "mesh-peer-discovery-for-sovereign-agents_state.json"
           ]
         },
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-01T20:25:56.661683+00:00"
+      "ts": "2026-08-03T12:29:39.839927+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-01T20:25:56.662270+00:00"
+  "ts": "2026-08-03T12:29:39.841234+00:00"
 }

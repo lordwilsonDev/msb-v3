@@ -43,6 +43,8 @@ class ChatResponse(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: Request, req: ChatRequest) -> ChatResponse:
+    tenant_id = request.headers.get("X-Tenant-ID", "default")
+    session = f"{tenant_id}:{req.session}"
     ctx: Dict[str, Any] = {}
     if req.system:
         ctx["system"] = req.system
@@ -59,7 +61,7 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
 
     try:
         store = MemoryStore()
-        recent = store.recent(req.session, limit=10)
+        recent = store.recent(session, limit=10)
         hist = "\n".join([f"{m.role}: {m.content}" for m in recent])
         if hist:
             ctx["history"] = hist
@@ -67,7 +69,7 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
     except Exception:
         used = 0
 
-    result: HarnessResult = harness.execute(req.query, ctx, session=req.session)
+    result: HarnessResult = harness.execute(req.query, ctx, session=session)
     return ChatResponse(
         ok=result.ok,
         event=result.event,

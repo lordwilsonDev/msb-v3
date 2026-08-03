@@ -1,7 +1,7 @@
 {
   "slug": "long-horizon-autonomous-harness-design",
   "status": "completed",
-  "ts": "2026-08-01T08:24:28.338003+00:00",
+  "ts": "2026-08-03T00:29:08.169970+00:00",
   "result": {
     "topic": "long-horizon autonomous harness design",
     "slug": "long-horizon-autonomous-harness-design",
@@ -10,27 +10,11 @@
         "phase": "inversion",
         "ok": true,
         "result": {
-          "assumption": {
-            "long-horizon autonomous harness design": "A study focusing on the scalability and long-term viability of autonomous harnesses."
-          },
-          "inversion": {
-            "short-term or local autonomous harnesses": "The opposite claim, emphasizing their potential in short periods rather than long."
-          },
-          "predictions": [
-            {
-              "improving scalability": "Predictions include enhancing scalability by expanding component count while managing increased costs over time.",
-              "reducing operational costs": "Investing in cost reduction strategies to minimize expenses as systems operate longer hours."
-            },
-            {
-              "handling complex traffic patterns": "The harness should better manage diverse traffic types and conditions, reducing reliance on human intervention.",
-              "increasing adaptability": "Developing the ability to adapt to changing environments or traffic demands more effectively over time."
-            },
-            {
-              "improving energy efficiency": "Long-term predictions focus on enhancing energy consumption patterns to reduce environmental impact and cost savings."
-            }
-          ]
+          "assumption": "",
+          "inversion": "",
+          "predictions": []
         },
-        "ts": "2026-08-01T08:24:28.333736+00:00"
+        "ts": "2026-08-03T00:29:08.158353+00:00"
       },
       {
         "phase": "evidence",
@@ -43,7 +27,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-01T08:24:28.334573+00:00"
+        "ts": "2026-08-03T00:29:08.159602+00:00"
       },
       {
         "phase": "report",
@@ -54,25 +38,9 @@
           "abstract": "Autonomous research brief for long-horizon autonomous harness design.",
           "background": "",
           "uim": {
-            "assumption": {
-              "long-horizon autonomous harness design": "A study focusing on the scalability and long-term viability of autonomous harnesses."
-            },
-            "inversion": {
-              "short-term or local autonomous harnesses": "The opposite claim, emphasizing their potential in short periods rather than long."
-            },
-            "predictions": [
-              {
-                "improving scalability": "Predictions include enhancing scalability by expanding component count while managing increased costs over time.",
-                "reducing operational costs": "Investing in cost reduction strategies to minimize expenses as systems operate longer hours."
-              },
-              {
-                "handling complex traffic patterns": "The harness should better manage diverse traffic types and conditions, reducing reliance on human intervention.",
-                "increasing adaptability": "Developing the ability to adapt to changing environments or traffic demands more effectively over time."
-              },
-              {
-                "improving energy efficiency": "Long-term predictions focus on enhancing energy consumption patterns to reduce environmental impact and cost savings."
-              }
-            ]
+            "assumption": "",
+            "inversion": "",
+            "predictions": []
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
           "results": {
@@ -84,18 +52,21 @@
             "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/long-horizon-autonomous-harness-design",
             "artifacts": [
               "long-horizon-autonomous-harness-design_UIM.json",
+              "long-horizon-autonomous-harness-design_completion.json",
               "long-horizon-autonomous-harness-design_evidence_ledger.json",
+              "long-horizon-autonomous-harness-design_report.md",
+              "long-horizon-autonomous-harness-design_review.md",
               "long-horizon-autonomous-harness-design_state.json"
             ]
           },
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-01T08:24:28.335058+00:00"
+        "ts": "2026-08-03T00:29:08.160884+00:00"
       }
     ],
     "status": "completed",
-    "ts": "2026-08-01T08:24:28.335671+00:00",
+    "ts": "2026-08-03T00:29:08.163368+00:00",
     "notify": {
       "ok": true,
       "async": true

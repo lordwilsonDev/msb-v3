@@ -2,12 +2,8 @@
   "topic": "local-first inference patterns",
   "slug": "local-first-inference-patterns",
   "phase1": {
-    "assumption": "The assumption is that JavaScript code written by developers will be automatically converted into another target language.",
-    "inversion": "Inversion: Developers do not rely on native code but instead use pre-compiled code from a source language.",
-    "predictions": [
-      "Reduced development time for developers familiar with JavaScript.",
-      "Improved maintainability of converted code due to better structure and practices.",
-      "Potential increase in developer productivity as they can leverage existing tools and libraries."
-    ]
+    "assumption": "",
+    "inversion": "",
+    "predictions": []
   }
 }

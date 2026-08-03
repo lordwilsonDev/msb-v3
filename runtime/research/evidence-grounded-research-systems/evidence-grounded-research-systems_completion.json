@@ -6,15 +6,11 @@
       "phase": "inversion",
       "ok": true,
       "result": {
-        "assumption": "Global warming is causing more extreme weather events than ever before.",
-        "inversion": "There are no significant changes in extreme weather patterns without global warming.",
-        "predictions": [
-          "Increased frequency of hurricanes and typhoons.",
-          "Higher temperatures leading to more frequent heatwaves.",
-          "More severe flooding due to rising sea levels."
-        ]
+        "assumption": "",
+        "inversion": "",
+        "predictions": []
       },
-      "ts": "2026-08-01T04:24:08.729646+00:00"
+      "ts": "2026-08-02T20:28:43.118534+00:00"
     },
     {
       "phase": "evidence",
@@ -27,7 +23,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-01T04:24:08.730651+00:00"
+      "ts": "2026-08-02T20:28:43.120764+00:00"
     },
     {
       "phase": "report",
@@ -38,13 +34,9 @@
         "abstract": "Autonomous research brief for evidence-grounded research systems.",
         "background": "",
         "uim": {
-          "assumption": "Global warming is causing more extreme weather events than ever before.",
-          "inversion": "There are no significant changes in extreme weather patterns without global warming.",
-          "predictions": [
-            "Increased frequency of hurricanes and typhoons.",
-            "Higher temperatures leading to more frequent heatwaves.",
-            "More severe flooding due to rising sea levels."
-          ]
+          "assumption": "",
+          "inversion": "",
+          "predictions": []
         },
         "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
         "results": {
@@ -56,16 +48,19 @@
           "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/evidence-grounded-research-systems",
           "artifacts": [
             "evidence-grounded-research-systems_UIM.json",
+            "evidence-grounded-research-systems_completion.json",
             "evidence-grounded-research-systems_evidence_ledger.json",
+            "evidence-grounded-research-systems_report.md",
+            "evidence-grounded-research-systems_review.md",
             "evidence-grounded-research-systems_state.json"
           ]
         },
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-01T04:24:08.731534+00:00"
+      "ts": "2026-08-02T20:28:43.121633+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-01T04:24:08.732443+00:00"
+  "ts": "2026-08-02T20:28:43.122101+00:00"
 }

@@ -1,6 +1,6 @@
 {
-  "topic": "local-first inference patterns",
-  "slug": "local-first-inference-patterns",
+  "topic": "safety-bounded agent evolution",
+  "slug": "safety-bounded-agent-evolution",
   "phases": [
     {
       "phase": "inversion",
@@ -10,7 +10,7 @@
         "inversion": "",
         "predictions": []
       },
-      "ts": "2026-08-02T16:27:43.489572+00:00"
+      "ts": "2026-08-03T04:29:11.793583+00:00"
     },
     {
       "phase": "evidence",
@@ -23,15 +23,15 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-02T16:27:43.492881+00:00"
+      "ts": "2026-08-03T04:29:11.795374+00:00"
     },
     {
       "phase": "report",
       "ok": true,
       "result": {
-        "title": "local-first inference patterns",
-        "slug": "local-first-inference-patterns",
-        "abstract": "Autonomous research brief for local-first inference patterns.",
+        "title": "safety-bounded agent evolution",
+        "slug": "safety-bounded-agent-evolution",
+        "abstract": "Autonomous research brief for safety-bounded agent evolution.",
         "background": "",
         "uim": {
           "assumption": "",
@@ -45,22 +45,19 @@
         },
         "discussion": "",
         "reproducibility": {
-          "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/local-first-inference-patterns",
+          "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/safety-bounded-agent-evolution",
           "artifacts": [
-            "local-first-inference-patterns_UIM.json",
-            "local-first-inference-patterns_completion.json",
-            "local-first-inference-patterns_evidence_ledger.json",
-            "local-first-inference-patterns_report.md",
-            "local-first-inference-patterns_review.md",
-            "local-first-inference-patterns_state.json"
+            "safety-bounded-agent-evolution_UIM.json",
+            "safety-bounded-agent-evolution_evidence_ledger.json",
+            "safety-bounded-agent-evolution_state.json"
           ]
         },
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-02T16:27:43.493466+00:00"
+      "ts": "2026-08-03T04:29:11.796338+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-02T16:27:43.501491+00:00"
+  "ts": "2026-08-03T04:29:11.797478+00:00"
 }

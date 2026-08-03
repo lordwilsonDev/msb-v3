@@ -1,6 +1,6 @@
 {
-  "topic": "local-first inference patterns",
-  "slug": "local-first-inference-patterns",
+  "topic": "runtime provenance for local LLMs",
+  "slug": "runtime-provenance-for-local-llms",
   "phases": [
     {
       "phase": "inversion",
@@ -10,7 +10,7 @@
         "inversion": "",
         "predictions": []
       },
-      "ts": "2026-08-02T16:27:43.489572+00:00"
+      "ts": "2026-08-03T16:29:44.117201+00:00"
     },
     {
       "phase": "evidence",
@@ -23,15 +23,15 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-02T16:27:43.492881+00:00"
+      "ts": "2026-08-03T16:29:44.118465+00:00"
     },
     {
       "phase": "report",
       "ok": true,
       "result": {
-        "title": "local-first inference patterns",
-        "slug": "local-first-inference-patterns",
-        "abstract": "Autonomous research brief for local-first inference patterns.",
+        "title": "runtime provenance for local LLMs",
+        "slug": "runtime-provenance-for-local-llms",
+        "abstract": "Autonomous research brief for runtime provenance for local LLMs.",
         "background": "",
         "uim": {
           "assumption": "",
@@ -45,22 +45,19 @@
         },
         "discussion": "",
         "reproducibility": {
-          "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/local-first-inference-patterns",
+          "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/runtime-provenance-for-local-llms",
           "artifacts": [
-            "local-first-inference-patterns_UIM.json",
-            "local-first-inference-patterns_completion.json",
-            "local-first-inference-patterns_evidence_ledger.json",
-            "local-first-inference-patterns_report.md",
-            "local-first-inference-patterns_review.md",
-            "local-first-inference-patterns_state.json"
+            "runtime-provenance-for-local-llms_UIM.json",
+            "runtime-provenance-for-local-llms_evidence_ledger.json",
+            "runtime-provenance-for-local-llms_state.json"
           ]
         },
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-02T16:27:43.493466+00:00"
+      "ts": "2026-08-03T16:29:44.119176+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-02T16:27:43.501491+00:00"
+  "ts": "2026-08-03T16:29:44.119714+00:00"
 }

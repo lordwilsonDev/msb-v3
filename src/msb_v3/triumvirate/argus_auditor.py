@@ -62,10 +62,15 @@ class ArgusAuditor:
             )
             return {"id": cur.lastrowid, "timestamp": ts, **finding.__dict__}
 
-    def audit_directives(self, directives_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+    def audit_directives(
+        self, directives_dir: Optional[str] = None, checks: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
         findings: List[Dict[str, Any]] = []
         target = Path(directives_dir) if directives_dir else Path(settings.db_path).parent.parent / "directives"
-        if not target.exists():
+        exists = target.exists()
+        if checks is not None:
+            checks.append({"component": "directives", "target": str(target), "exists": exists})
+        if not exists:
             return findings
         for path in target.glob("*.md"):
             content = path.read_text(errors="ignore")
@@ -77,10 +82,15 @@ class ArgusAuditor:
                 )))
         return findings
 
-    def audit_memory(self, memory_file: Optional[str] = None) -> List[Dict[str, Any]]:
+    def audit_memory(
+        self, memory_file: Optional[str] = None, checks: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
         findings: List[Dict[str, Any]] = []
         target = Path(memory_file) if memory_file else Path(settings.db_path).parent.parent / "memory.mmd"
-        if not target.exists():
+        exists = target.exists()
+        if checks is not None:
+            checks.append({"component": "memory", "target": str(target), "exists": exists})
+        if not exists:
             return findings
         content = target.read_text(errors="ignore")
         if "orphan" in content.lower():
@@ -91,10 +101,15 @@ class ArgusAuditor:
             )))
         return findings
 
-    def audit_soul(self, soul_file: Optional[str] = None) -> List[Dict[str, Any]]:
+    def audit_soul(
+        self, soul_file: Optional[str] = None, checks: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
         findings: List[Dict[str, Any]] = []
         target = Path(soul_file) if soul_file else Path(settings.db_path).parent.parent / "soul.md"
-        if not target.exists():
+        exists = target.exists()
+        if checks is not None:
+            checks.append({"component": "soul", "target": str(target), "exists": exists})
+        if not exists:
             return findings
         content = target.read_text(errors="ignore")
         if "drift" in content.lower():
@@ -105,10 +120,20 @@ class ArgusAuditor:
             )))
         return findings
 
-    def audit_run_logs(self, logs_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+    def audit_run_logs(
+        self, logs_dir: Optional[str] = None, checks: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
         findings: List[Dict[str, Any]] = []
-        target = Path(logs_dir) if logs_dir else Path(settings.db_path).parent / "logs"
-        if not target.exists():
+        # Default matches where scripts/start.sh and run.sh actually write
+        # logs (`$REPO/logs/msb-v3.log`) — this used to be
+        # `Path(settings.db_path).parent / "logs"` (i.e. "data/logs"), a
+        # directory that has never existed, so this check silently found
+        # nothing on every run regardless of what the real log said.
+        target = Path(logs_dir) if logs_dir else Path(settings.db_path).parent.parent / "logs"
+        exists = target.exists()
+        if checks is not None:
+            checks.append({"component": "run_logs", "target": str(target), "exists": exists})
+        if not exists:
             return findings
         for path in target.glob("*.log"):
             text = path.read_text(errors="ignore")
@@ -131,16 +156,20 @@ class ArgusAuditor:
         last_exc: Optional[Exception] = None
         for attempt in range(_MAX_RETRIES):
             try:
+                checks: List[Dict[str, Any]] = []
                 findings: List[Dict[str, Any]] = []
-                findings.extend(self.audit_directives(directives_dir))
-                findings.extend(self.audit_memory(memory_file))
-                findings.extend(self.audit_soul(soul_file))
-                findings.extend(self.audit_run_logs(logs_dir))
+                findings.extend(self.audit_directives(directives_dir, checks))
+                findings.extend(self.audit_memory(memory_file, checks))
+                findings.extend(self.audit_soul(soul_file, checks))
+                findings.extend(self.audit_run_logs(logs_dir, checks))
+                missing_targets = [c["target"] for c in checks if not c["exists"]]
                 return {
                     "started_at": started,
                     "finished_at": _now_iso(),
                     "findings": findings,
                     "count": len(findings),
+                    "checked_targets": checks,
+                    "missing_targets": missing_targets,
                 }
             except Exception as exc:
                 last_exc = exc

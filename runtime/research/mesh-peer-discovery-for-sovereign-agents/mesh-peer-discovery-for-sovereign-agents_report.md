@@ -18,7 +18,10 @@
     "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/mesh-peer-discovery-for-sovereign-agents",
     "artifacts": [
       "mesh-peer-discovery-for-sovereign-agents_UIM.json",
+      "mesh-peer-discovery-for-sovereign-agents_completion.json",
       "mesh-peer-discovery-for-sovereign-agents_evidence_ledger.json",
+      "mesh-peer-discovery-for-sovereign-agents_report.md",
+      "mesh-peer-discovery-for-sovereign-agents_review.md",
       "mesh-peer-discovery-for-sovereign-agents_state.json"
     ]
   },

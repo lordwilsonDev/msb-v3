@@ -2,12 +2,8 @@
   "topic": "evidence-grounded research systems",
   "slug": "evidence-grounded-research-systems",
   "phase1": {
-    "assumption": "Global warming is causing more extreme weather events than ever before.",
-    "inversion": "There are no significant changes in extreme weather patterns without global warming.",
-    "predictions": [
-      "Increased frequency of hurricanes and typhoons.",
-      "Higher temperatures leading to more frequent heatwaves.",
-      "More severe flooding due to rising sea levels."
-    ]
+    "assumption": "",
+    "inversion": "",
+    "predictions": []
   }
 }

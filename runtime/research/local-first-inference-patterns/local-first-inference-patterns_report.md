@@ -4,13 +4,9 @@
   "abstract": "Autonomous research brief for local-first inference patterns.",
   "background": "",
   "uim": {
-    "assumption": "The assumption is that JavaScript code written by developers will be automatically converted into another target language.",
-    "inversion": "Inversion: Developers do not rely on native code but instead use pre-compiled code from a source language.",
-    "predictions": [
-      "Reduced development time for developers familiar with JavaScript.",
-      "Improved maintainability of converted code due to better structure and practices.",
-      "Potential increase in developer productivity as they can leverage existing tools and libraries."
-    ]
+    "assumption": "",
+    "inversion": "",
+    "predictions": []
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
   "results": {
@@ -22,7 +18,10 @@
     "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/local-first-inference-patterns",
     "artifacts": [
       "local-first-inference-patterns_UIM.json",
+      "local-first-inference-patterns_completion.json",
       "local-first-inference-patterns_evidence_ledger.json",
+      "local-first-inference-patterns_report.md",
+      "local-first-inference-patterns_review.md",
       "local-first-inference-patterns_state.json"
     ]
   },
