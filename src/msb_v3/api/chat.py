@@ -44,7 +44,7 @@ class ChatResponse(BaseModel):
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: Request, req: ChatRequest) -> ChatResponse:
     tenant_id = request.headers.get("X-Tenant-ID", "default")
-    session = f"{tenant_id}:{req.session}"
+    session = f"{tenant_id}:{req.session}" if tenant_id != "default" else req.session
     ctx: Dict[str, Any] = {}
     if req.system:
         ctx["system"] = req.system
