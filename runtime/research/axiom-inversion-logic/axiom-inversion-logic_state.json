@@ -1,23 +1,21 @@
 {
   "slug": "axiom-inversion-logic",
   "status": "completed",
-  "ts": "2026-08-02T12:27:05.356048+00:00",
+  "ts": "2026-08-04T04:30:17.191309+00:00",
   "result": {
     "topic": "axiom inversion logic",
     "slug": "axiom-inversion-logic",
     "phases": [
       {
         "phase": "inversion",
-        "ok": true,
+        "ok": false,
         "result": {
-          "assumption": "All birds can fly.",
-          "inversion": "Not all birds can fly.",
-          "predictions": [
-            "Some birds cannot fly.",
-            "No birds can fly."
-          ]
+          "assumption": "",
+          "inversion": "",
+          "predictions": []
         },
-        "ts": "2026-08-02T12:27:05.351328+00:00"
+        "ts": "2026-08-04T04:30:17.183712+00:00",
+        "error": "no output from local AI client (unreachable, unconfigured, or empty response)"
       },
       {
         "phase": "evidence",
@@ -30,7 +28,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-02T12:27:05.352361+00:00"
+        "ts": "2026-08-04T04:30:17.184715+00:00"
       },
       {
         "phase": "report",
@@ -41,12 +39,9 @@
           "abstract": "Autonomous research brief for axiom inversion logic.",
           "background": "",
           "uim": {
-            "assumption": "All birds can fly.",
-            "inversion": "Not all birds can fly.",
-            "predictions": [
-              "Some birds cannot fly.",
-              "No birds can fly."
-            ]
+            "assumption": "",
+            "inversion": "",
+            "predictions": []
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
           "results": {
@@ -55,24 +50,23 @@
           },
           "discussion": "",
           "reproducibility": {
-            "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/axiom-inversion-logic",
+            "runtime_root": "/Users/lordwilson/runtime/research/axiom-inversion-logic",
             "artifacts": [
               "axiom-inversion-logic_UIM.json",
-              "axiom-inversion-logic_completion.json",
-              "axiom-inversion-logic_evidence_ledger.json",
-              "axiom-inversion-logic_report.md",
-              "axiom-inversion-logic_review.md",
-              "axiom-inversion-logic_state.json"
+              "axiom-inversion-logic_evidence_ledger.json"
             ]
           },
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-02T12:27:05.353104+00:00"
+        "ts": "2026-08-04T04:30:17.185540+00:00"
       }
     ],
-    "status": "completed",
-    "ts": "2026-08-02T12:27:05.353561+00:00",
+    "status": "completed_with_errors",
+    "ts": "2026-08-04T04:30:17.186755+00:00",
+    "failed_phases": [
+      "inversion"
+    ],
     "notify": {
       "ok": true,
       "async": true

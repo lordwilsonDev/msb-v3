@@ -1,20 +1,21 @@
 {
   "slug": "local-first-inference-patterns",
   "status": "completed",
-  "ts": "2026-08-02T16:27:43.503285+00:00",
+  "ts": "2026-08-04T08:30:21.698333+00:00",
   "result": {
     "topic": "local-first inference patterns",
     "slug": "local-first-inference-patterns",
     "phases": [
       {
         "phase": "inversion",
-        "ok": true,
+        "ok": false,
         "result": {
           "assumption": "",
           "inversion": "",
           "predictions": []
         },
-        "ts": "2026-08-02T16:27:43.489572+00:00"
+        "ts": "2026-08-04T08:30:21.691471+00:00",
+        "error": "no output from local AI client (unreachable, unconfigured, or empty response)"
       },
       {
         "phase": "evidence",
@@ -27,7 +28,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-02T16:27:43.492881+00:00"
+        "ts": "2026-08-04T08:30:21.692650+00:00"
       },
       {
         "phase": "report",
@@ -49,24 +50,23 @@
           },
           "discussion": "",
           "reproducibility": {
-            "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/local-first-inference-patterns",
+            "runtime_root": "/Users/lordwilson/runtime/research/local-first-inference-patterns",
             "artifacts": [
               "local-first-inference-patterns_UIM.json",
-              "local-first-inference-patterns_completion.json",
-              "local-first-inference-patterns_evidence_ledger.json",
-              "local-first-inference-patterns_report.md",
-              "local-first-inference-patterns_review.md",
-              "local-first-inference-patterns_state.json"
+              "local-first-inference-patterns_evidence_ledger.json"
             ]
           },
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-02T16:27:43.493466+00:00"
+        "ts": "2026-08-04T08:30:21.693475+00:00"
       }
     ],
-    "status": "completed",
-    "ts": "2026-08-02T16:27:43.501491+00:00",
+    "status": "completed_with_errors",
+    "ts": "2026-08-04T08:30:21.694377+00:00",
+    "failed_phases": [
+      "inversion"
+    ],
     "notify": {
       "ok": true,
       "async": true

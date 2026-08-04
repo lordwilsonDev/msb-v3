@@ -1,20 +1,21 @@
 {
   "slug": "evidence-grounded-research-systems",
   "status": "completed",
-  "ts": "2026-08-02T20:28:43.131818+00:00",
+  "ts": "2026-08-04T12:30:26.044511+00:00",
   "result": {
     "topic": "evidence-grounded research systems",
     "slug": "evidence-grounded-research-systems",
     "phases": [
       {
         "phase": "inversion",
-        "ok": true,
+        "ok": false,
         "result": {
           "assumption": "",
           "inversion": "",
           "predictions": []
         },
-        "ts": "2026-08-02T20:28:43.118534+00:00"
+        "ts": "2026-08-04T12:30:26.038242+00:00",
+        "error": "no output from local AI client (unreachable, unconfigured, or empty response)"
       },
       {
         "phase": "evidence",
@@ -27,7 +28,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-02T20:28:43.120764+00:00"
+        "ts": "2026-08-04T12:30:26.039467+00:00"
       },
       {
         "phase": "report",
@@ -49,24 +50,23 @@
           },
           "discussion": "",
           "reproducibility": {
-            "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/evidence-grounded-research-systems",
+            "runtime_root": "/Users/lordwilson/runtime/research/evidence-grounded-research-systems",
             "artifacts": [
               "evidence-grounded-research-systems_UIM.json",
-              "evidence-grounded-research-systems_completion.json",
-              "evidence-grounded-research-systems_evidence_ledger.json",
-              "evidence-grounded-research-systems_report.md",
-              "evidence-grounded-research-systems_review.md",
-              "evidence-grounded-research-systems_state.json"
+              "evidence-grounded-research-systems_evidence_ledger.json"
             ]
           },
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-02T20:28:43.121633+00:00"
+        "ts": "2026-08-04T12:30:26.040376+00:00"
       }
     ],
-    "status": "completed",
-    "ts": "2026-08-02T20:28:43.122101+00:00",
+    "status": "completed_with_errors",
+    "ts": "2026-08-04T12:30:26.041396+00:00",
+    "failed_phases": [
+      "inversion"
+    ],
     "notify": {
       "ok": true,
       "async": true
