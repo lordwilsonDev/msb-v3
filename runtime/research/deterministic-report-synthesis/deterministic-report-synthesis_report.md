@@ -4,22 +4,9 @@
   "abstract": "Autonomous research brief for deterministic report synthesis.",
   "background": "",
   "uim": {
-    "assumption": "The majority of people believe in aliens.",
-    "inversion": "Not a single person believes in aliens.",
-    "predictions": [
-      {
-        "description": "Predicted success rate of detecting stars through scientific experiments.",
-        "measurement": "90% of people can see stars."
-      },
-      {
-        "description": "Predicted success rate of detecting black holes through scientific observations.",
-        "measurement": "50% of people can see black holes."
-      },
-      {
-        "description": "Predicted success rate of detecting neutron stars through astronomical surveys.",
-        "measurement": "30% of people can see neutron stars."
-      }
-    ]
+    "assumption": "",
+    "inversion": "",
+    "predictions": []
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
   "results": {
@@ -31,7 +18,10 @@
     "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/deterministic-report-synthesis",
     "artifacts": [
       "deterministic-report-synthesis_UIM.json",
+      "deterministic-report-synthesis_completion.json",
       "deterministic-report-synthesis_evidence_ledger.json",
+      "deterministic-report-synthesis_report.md",
+      "deterministic-report-synthesis_review.md",
       "deterministic-report-synthesis_state.json"
     ]
   },

@@ -1,24 +1,21 @@
 {
   "slug": "sovereign-ai-orchestration",
-  "status": "reviewed",
-  "ts": "2026-08-02T08:26:51.798843+00:00",
+  "status": "completed",
+  "ts": "2026-08-04T00:30:13.765401+00:00",
   "result": {
     "topic": "sovereign AI orchestration",
     "slug": "sovereign-ai-orchestration",
     "phases": [
       {
         "phase": "inversion",
-        "ok": true,
+        "ok": false,
         "result": {
-          "assumption": "AI will become an integral part of sovereign governance systems globally.",
-          "inversion": "AI will not integrate effectively into the governance systems of sovereign nations.",
-          "predictions": [
-            "AI will enhance resource allocation efficiency across nations by optimizing supply chain management and reducing dependency on external trade barriers.",
-            "AI will reduce dependency on external actors, such as oil prices or trade restrictions, through improved decision-making tools that analyze global trends.",
-            "AI will foster innovation within nations by enabling faster experimentation and analysis of policies using advanced algorithms."
-          ]
+          "assumption": "",
+          "inversion": "",
+          "predictions": []
         },
-        "ts": "2026-08-02T08:26:51.789029+00:00"
+        "ts": "2026-08-04T00:30:13.737960+00:00",
+        "error": "no output from local AI client (unreachable, unconfigured, or empty response)"
       },
       {
         "phase": "evidence",
@@ -31,7 +28,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-02T08:26:51.790501+00:00"
+        "ts": "2026-08-04T00:30:13.741414+00:00"
       },
       {
         "phase": "report",
@@ -42,13 +39,9 @@
           "abstract": "Autonomous research brief for sovereign AI orchestration.",
           "background": "",
           "uim": {
-            "assumption": "AI will become an integral part of sovereign governance systems globally.",
-            "inversion": "AI will not integrate effectively into the governance systems of sovereign nations.",
-            "predictions": [
-              "AI will enhance resource allocation efficiency across nations by optimizing supply chain management and reducing dependency on external trade barriers.",
-              "AI will reduce dependency on external actors, such as oil prices or trade restrictions, through improved decision-making tools that analyze global trends.",
-              "AI will foster innovation within nations by enabling faster experimentation and analysis of policies using advanced algorithms."
-            ]
+            "assumption": "",
+            "inversion": "",
+            "predictions": []
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
           "results": {
@@ -72,11 +65,14 @@
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-02T08:26:51.791169+00:00"
+        "ts": "2026-08-04T00:30:13.743121+00:00"
       }
     ],
-    "status": "completed",
-    "ts": "2026-08-02T08:26:51.792252+00:00",
+    "status": "completed_with_errors",
+    "ts": "2026-08-04T00:30:13.743812+00:00",
+    "failed_phases": [
+      "inversion"
+    ],
     "notify": {
       "ok": true,
       "async": true
