@@ -5,6 +5,7 @@ REPO="/Users/lordwilson/msb-v3"
 MSB="${MSB_URL:-http://localhost:8766}"
 CRAWL_PY="/Users/lordwilson/.local/venv/crawl/bin/python3"
 BASE_PY="/opt/homebrew/Caskroom/miniforge/base/bin/python3"
+export MSB_RAG_API_KEY="${MSB_RAG_API_KEY:-07bd51761bde7dce3268473773cef30f6ded1062bd7351b33f50863d2d184277}"
 
 index_document() {
   local tenant_id="$1"
@@ -13,7 +14,7 @@ index_document() {
   local metadata="$4"
 
   "$BASE_PY" - "$tenant_id" "$source" "$text" "$metadata" << 'PY'
-import sys, json
+import os, sys, json
 import urllib.request
 
 msb = "http://localhost:8766"
@@ -33,10 +34,15 @@ payload = {
     ],
 }
 
+headers = {"Content-Type": "application/json"}
+api_key = os.environ.get("MSB_RAG_API_KEY")
+if api_key:
+    headers["X-API-Key"] = api_key
+
 req = urllib.request.Request(
     f"{msb}/rag/index",
     data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json"},
+    headers=headers,
     method="POST",
 )
 
@@ -49,6 +55,35 @@ except Exception as exc:
 PY
 }
 
+chunk_and_index() {
+  local tenant_id="$1"
+  local source="$2"
+  local text="$3"
+  local metadata="$4"
+
+  local i=0
+  while IFS= read -r -d $'\0' chunk; do
+    echo "[chunk] Indexing chunk ${i} of ${source}"
+    index_document "${tenant_id}" "${chunk}" "${source}#chunk-${i}" "${metadata}"
+    i=$((i + 1))
+  done < <("$BASE_PY" - "$text" << 'PY'
+import sys
+
+text = sys.argv[1]
+chunk_size = 500
+overlap = 50
+start = 0
+while start < len(text):
+    end = min(start + chunk_size, len(text))
+    sys.stdout.write(text[start:end])
+    sys.stdout.write("\0")
+    if end >= len(text):
+        break
+    start = max(end - overlap, start + 1)
+PY
+  )
+}
+
 ingest_pdf() {
   local pdf_path="$1"
   local tenant_id="$2"
@@ -56,19 +91,22 @@ ingest_pdf() {
   echo "[ingest] PDF: ${pdf_path} -> tenant ${tenant_id}"
 
   local text
-  text=$("$BASE_PY" - "$pdf_path" << 'PY'
+  text=$(PYTHONPATH="/Users/lordwilson/.local/lib/crawl4ai" "$BASE_PY" - "$pdf_path" << 'PY'
 import sys
 sys.path.insert(0, "/Users/lordwilson/.local/lib/crawl4ai")
-import marker
+from marker.converters.pdf import PdfConverter
+from marker.models import create_model_dict
+from marker.output import text_from_rendered
 
 pdf_path = sys.argv[1]
-result = marker.convert_single_pdf(pdf_path)
-text = result.markdown if hasattr(result, "markdown") else str(result)
-print(text[:4000])
+converter = PdfConverter(artifact_dict=create_model_dict())
+rendered = converter(pdf_path)
+text, _, _ = text_from_rendered(rendered)
+print(text)
 PY
   )
 
-  index_document "${tenant_id}" "${text}" "pdf:${pdf_path}" "{}"
+  chunk_and_index "${tenant_id}" "pdf:${pdf_path}" "${text}" "{}"
 }
 
 ingest_web() {
@@ -88,13 +126,13 @@ async def main():
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url=sys.argv[1])
         text = result.markdown if hasattr(result, "markdown") else str(result)
-        print(text[:4000])
+        print(text)
 
 asyncio.run(main())
 PY
   )
 
-  index_document "${tenant_id}" "${text}" "web:${url}" "{}"
+  chunk_and_index "${tenant_id}" "web:${url}" "${text}" "{}"
 }
 
 chunk_text() {

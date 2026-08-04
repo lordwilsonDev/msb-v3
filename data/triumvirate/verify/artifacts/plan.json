@@ -2,8 +2,8 @@
   "slug": "verify",
   "goal": "verify",
   "signature": "0567bb2925f394e1",
-  "started_at": "2026-08-04T11:13:24.606531+00:00",
-  "finished_at": "2026-08-04T11:13:24.616073+00:00",
+  "started_at": "2026-08-04T15:13:32.642669+00:00",
+  "finished_at": "2026-08-04T15:13:32.661714+00:00",
   "stages": [
     {
       "stage": 1,
@@ -179,7 +179,7 @@
         "model_text": "Built now/next/later timeline and STAR-compatible DAG."
       },
       "thought": "Built now/next/later timeline and STAR-compatible DAG.",
-      "latency_s": 0.0
+      "latency_s": 0.0001
     },
     {
       "stage": 5,
@@ -334,5 +334,5 @@
       }
     ]
   },
-  "model": "qwen3:latest"
+  "model": "qwen3:8b"
 }

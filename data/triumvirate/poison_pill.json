@@ -1,6 +1,10 @@
 {
-  "armed": true,
-  "locked_down": false,
-  "armed_at": "2026-08-04T11:13:24.619590+00:00",
-  "proof": "175ab42383b4a421"
+  "armed": false,
+  "locked_down": true,
+  "detonated_at": "2026-08-04T16:49:39.041517+00:00",
+  "actions": [
+    "revoke_sub_agent_tokens",
+    "disable_gateway",
+    "pause_missions"
+  ]
 }
