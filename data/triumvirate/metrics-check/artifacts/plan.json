@@ -2,8 +2,8 @@
   "slug": "metrics-check",
   "goal": "metrics check",
   "signature": "7eae53536655340a",
-  "started_at": "2026-08-04T00:40:41.202941+00:00",
-  "finished_at": "2026-08-04T00:40:41.205792+00:00",
+  "started_at": "2026-08-04T16:49:39.070734+00:00",
+  "finished_at": "2026-08-04T16:49:39.073335+00:00",
   "stages": [
     {
       "stage": 1,
@@ -334,5 +334,5 @@
       }
     ]
   },
-  "model": "qwen3:latest"
+  "model": "qwen3:8b"
 }

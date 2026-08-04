@@ -2,8 +2,8 @@
   "slug": "deploy-sovereign-cluster",
   "goal": "deploy sovereign cluster",
   "signature": "59db419501761180",
-  "started_at": "2026-08-04T00:40:04.555413+00:00",
-  "finished_at": "2026-08-04T00:40:04.559674+00:00",
+  "started_at": "2026-08-04T16:49:38.747165+00:00",
+  "finished_at": "2026-08-04T16:49:38.756089+00:00",
   "stages": [
     {
       "stage": 1,
@@ -334,5 +334,5 @@
       }
     ]
   },
-  "model": "qwen3:latest"
+  "model": "qwen3:8b"
 }

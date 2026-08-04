@@ -1,127 +1,301 @@
-[msb-v3] starting msb-v3 host=127.0.0.1 port=8766 model=qwen3:latest
-INFO:     Started server process [10205]
+[msb-v3] starting msb-v3 host=0.0.0.0 port=8766 model=qwen3:8b
+INFO:     Started server process [1799]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8766 (Press CTRL+C to quit)
-[msb-v3] starting host=127.0.0.1 port=8766 model=qwen3:latest
-INFO:     127.0.0.1:53518 - "GET /status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53519 - "POST /triumvirate/argus/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53681 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53682 - "GET /ready HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53684 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53688 - "GET /research/assistant/latest HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53689 - "GET /research/assistant/runs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53690 - "GET /research/assistant/runs/test-runs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53691 - "POST /research/assistant/runs/test-runs/complete HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53693 - "POST /research/assistant/runs/test-runs/review HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53694 - "POST /research/assistant/runs/test-runs/restart HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53695 - "POST /research/assistant/runs/test-runs/cancel HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53696 - "GET /research/assistant/runs/_queue HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53697 - "GET /research/assistant/runs/_active HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53698 - "GET /research/assistant/runs/sovereign-ai-orchestration/state HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53699 - "GET /research/assistant/runs/sovereign-ai-orchestration/claims HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53700 - "POST /research/assistant/runs/sovereign-ai-orchestration/claims/review HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53701 - "GET /research/assistant/runs/sovereign-ai-orchestration/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53702 - "GET /safety/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53703 - "GET /safety/evaluate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53704 - "GET /safety/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53705 - "GET /safety/systems HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53706 - "GET /evolution/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53707 - "GET /evolution/memory/latest HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53708 - "GET /evolution/memory/summary HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53709 - "POST /evolution/memory/record HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53710 - "POST /evolution/memory/batch-update HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53711 - "POST /evolution/continuity/resume-prompt HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53712 - "POST /evolution/mesh/discovery/peers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53713 - "POST /evolution/memory/consolidate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53714 - "POST /triumvirate/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53715 - "POST /triumvirate/status/lock HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53716 - "GET /triumvirate/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53717 - "GET /triumvirate/status/verify HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53718 - "GET /triumvirate/status/dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53719 - "POST /triumvirate/guardian/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53720 - "POST /triumvirate/guardian/poison-pill/arm HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53721 - "POST /triumvirate/argus/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53722 - "POST /triumvirate/cluster/peers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53723 - "POST /triumvirate/hippocampus/upsert HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53724 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53742 - "GET /skills/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53743 - "GET /skills/triumvirate-api-patterns HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53744 - "GET /skills/does-not-exist HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:53745 - "POST /skills/execute HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53746 - "POST /skills/execute HTTP/1.1" 422 Unprocessable Entity
-INFO:     127.0.0.1:53747 - "POST /triumvirate/argus/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53748 - "GET /triumvirate/argus/mulch HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53749 - "POST /triumvirate/guardian/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53750 - "POST /triumvirate/guardian/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53751 - "POST /triumvirate/guardian/sbom/register HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53752 - "GET /triumvirate/guardian/sbom/srv-a HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53753 - "POST /triumvirate/guardian/least-privilege HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53754 - "POST /triumvirate/guardian/least-privilege HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53755 - "POST /triumvirate/guardian/poison-pill/arm HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53756 - "POST /triumvirate/guardian/poison-pill/detonate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53757 - "POST /triumvirate/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53758 - "POST /triumvirate/status/lock HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53759 - "POST /triumvirate/argus/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53760 - "POST /triumvirate/guardian/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53761 - "POST /triumvirate/cluster/peers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53762 - "POST /triumvirate/hippocampus/upsert HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53763 - "POST /triumvirate/multimodal/vision/capture HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53764 - "POST /triumvirate/multimodal/haptic/heartbeat HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53765 - "POST /triumvirate/multimodal/speech/command HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53766 - "GET /metrics/prometheus HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53767 - "POST /triumvirate/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53768 - "POST /triumvirate/status/lock HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53769 - "GET /triumvirate/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53770 - "GET /triumvirate/status/verify HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53800 - "GET /research/assistant/run HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:53800 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53993 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53994 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53999 - "GET /safety/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54000 - "GET /evolution/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54001 - "POST /notify/telegram HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54002 - "GET /triumvirate/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54003 - "POST /triumvirate/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54004 - "POST /triumvirate/argus/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54005 - "POST /triumvirate/guardian/poison-pill/arm HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54006 - "GET /triumvirate/cluster/peers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54386 - "GET /status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54387 - "POST /mcp/proxy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54388 - "POST /mcp/proxy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55274 - "GET /research/assistant/run HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:55274 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55879 - "POST /research/assistant/run HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56524 - "GET /research/assistant/run HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:56524 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56952 - "GET /mcp/tools HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57818 - "GET /research/assistant/run HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:57818 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58689 - "GET /mcp/tools HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59287 - "GET /research/assistant/run HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:59287 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59483 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59484 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59489 - "GET /safety/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59490 - "GET /evolution/scan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59491 - "POST /notify/telegram HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59492 - "GET /triumvirate/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59493 - "POST /triumvirate/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59494 - "POST /triumvirate/argus/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59495 - "POST /triumvirate/guardian/poison-pill/arm HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59496 - "GET /triumvirate/cluster/peers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59884 - "GET /mcp/tools HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60571 - "GET /research/assistant/run HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:60571 - "GET /research/assistant/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60918 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60952 - "GET /system/routes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61028 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61030 - "GET /system/routes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61041 - "GET /tenants/tenants HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61043 - "POST /tenants/tenants/register HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61045 - "GET /tenants/tenants/test-001 HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61047 - "POST /chat HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61056 - "GET /openapi.json HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61094 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61096 - "GET /tenants/tenants HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61098 - "POST /tenants/tenants/register HTTP/1.1" 404 Not Found
+INFO:     Uvicorn running on http://0.0.0.0:8766 (Press CTRL+C to quit)
+[msb-v3] starting host=0.0.0.0 port=8766 model=qwen3:8b
+INFO:     127.0.0.1:57933 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57935 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57935 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57940 - "POST /rag/search HTTP/1.1" 401 Unauthorized
+/Users/lordwilson/msb-v3/src/msb_v3/api/rag.py:41: UserWarning: Qdrant client version 1.16.2 is incompatible with server version 1.18.3. Major versions should match and minor version difference must not exceed 1. Set check_compatibility=False to skip version check.
+  return QdrantClient(host=host, port=port, prefer_grpc=False)
+INFO:     127.0.0.1:57942 - "POST /rag/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57960 - "POST /rag/index HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57964 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57964 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57975 - "POST /rag/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57992 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57992 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58012 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58012 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58018 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58018 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58026 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58026 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58030 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58030 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58041 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58041 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58048 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58048 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58054 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58054 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58063 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58063 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58070 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58070 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58078 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58078 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58090 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58090 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58097 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58097 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58109 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58109 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58116 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58116 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58123 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58123 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58134 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58134 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58141 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58141 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58147 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58147 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58169 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58169 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58173 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58173 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58188 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58188 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58193 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58193 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58199 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58199 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58204 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58204 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58281 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58281 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58288 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58288 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58296 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58296 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58301 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58301 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58308 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58308 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58314 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58314 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58323 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58329 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58329 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58337 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58337 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58353 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58353 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58359 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58359 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58364 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58364 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58373 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58373 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58378 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58378 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58384 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58384 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58388 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58388 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58402 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58402 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58413 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58413 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58420 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58420 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58426 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58426 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58436 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58442 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58442 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58449 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58449 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58456 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58456 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58462 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58462 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58470 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58482 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58482 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58489 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58489 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58495 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58495 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58507 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58507 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58515 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58515 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58524 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58524 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58535 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58535 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58543 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58543 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58550 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58550 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58555 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58555 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58565 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58565 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58578 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58578 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58584 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58584 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58589 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58589 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58596 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58596 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58602 - "POST /research/assistant/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58648 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58648 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58658 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58658 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58663 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58663 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58670 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58670 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58677 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58677 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58683 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58683 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58689 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58689 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58704 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58704 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58708 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58708 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58715 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58715 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58723 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58723 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58739 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58744 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58744 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58753 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58753 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58764 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58764 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58770 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58770 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58773 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58773 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58779 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58779 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58782 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58782 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58786 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58786 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58789 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58789 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58792 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58792 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58797 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58797 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58806 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58806 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58811 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58811 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58817 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58817 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58820 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58820 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58830 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58830 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58833 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58833 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58848 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58848 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58850 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58850 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58853 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58853 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58856 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58856 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58860 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58860 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58864 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58864 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58875 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58875 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58877 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58877 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58881 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58881 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58883 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58883 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58886 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58886 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58890 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58890 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58894 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58894 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58897 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58897 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58900 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58900 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58905 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58905 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58916 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58916 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58919 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58919 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58924 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58924 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58932 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58932 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58936 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58936 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58939 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58942 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58942 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58944 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58944 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58949 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58949 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58954 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58954 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58963 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58963 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58968 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58968 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58982 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58988 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58988 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58996 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58996 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59001 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59001 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59008 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59008 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59013 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59013 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59021 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59021 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59026 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59026 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59036 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59036 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59051 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59051 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59072 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59072 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59097 - "POST /rag/index HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59099 - "POST /rag/search HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59105 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59105 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59117 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59117 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59128 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59128 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59148 - "GET /metrics HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59148 - "GET /metrics/ HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1799]
+Terminated: 15             "$PY" -m msb_v3

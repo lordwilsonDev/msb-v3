@@ -209,5 +209,12 @@
   "tests/uac/test_stage_0_knowledge_acquisition.py::test_compile_with_no_search_results_populates_known_unknowns",
   "tests/uac/test_stage_0_knowledge_acquisition.py::test_compile_writes_audit_chain_events",
   "tests/uac/test_stage_0_knowledge_acquisition.py::test_validate_inputs_rejects_empty_jurisdiction",
-  "tests/uac/test_stage_0_knowledge_acquisition.py::test_validate_inputs_rejects_empty_profession"
+  "tests/uac/test_stage_0_knowledge_acquisition.py::test_validate_inputs_rejects_empty_profession",
+  "tests/uac/test_transcript_requirements_extractor.py::test_constraints_and_tools_coerced_to_string_lists",
+  "tests/uac/test_transcript_requirements_extractor.py::test_extracts_full_requirements_specification",
+  "tests/uac/test_transcript_requirements_extractor.py::test_optional_fields_default_when_not_stated",
+  "tests/uac/test_transcript_requirements_extractor.py::test_rejects_empty_transcript",
+  "tests/uac/test_transcript_requirements_extractor.py::test_rejects_missing_jurisdiction_rather_than_fabricating",
+  "tests/uac/test_transcript_requirements_extractor.py::test_rejects_missing_profession_rather_than_fabricating",
+  "tests/uac/test_transcript_requirements_extractor.py::test_rejects_whitespace_only_transcript"
 ]
