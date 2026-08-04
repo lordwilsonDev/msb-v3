@@ -1,0 +1,19 @@
+{
+  "goal": "deploy guardian scanner",
+  "capability_gaps": [
+    "script scanning",
+    "sbom verification",
+    "least privilege",
+    "poison pill"
+  ],
+  "constraints": [
+    "local-first",
+    "deterministic",
+    "sovereign"
+  ],
+  "success_criteria": [
+    "executable plan",
+    "verifiable outcomes"
+  ],
+  "model_text": "Goal recognition completed for 'deploy guardian scanner'."
+}

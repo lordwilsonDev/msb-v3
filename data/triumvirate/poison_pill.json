@@ -1,0 +1,10 @@
+{
+  "armed": false,
+  "locked_down": true,
+  "detonated_at": "2026-08-04T00:38:15.510208+00:00",
+  "actions": [
+    "revoke_sub_agent_tokens",
+    "disable_gateway",
+    "pause_missions"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "goal": "deploy sovereign cluster",
+  "capability_gaps": [
+    "planning",
+    "execution",
+    "verification"
+  ],
+  "constraints": [
+    "local-first",
+    "deterministic",
+    "sovereign"
+  ],
+  "success_criteria": [
+    "executable plan",
+    "verifiable outcomes"
+  ],
+  "model_text": "Goal recognition completed for 'deploy sovereign cluster'."
+}

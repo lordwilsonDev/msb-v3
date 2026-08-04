@@ -1,0 +1,93 @@
+{
+  "nodes": {
+    "sovereign": {
+      "id": "sovereign",
+      "label": "sovereign",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg1"
+      ]
+    },
+    "stack": {
+      "id": "stack",
+      "label": "stack",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg1"
+      ]
+    },
+    "ai": {
+      "id": "ai",
+      "label": "ai",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg1"
+      ]
+    },
+    "agent": {
+      "id": "agent",
+      "label": "agent",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg1"
+      ]
+    },
+    "demo": {
+      "id": "demo",
+      "label": "topic:demo",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg1"
+      ]
+    }
+  },
+  "edges": [
+    {
+      "source": "sovereign",
+      "target": "stack",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "stack",
+      "target": "sovereign",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "stack",
+      "target": "ai",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "ai",
+      "target": "stack",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "ai",
+      "target": "agent",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "agent",
+      "target": "ai",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "kg1",
+      "target": "demo",
+      "relation": "has-metadata",
+      "weight": 20
+    }
+  ]
+}
