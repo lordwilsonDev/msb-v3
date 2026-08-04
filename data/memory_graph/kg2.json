@@ -4,7 +4,7 @@
       "id": "hermes",
       "label": "hermes",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg2"
       ]
@@ -13,7 +13,7 @@
       "id": "autonomous",
       "label": "autonomous",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg2"
       ]
@@ -22,7 +22,7 @@
       "id": "research",
       "label": "research",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg2"
       ]
@@ -33,25 +33,25 @@
       "source": "hermes",
       "target": "autonomous",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "autonomous",
       "target": "hermes",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "autonomous",
       "target": "research",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "research",
       "target": "autonomous",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     }
   ]
 }

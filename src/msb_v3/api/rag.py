@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
-from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -17,6 +18,10 @@ try:
 except Exception:  # pragma: no cover
     _HAS_QDRANT = False
 
+EMBED_MODEL = os.getenv("MSB_EMBED_MODEL", "nomic-embed-text")
+OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+EMBED_DIM = 768
+
 
 def _qdrant_client() -> Any:
     if not _HAS_QDRANT:
@@ -24,6 +29,31 @@ def _qdrant_client() -> Any:
     host = os.getenv("QDRANT_HOST", "localhost")
     port = int(os.getenv("QDRANT_PORT", "6333"))
     return QdrantClient(host=host, port=port, prefer_grpc=False)
+
+
+async def _embed(text: str) -> list[float]:
+    """Real embedding via Ollama. Raises if the embed call fails -- callers
+    must not silently fall back to a placeholder vector, since a fake
+    vector is worse than an explicit error (it looks like it worked)."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"{OLLAMA_BASE}/api/embed",
+            json={"model": EMBED_MODEL, "input": text},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        vec = data["embeddings"][0]
+        if len(vec) != EMBED_DIM:
+            raise ValueError(f"embedding dim {len(vec)} != expected {EMBED_DIM}")
+        return vec
+
+
+def _stable_id(tenant_id: str, source: str, idx: int) -> int:
+    """Deterministic id from tenant+source+idx so re-indexing the same
+    source updates the existing point instead of colliding with whatever
+    happened to be at id=0,1,2... from a previous unrelated /index call."""
+    h = hashlib.sha1(f"{tenant_id}:{source}:{idx}".encode()).hexdigest()
+    return int(h[:16], 16) % (2**63)
 
 
 def _collection(tenant_id: str) -> str:
@@ -62,14 +92,16 @@ async def rag_index(payload: IndexRequest) -> dict[str, Any]:
     points: list[dict[str, Any]] = []
     for idx, doc in enumerate(payload.documents):
         text = str(doc.get("text", ""))
+        source = str(doc.get("source", ""))
+        vector = await _embed(text)
         points.append(
             {
-                "id": idx,
-                "vector": [0.0] * 768,
+                "id": _stable_id(tenant_id, source, idx),
+                "vector": vector,
                 "payload": {
                     "tenant_id": tenant_id,
                     "text": text,
-                    "source": doc.get("source", ""),
+                    "source": source,
                     "metadata": doc.get("metadata", {}),
                 },
             }
@@ -89,13 +121,14 @@ async def rag_search(payload: SearchRequest) -> dict[str, Any]:
     client = _qdrant_client()
 
     try:
-        collection_info = client.get_collection(collection)
+        client.get_collection(collection)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Collection not found: {collection}") from exc
 
+    query_vector = await _embed(payload.query)
     results = client.query_points(
         collection_name=collection,
-        query=[0.0] * 768,
+        query=query_vector,
         limit=payload.limit,
         with_payload=True,
     )

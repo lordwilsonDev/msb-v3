@@ -4,7 +4,7 @@
       "id": "ai",
       "label": "ai",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg3"
       ]
@@ -13,7 +13,7 @@
       "id": "sovereign",
       "label": "sovereign",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg3"
       ]
@@ -22,7 +22,7 @@
       "id": "stack",
       "label": "stack",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg3"
       ]
@@ -33,25 +33,25 @@
       "source": "ai",
       "target": "sovereign",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "sovereign",
       "target": "ai",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "sovereign",
       "target": "stack",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "stack",
       "target": "sovereign",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     }
   ]
 }

@@ -4,7 +4,7 @@
       "id": "sovereign",
       "label": "sovereign",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg1"
       ]
@@ -13,7 +13,7 @@
       "id": "stack",
       "label": "stack",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg1"
       ]
@@ -22,7 +22,7 @@
       "id": "ai",
       "label": "ai",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg1"
       ]
@@ -31,7 +31,7 @@
       "id": "agent",
       "label": "agent",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg1"
       ]
@@ -40,7 +40,7 @@
       "id": "demo",
       "label": "topic:demo",
       "type": "entity",
-      "count": 20,
+      "count": 22,
       "sessions": [
         "kg1"
       ]
@@ -51,43 +51,43 @@
       "source": "sovereign",
       "target": "stack",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "stack",
       "target": "sovereign",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "stack",
       "target": "ai",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "ai",
       "target": "stack",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "ai",
       "target": "agent",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "agent",
       "target": "ai",
       "relation": "co-occurs-with",
-      "weight": 20
+      "weight": 22
     },
     {
       "source": "kg1",
       "target": "demo",
       "relation": "has-metadata",
-      "weight": 20
+      "weight": 22
     }
   ]
 }
