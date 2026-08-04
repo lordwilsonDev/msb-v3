@@ -1,0 +1,57 @@
+{
+  "nodes": {
+    "ai": {
+      "id": "ai",
+      "label": "ai",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg3"
+      ]
+    },
+    "sovereign": {
+      "id": "sovereign",
+      "label": "sovereign",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg3"
+      ]
+    },
+    "stack": {
+      "id": "stack",
+      "label": "stack",
+      "type": "entity",
+      "count": 20,
+      "sessions": [
+        "kg3"
+      ]
+    }
+  },
+  "edges": [
+    {
+      "source": "ai",
+      "target": "sovereign",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "sovereign",
+      "target": "ai",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "sovereign",
+      "target": "stack",
+      "relation": "co-occurs-with",
+      "weight": 20
+    },
+    {
+      "source": "stack",
+      "target": "sovereign",
+      "relation": "co-occurs-with",
+      "weight": 20
+    }
+  ]
+}

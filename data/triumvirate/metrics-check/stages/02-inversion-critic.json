@@ -1,0 +1,39 @@
+{
+  "goal": "metrics check",
+  "assumptions": [
+    "more automation always improves throughput",
+    "centralized control is required for coordination",
+    "external APIs are necessary for knowledge",
+    "human review happens after execution",
+    "failure should stop the pipeline"
+  ],
+  "inversions": [
+    [
+      "more automation always improves throughput",
+      "less automation can increase reliability and observability"
+    ],
+    [
+      "centralized control is required for coordination",
+      "decentralized coordination reduces single points of failure"
+    ],
+    [
+      "external APIs are necessary for knowledge",
+      "local evidence and cached knowledge can replace external API calls"
+    ],
+    [
+      "human review happens after execution",
+      "human review can happen inline during execution"
+    ],
+    [
+      "failure should stop the pipeline",
+      "failure can be a first-class signal, not a stop condition"
+    ]
+  ],
+  "leverage_points": [
+    "local evidence grounding",
+    "inline human review",
+    "deterministic retry/backoff",
+    "failure-aware scheduling"
+  ],
+  "model_text": "Inverted 5 default assumptions for 'metrics check'."
+}

@@ -1,0 +1,26 @@
+{
+  "peers": {
+    "n1": {
+      "host": "mac-mini.local",
+      "port": 8766,
+      "capacity": 1,
+      "cluster_role": "primary",
+      "last_seen": "2026-08-04T00:37:41.134886+00:00"
+    },
+    "n-metrics": {
+      "host": "localhost",
+      "port": 8766,
+      "capacity": 1,
+      "cluster_role": "worker",
+      "last_seen": "2026-08-04T00:38:15.576916+00:00"
+    },
+    "test-peer-1": {
+      "host": "127.0.0.1",
+      "port": 9999,
+      "capacity": 2,
+      "cluster_role": "worker",
+      "last_seen": "2026-08-03T14:43:03.684303+00:00"
+    }
+  },
+  "cluster": {}
+}

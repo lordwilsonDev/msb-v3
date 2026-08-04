@@ -1,0 +1,8 @@
+{
+  "id": "acme-corp",
+  "name": "Acme Corp",
+  "llm_provider": "deepseek",
+  "llm_model": "deepseek-chat",
+  "vault_path": "/Users/lordwilson/Documents/Vault",
+  "metadata": {}
+}

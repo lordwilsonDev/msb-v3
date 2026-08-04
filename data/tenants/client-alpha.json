@@ -1,0 +1,8 @@
+{
+  "id": "client-alpha",
+  "name": "Alpha Corp",
+  "llm_provider": "ollama",
+  "llm_model": "qwen3:8b",
+  "vault_path": "/Users/lordwilson/Documents/Vault",
+  "metadata": {}
+}

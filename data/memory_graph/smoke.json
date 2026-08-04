@@ -1,0 +1,156 @@
+{
+  "nodes": {
+    "ai": {
+      "id": "ai",
+      "label": "ai",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "sovereign": {
+      "id": "sovereign",
+      "label": "sovereign",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "stack": {
+      "id": "stack",
+      "label": "stack",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "hermes": {
+      "id": "hermes",
+      "label": "hermes",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "agent": {
+      "id": "agent",
+      "label": "agent",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "autonomous": {
+      "id": "autonomous",
+      "label": "autonomous",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "research": {
+      "id": "research",
+      "label": "research",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    },
+    "demo": {
+      "id": "demo",
+      "label": "topic:demo",
+      "type": "entity",
+      "count": 1,
+      "sessions": [
+        "smoke"
+      ]
+    }
+  },
+  "edges": [
+    {
+      "source": "ai",
+      "target": "sovereign",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "sovereign",
+      "target": "ai",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "sovereign",
+      "target": "stack",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "stack",
+      "target": "sovereign",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "stack",
+      "target": "hermes",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "hermes",
+      "target": "stack",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "hermes",
+      "target": "agent",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "agent",
+      "target": "hermes",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "agent",
+      "target": "autonomous",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "autonomous",
+      "target": "agent",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "autonomous",
+      "target": "research",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "research",
+      "target": "autonomous",
+      "relation": "co-occurs-with",
+      "weight": 1
+    },
+    {
+      "source": "smoke",
+      "target": "demo",
+      "relation": "has-metadata",
+      "weight": 1
+    }
+  ]
+}

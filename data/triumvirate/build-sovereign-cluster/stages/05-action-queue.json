@@ -1,0 +1,56 @@
+{
+  "queue": [
+    {
+      "id": "a1",
+      "action": "create_mission_anchor",
+      "args": {
+        "goal": "build sovereign cluster"
+      },
+      "requires": []
+    },
+    {
+      "id": "a2",
+      "action": "run_guardian_scan",
+      "args": {
+        "target": "scripts"
+      },
+      "requires": [
+        "a1"
+      ]
+    },
+    {
+      "id": "a3",
+      "action": "verify_sbom",
+      "args": {
+        "server": "msb-mcp-server"
+      },
+      "requires": [
+        "a2"
+      ]
+    },
+    {
+      "id": "a4",
+      "action": "enable_least_privilege",
+      "args": {
+        "agent": "sub-agent"
+      },
+      "requires": [
+        "a2"
+      ]
+    },
+    {
+      "id": "a5",
+      "action": "deploy_poison_pill",
+      "args": {
+        "mode": "armed"
+      },
+      "requires": [
+        "a2",
+        "a3",
+        "a4"
+      ]
+    }
+  ],
+  "count": 5,
+  "model_text": "Produced 5 queued actions."
+}

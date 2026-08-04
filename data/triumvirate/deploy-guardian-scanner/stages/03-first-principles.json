@@ -1,0 +1,36 @@
+{
+  "goal": "deploy guardian scanner",
+  "dependency_map": [
+    {
+      "from": "local-ai",
+      "to": "script scanning",
+      "type": "provides"
+    },
+    {
+      "from": "local-ai",
+      "to": "sbom verification",
+      "type": "provides"
+    },
+    {
+      "from": "local-ai",
+      "to": "least privilege",
+      "type": "provides"
+    },
+    {
+      "from": "memory-store",
+      "to": "state-tracking",
+      "type": "provides"
+    },
+    {
+      "from": "fastapi-router",
+      "to": "api-surface",
+      "type": "exposes"
+    }
+  ],
+  "first_principles": [
+    "local-first execution",
+    "deterministic artifacts",
+    "explicit state transitions"
+  ],
+  "model_text": "Mapped dependencies from existing sovereign stack to capability gaps."
+}

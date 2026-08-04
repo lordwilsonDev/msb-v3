@@ -1,0 +1,338 @@
+{
+  "slug": "metrics-check",
+  "goal": "metrics check",
+  "signature": "7eae53536655340a",
+  "started_at": "2026-08-04T00:38:15.552456+00:00",
+  "finished_at": "2026-08-04T00:38:15.555748+00:00",
+  "stages": [
+    {
+      "stage": 1,
+      "name": "goal-recognition",
+      "status": "ok",
+      "output": {
+        "goal": "metrics check",
+        "capability_gaps": [
+          "planning",
+          "execution",
+          "verification"
+        ],
+        "constraints": [
+          "local-first",
+          "deterministic",
+          "sovereign"
+        ],
+        "success_criteria": [
+          "executable plan",
+          "verifiable outcomes"
+        ],
+        "model_text": "Goal recognition completed for 'metrics check'."
+      },
+      "thought": "Goal recognition completed for 'metrics check'.",
+      "latency_s": 0.0
+    },
+    {
+      "stage": 2,
+      "name": "inversion-critic",
+      "status": "ok",
+      "output": {
+        "goal": "metrics check",
+        "assumptions": [
+          "more automation always improves throughput",
+          "centralized control is required for coordination",
+          "external APIs are necessary for knowledge",
+          "human review happens after execution",
+          "failure should stop the pipeline"
+        ],
+        "inversions": [
+          [
+            "more automation always improves throughput",
+            "less automation can increase reliability and observability"
+          ],
+          [
+            "centralized control is required for coordination",
+            "decentralized coordination reduces single points of failure"
+          ],
+          [
+            "external APIs are necessary for knowledge",
+            "local evidence and cached knowledge can replace external API calls"
+          ],
+          [
+            "human review happens after execution",
+            "human review can happen inline during execution"
+          ],
+          [
+            "failure should stop the pipeline",
+            "failure can be a first-class signal, not a stop condition"
+          ]
+        ],
+        "leverage_points": [
+          "local evidence grounding",
+          "inline human review",
+          "deterministic retry/backoff",
+          "failure-aware scheduling"
+        ],
+        "model_text": "Inverted 5 default assumptions for 'metrics check'."
+      },
+      "thought": "Inverted 5 default assumptions for 'metrics check'.",
+      "latency_s": 0.0
+    },
+    {
+      "stage": 3,
+      "name": "first-principles",
+      "status": "ok",
+      "output": {
+        "goal": "metrics check",
+        "dependency_map": [
+          {
+            "from": "local-ai",
+            "to": "planning",
+            "type": "provides"
+          },
+          {
+            "from": "local-ai",
+            "to": "execution",
+            "type": "provides"
+          },
+          {
+            "from": "local-ai",
+            "to": "verification",
+            "type": "provides"
+          },
+          {
+            "from": "memory-store",
+            "to": "state-tracking",
+            "type": "provides"
+          },
+          {
+            "from": "fastapi-router",
+            "to": "api-surface",
+            "type": "exposes"
+          }
+        ],
+        "first_principles": [
+          "local-first execution",
+          "deterministic artifacts",
+          "explicit state transitions"
+        ],
+        "model_text": "Mapped dependencies from existing sovereign stack to capability gaps."
+      },
+      "thought": "Mapped dependencies from existing sovereign stack to capability gaps.",
+      "latency_s": 0.0
+    },
+    {
+      "stage": 4,
+      "name": "plan-schema",
+      "status": "ok",
+      "output": {
+        "goal": "metrics check",
+        "timeline": {
+          "now": [
+            "initialize mission anchor",
+            "verify local model execution"
+          ],
+          "next": [
+            "deploy guardian scanner",
+            "wire sac monitoring"
+          ],
+          "later": [
+            "add vector hippocampus",
+            "enable multimodal interfaces"
+          ]
+        },
+        "star_dag": {
+          "goal": "metrics check",
+          "nodes": [
+            {
+              "id": "n1",
+              "label": "Mission Anchor",
+              "phase": "now",
+              "depends_on": []
+            },
+            {
+              "id": "n2",
+              "label": "Guardian Scanner",
+              "phase": "next",
+              "depends_on": [
+                "n1"
+              ]
+            },
+            {
+              "id": "n3",
+              "label": "Vector Hippocampus",
+              "phase": "later",
+              "depends_on": [
+                "n2"
+              ]
+            }
+          ],
+          "edges": [
+            {
+              "from": "n1",
+              "to": "n2"
+            },
+            {
+              "from": "n2",
+              "to": "n3"
+            }
+          ]
+        },
+        "model_text": "Built now/next/later timeline and STAR-compatible DAG."
+      },
+      "thought": "Built now/next/later timeline and STAR-compatible DAG.",
+      "latency_s": 0.0
+    },
+    {
+      "stage": 5,
+      "name": "action-queue",
+      "status": "ok",
+      "output": {
+        "queue": [
+          {
+            "id": "a1",
+            "action": "create_mission_anchor",
+            "args": {
+              "goal": "metrics check"
+            },
+            "requires": []
+          },
+          {
+            "id": "a2",
+            "action": "run_guardian_scan",
+            "args": {
+              "target": "scripts"
+            },
+            "requires": [
+              "a1"
+            ]
+          },
+          {
+            "id": "a3",
+            "action": "verify_sbom",
+            "args": {
+              "server": "msb-mcp-server"
+            },
+            "requires": [
+              "a2"
+            ]
+          },
+          {
+            "id": "a4",
+            "action": "enable_least_privilege",
+            "args": {
+              "agent": "sub-agent"
+            },
+            "requires": [
+              "a2"
+            ]
+          },
+          {
+            "id": "a5",
+            "action": "deploy_poison_pill",
+            "args": {
+              "mode": "armed"
+            },
+            "requires": [
+              "a2",
+              "a3",
+              "a4"
+            ]
+          }
+        ],
+        "count": 5,
+        "model_text": "Produced 5 queued actions."
+      },
+      "thought": "Produced 5 queued actions.",
+      "latency_s": 0.0
+    }
+  ],
+  "action_queue": [
+    {
+      "id": "a1",
+      "action": "create_mission_anchor",
+      "args": {
+        "goal": "metrics check"
+      },
+      "requires": []
+    },
+    {
+      "id": "a2",
+      "action": "run_guardian_scan",
+      "args": {
+        "target": "scripts"
+      },
+      "requires": [
+        "a1"
+      ]
+    },
+    {
+      "id": "a3",
+      "action": "verify_sbom",
+      "args": {
+        "server": "msb-mcp-server"
+      },
+      "requires": [
+        "a2"
+      ]
+    },
+    {
+      "id": "a4",
+      "action": "enable_least_privilege",
+      "args": {
+        "agent": "sub-agent"
+      },
+      "requires": [
+        "a2"
+      ]
+    },
+    {
+      "id": "a5",
+      "action": "deploy_poison_pill",
+      "args": {
+        "mode": "armed"
+      },
+      "requires": [
+        "a2",
+        "a3",
+        "a4"
+      ]
+    }
+  ],
+  "star_dag": {
+    "goal": "metrics check",
+    "nodes": [
+      {
+        "id": "n1",
+        "label": "Mission Anchor",
+        "phase": "now",
+        "depends_on": []
+      },
+      {
+        "id": "n2",
+        "label": "Guardian Scanner",
+        "phase": "next",
+        "depends_on": [
+          "n1"
+        ]
+      },
+      {
+        "id": "n3",
+        "label": "Vector Hippocampus",
+        "phase": "later",
+        "depends_on": [
+          "n2"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "from": "n1",
+        "to": "n2"
+      },
+      {
+        "from": "n2",
+        "to": "n3"
+      }
+    ]
+  },
+  "model": "qwen3:latest"
+}

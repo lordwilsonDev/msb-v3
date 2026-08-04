@@ -1,0 +1,9 @@
+{
+  "slug": "sovereign-cluster-deploy",
+  "status": "completed",
+  "goal": "sovereign cluster deploy",
+  "signature": "d96c8559b7680fb5",
+  "started_at": "2026-08-04T00:38:15.623367+00:00",
+  "finished_at": "2026-08-04T00:38:15.629017+00:00",
+  "current_stage": "action-queue"
+}
