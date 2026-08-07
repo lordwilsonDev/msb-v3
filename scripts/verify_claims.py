@@ -141,6 +141,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(argv)
 
+    if not args.docs_root.is_dir():
+        # Fail closed on a bad docs_root. Path.rglob on a missing directory
+        # yields nothing, so a typo or a directory rename would otherwise
+        # silently disable the gate forever with a clean exit 0. No report is
+        # written: this is an invocation error, not a claim-verification
+        # result. Exit 2 distinguishes it from exit 1 ("found real failures").
+        print(
+            f"ERROR: docs_root is not a directory: {args.docs_root}",
+            file=sys.stderr,
+        )
+        return 2
+
     claims_found = 0
     implemented_count = 0
     planned_count = 0
@@ -148,7 +160,22 @@ def main(argv: list[str] | None = None) -> int:
     failures: list[dict] = []
 
     for md_file in find_markdown_files(args.docs_root):
-        text = md_file.read_text(encoding="utf-8")
+        try:
+            text = md_file.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            # An unreadable doc is an unknown evidence state, which is a
+            # failure state -- not a crash that skips the report entirely.
+            failures.append(
+                {
+                    "id": None,
+                    "doc": str(md_file),
+                    "error": f"could not read file: {exc}",
+                    "missing_files": [],
+                    "missing_tests": [],
+                }
+            )
+            continue
+
         for block_text in CLAIM_BLOCK_RE.findall(text):
             claims_found += 1
 
@@ -209,6 +236,16 @@ def main(argv: list[str] | None = None) -> int:
         "failures": failures,
     }
     _write_report(args.report_path, report)
+
+    for failure in failures:
+        print(f"FAIL {failure['doc']}: claim id={failure['id']!r}", file=sys.stderr)
+        if failure["error"]:
+            print(f"  {failure['error']}", file=sys.stderr)
+        for path in failure["missing_files"]:
+            print(f"  missing file: {path}", file=sys.stderr)
+        for path in failure["missing_tests"]:
+            print(f"  missing test: {path}", file=sys.stderr)
+
     return 1 if failures else 0
 
 
