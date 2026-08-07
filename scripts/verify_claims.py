@@ -99,8 +99,20 @@ def check_evidence(claim: dict) -> dict:
     return {"missing_files": missing_files, "missing_tests": missing_tests, "commit_status": commit_status}
 
 
+_EXCLUDED_FILENAMES = {"README.md", "CHANGELOG.md"}
+_EXCLUDED_DIR_NAMES = {"notes", "research"}
+
+
 def find_markdown_files(docs_root: Path) -> list[Path]:
-    return sorted(docs_root.rglob("*.md"))
+    result = []
+    for path in sorted(docs_root.rglob("*.md")):
+        if path.name in _EXCLUDED_FILENAMES and path.parent == docs_root:
+            continue
+        rel_parts = path.relative_to(docs_root).parts[:-1]
+        if any(part in _EXCLUDED_DIR_NAMES for part in rel_parts):
+            continue
+        result.append(path)
+    return result
 
 
 def _write_report(report_path: Path, report: dict) -> None:

@@ -283,3 +283,23 @@ commit: deadbeef
 
     # commit_status should be "error" (distinct from "not_found").
     assert report["claims"][0]["commit_status"] == "error"
+
+
+def test_excluded_paths_are_not_scanned(tmp_path):
+    docs_root = tmp_path / "docs"
+    bad_claim = """
+```smi-018-claim
+id: should-be-ignored
+status: implemented
+```
+"""
+    write_doc(docs_root, "README.md", bad_claim)
+    write_doc(docs_root, "CHANGELOG.md", bad_claim)
+    write_doc(docs_root, "notes/idea.md", bad_claim)
+    write_doc(docs_root, "research/deep/nested.md", bad_claim)
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 0
+    assert report["claims_found"] == 0
