@@ -20,9 +20,13 @@ log() { echo "[msb-v3] $*"; }
 log "starting msb-v3 host=$MSB_HOST port=$MSB_PORT model=$OLLAMA_MODEL"
 
 # PM2-style single-process supervisor: restart on non-zero exit.
+# set -e would otherwise kill this whole loop on the first crash/SIGTERM,
+# since the loop body never reaches `code=$?` for a failing command.
 while true; do
+  set +e
   "$PY" -m msb_v3
   code=$?
+  set -e
   log "process exited $code; restarting in 2s"
   sleep 2
 done
