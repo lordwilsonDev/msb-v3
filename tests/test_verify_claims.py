@@ -17,13 +17,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "verify_claims.py"
 
 
-def run_verifier(docs_root: Path, report_path: Path) -> tuple[int, dict]:
-    result = subprocess.run(
+def run_verifier_raw(
+    docs_root: Path, report_path: Path, cwd: Path | None = None
+) -> subprocess.CompletedProcess:
+    """Invoke the CLI and hand back the whole result, stderr included.
+
+    Use this when the test needs stderr or expects no report to be written.
+    """
+    return subprocess.run(
         [sys.executable, str(SCRIPT), str(docs_root), "--report-path", str(report_path)],
-        cwd=REPO_ROOT,
+        cwd=str(cwd or REPO_ROOT),
         capture_output=True,
         text=True,
     )
+
+
+def run_verifier(docs_root: Path, report_path: Path) -> tuple[int, dict]:
+    result = run_verifier_raw(docs_root, report_path)
     report = json.loads(report_path.read_text(encoding="utf-8"))
     return result.returncode, report
 
@@ -346,3 +356,78 @@ def test_real_fence_still_matches_alongside_escaped_one(tmp_path):
     assert code == 0
     assert report["claims_found"] == 1
     assert report["claims"][0]["id"] == "for-real"
+
+
+def test_failures_are_printed_to_stderr(tmp_path):
+    """A CI failure has to be actionable from the log, not just the artifact."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: loud-failure
+status: implemented
+files:
+  - src/definitely_absent.py
+tests:
+  - tests/test_definitely_absent.py
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path)
+
+    assert result.returncode == 1
+    assert "loud-failure" in result.stderr
+    assert "src/definitely_absent.py" in result.stderr
+    assert "tests/test_definitely_absent.py" in result.stderr
+    assert str(docs_root / "claim.md") in result.stderr
+
+
+def test_non_utf8_markdown_is_a_failure_not_a_crash(tmp_path):
+    """An undecodable doc is an unknown evidence state, so it must fail."""
+    docs_root = tmp_path / "docs"
+    docs_root.mkdir(parents=True)
+    bad = docs_root / "mojibake.md"
+    # 0xe9 is a bare latin-1 'e-acute' -- invalid as UTF-8.
+    bad.write_bytes(b"# Doc\n\nCaf\xe9 not valid utf-8\n")
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path)
+
+    assert result.returncode == 1
+    # The report must still have been written -- no crash before _write_report.
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert len(report["failures"]) == 1
+    assert report["failures"][0]["doc"] == str(bad)
+    assert "could not read file" in report["failures"][0]["error"]
+    assert "mojibake.md" in result.stderr
+
+
+def test_missing_docs_root_fails_closed(tmp_path):
+    """A typo'd docs_root must not silently pass as 'no claims found'."""
+    docs_root = tmp_path / "docs-typo"
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path)
+
+    # Exit 2 == invocation error, distinct from 1 == real claim failures.
+    assert result.returncode == 2
+    assert "docs-typo" in result.stderr
+    # No report: there is nothing to report about, and an empty report would
+    # look like a clean run to anything reading the artifact.
+    assert not report_path.exists()
+
+
+def test_docs_root_that_is_a_file_fails_closed(tmp_path):
+    docs_root = tmp_path / "not-a-dir.md"
+    docs_root.write_text("# nope\n", encoding="utf-8")
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path)
+
+    assert result.returncode == 2
+    assert result.stderr.strip()

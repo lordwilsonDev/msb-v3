@@ -126,6 +126,7 @@ CI (ci.yml)
       ▼
  scripts/verify_claims.py <docs-root> [--report-path PATH]
       │
+      ├─ refuse to run at all if docs-root is not a directory (exit 2)
       ├─ walk docs-root for *.md (respecting the exclusions above)
       ├─ extract every ```smi-018-claim fenced block
       ├─ parse (scalar / list grammar above)
@@ -139,8 +140,11 @@ CI (ci.yml)
       │
       ▼
  exit 0: no claim blocks found, or every implemented claim's files/tests exist
- exit 1: any malformed block, or any implemented claim missing a file/test
+ exit 1: any malformed block, any unreadable doc, or any implemented claim
+         missing a file/test
          (stderr: failing id + doc path + exactly which paths are missing)
+ exit 2: invocation error -- docs-root is not a directory. No report is
+         written; a typo must not read as "no claims, all clear."
 ```
 
 ## Report shape (`claim_report.json`)
