@@ -510,3 +510,56 @@ files:
     assert outside.is_file()
     assert result.returncode == 1
     assert report["failures"][0]["missing_files"] == ["../outside.py"]
+
+
+def test_duplicate_key_in_block_fails(tmp_path):
+    """Last-value-wins would let a doc read 'implemented' while checking 'planned'."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: two-statuses
+status: implemented
+files:
+  - src/does_not_exist.py
+status: planned
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 1
+    assert len(report["failures"]) == 1
+    assert "duplicate key" in report["failures"][0]["error"]
+    assert "status" in report["failures"][0]["error"]
+    # Not silently resolved to the trailing `planned` (which would have passed).
+    assert report["planned"] == 0
+
+
+def test_duplicate_list_key_in_block_fails(tmp_path):
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: two-file-lists
+status: implemented
+files:
+  - scripts/verify_claims.py
+files:
+  - src/does_not_exist.py
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 1
+    assert "duplicate key" in report["failures"][0]["error"]
+
