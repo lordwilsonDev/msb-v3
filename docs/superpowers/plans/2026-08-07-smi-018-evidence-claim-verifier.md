@@ -260,7 +260,8 @@ def test_malformed_claim_missing_id_fails(tmp_path):
     write_doc(
         docs_root,
         "claim.md",
-        """```smi-018-claim
+        """
+```smi-018-claim
 status: implemented
 files:
   - some/file.py
@@ -282,7 +283,8 @@ def test_implemented_claim_with_only_commit_fails(tmp_path):
     write_doc(
         docs_root,
         "claim.md",
-        """```smi-018-claim
+        """
+```smi-018-claim
 id: commit-only
 status: implemented
 commit: deadbeef
@@ -304,7 +306,8 @@ def test_invalid_status_value_fails(tmp_path):
     write_doc(
         docs_root,
         "claim.md",
-        """```smi-018-claim
+        """
+```smi-018-claim
 id: bad-status
 status: finished
 ```
@@ -453,7 +456,8 @@ def test_implemented_claim_with_real_evidence_passes(tmp_path):
     write_doc(
         docs_root,
         "claim.md",
-        f"""```smi-018-claim
+        f"""
+```smi-018-claim
 id: real-thing
 status: implemented
 files:
@@ -488,7 +492,8 @@ def test_implemented_claim_with_missing_file_and_missing_test_fails(tmp_path):
     write_doc(
         docs_root,
         "claim.md",
-        """```smi-018-claim
+        """
+```smi-018-claim
 id: missing-thing
 status: implemented
 files:
@@ -519,7 +524,8 @@ def test_planned_claim_with_missing_file_still_passes(tmp_path):
     write_doc(
         docs_root,
         "claim.md",
-        """```smi-018-claim
+        """
+```smi-018-claim
 id: future-thing
 status: planned
 files:
@@ -647,7 +653,8 @@ Append to `tests/test_verify_claims.py`:
 ```python
 def test_excluded_paths_are_not_scanned(tmp_path):
     docs_root = tmp_path / "docs"
-    bad_claim = """```smi-018-claim
+    bad_claim = """
+```smi-018-claim
 id: should-be-ignored
 status: implemented
 ```
