@@ -1,0 +1,86 @@
+{
+  "service": "msb-v3",
+  "milestone": "SMI-017",
+  "tag": "SMI-017-v1.0",
+  "routes": [
+    {
+      "path": "/smi/query",
+      "method": "POST",
+      "request": {
+        "body": {
+          "query": "string",
+          "context": "object | null",
+          "top_k": "integer"
+        },
+        "required": ["query"]
+      },
+      "response": {
+        "body": {
+          "query": "string",
+          "matches": "array",
+          "context": "object"
+        },
+        "notes": "Returns ranked semantic matches up to top_k."
+      }
+    },
+    {
+      "path": "/smi/evaluate",
+      "method": "POST",
+      "request": {
+        "body": {
+          "subject": "string",
+          "criteria": "object | null"
+        },
+        "required": ["subject"]
+      },
+      "response": {
+        "body": {
+          "subject": "string",
+          "score": "number 0-1",
+          "criteria": "object"
+        },
+        "notes": "Score is bounded 0-1 and boosted by criteria."
+      }
+    },
+    {
+      "path": "/smi/adapt",
+      "method": "POST",
+      "request": {
+        "body": {
+          "source": "string",
+          "target": "string",
+          "payload": "object | null"
+        },
+        "required": ["source", "target"]
+      },
+      "response": {
+        "body": {
+          "source": "string",
+          "target": "string",
+          "mapping": "object",
+          "payload": "object"
+        }
+      }
+    },
+    {
+      "path": "/smi/report",
+      "method": "POST",
+      "request": {
+        "body": {
+          "slug": "string",
+          "format": "string"
+        },
+        "required": ["slug"]
+      },
+      "response": {
+        "body": {
+          "slug": "string",
+          "format": "string",
+          "status": "string",
+          "path": "string"
+        },
+        "notes": "status is 'generated'."
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "service": "msb-v3",
+  "milestone": "SMI-017",
+  "tag": "SMI-017-v1.0",
+  "auth": "token-map",
+  "roles": ["[REDACTED]"],
+  "findings": [
+    "No new public route exposure outside /smi",
+    "Centralized auth dependency unchanged"
+  ]
+}

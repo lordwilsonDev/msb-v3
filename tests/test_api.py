@@ -35,7 +35,7 @@ def test_status_endpoint():
     body = r.json()
     assert body["service"] == "msb-v3"
     assert "ready" in body
-    assert body["model"] in {"deepseek-r1:1.5b", "qwen3:latest"}
+    assert body["model"] in {"deepseek-r1:1.5b", "qwen3:latest", "qwen3:8b"}
 
 
 def test_system_routes():
@@ -206,3 +206,51 @@ def test_execute_tool_loop_runs_tool():
     client.register_tool("echo", lambda value: f"echo:{value}")
     resp = client.execute_tool_loop("run", tools=[{"type": "function", "name": "echo", "parameters": {}}], max_steps=1)
     assert resp.text == "done"
+
+
+def test_smi_query():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.post("/smi/query", json={"query": "sovereign stack", "top_k": 2})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["query"] == "sovereign stack"
+    assert len(body["matches"]) <= 2
+
+
+def test_smi_evaluate():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.post("/smi/evaluate", json={"subject": "model", "criteria": {"accuracy": 0.9}})
+    assert r.status_code == 200
+    body = r.json()
+    assert "score" in body
+    assert 0 <= body["score"] <= 1
+
+
+def test_smi_adapt():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.post("/smi/adapt", json={"source": "v1", "target": "v2"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["source"] == "v1"
+    assert body["target"] == "v2"
+
+
+def test_smi_report():
+    from msb_v3.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    r = client.post("/smi/report", json={"slug": "demo", "format": "json"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["slug"] == "demo"
+    assert body["status"] == "generated"

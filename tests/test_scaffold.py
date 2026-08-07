@@ -21,7 +21,7 @@ def test_package_imports():
 def test_core_config_loads():
     from msb_v3.core.config import settings
 
-    assert settings.ollama_model in {"deepseek-r1:1.5b", "qwen3:latest"}
+    assert settings.ollama_model in {"deepseek-r1:1.5b", "qwen3:latest", "qwen3:8b"}
     assert settings.port == 8766
 
 
@@ -29,7 +29,7 @@ def test_local_ai_client_construction():
     from msb_v3.local_ai.ollama import LocalAIClient
 
     c = LocalAIClient(base_url="http://localhost:11434")
-    assert c.model in {"deepseek-r1:1.5b", "qwen3:latest"}
+    assert c.model in {"deepseek-r1:1.5b", "qwen3:latest", "qwen3:8b"}
 
 
 def test_chat_harness_returns_result():
