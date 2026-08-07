@@ -69,3 +69,67 @@ files:
 
     assert code == 0
     assert report["claims_found"] == 1
+
+
+def test_malformed_claim_missing_id_fails(tmp_path):
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """```smi-018-claim
+status: implemented
+files:
+  - some/file.py
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 1
+    assert len(report["failures"]) == 1
+    assert report["failures"][0]["id"] is None
+    assert "id" in report["failures"][0]["error"]
+
+
+def test_implemented_claim_with_only_commit_fails(tmp_path):
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """```smi-018-claim
+id: commit-only
+status: implemented
+commit: deadbeef
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 1
+    assert len(report["failures"]) == 1
+    assert report["failures"][0]["id"] == "commit-only"
+    assert "evidence" in report["failures"][0]["error"]
+
+
+def test_invalid_status_value_fails(tmp_path):
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """```smi-018-claim
+id: bad-status
+status: finished
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 1
+    assert len(report["failures"]) == 1
+    assert "status" in report["failures"][0]["error"]
