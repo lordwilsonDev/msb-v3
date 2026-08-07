@@ -133,3 +133,101 @@ status: finished
     assert code == 1
     assert len(report["failures"]) == 1
     assert "status" in report["failures"][0]["error"]
+
+
+def test_implemented_claim_with_real_evidence_passes(tmp_path):
+    docs_root = tmp_path / "docs"
+    real_file = tmp_path / "src" / "thing.py"
+    real_file.parent.mkdir(parents=True)
+    real_file.write_text("# real\n")
+    real_test = tmp_path / "tests" / "test_thing.py"
+    real_test.parent.mkdir(parents=True)
+    real_test.write_text("# real test\n")
+
+    write_doc(
+        docs_root,
+        "claim.md",
+        f"""
+```smi-018-claim
+id: real-thing
+status: implemented
+files:
+  - {real_file.relative_to(tmp_path)}
+tests:
+  - {real_test.relative_to(tmp_path)}
+commit: not-a-real-hash-but-non-gating
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(docs_root), "--report-path", str(report_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+    assert report["implemented"] == 1
+    # commit_status was computed and actually written to the report, not
+    # just checked-and-discarded -- and it's non-gating: an unresolvable
+    # hash still exits 0 as long as files/tests are fine.
+    assert report["claims"][0]["commit_status"] == "not_found"
+
+
+def test_implemented_claim_with_missing_file_and_missing_test_fails(tmp_path):
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: missing-thing
+status: implemented
+files:
+  - src/does_not_exist.py
+tests:
+  - tests/does_not_exist_either.py
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(docs_root), "--report-path", str(report_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 1
+    assert len(report["failures"]) == 1
+    assert report["failures"][0]["missing_files"] == ["src/does_not_exist.py"]
+    assert report["failures"][0]["missing_tests"] == ["tests/does_not_exist_either.py"]
+
+
+def test_planned_claim_with_missing_file_still_passes(tmp_path):
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: future-thing
+status: planned
+files:
+  - src/not_built_yet.py
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 0
+    assert report["failures"] == []
+    assert report["planned"] == 1
