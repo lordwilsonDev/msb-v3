@@ -562,4 +562,3 @@ files:
 
     assert code == 1
     assert "duplicate key" in report["failures"][0]["error"]
-
