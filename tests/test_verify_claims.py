@@ -8,6 +8,7 @@ script as a subprocess, exactly as CI does.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -231,3 +232,54 @@ files:
     assert code == 0
     assert report["failures"] == []
     assert report["planned"] == 1
+
+
+def test_git_unavailable_does_not_crash_and_writes_report(tmp_path):
+    """Test that OSError from missing git doesn't crash the script.
+
+    The script should still exit 0 (no gating on commit errors) and write
+    the report with commit_status: "error" (distinct from "not_found").
+    """
+    docs_root = tmp_path / "docs"
+    real_file = tmp_path / "src" / "thing.py"
+    real_file.parent.mkdir(parents=True)
+    real_file.write_text("# real\n")
+
+    write_doc(
+        docs_root,
+        "claim.md",
+        f"""
+```smi-018-claim
+id: thing-with-commit
+status: implemented
+files:
+  - {real_file.relative_to(tmp_path)}
+commit: deadbeef
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    # Run with PATH="", so git binary cannot be found, causing OSError.
+    # This simulates a machine where git is not installed or not in PATH.
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(docs_root), "--report-path", str(report_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PATH": ""},
+    )
+
+    # The script should still exit 0 (no gating on git errors).
+    assert result.returncode == 0
+
+    # The report should still be written (not crashed before _write_report).
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    # No failures (file exists, git error is non-gating).
+    assert report["failures"] == []
+    assert report["implemented"] == 1
+
+    # commit_status should be "error" (distinct from "not_found").
+    assert report["claims"][0]["commit_status"] == "error"
