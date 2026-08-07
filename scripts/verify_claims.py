@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -76,6 +77,23 @@ def validate_claim(claim: dict) -> list[str]:
             errors.append("implemented claim has no evidence target (files or tests required)")
 
     return errors
+
+
+def check_evidence(claim: dict) -> dict:
+    missing_files = [f for f in claim.get("files", []) if not Path(f).exists()]
+    missing_tests = [t for t in claim.get("tests", []) if not Path(t).exists()]
+
+    commit_status = None
+    commit = claim.get("commit")
+    if commit:
+        result = subprocess.run(
+            ["git", "cat-file", "-t", commit],
+            capture_output=True,
+            text=True,
+        )
+        commit_status = result.stdout.strip() if result.returncode == 0 else "not_found"
+
+    return {"missing_files": missing_files, "missing_tests": missing_tests, "commit_status": commit_status}
 
 
 def find_markdown_files(docs_root: Path) -> list[Path]:
@@ -144,12 +162,25 @@ def main(argv: list[str] | None = None) -> int:
                 continue
 
             implemented_count += 1
-            # Evidence checking (files/tests) and the real commit_status
-            # lookup are added in Task 3; for now record the claim with
-            # commit_status left as None.
+            evidence = check_evidence(claim)
             claims.append(
-                {"id": claim["id"], "doc": str(md_file), "status": "implemented", "commit_status": None}
+                {
+                    "id": claim["id"],
+                    "doc": str(md_file),
+                    "status": "implemented",
+                    "commit_status": evidence["commit_status"],
+                }
             )
+            if evidence["missing_files"] or evidence["missing_tests"]:
+                failures.append(
+                    {
+                        "id": claim["id"],
+                        "doc": str(md_file),
+                        "error": None,
+                        "missing_files": evidence["missing_files"],
+                        "missing_tests": evidence["missing_tests"],
+                    }
+                )
 
     report = {
         "claims_found": claims_found,
