@@ -297,6 +297,7 @@ status: implemented
     write_doc(docs_root, "CHANGELOG.md", bad_claim)
     write_doc(docs_root, "notes/idea.md", bad_claim)
     write_doc(docs_root, "research/deep/nested.md", bad_claim)
+    write_doc(docs_root, "plans/2026-01-01-some-feature.md", bad_claim)
     report_path = tmp_path / "report.json"
 
     code, report = run_verifier(docs_root, report_path)
