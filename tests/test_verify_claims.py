@@ -304,3 +304,45 @@ status: implemented
 
     assert code == 0
     assert report["claims_found"] == 0
+
+
+def test_zwsp_escaped_fence_is_not_a_claim_block(tmp_path):
+    """The design spec hides its illustrative example behind a zero-width space.
+
+    The fence regex is line-anchored precisely so that escape works: a ZWSP
+    before the backticks means the line is no longer a bare fence line.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "illustrative.md",
+        "# Doc\n\n```\n"
+        "​```smi-018-claim\nid: illustrative-only\nstatus: implemented\n​```\n"
+        "```\n",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 0
+    assert report["claims_found"] == 0
+
+
+def test_real_fence_still_matches_alongside_escaped_one(tmp_path):
+    """Guard the other direction: anchoring must not break real claim blocks."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "mixed.md",
+        "```\n"
+        "​```smi-018-claim\nid: illustrative\nstatus: implemented\n​```\n"
+        "```\n"
+        "\n```smi-018-claim\nid: for-real\nstatus: planned\n```\n",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 0
+    assert report["claims_found"] == 1
+    assert report["claims"][0]["id"] == "for-real"
