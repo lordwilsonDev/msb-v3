@@ -86,12 +86,15 @@ def check_evidence(claim: dict) -> dict:
     commit_status = None
     commit = claim.get("commit")
     if commit:
-        result = subprocess.run(
-            ["git", "cat-file", "-t", commit],
-            capture_output=True,
-            text=True,
-        )
-        commit_status = result.stdout.strip() if result.returncode == 0 else "not_found"
+        try:
+            result = subprocess.run(
+                ["git", "cat-file", "-t", commit],
+                capture_output=True,
+                text=True,
+            )
+            commit_status = result.stdout.strip() if result.returncode == 0 else "not_found"
+        except OSError:
+            commit_status = "error"
 
     return {"missing_files": missing_files, "missing_tests": missing_tests, "commit_status": commit_status}
 
