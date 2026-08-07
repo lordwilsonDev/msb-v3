@@ -100,7 +100,7 @@ def check_evidence(claim: dict) -> dict:
 
 
 _EXCLUDED_FILENAMES = {"README.md", "CHANGELOG.md"}
-_EXCLUDED_DIR_NAMES = {"notes", "research"}
+_EXCLUDED_DIR_NAMES = {"notes", "research", "plans"}
 
 
 def find_markdown_files(docs_root: Path) -> list[Path]:
