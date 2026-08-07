@@ -108,10 +108,10 @@ otherwise) to dodge the gate.
 the current diff. A claim made in one commit can be falsified by an
 unrelated later commit deleting the claimed file; diff-scoping would miss
 that ("claim rot"). Excluded: `docs/README.md`, `docs/CHANGELOG.md`, and
-any file under a directory literally named `notes/` or `research/`
-anywhere in the `docs/` tree (none exist under `docs/` today, but excluded
-pre-emptively since those paths are where speculative, non-claim prose
-naturally accumulates).
+any file under a directory literally named `notes/`, `research/`, or
+`plans/` anywhere in the `docs/` tree (none exist under `docs/` today,
+but excluded pre-emptively since those paths are where speculative,
+non-claim prose naturally accumulates).
 
 ## Architecture
 
