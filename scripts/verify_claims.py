@@ -59,6 +59,25 @@ def parse_claim_block(text: str) -> dict:
     return fields
 
 
+def validate_claim(claim: dict) -> list[str]:
+    errors: list[str] = []
+
+    if "id" not in claim:
+        errors.append("missing required field: id")
+    if "status" not in claim:
+        errors.append("missing required field: status")
+    elif claim["status"] not in ("planned", "implemented"):
+        errors.append(f"invalid status: {claim['status']!r} (must be 'planned' or 'implemented')")
+
+    if claim.get("status") == "implemented":
+        has_files = bool(claim.get("files"))
+        has_tests = bool(claim.get("tests"))
+        if not has_files and not has_tests:
+            errors.append("implemented claim has no evidence target (files or tests required)")
+
+    return errors
+
+
 def find_markdown_files(docs_root: Path) -> list[Path]:
     return sorted(docs_root.rglob("*.md"))
 
@@ -86,15 +105,61 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(argv)
 
     claims_found = 0
+    implemented_count = 0
+    planned_count = 0
+    claims: list[dict] = []
+    failures: list[dict] = []
+
     for md_file in find_markdown_files(args.docs_root):
         text = md_file.read_text(encoding="utf-8")
         for block_text in CLAIM_BLOCK_RE.findall(text):
             claims_found += 1
-            parse_claim_block(block_text)
 
-    report = {"claims_found": claims_found, "implemented": 0, "planned": 0, "claims": [], "failures": []}
+            try:
+                claim = parse_claim_block(block_text)
+            except ClaimParseError as exc:
+                failures.append(
+                    {"id": None, "doc": str(md_file), "error": str(exc), "missing_files": [], "missing_tests": []}
+                )
+                continue
+
+            errors = validate_claim(claim)
+            if errors:
+                failures.append(
+                    {
+                        "id": claim.get("id"),
+                        "doc": str(md_file),
+                        "error": "; ".join(errors),
+                        "missing_files": [],
+                        "missing_tests": [],
+                    }
+                )
+                continue
+
+            if claim["status"] == "planned":
+                planned_count += 1
+                claims.append(
+                    {"id": claim["id"], "doc": str(md_file), "status": "planned", "commit_status": None}
+                )
+                continue
+
+            implemented_count += 1
+            # Evidence checking (files/tests) and the real commit_status
+            # lookup are added in Task 3; for now record the claim with
+            # commit_status left as None.
+            claims.append(
+                {"id": claim["id"], "doc": str(md_file), "status": "implemented", "commit_status": None}
+            )
+
+    report = {
+        "claims_found": claims_found,
+        "implemented": implemented_count,
+        "planned": planned_count,
+        "claims": claims,
+        "failures": failures,
+    }
     _write_report(args.report_path, report)
-    return 0
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
