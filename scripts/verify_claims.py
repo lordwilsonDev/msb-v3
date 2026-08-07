@@ -54,6 +54,11 @@ def parse_claim_block(text: str) -> dict:
         key, _, rest = line.partition(":")
         key = key.strip()
         rest = rest.strip()
+        if key in fields:
+            # A duplicate key would silently win by dict overwrite, so a human
+            # skimming top-to-bottom could read a different status than the one
+            # actually checked. Unknown evidence state is a failure state.
+            raise ClaimParseError(f"duplicate key in claim block: {key!r}")
         if rest:
             fields[key] = rest
             current_list_key = None
@@ -120,12 +125,17 @@ def check_evidence(claim: dict) -> dict:
     if commit:
         try:
             result = subprocess.run(
-                ["git", "cat-file", "-t", commit],
+                # `--` so a commit value that looks like a flag is still
+                # treated as an object name; timeout so a wedged git can't
+                # hang CI.
+                ["git", "cat-file", "-t", "--", commit],
                 capture_output=True,
                 text=True,
+                timeout=10,
             )
             commit_status = result.stdout.strip() if result.returncode == 0 else "not_found"
-        except OSError:
+        except (OSError, subprocess.SubprocessError):
+            # TimeoutExpired is a SubprocessError, not an OSError.
             commit_status = "error"
 
     return {"missing_files": missing_files, "missing_tests": missing_tests, "commit_status": commit_status}

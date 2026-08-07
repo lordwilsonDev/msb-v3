@@ -98,6 +98,7 @@ Fields:
 | `status` not in `{planned, implemented}` | FAIL — malformed |
 | `status: planned` | PASS — recorded, no repository check performed |
 | `status: implemented`, no `files` and no `tests` (commit alone doesn't count) | FAIL — "implemented claim has no evidence target" |
+| duplicate key inside one block (e.g. two `status:` lines) | FAIL — malformed; the last value would silently win otherwise |
 | `status: implemented` with `files` and/or `tests` | each listed path must be repo-relative, inside the repo root, and a real file; any path failing that → FAIL, listing exactly which paths failed |
 
 **Unknown evidence state is a failure state.** No silent skipping of
