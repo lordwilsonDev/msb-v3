@@ -18,3 +18,4 @@ build/
 /runtime/research/axiom-inversion-logic/
 /runtime/research/sovereign-ai-orchestration/*_state.json
 /runtime/research/test-runs/
+.superpowers/
