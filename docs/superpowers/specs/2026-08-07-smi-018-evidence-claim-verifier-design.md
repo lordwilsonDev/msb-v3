@@ -50,7 +50,7 @@ references?**
 A fenced block tagged `smi-018-claim`, anywhere in a matched `.md` file:
 
 ```
-​```yaml
+​```smi-018-claim
 id: phase2-agent-factory
 status: implemented
 

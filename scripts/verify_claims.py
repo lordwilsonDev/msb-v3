@@ -16,7 +16,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-CLAIM_BLOCK_RE = re.compile(r"```smi-018-claim\n(.*?)\n```", re.DOTALL)
+# Line-anchored on purpose: the opening and closing fence must each be the
+# ENTIRE line. That makes the zero-width-space escape used in the design
+# spec's illustrative example actually work -- a ZWSP before the backticks
+# means the line no longer starts with "```", so it is not a claim block.
+CLAIM_BLOCK_RE = re.compile(r"^```smi-018-claim$\n(.*?)\n^```$", re.DOTALL | re.MULTILINE)
 
 
 class ClaimParseError(Exception):
