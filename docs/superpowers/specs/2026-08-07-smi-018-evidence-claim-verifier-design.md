@@ -77,8 +77,11 @@ Fields:
 - `id` (required) — free-text identifier for the claim.
 - `status` (required) — `planned` or `implemented`. Anything else is
   malformed.
-- `files` (optional list) — paths checked with `Path.exists()`, relative
-  to repo root.
+- `files` (optional list) — repo-root-relative paths, each checked with
+  `Path.is_file()` after rejecting anything absolute or escaping the repo
+  root. Not `Path.exists()`: that is also true for directories, for `.`,
+  and for absolute paths like `/etc`, any of which would satisfy the gate
+  without naming real evidence.
 - `tests` (optional list) — same check as `files`, separate field for
   readability/reporting only; mechanically identical.
 - `commit` (optional scalar) — checked with `git cat-file -t <hash>`.
@@ -95,7 +98,7 @@ Fields:
 | `status` not in `{planned, implemented}` | FAIL — malformed |
 | `status: planned` | PASS — recorded, no repository check performed |
 | `status: implemented`, no `files` and no `tests` (commit alone doesn't count) | FAIL — "implemented claim has no evidence target" |
-| `status: implemented` with `files` and/or `tests` | each listed path checked with `Path.exists()`; any missing path → FAIL, listing exactly which paths are missing |
+| `status: implemented` with `files` and/or `tests` | each listed path must be repo-relative, inside the repo root, and a real file; any path failing that → FAIL, listing exactly which paths failed |
 
 **Unknown evidence state is a failure state.** No silent skipping of
 malformed blocks — a block that can't be parsed/validated fails the same

@@ -83,9 +83,37 @@ def validate_claim(claim: dict) -> list[str]:
     return errors
 
 
+def is_valid_evidence_path(raw: str) -> bool:
+    """Return True only for a repo-relative path naming a real file.
+
+    `Path.exists()` alone is a gate bypass: it is true for directories, for
+    `.`, and for absolute paths like `/etc`, so a claim could satisfy the
+    gate without pointing at any real evidence. Same defensive shape as
+    `src/msb_v3/api/mcp_bridge.py`'s `_normalize_vault_path`: reject
+    absolutes, resolve, confirm containment, and only then check the target.
+    """
+    raw = raw.strip()
+    if not raw:
+        return False
+
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        return False
+
+    root = Path.cwd().resolve()
+    try:
+        resolved = (root / candidate).resolve()
+        resolved.relative_to(root)
+    except (ValueError, OSError):
+        return False
+
+    # .is_file(), not .exists() -- a directory is not evidence.
+    return candidate.is_file()
+
+
 def check_evidence(claim: dict) -> dict:
-    missing_files = [f for f in claim.get("files", []) if not Path(f).exists()]
-    missing_tests = [t for t in claim.get("tests", []) if not Path(t).exists()]
+    missing_files = [f for f in claim.get("files", []) if not is_valid_evidence_path(f)]
+    missing_tests = [t for t in claim.get("tests", []) if not is_valid_evidence_path(t)]
 
     commit_status = None
     commit = claim.get("commit")
