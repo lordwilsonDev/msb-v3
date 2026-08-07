@@ -14,11 +14,15 @@ router = APIRouter()
 
 
 def _truth_dir() -> Path:
-    return Path(os.getenv("MSB_TRUTH_DIR", "data/truth"))
+    return Path(os.getenv("MSB_TRUTH_DIR", "data/truth")).resolve()
 
 
 def _entity_path(entity_id: str) -> Path:
-    return _truth_dir() / f"{entity_id}.json"
+    base = _truth_dir()
+    path = (base / f"{entity_id}.json").resolve()
+    if path.parent != base:
+        raise HTTPException(status_code=400, detail="invalid entity id")
+    return path
 
 
 def _checksum(content: dict) -> str:

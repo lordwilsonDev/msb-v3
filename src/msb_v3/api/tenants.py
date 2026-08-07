@@ -13,11 +13,15 @@ router = APIRouter()
 
 
 def _tenant_dir() -> Path:
-    return Path(os.getenv("MSB_TENANT_DIR", "data/tenants"))
+    return Path(os.getenv("MSB_TENANT_DIR", "data/tenants")).resolve()
 
 
 def _tenant_path(tenant_id: str) -> Path:
-    return _tenant_dir() / f"{tenant_id}.json"
+    base = _tenant_dir()
+    path = (base / f"{tenant_id}.json").resolve()
+    if path.parent != base:
+        raise HTTPException(status_code=400, detail="invalid tenant id")
+    return path
 
 
 @router.get("/tenants")
