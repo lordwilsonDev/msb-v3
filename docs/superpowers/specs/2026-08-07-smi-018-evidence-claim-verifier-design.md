@@ -230,3 +230,14 @@ pattern already in the workflow) regardless of pass/fail.
   `docs/audits/phase2_architecture_audit/`) with claim blocks — a
   separate decision, not required for the gate to exist and work going
   forward
+
+## Self-verification
+
+```smi-018-claim
+id: smi018-evidence-verifier
+status: implemented
+files:
+  - scripts/verify_claims.py
+tests:
+  - tests/test_verify_claims.py
+```
