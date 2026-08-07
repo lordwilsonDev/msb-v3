@@ -431,3 +431,82 @@ def test_docs_root_that_is_a_file_fails_closed(tmp_path):
 
     assert result.returncode == 2
     assert result.stderr.strip()
+
+
+def test_absolute_path_evidence_fails(tmp_path):
+    """Path.exists() is true for /etc/hosts -- that must not satisfy a claim."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: absolute-path
+status: implemented
+files:
+  - /etc/hosts
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 1
+    assert report["failures"][0]["missing_files"] == ["/etc/hosts"]
+
+
+def test_directory_evidence_fails(tmp_path):
+    """A directory exists but is not evidence of any implementation."""
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    docs_root = repo / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: directory-not-file
+status: implemented
+files:
+  - .
+  - src
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=repo)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 1
+    assert report["failures"][0]["missing_files"] == [".", "src"]
+
+
+def test_path_escaping_repo_root_fails(tmp_path):
+    """The referenced file genuinely exists -- but outside the repo root."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    outside = tmp_path / "outside.py"
+    outside.write_text("# real file, wrong side of the fence\n", encoding="utf-8")
+    docs_root = repo / "docs"
+    write_doc(
+        docs_root,
+        "claim.md",
+        """
+```smi-018-claim
+id: escaping-path
+status: implemented
+files:
+  - ../outside.py
+```
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=repo)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert outside.is_file()
+    assert result.returncode == 1
+    assert report["failures"][0]["missing_files"] == ["../outside.py"]
