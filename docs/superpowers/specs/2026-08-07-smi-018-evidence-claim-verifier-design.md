@@ -113,9 +113,13 @@ the current diff. A claim made in one commit can be falsified by an
 unrelated later commit deleting the claimed file; diff-scoping would miss
 that ("claim rot"). Excluded: `docs/README.md`, `docs/CHANGELOG.md`, and
 any file under a directory literally named `notes/`, `research/`, or
-`plans/` anywhere in the `docs/` tree (none exist under `docs/` today,
-but excluded pre-emptively since those paths are where speculative,
-non-claim prose naturally accumulates).
+`plans/` anywhere in the `docs/` tree. `docs/superpowers/plans/` does
+exist and is exactly why `plans/` is on that list: implementation plans
+carry illustrative claim-block fixtures that are real, line-anchored
+fences, so they would otherwise be scanned as live claims. `notes/` and
+`research/` don't exist under `docs/` today and are excluded
+pre-emptively, since those paths are where speculative, non-claim prose
+naturally accumulates.
 
 ## Architecture
 
@@ -199,8 +203,13 @@ Cases:
 ## CI integration
 
 New `claims` job in `.github/workflows/ci.yml`, parallel to the existing
-`test`/`lint`/`security`/`docker` jobs, gated the same way (`needs:
-preflight`). Runs `python scripts/verify_claims.py docs/` with the repo
+`test`/`lint`/`security`/`docker` jobs but deliberately **not** gated the
+same way: no `needs: preflight` and no `if:` condition, so it runs on
+every push and PR unconditionally. `preflight`'s `paths-filter` only
+watches `src/**`, `tests/**`, `pyproject.toml`, and `requirements*.txt` —
+not `docs/**` — so gating this job behind it would let a docs-only PR (the
+exact shape of the `dd66dd3` incident) skip the claims check entirely.
+Runs `python scripts/verify_claims.py docs/` with the repo
 root as the working directory — all `files`/`tests` paths in claim blocks,
 and the `docs-root` / `--report-path` arguments themselves, resolve
 relative to that. Uploads
