@@ -1,0 +1,14 @@
+{
+  "service": "msb-v3",
+  "milestone": "SMI-017",
+  "tag": "SMI-017-v1.0",
+  "generated_at": "2026-08-07",
+  "model_env": "qwen3:8b",
+  "test_summary": {
+    "total": 208,
+    "passed": 208,
+    "failed": 0,
+    "skipped": 0,
+    "command": "make test"
+  }
+}

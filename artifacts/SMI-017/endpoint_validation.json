@@ -1,0 +1,43 @@
+{
+  "service": "msb-v3",
+  "milestone": "SMI-017",
+  "tag": "SMI-017-v1.0",
+  "generated_at": "2026-08-07",
+  "endpoints": [
+    {
+      "path": "/smi/query",
+      "status": 200,
+      "assertions": [
+        "body.query == request.query",
+        "len(body.matches) <= request.top_k",
+        "matches have score and source"
+      ]
+    },
+    {
+      "path": "/smi/evaluate",
+      "status": 200,
+      "assertions": [
+        "0 <= body.score <= 1",
+        "subject echoed"
+      ]
+    },
+    {
+      "path": "/smi/adapt",
+      "status": 200,
+      "assertions": [
+        "source echoed",
+        "target echoed",
+        "payload echoed"
+      ]
+    },
+    {
+      "path": "/smi/report",
+      "status": 200,
+      "assertions": [
+        "slug echoed",
+        "status == generated",
+        "path contains slug and format"
+      ]
+    }
+  ]
+}
