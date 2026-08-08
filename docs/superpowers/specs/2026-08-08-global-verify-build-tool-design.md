@@ -157,11 +157,23 @@ tool added later).
 
 ## Acceptance criteria
 
-- [ ] A real file/test claim returns VERIFIED, writes the local echo
+- [x] A real file/test claim returns VERIFIED, writes the local echo
       file, and appends to the vault note — verified against the real
-      running server and the real vault, not mocked.
-- [ ] A false claim (missing file) returns FAILED and writes nothing —
-      neither the local echo file nor the vault note.
-- [ ] Directory/`.` paths don't satisfy a claim.
-- [ ] Auth-gated like every other tool on this router.
-- [ ] Reuses the existing audit-logging mechanism, doesn't invent a new one.
+      running server and the real vault, not mocked. Confirmed live
+      2026-08-08: `curl` against the restarted server with a real path
+      returned VERIFIED, `~/.local/share/msb-v3/verify-build/e2e-check.txt`
+      was written, and the entry landed in
+      `~/Documents/Vault/40_Memory/Verified-Builds-Log.md`. Smoke-test
+      artifacts cleaned up afterward.
+- [x] A false claim (missing file) returns FAILED and writes nothing —
+      neither the local echo file nor the vault note. Confirmed live:
+      a nonexistent path returned FAILED with the path listed in
+      `missing_files`, and no echo file was created for that id.
+- [x] Directory/`.` paths don't satisfy a claim. Covered by
+      `test_verify_build_directory_path_is_not_a_file`.
+- [x] Auth-gated like every other tool on this router. Covered by
+      `test_verify_build_requires_auth`.
+- [x] Reuses the existing audit-logging mechanism, doesn't invent a new one.
+      `_log_audit`/`_AuditEvent` called on success; failures already get
+      the generic per-call audit entry from `mcp_proxy`'s `finally` block,
+      same as every other tool.
