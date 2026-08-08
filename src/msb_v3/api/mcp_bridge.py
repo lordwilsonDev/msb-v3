@@ -19,6 +19,7 @@ BASE_URL = os.getenv("MSB_MCP_BASE_URL", "http://127.0.0.1:8766")
 REQUEST_TIMEOUT = int(os.getenv("MSB_MCP_REQUEST_TIMEOUT", "120"))
 _MCP_BRIDGE_SECRET = os.getenv("MCP_BRIDGE_SECRET", "")
 _VAULT_BASE = Path("/Users/lordwilson/Documents/Vault").resolve()
+_VERIFY_BUILD_ECHO_DIR = Path(os.path.expanduser("~/.local/share/msb-v3/verify-build"))
 _AUDIT_LOGGER = logging.getLogger("msb_v3.mcp_audit")
 
 
@@ -280,6 +281,61 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                             result="success",
                         ))
                         return {"ok": True, "tool": call.tool, "result": {"opened": str(target), "note": "no UI connected — path returned for reference"}}
+                    case "verify_build":
+                        build_id = call.args.get("id", "")
+                        files = call.args.get("files", []) or []
+                        tests = call.args.get("tests", []) or []
+                        if not build_id:
+                            raise HTTPException(status_code=400, detail="id required")
+                        if not files and not tests:
+                            raise HTTPException(status_code=400, detail="at least one of files or tests required")
+
+                        missing_files = [f for f in files if not Path(f).is_file()]
+                        missing_tests = [t for t in tests if not Path(t).is_file()]
+                        if missing_files or missing_tests:
+                            return {
+                                "ok": True,
+                                "tool": call.tool,
+                                "result": {
+                                    "status": "FAILED",
+                                    "missing_files": missing_files,
+                                    "missing_tests": missing_tests,
+                                },
+                            }
+
+                        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started))
+                        files_str = ", ".join(files) if files else "(none)"
+                        tests_str = ", ".join(tests) if tests else "(none)"
+                        echo_content = (
+                            f"VERIFIED\nid: {build_id}\nfiles: {files_str}\n"
+                            f"tests: {tests_str}\ntimestamp: {timestamp}\n"
+                        )
+
+                        _VERIFY_BUILD_ECHO_DIR.mkdir(parents=True, exist_ok=True)
+                        echo_path = _VERIFY_BUILD_ECHO_DIR / f"{build_id}.txt"
+                        echo_path.write_text(echo_content, encoding="utf-8")
+
+                        vault_note = _normalize_vault_path("40_Memory/Verified-Builds-Log.md")
+                        vault_note.parent.mkdir(parents=True, exist_ok=True)
+                        with vault_note.open("a", encoding="utf-8") as f:
+                            f.write(f"\n## {timestamp} — {build_id}\nFiles: {files_str}\nTests: {tests_str}\n")
+
+                        _log_audit(_AuditEvent(
+                            actor=actor,
+                            action="verify_build",
+                            target=build_id,
+                            timestamp=timestamp,
+                            result="verified",
+                        ))
+                        return {
+                            "ok": True,
+                            "tool": call.tool,
+                            "result": {
+                                "status": "VERIFIED",
+                                "echo_path": str(echo_path),
+                                "vault_note": "40_Memory/Verified-Builds-Log.md",
+                            },
+                        }
                     case "graph_ingest":
                         r = await client.post("/graph/ingest", json=call.args)
                     case "graph_get":
@@ -343,5 +399,6 @@ async def list_tools() -> dict[str, Any]:
             {"name": "command_list", "description": "List Obsidian commands", "args": []},
             {"name": "command_execute", "description": "Execute Obsidian command", "args": ["id"]},
             {"name": "open_file", "description": "Open file in Obsidian UI", "args": ["path"]},
+            {"name": "verify_build", "description": "Verify claimed files/tests exist; echo locally and to vault only if verified", "args": ["id", "files", "tests"]},
         ]
     }
