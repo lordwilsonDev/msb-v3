@@ -60,6 +60,97 @@ def test_vault_write_normalizes_path(client, tmp_path, monkeypatch):
     assert (root / "notes" / "test.md").read_text() == "ok"
 
 
+def test_verify_build_with_real_files_returns_verified(client, tmp_path, monkeypatch):
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    real_file = tmp_path / "thing.py"
+    real_file.write_text("# real\n")
+    real_test = tmp_path / "test_thing.py"
+    real_test.write_text("# real test\n")
+
+    response = _post(client, {
+        "tool": "verify_build",
+        "args": {"id": "my-build", "files": [str(real_file)], "tests": [str(real_test)]},
+    })
+    assert response.status_code == 200
+    result = response.json()["result"]
+    assert result["status"] == "VERIFIED"
+
+    echo_path = echo_dir / "my-build.txt"
+    assert echo_path.exists()
+    echo_content = echo_path.read_text()
+    assert "VERIFIED" in echo_content
+    assert str(real_file) in echo_content
+
+    vault_note = vault_root / "40_Memory" / "Verified-Builds-Log.md"
+    assert vault_note.exists()
+    assert "my-build" in vault_note.read_text()
+
+
+def test_verify_build_with_missing_file_returns_failed(client, tmp_path, monkeypatch):
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    missing = tmp_path / "does_not_exist.py"
+
+    response = _post(client, {
+        "tool": "verify_build",
+        "args": {"id": "bad-build", "files": [str(missing)]},
+    })
+    assert response.status_code == 200
+    result = response.json()["result"]
+    assert result["status"] == "FAILED"
+    assert str(missing) in result["missing_files"]
+
+    assert not (echo_dir / "bad-build.txt").exists()
+    vault_note = vault_root / "40_Memory" / "Verified-Builds-Log.md"
+    assert not vault_note.exists()
+
+
+def test_verify_build_directory_path_is_not_a_file(client, tmp_path, monkeypatch):
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    a_directory = tmp_path / "some_dir"
+    a_directory.mkdir()
+
+    response = _post(client, {
+        "tool": "verify_build",
+        "args": {"id": "dir-build", "files": [str(a_directory)]},
+    })
+    result = response.json()["result"]
+    assert result["status"] == "FAILED"
+    assert str(a_directory) in result["missing_files"]
+
+
+def test_verify_build_requires_id(client):
+    response = _post(client, {"tool": "verify_build", "args": {"files": ["/tmp/x.py"]}})
+    assert response.status_code == 400
+
+
+def test_verify_build_requires_evidence_target(client):
+    response = _post(client, {"tool": "verify_build", "args": {"id": "empty-build"}})
+    assert response.status_code == 400
+
+
+def test_verify_build_requires_auth(client):
+    response = client.post(
+        "/mcp/proxy",
+        json={"tool": "verify_build", "args": {"id": "x", "files": ["/tmp/x"]}},
+    )
+    assert response.status_code == 401
+
+
 def test_vault_read_requires_path_traversal_protection(client, tmp_path, monkeypatch):
     root = tmp_path / "vault"
     root.mkdir()
