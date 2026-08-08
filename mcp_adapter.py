@@ -13,9 +13,10 @@ Python 3.11+, so it runs under any `python3` on PATH.
 
 Env vars:
   MSB_BASE_URL       Base URL of the msb-v3 HTTP API (default: http://127.0.0.1:8766)
-  MCP_BRIDGE_SECRET  If set, sent as the X-MCP-Secret header (matches
-                      mcp_bridge.py's optional auth check — currently unset
-                      server-side, so /mcp/proxy is unauthenticated).
+  MCP_BRIDGE_SECRET  Sent as the X-MCP-Secret header. Required as of
+                      2026-08-07 — mcp_bridge.py's auth now fails closed
+                      when the secret is unset, so every /mcp/proxy call
+                      needs this set to the value in msb-v3's .env.
 """
 from __future__ import annotations
 
