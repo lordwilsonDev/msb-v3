@@ -53,6 +53,19 @@ def _check_auth(request: Request) -> None:
         raise HTTPException(status_code=401, detail="unauthorized")
 
 
+def _normalize_path_list(raw: Any) -> list[str]:
+    """Accept either a real list (raw HTTP callers can send true JSON arrays)
+    or a comma-separated string (what a real MCP tool call actually sends --
+    mcp_adapter.py's generic tools/list schema declares every argument as a
+    plain string, so files/tests arrive this way in practice, not as JSON
+    arrays)."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    return [piece.strip() for piece in str(raw).split(",") if piece.strip()]
+
+
 def _normalize_vault_path(raw: str) -> Path:
     if raw is None:
         raw = ""
@@ -283,8 +296,8 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                         return {"ok": True, "tool": call.tool, "result": {"opened": str(target), "note": "no UI connected — path returned for reference"}}
                     case "verify_build":
                         build_id = call.args.get("id", "")
-                        files = call.args.get("files", []) or []
-                        tests = call.args.get("tests", []) or []
+                        files = _normalize_path_list(call.args.get("files"))
+                        tests = _normalize_path_list(call.args.get("tests"))
                         if not build_id:
                             raise HTTPException(status_code=400, detail="id required")
                         if not files and not tests:
