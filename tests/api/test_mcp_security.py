@@ -133,6 +133,60 @@ def test_verify_build_directory_path_is_not_a_file(client, tmp_path, monkeypatch
     assert str(a_directory) in result["missing_files"]
 
 
+def test_verify_build_accepts_comma_separated_string_files(client, tmp_path, monkeypatch):
+    # mcp_adapter.py's tools/list schema declares every argument as a plain
+    # string (it has no per-tool type info), so a real MCP tool call sends
+    # files/tests as a comma-separated string, not a JSON array. Only the
+    # raw HTTP path (e.g. curl with a hand-built JSON body) can send a real
+    # list. Both must work.
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    real_file = tmp_path / "thing.py"
+    real_file.write_text("# real\n")
+    real_test = tmp_path / "test_thing.py"
+    real_test.write_text("# real test\n")
+
+    response = _post(client, {
+        "tool": "verify_build",
+        "args": {
+            "id": "comma-build",
+            "files": f"{real_file}, {real_test}",
+        },
+    })
+    assert response.status_code == 200
+    result = response.json()["result"]
+    assert result["status"] == "VERIFIED"
+
+    echo_content = (echo_dir / "comma-build.txt").read_text()
+    assert str(real_file) in echo_content
+    assert str(real_test) in echo_content
+
+
+def test_verify_build_comma_separated_string_with_missing_file_fails(client, tmp_path, monkeypatch):
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    real_file = tmp_path / "thing.py"
+    real_file.write_text("# real\n")
+    missing = tmp_path / "missing.py"
+
+    response = _post(client, {
+        "tool": "verify_build",
+        "args": {"id": "comma-fail", "files": f"{real_file},{missing}"},
+    })
+    result = response.json()["result"]
+    assert result["status"] == "FAILED"
+    assert str(missing) in result["missing_files"]
+    assert str(real_file) not in result["missing_files"]
+
+
 def test_verify_build_requires_id(client):
     response = _post(client, {"tool": "verify_build", "args": {"files": ["/tmp/x.py"]}})
     assert response.status_code == 400
