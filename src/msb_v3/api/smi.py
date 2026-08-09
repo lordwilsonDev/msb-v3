@@ -34,14 +34,16 @@ class ReportRequest(BaseModel):
 
 @router.post("/query")
 async def semantic_query(body: QueryRequest) -> dict[str, Any]:
-    return {
-        "query": body.query,
-        "matches": [
-            {"score": 0.92, "source": f"{body.query}-seed-1"},
-            {"score": 0.87, "source": f"{body.query}-seed-2"},
-        ][: body.top_k],
-        "context": body.context or {},
-    }
+    """Semantic Retrieval Router: plan -> parallel dispatch -> RRF fusion ->
+    provenance-annotated context (replaces the seed stub).
+
+    Response keeps the historical `matches` + `context` fields and adds the
+    retrieval `plan`, per-match `provenance`, `route_errors`, and `latency_ms`.
+    """
+    from msb_v3.retrieval.engine import RetrievalRouter  # lazy: no heavy imports at app build
+
+    tenant_id = (body.context or {}).get("tenant_id", "default")
+    return await RetrievalRouter(tenant_id=tenant_id).run(body.query, top_k=body.top_k)
 
 
 @router.post("/evaluate")
