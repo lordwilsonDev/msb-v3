@@ -6,11 +6,15 @@
       "phase": "inversion",
       "ok": true,
       "result": {
-        "assumption": "",
-        "inversion": "",
-        "predictions": []
+        "assumption": "Traditional evidence-based research systems are the most reliable and efficient for generating valid conclusions.",
+        "inversion": "Alternative, non-traditional evidence-grounded systems (e.g., participatory, AI-driven, or decentralized models) are more reliable and efficient for generating valid conclusions.",
+        "predictions": [
+          "Alternative systems will demonstrate 20% higher replication success rates in peer-reviewed studies compared to traditional methods.",
+          "Research outputs from inverted systems will show 30% greater transparency in data sharing and methodology disclosure.",
+          "Adoption of inverted systems will reduce time-to-adaptation to new evidence by 40% in high-impact fields like medicine or climate science."
+        ]
       },
-      "ts": "2026-08-02T20:28:43.118534+00:00"
+      "ts": "2026-08-09T13:03:47.321717+00:00"
     },
     {
       "phase": "evidence",
@@ -23,7 +27,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-02T20:28:43.120764+00:00"
+      "ts": "2026-08-09T13:03:47.323191+00:00"
     },
     {
       "phase": "report",
@@ -34,9 +38,13 @@
         "abstract": "Autonomous research brief for evidence-grounded research systems.",
         "background": "",
         "uim": {
-          "assumption": "",
-          "inversion": "",
-          "predictions": []
+          "assumption": "Traditional evidence-based research systems are the most reliable and efficient for generating valid conclusions.",
+          "inversion": "Alternative, non-traditional evidence-grounded systems (e.g., participatory, AI-driven, or decentralized models) are more reliable and efficient for generating valid conclusions.",
+          "predictions": [
+            "Alternative systems will demonstrate 20% higher replication success rates in peer-reviewed studies compared to traditional methods.",
+            "Research outputs from inverted systems will show 30% greater transparency in data sharing and methodology disclosure.",
+            "Adoption of inverted systems will reduce time-to-adaptation to new evidence by 40% in high-impact fields like medicine or climate science."
+          ]
         },
         "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
         "results": {
@@ -58,9 +66,9 @@
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-02T20:28:43.121633+00:00"
+      "ts": "2026-08-09T13:03:47.326270+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-02T20:28:43.122101+00:00"
+  "ts": "2026-08-09T13:03:47.326808+00:00"
 }

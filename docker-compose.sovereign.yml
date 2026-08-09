@@ -1,0 +1,49 @@
+services:
+  brain:
+    build:
+      context: .
+      dockerfile: docker/sovereign/Dockerfile.brain
+    ports:
+      - "8767:8767"
+    environment:
+      - SOVEREIGN_ENV=development
+    depends_on:
+      memory:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sovereign_runtime"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  heart:
+    build:
+      context: .
+      dockerfile: docker/sovereign/Dockerfile.heart
+    ports:
+      - "8768:8768"
+    environment:
+      - SOVEREIGN_ENV=development
+    depends_on:
+      memory:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sovereign_runtime"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  memory:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - memory_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  memory_data:

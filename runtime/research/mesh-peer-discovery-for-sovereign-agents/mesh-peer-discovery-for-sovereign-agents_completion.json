@@ -6,11 +6,24 @@
       "phase": "inversion",
       "ok": true,
       "result": {
-        "assumption": "",
-        "inversion": "",
-        "predictions": []
+        "assumption": "Centralized coordination is essential for reliable mesh peer discovery in sovereign agent networks.",
+        "inversion": "Decentralized, peer-to-peer discovery mechanisms are sufficient for reliable mesh peer discovery in sovereign agent networks.",
+        "predictions": [
+          {
+            "metric": "Discovery latency",
+            "threshold": "Decentralized methods reduce latency by \u226540% compared to centralized approaches in large-scale networks."
+          },
+          {
+            "metric": "Resilience to node failures",
+            "threshold": "Decentralized systems maintain \u226595% connectivity during simulated node failures, while centralized systems drop to \u226480%."
+          },
+          {
+            "metric": "Scalability",
+            "threshold": "Decentralized discovery scales to \u226510,000 nodes without performance degradation, whereas centralized methods fail at \u22645,000 nodes."
+          }
+        ]
       },
-      "ts": "2026-08-03T12:29:39.833035+00:00"
+      "ts": "2026-08-08T12:55:23.235698+00:00"
     },
     {
       "phase": "evidence",
@@ -23,7 +36,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-03T12:29:39.836282+00:00"
+      "ts": "2026-08-08T12:55:23.237966+00:00"
     },
     {
       "phase": "report",
@@ -34,9 +47,22 @@
         "abstract": "Autonomous research brief for mesh peer discovery for sovereign agents.",
         "background": "",
         "uim": {
-          "assumption": "",
-          "inversion": "",
-          "predictions": []
+          "assumption": "Centralized coordination is essential for reliable mesh peer discovery in sovereign agent networks.",
+          "inversion": "Decentralized, peer-to-peer discovery mechanisms are sufficient for reliable mesh peer discovery in sovereign agent networks.",
+          "predictions": [
+            {
+              "metric": "Discovery latency",
+              "threshold": "Decentralized methods reduce latency by \u226540% compared to centralized approaches in large-scale networks."
+            },
+            {
+              "metric": "Resilience to node failures",
+              "threshold": "Decentralized systems maintain \u226595% connectivity during simulated node failures, while centralized systems drop to \u226480%."
+            },
+            {
+              "metric": "Scalability",
+              "threshold": "Decentralized discovery scales to \u226510,000 nodes without performance degradation, whereas centralized methods fail at \u22645,000 nodes."
+            }
+          ]
         },
         "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
         "results": {
@@ -58,9 +84,9 @@
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-03T12:29:39.839927+00:00"
+      "ts": "2026-08-08T12:55:23.240272+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-03T12:29:39.841234+00:00"
+  "ts": "2026-08-08T12:55:23.242992+00:00"
 }

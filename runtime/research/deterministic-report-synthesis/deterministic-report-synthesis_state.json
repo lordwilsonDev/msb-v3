@@ -1,21 +1,24 @@
 {
   "slug": "deterministic-report-synthesis",
   "status": "completed",
-  "ts": "2026-08-03T20:30:08.697794+00:00",
+  "ts": "2026-08-08T20:57:26.561989+00:00",
   "result": {
     "topic": "deterministic report synthesis",
     "slug": "deterministic-report-synthesis",
     "phases": [
       {
         "phase": "inversion",
-        "ok": false,
+        "ok": true,
         "result": {
-          "assumption": "",
-          "inversion": "",
-          "predictions": []
+          "assumption": "Deterministic methods can fully and accurately synthesize reports without requiring probabilistic or contextual elements.",
+          "inversion": "Deterministic methods are inherently limited and cannot account for the complexity, ambiguity, or contextual nuances required for accurate report synthesis.",
+          "predictions": [
+            "Reports generated using deterministic methods will show 100% consistency across multiple runs.",
+            "Human reviewers will rate deterministic reports as accurate 95% of the time compared to probabilistic methods.",
+            "The time taken to synthesize a report using deterministic methods will be 40% faster than probabilistic methods."
+          ]
         },
-        "ts": "2026-08-03T20:30:08.680022+00:00",
-        "error": "no output from local AI client (unreachable, unconfigured, or empty response)"
+        "ts": "2026-08-08T20:57:26.522666+00:00"
       },
       {
         "phase": "evidence",
@@ -28,7 +31,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-03T20:30:08.681614+00:00"
+        "ts": "2026-08-08T20:57:26.527291+00:00"
       },
       {
         "phase": "report",
@@ -39,9 +42,13 @@
           "abstract": "Autonomous research brief for deterministic report synthesis.",
           "background": "",
           "uim": {
-            "assumption": "",
-            "inversion": "",
-            "predictions": []
+            "assumption": "Deterministic methods can fully and accurately synthesize reports without requiring probabilistic or contextual elements.",
+            "inversion": "Deterministic methods are inherently limited and cannot account for the complexity, ambiguity, or contextual nuances required for accurate report synthesis.",
+            "predictions": [
+              "Reports generated using deterministic methods will show 100% consistency across multiple runs.",
+              "Human reviewers will rate deterministic reports as accurate 95% of the time compared to probabilistic methods.",
+              "The time taken to synthesize a report using deterministic methods will be 40% faster than probabilistic methods."
+            ]
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
           "results": {
@@ -63,14 +70,11 @@
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-03T20:30:08.688304+00:00"
+        "ts": "2026-08-08T20:57:26.528749+00:00"
       }
     ],
-    "status": "completed_with_errors",
-    "ts": "2026-08-03T20:30:08.689204+00:00",
-    "failed_phases": [
-      "inversion"
-    ],
+    "status": "completed",
+    "ts": "2026-08-08T20:57:26.530814+00:00",
     "notify": {
       "ok": true,
       "async": true

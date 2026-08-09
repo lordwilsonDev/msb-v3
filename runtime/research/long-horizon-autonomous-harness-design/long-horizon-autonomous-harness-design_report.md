@@ -4,12 +4,12 @@
   "abstract": "Autonomous research brief for long-horizon autonomous harness design.",
   "background": "",
   "uim": {
-    "assumption": "Traditional control frameworks are sufficient for ensuring safety and performance in long-horizon autonomous systems.",
-    "inversion": "Long-horizon autonomy requires fundamentally rethinking control frameworks to prioritize adaptive, decentralized, and context-aware decision-making over rigid, centralized architectures.",
+    "assumption": "Traditional control methods are sufficient for long-horizon autonomous systems.",
+    "inversion": "Traditional control methods are insufficient for long-horizon autonomous systems.",
     "predictions": [
-      "Systems using traditional control frameworks will exhibit measurable degradation in safety-critical metrics (e.g., collision avoidance latency) over extended operational periods.",
-      "New decentralized architectures will achieve 30% faster response times to dynamic environmental changes compared to centralized systems in simulated long-horizon scenarios.",
-      "Human-in-the-loop validation will show 50% higher trust levels in decentralized systems for high-stakes, prolonged missions compared to traditional frameworks."
+      "Systems using traditional control methods will maintain stability and performance over 10,000+ time steps without degradation.",
+      "Systems using traditional control methods will fail to adapt to rare, long-term environmental changes within 5,000 time steps.",
+      "Systems using traditional control methods will consume 30% more computational resources over 10,000 time steps compared to adaptive methods."
     ]
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",

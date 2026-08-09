@@ -1,21 +1,24 @@
 {
   "slug": "evidence-grounded-research-systems",
   "status": "completed",
-  "ts": "2026-08-04T12:30:26.044511+00:00",
+  "ts": "2026-08-09T13:03:47.346264+00:00",
   "result": {
     "topic": "evidence-grounded research systems",
     "slug": "evidence-grounded-research-systems",
     "phases": [
       {
         "phase": "inversion",
-        "ok": false,
+        "ok": true,
         "result": {
-          "assumption": "",
-          "inversion": "",
-          "predictions": []
+          "assumption": "Traditional evidence-based research systems are the most reliable and efficient for generating valid conclusions.",
+          "inversion": "Alternative, non-traditional evidence-grounded systems (e.g., participatory, AI-driven, or decentralized models) are more reliable and efficient for generating valid conclusions.",
+          "predictions": [
+            "Alternative systems will demonstrate 20% higher replication success rates in peer-reviewed studies compared to traditional methods.",
+            "Research outputs from inverted systems will show 30% greater transparency in data sharing and methodology disclosure.",
+            "Adoption of inverted systems will reduce time-to-adaptation to new evidence by 40% in high-impact fields like medicine or climate science."
+          ]
         },
-        "ts": "2026-08-04T12:30:26.038242+00:00",
-        "error": "no output from local AI client (unreachable, unconfigured, or empty response)"
+        "ts": "2026-08-09T13:03:47.321717+00:00"
       },
       {
         "phase": "evidence",
@@ -28,7 +31,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-04T12:30:26.039467+00:00"
+        "ts": "2026-08-09T13:03:47.323191+00:00"
       },
       {
         "phase": "report",
@@ -39,9 +42,13 @@
           "abstract": "Autonomous research brief for evidence-grounded research systems.",
           "background": "",
           "uim": {
-            "assumption": "",
-            "inversion": "",
-            "predictions": []
+            "assumption": "Traditional evidence-based research systems are the most reliable and efficient for generating valid conclusions.",
+            "inversion": "Alternative, non-traditional evidence-grounded systems (e.g., participatory, AI-driven, or decentralized models) are more reliable and efficient for generating valid conclusions.",
+            "predictions": [
+              "Alternative systems will demonstrate 20% higher replication success rates in peer-reviewed studies compared to traditional methods.",
+              "Research outputs from inverted systems will show 30% greater transparency in data sharing and methodology disclosure.",
+              "Adoption of inverted systems will reduce time-to-adaptation to new evidence by 40% in high-impact fields like medicine or climate science."
+            ]
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
           "results": {
@@ -50,23 +57,24 @@
           },
           "discussion": "",
           "reproducibility": {
-            "runtime_root": "/Users/lordwilson/runtime/research/evidence-grounded-research-systems",
+            "runtime_root": "/Users/lordwilson/msb-v3/runtime/research/evidence-grounded-research-systems",
             "artifacts": [
               "evidence-grounded-research-systems_UIM.json",
-              "evidence-grounded-research-systems_evidence_ledger.json"
+              "evidence-grounded-research-systems_completion.json",
+              "evidence-grounded-research-systems_evidence_ledger.json",
+              "evidence-grounded-research-systems_report.md",
+              "evidence-grounded-research-systems_review.md",
+              "evidence-grounded-research-systems_state.json"
             ]
           },
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-04T12:30:26.040376+00:00"
+        "ts": "2026-08-09T13:03:47.326270+00:00"
       }
     ],
-    "status": "completed_with_errors",
-    "ts": "2026-08-04T12:30:26.041396+00:00",
-    "failed_phases": [
-      "inversion"
-    ],
+    "status": "completed",
+    "ts": "2026-08-09T13:03:47.326808+00:00",
     "notify": {
       "ok": true,
       "async": true
