@@ -57,6 +57,35 @@ def test_plan_deterministic():
     assert a == b
 
 
+def test_plan_explicit_vector_only():
+    plan = planner.plan_explicit(["vector"], top_k=5)
+    routes = plan["routes"]
+    assert [r["index"] for r in routes] == ["vector"]
+    assert routes[0]["weight"] == 1.0
+    assert routes[0]["top_k"] == 10  # plan_query vector budget (top_k * 2)
+
+
+def test_plan_explicit_weights_sum_to_one():
+    plan = planner.plan_explicit(["vector", "temporal", "structural"], top_k=5)
+    routes = plan["routes"]
+    assert {r["index"] for r in routes} == {"vector", "temporal", "structural"}
+    assert sum(r["weight"] for r in routes) == pytest.approx(1.0)
+
+
+def test_plan_explicit_rejects_empty():
+    with pytest.raises(ValueError):
+        planner.plan_explicit([], top_k=5)
+
+
+def test_temporal_cutoff_quarter():
+    import time as _time
+
+    for q in ("last quarter", "this quarter", "results from last quarter"):
+        cutoff = _temporal_cutoff(q)
+        assert isinstance(cutoff, float)
+        assert abs(cutoff - (_time.time() - 90 * 86400)) < 60
+
+
 # ---------------------------------------------------------------------------
 # Fusion — weighted RRF
 # ---------------------------------------------------------------------------
@@ -139,9 +168,9 @@ def _patch_adapters(monkeypatch, factory):
     monkeypatch.setattr(engine_mod, "get_adapter", factory)
 
 
-async def _run(query: str, factory, top_k: int = 5) -> dict:
+async def _run(query: str, factory, top_k: int = 5, routes: list[str] | None = None) -> dict:
     from msb_v3.retrieval.engine import RetrievalRouter
-    return await RetrievalRouter(tenant_id="t1").run(query, top_k=top_k)
+    return await RetrievalRouter(tenant_id="t1").run(query, top_k=top_k, routes=routes)
 
 
 def test_engine_dispatches_only_planned_routes(monkeypatch):
@@ -204,6 +233,34 @@ def test_engine_empty_results(monkeypatch):
     _patch_adapters(monkeypatch, factory)
     out = asyncio.run(_run("nothing here", factory))
     assert out["matches"] == []
+    assert out["route_errors"] == {}
+
+
+def test_engine_match_carries_doc_id(monkeypatch):
+    """Matches expose the source doc id — required for NDCG evaluation."""
+    def factory(name, tenant_id="default"):
+        return _FakeAdapter([{"id": "d1", "score": 0.9, "text": "t", "source": "s1", "metadata": {}}])
+
+    _patch_adapters(monkeypatch, factory)
+    out = asyncio.run(_run("what is the renewal process", factory))
+    assert out["matches"][0]["id"] == "d1"
+
+
+def test_engine_forced_routes_override_planner(monkeypatch):
+    """run(routes=[...]) forces the route set even when cues would add more —
+    the outcome gate's vector-only baseline path."""
+    made: dict[str, _FakeAdapter] = {}
+
+    def factory(name, tenant_id="default"):
+        made[name] = _FakeAdapter([{"id": f"{name}-1", "score": 0.9, "text": "t", "source": f"src-{name}", "metadata": {}}])
+        return made[name]
+
+    _patch_adapters(monkeypatch, factory)
+    # "last week" + "tag:" would cue temporal+structural — but routes=["vector"]
+    # must win.
+    out = asyncio.run(_run("what changed last week tag:x", factory, routes=["vector"]))
+    assert set(made) == {"vector"}
+    assert [r["index"] for r in out["plan"]["routes"]] == ["vector"]
     assert out["route_errors"] == {}
 
 
