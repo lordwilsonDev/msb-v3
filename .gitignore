@@ -49,3 +49,5 @@ build/
 /runtime/research/ralph_*/
 /runtime/research/ralph_test/
 /runtime/research/*/artifacts/
+storage/
+artifacts/hygiene/r01_*.json
