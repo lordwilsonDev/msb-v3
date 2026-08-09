@@ -6,15 +6,15 @@
       "phase": "inversion",
       "ok": true,
       "result": {
-        "assumption": "Strict safety constraints are necessary to prevent harmful behavior in evolving agents.",
-        "inversion": "Safety constraints are unnecessary, and agents can evolve safely without explicit safety bounds.",
+        "assumption": "Safety-bounded evolution is necessary to ensure agents remain aligned with human values and avoid harmful behaviors.",
+        "inversion": "Safety-bounded evolution is unnecessary and hinders the development of more capable and adaptive agents.",
         "predictions": [
-          "Agents without safety constraints will exhibit significantly higher rates of harmful or unintended behavior.",
-          "Agents under strict safety bounds will show reduced performance in complex task completion compared to those with looser bounds.",
-          "Balanced safety constraints (moderate rather than extreme) will correlate with both higher safety and better task performance metrics."
+          "Agents evolved without safety constraints will exhibit higher rates of unintended harmful behaviors in controlled environments.",
+          "Agents with strict safety bounds will achieve significantly lower task performance metrics compared to unconstrained agents.",
+          "Agents evolved without safety constraints will show greater adaptability to novel environments and tasks, as measured by transfer learning performance."
         ]
       },
-      "ts": "2026-08-08T04:53:11.031813+00:00"
+      "ts": "2026-08-09T21:06:03.139639+00:00"
     },
     {
       "phase": "evidence",
@@ -27,7 +27,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-08T04:53:11.035513+00:00"
+      "ts": "2026-08-09T21:06:03.142605+00:00"
     },
     {
       "phase": "report",
@@ -38,12 +38,12 @@
         "abstract": "Autonomous research brief for safety-bounded agent evolution.",
         "background": "",
         "uim": {
-          "assumption": "Strict safety constraints are necessary to prevent harmful behavior in evolving agents.",
-          "inversion": "Safety constraints are unnecessary, and agents can evolve safely without explicit safety bounds.",
+          "assumption": "Safety-bounded evolution is necessary to ensure agents remain aligned with human values and avoid harmful behaviors.",
+          "inversion": "Safety-bounded evolution is unnecessary and hinders the development of more capable and adaptive agents.",
           "predictions": [
-            "Agents without safety constraints will exhibit significantly higher rates of harmful or unintended behavior.",
-            "Agents under strict safety bounds will show reduced performance in complex task completion compared to those with looser bounds.",
-            "Balanced safety constraints (moderate rather than extreme) will correlate with both higher safety and better task performance metrics."
+            "Agents evolved without safety constraints will exhibit higher rates of unintended harmful behaviors in controlled environments.",
+            "Agents with strict safety bounds will achieve significantly lower task performance metrics compared to unconstrained agents.",
+            "Agents evolved without safety constraints will show greater adaptability to novel environments and tasks, as measured by transfer learning performance."
           ]
         },
         "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
@@ -66,9 +66,9 @@
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-08T04:53:11.038026+00:00"
+      "ts": "2026-08-09T21:06:03.144909+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-08T04:53:11.040698+00:00"
+  "ts": "2026-08-09T21:06:03.148977+00:00"
 }
