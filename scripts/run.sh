@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/Users/lordwilson/msb-v3"
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+# Machine defaults; MSB_REPO / MSB_PYTHON override for portable runs (CI
+# sets them from the checkout + actions/setup-python).
+REPO="${MSB_REPO:-/Users/lordwilson/msb-v3}"
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 
 unset VIRTUAL_ENV
 export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"
