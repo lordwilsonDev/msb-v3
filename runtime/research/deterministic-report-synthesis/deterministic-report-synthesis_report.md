@@ -4,9 +4,13 @@
   "abstract": "Autonomous research brief for deterministic report synthesis.",
   "background": "",
   "uim": {
-    "assumption": "",
-    "inversion": "",
-    "predictions": []
+    "assumption": "Deterministic methods can fully and accurately synthesize reports without requiring probabilistic or contextual elements.",
+    "inversion": "Deterministic methods are inherently limited and cannot account for the complexity, ambiguity, or contextual nuances required for accurate report synthesis.",
+    "predictions": [
+      "Reports generated using deterministic methods will show 100% consistency across multiple runs.",
+      "Human reviewers will rate deterministic reports as accurate 95% of the time compared to probabilistic methods.",
+      "The time taken to synthesize a report using deterministic methods will be 40% faster than probabilistic methods."
+    ]
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
   "results": {

@@ -1,8 +1,0 @@
-{
-  "id": "t1",
-  "name": "T1-updated",
-  "llm_provider": "ollama",
-  "llm_model": "qwen3:8b",
-  "vault_path": "/Users/lordwilson/Documents/Vault",
-  "metadata": {}
-}

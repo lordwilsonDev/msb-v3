@@ -4,9 +4,22 @@
   "abstract": "Autonomous research brief for mesh peer discovery for sovereign agents.",
   "background": "",
   "uim": {
-    "assumption": "",
-    "inversion": "",
-    "predictions": []
+    "assumption": "Centralized coordination is essential for reliable mesh peer discovery in sovereign agent networks.",
+    "inversion": "Decentralized, peer-to-peer discovery mechanisms are sufficient for reliable mesh peer discovery in sovereign agent networks.",
+    "predictions": [
+      {
+        "metric": "Discovery latency",
+        "threshold": "Decentralized methods reduce latency by \u226540% compared to centralized approaches in large-scale networks."
+      },
+      {
+        "metric": "Resilience to node failures",
+        "threshold": "Decentralized systems maintain \u226595% connectivity during simulated node failures, while centralized systems drop to \u226480%."
+      },
+      {
+        "metric": "Scalability",
+        "threshold": "Decentralized discovery scales to \u226510,000 nodes without performance degradation, whereas centralized methods fail at \u22645,000 nodes."
+      }
+    ]
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
   "results": {

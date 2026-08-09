@@ -6,6 +6,20 @@ logs/
 .artifacts/
 .rouff_cache/
 .pytest_cache/
+
+# Per-run hygiene experiment artifacts (ephemeral); keep aggregate + gate
+artifacts/hygiene/*.db
+artifacts/hygiene/h0*_*.json
+artifacts/hygiene/h01_*.json
+artifacts/hygiene/h02_*.json
+artifacts/hygiene/h03_*.json
+artifacts/hygiene/h04_*.json
+artifacts/hygiene/h05_*.json
+artifacts/hygiene/h06_*.json
+artifacts/hygiene/h07_*.json
+artifacts/hygiene/h08_*.json
+artifacts/hygiene/h09_*.json
+artifacts/hygiene/h10_*.json
 .coverage
 htmlcov/
 dist/
@@ -13,8 +27,25 @@ build/
 *.egg-info/
 .venv/
 .venv/
+# Research run outputs are regenerated on every run — never versioned
 /runtime/research/*_state.json
+/runtime/research/*_UIM.json
+/runtime/research/*_completion.json
+/runtime/research/*_evidence_ledger.json
+/runtime/research/*_report.md
+/runtime/research/*_review.md
 /runtime/research/test-runs/
 /runtime/research/axiom-inversion-logic/
 /runtime/research/sovereign-ai-orchestration/*_state.json
-/runtime/research/test-runs/
+/runtime/research/sovereign-ai-orchestration/*_UIM.json
+/runtime/research/sovereign-ai-orchestration/*_completion.json
+/runtime/research/sovereign-ai-orchestration/*_evidence_ledger.json
+/runtime/research/sovereign-ai-orchestration/*_report.md
+/runtime/research/sovereign-ai-orchestration/*_review.md
+/runtime/research/*/STATUS.json
+/runtime/research/*/STATUS.json.bak
+/runtime/research/*/journal.log
+/runtime/research/*/EXEC_LOG.md
+/runtime/research/ralph_*/
+/runtime/research/ralph_test/
+/runtime/research/*/artifacts/

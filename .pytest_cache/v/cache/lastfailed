@@ -1,8 +1,0 @@
-{
-  "tests/test_api.py::test_registry_matches_routes": true,
-  "tests/test_harness.py::test_sac_status": true,
-  "tests/test_harness.py::test_echo_evaluate": true,
-  "tests/test_harness.py::test_schh_health": true,
-  "tests/test_harness.py::test_systems_health_status": true,
-  "tests/test_harness.py::test_sn_notify": true
-}

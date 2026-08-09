@@ -4,9 +4,13 @@
   "abstract": "Autonomous research brief for local-first inference patterns.",
   "background": "",
   "uim": {
-    "assumption": "",
-    "inversion": "",
-    "predictions": []
+    "assumption": "Local-first inference patterns prioritize on-device data processing and decentralized decision-making as the dominant paradigm in AI systems.",
+    "inversion": "Centralized cloud-based inference and server-side data processing remain the dominant paradigm in AI systems, with local computation being a secondary or negligible factor.",
+    "predictions": [
+      "Adoption of edge computing devices will increase by 40% within 3 years, measured by market share growth in IoT and mobile hardware.",
+      "Privacy-focused applications will see a 25% higher user retention rate compared to cloud-centric apps, as measured by cohort analysis.",
+      "Latency metrics for local-first systems will average 50ms for 90% of use cases, versus 300ms for centralized systems, as measured by benchmark testing."
+    ]
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
   "results": {

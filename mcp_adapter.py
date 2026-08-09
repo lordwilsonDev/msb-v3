@@ -6,7 +6,10 @@ msb-v3's mcp_bridge.py (src/msb_v3/api/mcp_bridge.py) exposes MCP-style tools
 over plain HTTP (GET /mcp/tools, POST /mcp/proxy) for Make.com. It does NOT
 speak MCP's JSON-RPC protocol. This script is the missing piece: Claude Code
 spawns it as a stdio MCP server, and it translates each MCP tools/call into
-an HTTP POST against the bridge.
+an HTTP POST against the bridge. NOTE (2026-08-08): /mcp/tools is now
+auth-gated like /proxy — this adapter sends x-mcp-secret on every request
+when MCP_BRIDGE_SECRET is set, so nothing here changes, but bare curl
+discovery of the manifest now requires the header.
 
 Stdlib only — no dependency on the msb-v3 virtualenv/interpreter beyond
 Python 3.11+, so it runs under any `python3` on PATH.

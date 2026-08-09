@@ -1,0 +1,20 @@
+brain:
+  framework: motia
+  enabled: true
+
+memory:
+  redis: false
+  sqlite: true
+  vector: false
+
+models:
+  local:
+    ollama: true
+  cloud:
+    deepseek: false
+
+safety:
+  fail_closed: true
+
+executor:
+  sandbox: true

@@ -383,8 +383,10 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
 
 
 @router.get("/tools")
-async def list_tools() -> dict[str, Any]:
-    """Return available MCP-like tools for Make.com / Claude Code discovery."""
+async def list_tools(request: Request) -> dict[str, Any]:
+    """Return available MCP-like tools for Make.com / Claude Code discovery.
+    Auth-gated like /proxy — the tool manifest is internal knowledge."""
+    _check_auth(request)
     return {
         "tools": [
             {"name": "chat", "description": "Chat with the local model", "args": ["query", "session"]},

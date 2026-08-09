@@ -2,8 +2,13 @@
   "topic": "safety-bounded agent evolution",
   "slug": "safety-bounded-agent-evolution",
   "phase1": {
-    "assumption": "",
-    "inversion": "",
-    "predictions": []
-  }
+    "assumption": "Strict safety constraints are necessary to prevent harmful behavior in evolving agents.",
+    "inversion": "Safety constraints are unnecessary, and agents can evolve safely without explicit safety bounds.",
+    "predictions": [
+      "Agents without safety constraints will exhibit significantly higher rates of harmful or unintended behavior.",
+      "Agents under strict safety bounds will show reduced performance in complex task completion compared to those with looser bounds.",
+      "Balanced safety constraints (moderate rather than extreme) will correlate with both higher safety and better task performance metrics."
+    ]
+  },
+  "ok": true
 }

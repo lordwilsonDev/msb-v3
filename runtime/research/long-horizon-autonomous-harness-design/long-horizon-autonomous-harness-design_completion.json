@@ -6,15 +6,15 @@
       "phase": "inversion",
       "ok": true,
       "result": {
-        "assumption": "Traditional control frameworks are sufficient for ensuring safety and performance in long-horizon autonomous systems.",
-        "inversion": "Long-horizon autonomy requires fundamentally rethinking control frameworks to prioritize adaptive, decentralized, and context-aware decision-making over rigid, centralized architectures.",
+        "assumption": "Traditional control methods are sufficient for long-horizon autonomous systems.",
+        "inversion": "Traditional control methods are insufficient for long-horizon autonomous systems.",
         "predictions": [
-          "Systems using traditional control frameworks will exhibit measurable degradation in safety-critical metrics (e.g., collision avoidance latency) over extended operational periods.",
-          "New decentralized architectures will achieve 30% faster response times to dynamic environmental changes compared to centralized systems in simulated long-horizon scenarios.",
-          "Human-in-the-loop validation will show 50% higher trust levels in decentralized systems for high-stakes, prolonged missions compared to traditional frameworks."
+          "Systems using traditional control methods will maintain stability and performance over 10,000+ time steps without degradation.",
+          "Systems using traditional control methods will fail to adapt to rare, long-term environmental changes within 5,000 time steps.",
+          "Systems using traditional control methods will consume 30% more computational resources over 10,000 time steps compared to adaptive methods."
         ]
       },
-      "ts": "2026-08-04T16:31:06.949860+00:00"
+      "ts": "2026-08-09T17:04:52.503675+00:00"
     },
     {
       "phase": "evidence",
@@ -27,7 +27,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-04T16:31:06.951352+00:00"
+      "ts": "2026-08-09T17:04:52.506051+00:00"
     },
     {
       "phase": "report",
@@ -38,12 +38,12 @@
         "abstract": "Autonomous research brief for long-horizon autonomous harness design.",
         "background": "",
         "uim": {
-          "assumption": "Traditional control frameworks are sufficient for ensuring safety and performance in long-horizon autonomous systems.",
-          "inversion": "Long-horizon autonomy requires fundamentally rethinking control frameworks to prioritize adaptive, decentralized, and context-aware decision-making over rigid, centralized architectures.",
+          "assumption": "Traditional control methods are sufficient for long-horizon autonomous systems.",
+          "inversion": "Traditional control methods are insufficient for long-horizon autonomous systems.",
           "predictions": [
-            "Systems using traditional control frameworks will exhibit measurable degradation in safety-critical metrics (e.g., collision avoidance latency) over extended operational periods.",
-            "New decentralized architectures will achieve 30% faster response times to dynamic environmental changes compared to centralized systems in simulated long-horizon scenarios.",
-            "Human-in-the-loop validation will show 50% higher trust levels in decentralized systems for high-stakes, prolonged missions compared to traditional frameworks."
+            "Systems using traditional control methods will maintain stability and performance over 10,000+ time steps without degradation.",
+            "Systems using traditional control methods will fail to adapt to rare, long-term environmental changes within 5,000 time steps.",
+            "Systems using traditional control methods will consume 30% more computational resources over 10,000 time steps compared to adaptive methods."
           ]
         },
         "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
@@ -66,9 +66,9 @@
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-04T16:31:06.952057+00:00"
+      "ts": "2026-08-09T17:04:52.509380+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-04T16:31:06.952535+00:00"
+  "ts": "2026-08-09T17:04:52.511033+00:00"
 }
