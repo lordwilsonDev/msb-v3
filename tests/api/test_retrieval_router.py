@@ -207,6 +207,90 @@ def test_engine_empty_results(monkeypatch):
     assert out["route_errors"] == {}
 
 
+def test_engine_latency_reported(monkeypatch):
+    """Latency is measured and sane offline — a regression guard against the
+    planner/fusion/dispatch path ballooning (not a real p95 budget; the live
+    latency criterion needs real indexes, see the live test below)."""
+    def factory(name, tenant_id="default"):
+        return _FakeAdapter([{"id": "d1", "score": 0.9, "text": "t", "source": "s1", "metadata": {}}])
+
+    _patch_adapters(monkeypatch, factory)
+    out = asyncio.run(_run("what changed last week", factory))
+    assert out["latency_ms"] >= 0
+    assert out["latency_ms"] < 5000  # loose offline budget; CI hardware is slow
+
+
+# ---------------------------------------------------------------------------
+# Live integration — real Qdrant + Ollama, opt-in (skips when unavailable)
+# ---------------------------------------------------------------------------
+
+def _live_infra_available() -> bool:
+    """True only when a real Qdrant and Ollama are reachable for this test."""
+    import os
+
+    try:
+        import httpx
+
+        ollama = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        if httpx.get(f"{ollama}/api/tags", timeout=2).status_code != 200:
+            return False
+        from msb_v3.api.rag import _HAS_QDRANT, _qdrant_client
+
+        if not _HAS_QDRANT:
+            return False
+        _qdrant_client().get_collections()
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(not _live_infra_available(), reason="requires live Qdrant + Ollama")
+def test_live_smi_query_temporal_route():
+    """Seed conforming data (metadata.timestamp as epoch seconds) through the
+    real /rag/index, then run a real /smi/query with a temporal cue and prove
+    the temporal route returns the seeded doc with provenance. This is the
+    only test that executes the actual Qdrant/Ollama adapter path — the
+    offline suite fakes it by design."""
+    import time
+
+    from msb_v3.api.app import create_app
+
+    tenant_id = f"live_test_{int(time.time())}"
+    client = TestClient(create_app())
+
+    seeded = {
+        "tenant_id": tenant_id,
+        "documents": [
+            {
+                "text": "the quarterly renewal process for the fox valley fleet",
+                "source": "live-seed",
+                "metadata": {"timestamp": time.time(), "tag": "renewal"},
+            }
+        ],
+    }
+    idx = client.post("/rag/index", json=seeded)
+    assert idx.status_code == 200, idx.text
+
+    resp = client.post(
+        "/smi/query",
+        json={"query": "what changed last week in the renewal process", "top_k": 3,
+              "context": {"tenant_id": tenant_id}},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+
+    # Temporal cue present -> the planner added the temporal route and it
+    # actually returned the seeded doc (proving the epoch-seconds Range works).
+    assert "temporal" in {r["index"] for r in data["plan"]["routes"]}
+    assert data["route_errors"] == {}
+    temporal_hits = [
+        m for m in data["matches"]
+        if any(p["route"] == "temporal" for p in m["provenance"])
+    ]
+    assert temporal_hits, f"temporal route returned nothing: {data}"
+    assert any("renewal" in m["text"] for m in temporal_hits)
+
+
 # ---------------------------------------------------------------------------
 # Endpoint — /smi/query wired to the engine (engine faked; no network)
 # ---------------------------------------------------------------------------

@@ -1,0 +1,28 @@
+{
+  "experiment": "r01_retrieval_router",
+  "experiment_id": "r01_retrieval_router",
+  "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/r01_retrieval_router_20260809T213527Z.json",
+  "skill": "regression-hygiene",
+  "input": "pytest /Users/lordwilson/msb-v3/tests/api/test_retrieval_router.py",
+  "environment": "msb-v3 repo @ /Users/lordwilson/msb-v3",
+  "expected_behavior": "all offline retrieval-router tests pass (planner, RRF, dispatch, provenance, endpoint)",
+  "actual_behavior": "exit=0 18 passed, 2 warnings in 1.47s",
+  "latency_ms": 2465,
+  "errors": [],
+  "state_before": {
+    "zero_spend": true,
+    "network": false,
+    "llm": false
+  },
+  "state_after": {
+    "exit": 0,
+    "passed": true,
+    "summary": "18 passed, 2 warnings in 1.47s"
+  },
+  "recovery": "n/a \u2014 read-only verification",
+  "false_repair": false,
+  "evidence": [
+    "18 passed, 2 warnings in 1.47s"
+  ],
+  "verdict": "pass"
+}
