@@ -69,9 +69,24 @@ payload-size enforcement) with pytest coverage.
 - Server URL: `MSB_BASE_URL` (default `http://127.0.0.1:8766`); secret via
   `MCP_BRIDGE_SECRET` or `.env`.
 
+## Unit tests for the proxy
+
+`tests/hygiene/test_h08_chaos_proxy.py` proves each fault class of
+`h08_chaos_proxy.py` in isolation against a fake upstream HTTP server
+(no live msb-v3 needed): transparent relay, latency actually delays,
+drop relays nothing, truncate cuts mid-body. Run with:
+
+```bash
+python -m pytest tests/hygiene/test_h08_chaos_proxy.py -v
+```
+
 ## Artifact schema
 
 Every artifact is validated against the hermes factory schema
 (`~/.hermes/skills/engineering/engineering-hygiene-factory/schemas/experiment.yaml`)
 by the factory aggregator (`run_factory.py`) and standalone
 (`scripts/schema_validate.py` / `validate_artifacts.py`).
+
+The factory gate also verifies two cross-cutting properties with real
+evidence: `regression_passed` (it runs `pytest tests/ -q`) and
+`live_auth_verified` (it probes the running server's x-mcp-secret gate).
