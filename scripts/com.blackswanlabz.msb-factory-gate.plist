@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.blackswanlabz.msb-factory-gate.plist — launchd LaunchAgent (user domain).
+
+  Runs the engineering-hygiene factory gate daily at 06:15 and alerts (via a
+  notification banner) when the gate stops being PASS. The daily script is
+  idempotent: it starts the msb-v3 server (tmux) if it is down, runs the gate,
+  and only alerts on a non-PASS verdict or a failure to start.
+
+  Install (versioned template lives at scripts/ in the repo):
+
+      cp scripts/com.blackswanlabz.msb-factory-gate.plist ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.blackswanlabz.msb-factory-gate.plist
+
+  Remove:  launchctl bootout gui/$(id -u)/com.blackswanlabz.msb-factory-gate
+           rm ~/Library/LaunchAgents/com.blackswanlabz.msb-factory-gate.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.blackswanlabz.msb-factory-gate</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lordwilson/msb-v3/scripts/factory_gate_daily.sh</string>
+    </array>
+
+    <!-- launchd's default PATH lacks Homebrew; the script needs tmux/curl. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>15</integer>
+    </dict>
+
+    <!-- No RunAtLoad: the gate should run daily, not pile up on every login. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>600</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/msb-factory-gate-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/msb-factory-gate-launchd.log</string>
+</dict>
+</plist>
