@@ -53,6 +53,7 @@ EXPERIMENTS: dict[str, Path] = {
     "h06_audit": HERE / "h06_audit_tampering_runner.py",
     "h07_heal": HERE / "h07_auto_healing_runner.py",
     "h08_chaos": HERE / "h08_chaos_runner.py",
+    "r01_retrieval_router": HERE / "r01_retrieval_router_runner.py",
     "h09_deps": HERE / "h09_dependency_subtraction_runner.py",
     "h10_resource": HERE / "h10_resource_chaos_runner.py",
 }
