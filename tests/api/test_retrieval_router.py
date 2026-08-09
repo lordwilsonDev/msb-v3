@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from msb_v3.api.app import create_app
 from msb_v3.retrieval import engine as engine_mod
 from msb_v3.retrieval import fusion, planner
-
+from msb_v3.retrieval.indexes import _collection, _structural_filters, _temporal_cutoff
 
 # ---------------------------------------------------------------------------
 # Planner — deterministic, zero-LLM
@@ -89,6 +89,34 @@ def test_rrf_deterministic():
     out = fusion.rrf(lists, {"vector": 0.5, "temporal": 0.5})
     assert out[0]["id"] == "x"
     assert fusion.rrf(lists, {"vector": 0.5, "temporal": 0.5}) == out
+
+
+# ---------------------------------------------------------------------------
+# Index helpers — pure functions, offline (no Qdrant needed)
+# ---------------------------------------------------------------------------
+
+def test_collection_name_sanitized():
+    assert _collection("default") == "tenant_default"
+    assert _collection("a/b:c d") == "tenant_a_b_c_d"
+
+
+def test_structural_filters_extracts_metadata():
+    out = _structural_filters("notes tags:ai folder:vault about agents")
+    assert out == {"tag": "ai", "folder": "vault"}
+    # "tagged" is not a tag: filter — the regex requires the colon/equals
+    assert _structural_filters("notes tagged:ai") == {}
+    assert _structural_filters("plain query") == {}
+
+
+def test_temporal_cutoff_is_epoch_float():
+    import time as _time
+
+    recent = _temporal_cutoff("meetings last 7 days")
+    default = _temporal_cutoff("plain query")
+    assert isinstance(recent, float)
+    # ~7 days ago, within a minute of tolerance
+    assert abs(recent - (_time.time() - 7 * 86400)) < 60
+    assert abs(default - (_time.time() - 30 * 86400)) < 60
 
 
 # ---------------------------------------------------------------------------
