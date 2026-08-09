@@ -40,7 +40,9 @@ async def semantic_query(body: QueryRequest) -> dict[str, Any]:
     Response keeps the historical `matches` + `context` fields and adds the
     retrieval `plan`, per-match `provenance`, `route_errors`, and `latency_ms`.
     """
-    from msb_v3.retrieval.engine import RetrievalRouter  # lazy: no heavy imports at app build
+    from msb_v3.retrieval.engine import (
+        RetrievalRouter,  # lazy: no heavy imports at app build
+    )
 
     tenant_id = (body.context or {}).get("tenant_id", "default")
     return await RetrievalRouter(tenant_id=tenant_id).run(body.query, top_k=body.top_k)

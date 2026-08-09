@@ -44,8 +44,12 @@ def _structural_filters(query: str) -> dict[str, str]:
     return {m.group(1).lower().rstrip("s"): m.group(2) for m in _FILTER_PATTERN.finditer(query)}
 
 
-def _temporal_cutoff(query: str) -> datetime:
-    """Recency cutoff for the temporal route; default 30 days."""
+def _temporal_cutoff(query: str) -> float:
+    """Recency cutoff for the temporal route; default 30 days.
+
+    Returned as epoch seconds: Qdrant Range filters are numeric, and the
+    conventional payload encoding for timestamps is Unix time (float).
+    """
     m = _WINDOW_PATTERN.search(query.lower())
     if m:
         days = _UNIT_DAYS[m.group(2)] * int(m.group(1))
@@ -53,15 +57,22 @@ def _temporal_cutoff(query: str) -> datetime:
         days = 7
     else:
         days = 30
-    return datetime.now(timezone.utc) - timedelta(days=days)
+    return (datetime.now(timezone.utc) - timedelta(days=days)).timestamp()
 
 
 class _QdrantBase:
-    """Lazy client/embedding access over msb_v3.api.rag."""
+    """Lazy client/embedding access over msb_v3.api.rag.
+
+    Declares the adapter interface (search) so consumers type-check against
+    the base class; concrete index routes override it.
+    """
 
     def __init__(self, tenant_id: str = "default"):
         self.tenant_id = tenant_id
         self._client = None
+
+    async def search(self, query: str, top_k: int = 5, **_kw) -> list[dict]:
+        raise NotImplementedError  # overridden by VectorIndex/StructuralIndex/TemporalIndex
 
     def _qdrant(self):
         if self._client is None:
@@ -96,16 +107,16 @@ class StructuralIndex(_QdrantBase):
         if not filters:
             return []
         vec = await self._embed(query)
-        must = [
-            qm.FieldCondition(
-                key=f"metadata.{field}",
-                match=qm.MatchValue(value=value),
-            )
-            for field, value in filters.items()
-        ]
         points = self._qdrant().query_points(
             collection_name=_collection(self.tenant_id),
-            query=vec, query_filter=qm.Filter(must=must),
+            query=vec,
+            query_filter=qm.Filter(must=[
+                qm.FieldCondition(
+                    key=f"metadata.{field}",
+                    match=qm.MatchValue(value=value),
+                )
+                for field, value in filters.items()
+            ]),
             limit=top_k, with_payload=True,
         )
         return [_normalize(p) for p in points.points]
@@ -125,7 +136,7 @@ class TemporalIndex(_QdrantBase):
             query_filter=qm.Filter(must=[
                 qm.FieldCondition(
                     key="metadata.timestamp",
-                    range=qm.Range(gte=cutoff.isoformat()),
+                    range=qm.Range(gte=cutoff),
                 ),
             ]),
             limit=top_k, with_payload=True,
