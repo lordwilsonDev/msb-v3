@@ -41,8 +41,28 @@ jobs:
       # (factory_gate.json) runs `pytest tests/` (232) — CI is deliberately
       # the wider net. factory_gate.json is a point-in-time record, not a CI
       # mirror.
+      #
+      # 53 of the 253 tests are live integration tests that hit a real server
+      # on 127.0.0.1:8766 (they pass locally only because the dev server is
+      # running). Boot the server here so CI exercises the same contract.
       - name: Regression suite + coverage gate
-        run: pytest --cov=msb_v3 --cov-report=term --cov-fail-under=65 -q
+        env:
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+        run: |
+          set -euo pipefail
+          python -m msb_v3 > /tmp/msb-test-server.log 2>&1 &
+          SRV=$!
+          trap 'kill $SRV 2>/dev/null || true' EXIT
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
+            sleep 1
+          done
+          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
+            echo "server failed to boot — log follows"
+            cat /tmp/msb-test-server.log
+            exit 1
+          fi
+          pytest --cov=msb_v3 --cov-report=term --cov-fail-under=65 -q
 
       - name: Typed enforcement (mypy)
         run: mypy src/msb_v3 --ignore-missing-imports
