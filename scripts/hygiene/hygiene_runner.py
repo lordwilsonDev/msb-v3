@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """Engineering hygiene runner — single CLI index over the standalone runners.
 
 This file is the ONE entry point for the MSB-v3 hygiene suite. It no longer
@@ -29,6 +30,7 @@ import datetime as dt
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 EVIDENCE_DIR = REPO / "artifacts" / "hygiene"
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 
-PY = os.environ.get("MSB_PYTHON", "/opt/homebrew/Caskroom/miniforge/base/bin/python")
+PY = os.environ.get("MSB_PYTHON", sys.executable)
 
 # Canonical experiment registry: name -> standalone runner file.
 # Every experiment now lives in ONE place (its standalone runner), so there is

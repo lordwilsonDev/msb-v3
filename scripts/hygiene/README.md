@@ -65,7 +65,7 @@ payload-size enforcement) with pytest coverage.
 
 - Repo root resolves via `MSB_REPO` env or relative to each runner file —
   no hardcoded paths.
-- Python: `MSB_PYTHON` env or `/opt/homebrew/Caskroom/miniforge/base/bin/python`.
+- Python: `MSB_PYTHON` env or the runner's own interpreter (`sys.executable`).
 - Server URL: `MSB_BASE_URL` (default `http://127.0.0.1:8766`); secret via
   `MCP_BRIDGE_SECRET` or `.env`.
 
