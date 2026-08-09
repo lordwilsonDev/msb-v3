@@ -19,7 +19,12 @@ NOTIFY_URL = "https://api.telegram.org/bot{token}/sendMessage"
 
 router = APIRouter(tags=["research"])
 
-_RESEARCH_ROOT = Path("/Users/lordwilson/msb-v3/runtime/research")
+# Repo-relative by default (portable across machines/CI); override with
+# MSB_RESEARCH_ROOT. Previously a hardcoded absolute machine path, which
+# broke every write-path on any other machine (mkdir under /Users fails).
+_RESEARCH_ROOT = Path(
+    os.environ.get("MSB_RESEARCH_ROOT", str(Path(__file__).resolve().parents[3] / "runtime" / "research"))
+)
 _RUN_STATE: dict[str, Any] = {"active": None, "queue": [], "history": []}
 _CACHE = "max-age=5"
 

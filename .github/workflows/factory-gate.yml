@@ -48,6 +48,11 @@ jobs:
       - name: Regression suite + coverage gate
         env:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+          # Skills come from the committed fixture (not ~/.hermes on the
+          # runner); research state is repo-relative via MSB_RESEARCH_ROOT
+          # default. test_ready + claims_review skip when the env can't
+          # satisfy them (no ollama/db, no seeded ledger).
+          MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
         run: |
           set -euo pipefail
           python -m msb_v3 > /tmp/msb-test-server.log 2>&1 &
