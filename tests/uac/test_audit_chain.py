@@ -2,6 +2,7 @@
 not just accept/return data, since that's the entire point of the module."""
 from __future__ import annotations
 
+import json
 import sqlite3
 
 from msb_v3.uac.audit_chain import AuditChain, _GENESIS_HASH
@@ -76,3 +77,82 @@ def test_get_chain_filters_by_component(tmp_path):
 
     all_records = chain.get_chain()
     assert len(all_records) == 3
+
+
+# --- quarantine + repair (hygiene h07, issue #1) ----------------------------
+
+
+def _tamper_seq(chain, seq: int) -> None:
+    with sqlite3.connect(chain.db_path) as conn:
+        conn.execute(
+            "UPDATE audit_records SET payload=? WHERE seq=?",
+            (json.dumps({"n": "TAMPERED"}), seq),
+        )
+
+
+def test_quarantine_marks_broken_chain(tmp_path):
+    chain = _chain(tmp_path)
+    for i in range(5):
+        chain.append("stage_0", "event", {"n": i})
+    _tamper_seq(chain, 3)
+
+    result = chain.quarantine()
+    assert result["quarantined"] is True
+    assert result["broken_at_seq"] == 3
+    assert chain._get_meta("state") == "quarantined"
+    # quarantine does NOT silently heal — chain must still be detected broken
+    assert chain.verify_chain()["valid"] is False
+
+
+def test_quarantine_noop_on_valid_chain(tmp_path):
+    chain = _chain(tmp_path)
+    chain.append("stage_0", "a", {})
+    result = chain.quarantine()
+    assert result["quarantined"] is False
+    assert chain._get_meta("state") == "active"
+
+
+def test_repair_restores_chain_and_is_auditable(tmp_path):
+    chain = _chain(tmp_path)
+    for i in range(5):
+        chain.append("stage_0", "event", {"n": i})
+    _tamper_seq(chain, 3)
+
+    assert chain.verify_chain()["valid"] is False
+    result = chain.repair()
+    assert result["repaired"] is True
+    assert result["broken_at_seq"] == 3
+
+    # Chain must verify again after repair
+    assert chain.verify_chain()["valid"] is True
+    # Repair must be auditable: a chain.repaired event is the tail record
+    tail = chain.get_chain()[-1]
+    assert tail.component == "chain"
+    assert tail.event_type == "repaired"
+    assert chain._get_meta("state") == "active"
+
+
+def test_repair_noop_on_valid_chain(tmp_path):
+    chain = _chain(tmp_path)
+    chain.append("stage_0", "a", {})
+    result = chain.repair()
+    assert result["repaired"] is False
+    assert chain.verify_chain()["valid"] is True
+
+
+def test_repair_after_quarantine_full_recovery_loop(tmp_path):
+    """The full hygiene h07 loop: tamper -> detect -> quarantine -> repair -> verify."""
+    chain = _chain(tmp_path)
+    for i in range(5):
+        chain.append("stage_0", "event", {"n": i})
+    _tamper_seq(chain, 3)
+
+    tamper_detected = chain.verify_chain()["valid"] is False
+    quarantined = chain.quarantine()["quarantined"]
+    repaired = chain.repair()["repaired"]
+    heal_succeeded = chain.verify_chain()["valid"] is True
+
+    assert tamper_detected
+    assert quarantined
+    assert repaired
+    assert heal_succeeded

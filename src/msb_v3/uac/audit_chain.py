@@ -51,6 +51,14 @@ def _init_db(db_path: Path) -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chain_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
 
 
 @dataclass
@@ -128,6 +136,121 @@ class AuditChain:
                 return {"valid": False, "broken_at_seq": row["seq"], "reason": "stored hash does not match recomputed content hash"}
             expected_prev = row["record_hash"]
         return {"valid": True, "record_count": len(rows)}
+
+    def _set_meta(self, key: str, value: str) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT INTO chain_meta(key, value) VALUES(?,?)"
+                " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+
+    def _get_meta(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT value FROM chain_meta WHERE key=?", (key,)
+            ).fetchone()
+        return row["value"] if row else default
+
+    def quarantine(self) -> Dict[str, Any]:
+        """Explicitly quarantine the chain if tampering is detected.
+
+        Does NOT silently heal: it verifies the chain, and if a break is found
+        it records the compromised state (broken seq, reason, timestamp) in
+        chain_meta so the compromise is explicit and discoverable. A
+        quarantined chain remains verifiable as broken until `repair()` is run
+        under operator control.
+        """
+        result = self.verify_chain()
+        if result.get("valid"):
+            self._set_meta("state", "active")
+            self._set_meta("broken_at_seq", "")
+            return {"quarantined": False, "reason": "chain already valid"}
+        broken = result.get("broken_at_seq")
+        self._set_meta("state", "quarantined")
+        self._set_meta("broken_at_seq", str(broken))
+        self._set_meta("reason", str(result.get("reason")))
+        self._set_meta("quarantined_at", _now_iso())
+        return {
+            "quarantined": True,
+            "broken_at_seq": broken,
+            "reason": result.get("reason"),
+            "state": "quarantined",
+        }
+
+    def repair(self) -> Dict[str, Any]:
+        """Cascade-rewrite the chain from the first broken record.
+
+        Checkpoint recovery: re-anchor at the last verified record's hash,
+        recompute every record from the first break forward, then append an
+        explicit, auditable "chain.repaired" event documenting the break point
+        and anchor. The rewrite itself is audit-trailed, so recovery never
+        happens silently. Clears the quarantine state on success.
+
+        Returns:
+            {"repaired": bool, "broken_at_seq": int|None,
+             "repaired_at_seq": int|None, "record_count": int}
+        """
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM audit_records ORDER BY seq ASC"
+            ).fetchall()
+        expected_prev = _GENESIS_HASH
+        first_broken: Optional[int] = None
+        for row in rows:
+            payload = json.loads(row["payload"])
+            recomputed = _compute_hash(
+                row["prev_hash"], row["component"], row["event_type"],
+                payload, row["timestamp"],
+            )
+            if row["prev_hash"] != expected_prev or recomputed != row["record_hash"]:
+                first_broken = row["seq"]
+                break
+            expected_prev = row["record_hash"]
+        if first_broken is None:
+            self._set_meta("state", "active")
+            return {"repaired": False, "reason": "chain already valid",
+                    "broken_at_seq": None, "repaired_at_seq": None,
+                    "record_count": len(rows)}
+        # Rewrite the tail starting at first_broken, anchored at the last
+        # verified record's hash (expected_prev at the point of break), and
+        # append the auditable repair event IN THE SAME TRANSACTION — a crash
+        # between rewrite and audit-log must never leave a silent repair.
+        repaired_at_seq: Optional[int] = None
+        with self._conn() as conn:
+            tail = conn.execute(
+                "SELECT * FROM audit_records WHERE seq >= ? ORDER BY seq ASC",
+                (first_broken,),
+            ).fetchall()
+            prev = expected_prev
+            for row in tail:
+                payload = json.loads(row["payload"])
+                new_hash = _compute_hash(
+                    prev, row["component"], row["event_type"], payload, row["timestamp"]
+                )
+                conn.execute(
+                    "UPDATE audit_records SET prev_hash=?, record_hash=? WHERE seq=?",
+                    (prev, new_hash, row["seq"]),
+                )
+                prev = new_hash
+            # Auditable repair event — recovery is never silent.
+            event_ts = _now_iso()
+            event_payload = {"broken_at_seq": first_broken, "anchor": expected_prev}
+            event_hash = _compute_hash(
+                prev, "chain", "repaired", event_payload, event_ts
+            )
+            cur = conn.execute(
+                "INSERT INTO audit_records(component, event_type, payload, timestamp, prev_hash, record_hash)"
+                " VALUES (?,?,?,?,?,?)",
+                ("chain", "repaired", json.dumps(event_payload, ensure_ascii=False),
+                 event_ts, prev, event_hash),
+            )
+            repaired_at_seq = cur.lastrowid
+        self._set_meta("state", "active")
+        self._set_meta("broken_at_seq", "")
+        self._set_meta("repaired_at", _now_iso())
+        return {"repaired": True, "broken_at_seq": first_broken,
+                "repaired_at_seq": repaired_at_seq, "record_count": len(rows)}
 
     def get_chain(self, component: Optional[str] = None) -> List[AuditRecord]:
         with self._conn() as conn:
