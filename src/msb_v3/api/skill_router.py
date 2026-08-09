@@ -1,6 +1,7 @@
 """Skill router — discover and execute Hermes skills via FastAPI."""
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List
@@ -10,7 +11,9 @@ from pydantic import BaseModel
 
 router = APIRouter(tags=["skills"])
 
-_SKILLS_DIR = Path.home() / ".hermes" / "skills"
+# Machine skills live in ~/.hermes/skills; MSB_SKILLS_DIR overrides (CI uses
+# the repo fixture so the discovery contract is testable without the store).
+_SKILLS_DIR = Path(os.environ.get("MSB_SKILLS_DIR", str(Path.home() / ".hermes" / "skills")))
 
 
 class SkillExecuteRequest(BaseModel):
