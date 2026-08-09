@@ -112,8 +112,13 @@ record = new_record(experiment_id, 'resource exhaustion chaos', BASE_URL)
 cleanup = True
 truth_backup = TRUTH_DIR.parent / f'{TRUTH_DIR.name}.hygiene_backup'
 chaos_dir = TRUTH_DIR / 'h10_chaos_flood'
+oversize_entity = TRUTH_DIR / 'h10_oversize.json'
 try:
     TRUTH_DIR.mkdir(parents=True, exist_ok=True)
+    # Reset stale probe entity from any prior run (a leftover caused a false
+    # 409-already-exists in an earlier session; never trust the archive).
+    if oversize_entity.exists():
+        oversize_entity.unlink()
 
     # Baseline health/latency
     b_health_code, b_health_body, b_health_lat = simple_get('/health')
@@ -180,6 +185,8 @@ finally:
     if cleanup:
         if chaos_dir.exists():
             shutil.rmtree(chaos_dir)
+        if oversize_entity.exists():
+            oversize_entity.unlink()
         if truth_backup.exists():
             if TRUTH_DIR.exists():
                 shutil.rmtree(TRUTH_DIR)

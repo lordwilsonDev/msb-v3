@@ -12,6 +12,11 @@ from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 
+# Max serialized payload size for truth entities, in bytes. Enforced on write
+# so a single bad client or bug cannot grow the truth registry without bound.
+# (hygiene h10: oversized payloads were accepted with 200 — now 413.)
+MAX_PAYLOAD_BYTES = int(os.getenv("MSB_MAX_PAYLOAD_BYTES", "262144"))  # 256 KiB
+
 
 def _truth_dir() -> Path:
     return Path(os.getenv("MSB_TRUTH_DIR", "data/truth")).resolve()
@@ -33,6 +38,15 @@ def _checksum(content: dict) -> str:
 @router.post("/register")
 async def register_truth(payload: dict[str, Any]) -> dict[str, Any]:
     """Register a sovereign truth entity."""
+    size = len(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+    if size > MAX_PAYLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Payload too large: {size} bytes exceeds limit "
+                f"{MAX_PAYLOAD_BYTES} bytes"
+            ),
+        )
     entity_id = payload.get("id") or hashlib.sha256(
         json.dumps(payload, sort_keys=True).encode()
     ).hexdigest()[:16]

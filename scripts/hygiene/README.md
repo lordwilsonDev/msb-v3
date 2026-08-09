@@ -34,10 +34,10 @@ Exit code: `0` unless any experiment reports `fail`.
 | `h04_race` | `h04_race_runner.py` | real concurrent same-id + distinct-id writes to truth registry | no torn writes, no checksum violations, server stays up | yes |
 | `h05_contract` | `h05_contract_fuzzing_runner.py` | valid/malformed/traversal MCP payloads | valid → 200; malformed → safe 4xx; vault 404 = valid | yes |
 | `h06_audit` | `h06_audit_tampering_runner.py` | disk tampering of truth entity (checksum preserved / mismatch) | checksum-mismatch tamper rejected (409) | yes |
-| `h07_heal` | `h07_auto_healing_runner.py` | audit-chain tamper then recovery attempt | **FAILS today** — tamper detected but no auto-heal/quarantine exists (issue #1) | no (uses AuditChain in temp DB) |
+| `h07_heal` | `h07_auto_healing_runner.py` | audit-chain tamper → quarantine → repair → verify | tamper detected, quarantine marks, repair re-anchors with auditable `chain.repaired` event, chain verifies again | no (uses AuditChain in temp DB) |
 | `h08_chaos` | `h08_chaos_runner.py` | baseline only; fault injection needs external harness | **BLOCKED** — baseline recorded; no chaos proxy installed | no |
 | `h09_deps` | `h09_dependency_subtraction_runner.py` | remove truth registry dir mid-run, probe degraded mode, restore | service stays alive, degraded /ready, recovers after restore | yes |
-| `h10_resource` | `h10_resource_chaos_runner.py` | 500-file flood, oversized payload, 200-request burst | **FAILS today** — oversized payload accepted (404, not 413/400) (issue #2) | yes |
+| `h10_resource` | `h10_resource_chaos_runner.py` | 500-file flood, oversized payload, 200-request burst | oversized payload rejected with 413 (limit 256 KiB); service alive; burst under budget | yes |
 
 ## Honest verdicts
 
@@ -46,9 +46,10 @@ Exit code: `0` unless any experiment reports `fail`.
 - `blocked` — the experiment cannot honestly run in this environment
   (h02: needs real stop/start orchestration; h08: needs a chaos harness).
   Blocked is a non-fatal non-pass: it means "not proven", never a green.
-- `fail` — a genuine red light. h07 and h10 currently fail for real
-  codebase reasons; both are tracked as GitHub issues #1 and #2 and are
-  reproduced deterministically by their runners.
+- `fail` — a genuine red light. There are currently **zero** failing
+  experiments: h07 (AuditChain quarantine+repair) and h10 (payload-size
+  enforcement) were real codebase bugs, both fixed (GitHub issues #1/#2
+  closed), each with pytest coverage.
 
 ## Environment
 

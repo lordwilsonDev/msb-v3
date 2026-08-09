@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """H07 Auto-healing — does the audit chain detect tampering AND recover?
 
-The 2026-08-09 finding (artifact `h07_auto_healing_*.json`) showed
-`verify_chain()` detects a tampered middle record (valid=False at seq=3) but
-has NO recovery path: deleting the bad record and appending a new one leaves
-seq=4's prev_hash pointing at the deleted record's hash, so the chain stays
-broken. This runner reproduces that experiment deterministically against the
-real `AuditChain` in a temp DB and records the current state of healing:
+The 2026-08-09 finding showed `verify_chain()` detected a tampered middle
+record (valid=False at seq=3) but there was NO recovery path: deleting the
+bad record and appending a new one left seq=4's prev_hash dangling, so the
+chain stayed broken forever.
 
-- tamper detected       -> the detection half of the hypothesis
-- heal_succeeded        -> the recovery half (does a repair path exist?)
-- quarantine_available  -> is there a quarantine mode for compromised chains?
+Fix (2026-08-09, issue #1): `AuditChain` now has `quarantine()` (explicit
+compromise marking, never silent) and `repair()` (checkpoint cascade-rewrite
+that re-anchors at the last verified record, recomputes the tail, and appends
+an auditable "chain.repaired" event). This runner proves the FULL loop:
 
-Verdict is `fail` while `heal_succeeded` is false — a genuine red light, not a
-file gap. `pass` requires a real recovery mechanism (cascade-rewrite,
-checkpoint-recovery, or explicit quarantine) to exist.
+  append 5 -> tamper seq=3 -> verify detects -> quarantine marks ->
+  repair re-anchors -> verify passes again
+
+Verdict is `pass` only when tamper detection works AND the recovery path
+restores a valid chain.
 
 Standalone counterpart to the shared hygiene_runner's `h07_heal`.
 """
@@ -42,12 +43,13 @@ def new_record() -> dict[str, Any]:
     return {
         'experiment_id': 'h07_auto_healing',
         'skill': 'self-healing',
-        'input': 'tamper middle audit record and attempt automated recovery',
+        'input': 'tamper middle audit record then recover via quarantine + repair',
         'environment': BASE_URL,
         'failure_injected': 'SQLite UPDATE modified payload of seq=3 in audit chain DB',
         'expected_behavior': (
-            'either automatic healing restores a valid chain OR explicit tamper '
-            'alert with chain quarantine; subsequent records remain verifiable'
+            'verify_chain detects the tamper; quarantine() marks the compromise '
+            'explicitly; repair() cascade-rewrites the tail and appends an '
+            'auditable chain.repaired event; verify_chain passes again'
         ),
         'actual_behavior': '',
         'latency_ms': 0,
@@ -80,7 +82,9 @@ def main() -> int:
 
         # Baseline
         baseline = chain.verify_chain()
-        record['sequence'] = [{'step': 'baseline', 'records': baseline.get('record_count', 0), 'valid': baseline.get('valid', True)}]
+        record['sequence'] = [
+            {'step': 'baseline', 'records': baseline.get('record_count', 0), 'valid': baseline.get('valid', True)}
+        ]
 
         # Append 5 records
         for i in range(5):
@@ -103,49 +107,75 @@ def main() -> int:
             'reason': after_tamper.get('reason'),
         })
 
-        # Attempt recovery: delete the bad record and append a fresh one.
-        with sqlite3.connect(db_path) as conn:
-            conn.execute("DELETE FROM audit_records WHERE seq=3")
-        chain.append('h07_probe', 'event', {'n': 'post-heal'})
-        after_heal = chain.verify_chain()
-        heal_succeeded = after_heal.get('valid', False) is True
-
-        # Does a quarantine mode exist on the class?
-        has_auto_heal = hasattr(chain, 'auto_heal')
-        has_quarantine = hasattr(chain, 'quarantine') or hasattr(chain, 'quarantine_chain')
-        has_cascade = hasattr(chain, 'cascade_rewrite') or hasattr(chain, 'rebuild')
-
+        # Recovery path: quarantine() marks the compromise, repair() re-anchors.
+        quarantine_result = chain.quarantine()
         record['sequence'].append({
-            'step': 'after_delete_seq3_and_append',
-            'valid': after_heal.get('valid', False),
-            'broken_at_seq': after_heal.get('broken_at_seq'),
-            'reason': after_heal.get('reason'),
+            'step': 'quarantine',
+            'quarantined': quarantine_result.get('quarantined'),
+            'broken_at_seq': quarantine_result.get('broken_at_seq'),
+            'state': quarantine_result.get('state'),
         })
+        repair_result = chain.repair()
+        record['sequence'].append({
+            'step': 'repair',
+            'repaired': repair_result.get('repaired'),
+            'broken_at_seq': repair_result.get('broken_at_seq'),
+            'repaired_at_seq': repair_result.get('repaired_at_seq'),
+        })
+        after_repair = chain.verify_chain()
+        heal_succeeded = after_repair.get('valid', False) is True
+        record['sequence'].append({
+            'step': 'after_repair_verify',
+            'valid': after_repair.get('valid', False),
+            'record_count': after_repair.get('record_count'),
+        })
+
+        # The repair event itself must be auditable (chain includes it).
+        chain_tail = chain.get_chain()[-1]
+        repair_event_auditable = (
+            chain_tail.component == 'chain'
+            and chain_tail.event_type == 'repaired'
+            and heal_succeeded
+        )
+
         record['state_after'] = {
             'tamper_detected': tamper_detected,
+            'quarantined': quarantine_result.get('quarantined'),
+            'repaired': repair_result.get('repaired'),
             'heal_succeeded': heal_succeeded,
-            'has_auto_heal_method': has_auto_heal,
-            'has_quarantine_mode': has_quarantine,
-            'has_cascade_rewrite': has_cascade,
+            'repair_event_auditable': repair_event_auditable,
         }
-        record['evidence'].append('verify_chain detects tampering at seq=3')
-        record['evidence'].append('delete seq=3 does not restore prev_hash linkage for seq=4')
-        record['evidence'].append('append after delete does not patch existing prev_hash references')
+        record['evidence'].extend([
+            'verify_chain detects tampering at seq=3',
+            'quarantine() records the compromise explicitly',
+            'repair() cascade-rewrites tail anchored at last verified record',
+            'chain.repaired event appended (recovery is auditable)',
+            'verify_chain passes again after repair',
+        ])
 
         record['actual_behavior'] = (
-            f"tamper_detected={tamper_detected} heal_succeeded={heal_succeeded} "
-            f"auto_heal_method={has_auto_heal} quarantine={has_quarantine} cascade={has_cascade}"
+            f"tamper_detected={tamper_detected} quarantined={quarantine_result.get('quarantined')} "
+            f"repaired={repair_result.get('repaired')} heal_succeeded={heal_succeeded} "
+            f"repair_event_auditable={repair_event_auditable}"
         )
-        if heal_succeeded:
-            record['recovery'] = 'chain recovered after tamper (healing mechanism present)'
+        if tamper_detected and heal_succeeded and repair_event_auditable:
+            record['recovery'] = (
+                'chain recovered: tamper detected, quarantine marked, repair '
+                're-anchored tail with auditable event, verify passes'
+            )
         else:
-            record['recovery'] = 'no recovery mechanism exists; chain remains broken after delete+append'
-            record['errors'].extend([
-                'no auto_heal() method exists in AuditChain',
-                'no cascade-rewrite or checkpoint-recovery mechanism exists',
-                'no quarantine mode for compromised chains',
-            ])
-        record['verdict'] = 'pass' if heal_succeeded else 'fail'
+            record['recovery'] = 'recovery loop incomplete; see errors'
+            if not tamper_detected:
+                record['errors'].append('tampering was NOT detected at seq=3')
+            if not quarantine_result.get('quarantined'):
+                record['errors'].append('quarantine() did not mark the compromise')
+            if not repair_result.get('repaired'):
+                record['errors'].append('repair() did not re-anchor the chain')
+            if not heal_succeeded:
+                record['errors'].append('verify_chain still broken after repair')
+            if not repair_event_auditable:
+                record['errors'].append('repair event not auditable in the chain')
+        record['verdict'] = 'pass' if (tamper_detected and heal_succeeded and repair_event_auditable) else 'fail'
     except Exception as e:
         record['verdict'] = 'fail'
         record['errors'].append(str(e))
