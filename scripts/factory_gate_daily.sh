@@ -46,7 +46,17 @@ else
   fi
 fi
 
-# 2. Run the factory gate. Capture the real exit code ($? inside an `if !`
+# 2. Canary: prove the zero-spend env scrub holds BEFORE spending a full
+# gate run. The self-test injects sentinel credentials and asserts no
+# subprocess the gate spawns can see them (via the shared _spawn choke point).
+if ! "$PY" "$FACTORY" --self-test > /tmp/factory_gate_self_test.log 2>>"$LOG"; then
+  log "ERROR: zero-spend self-test FAILED — scrub broken; gate not run"
+  osascript -e 'display notification "Factory zero-spend self-test failed — see log" with title "msb-factory-gate" sound name "Sosumi"' 2>/dev/null || true
+  exit 1
+fi
+log "zero-spend self-test OK"
+
+# 3. Run the factory gate. Capture the real exit code ($? inside an `if !`
 # branch would be the status of the negation, not the factory's).
 log "running factory gate..."
 MSB_REPO="$REPO" "$PY" "$FACTORY" > /tmp/factory_gate_daily_run.json 2>>"$LOG"
@@ -76,7 +86,7 @@ except Exception:
 
 log "gate verdict=$VERDICT unknowns=$UNKNOWNS"
 
-# 3. Alert on anything that is not a clean PASS.
+# 4. Alert on anything that is not a clean PASS.
 if [ "$VERDICT" != "PASS" ]; then
   log "ALERT: gate is $VERDICT (not PASS) — investigating required"
   osascript -e "display notification \"Factory gate is $VERDICT ($UNKNOWNS unknowns) — not PASS\" with title \"msb-factory-gate\" sound name \"Sosumi\"" 2>/dev/null || true
