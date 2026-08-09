@@ -78,7 +78,29 @@ jobs:
       - name: Hygiene suite (offline experiments)
         env:
           MSB_REPO: ${{ github.workspace }}
-        run: python scripts/hygiene/hygiene_runner.py --all
+          MSB_PYTHON: python
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+          MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
+          MSB_RESEARCH_ROOT: ${{ runner.temp }}/msb-research
+        run: |
+          set -euo pipefail
+          # h01-h10 (except h07) probe the live API on :8766, and h02
+          # deliberately SIGKILLs the listener and requires scripts/run.sh
+          # to respawn it. Boot the server under the repo's own supervisor
+          # so the restart contract is genuinely exercised (not simulated).
+          bash scripts/run.sh > /tmp/msb-hygiene-server.log 2>&1 &
+          SRV=$!
+          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
+            sleep 1
+          done
+          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
+            echo "server failed to boot under supervisor — log follows"
+            cat /tmp/msb-hygiene-server.log
+            exit 1
+          fi
+          python scripts/hygiene/hygiene_runner.py --all
 
       - name: Live auth probe (x-mcp-secret contract)
         env:
