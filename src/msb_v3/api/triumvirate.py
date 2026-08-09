@@ -3,23 +3,36 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 from pydantic import BaseModel
 
+from msb_v3.observability.metrics import (
+    TRIUMVIRATE_AUDIT,
+    TRIUMVIRATE_HIPPOCAMPUS,
+    TRIUMVIRATE_LOCK,
+    TRIUMVIRATE_MULTIMODAL,
+    TRIUMVIRATE_PEER_OPS,
+    TRIUMVIRATE_PLAN,
+    TRIUMVIRATE_SCAN,
+)
+from msb_v3.triumvirate.argus_auditor import _MULCH_DB, ArgusAuditor
+from msb_v3.triumvirate.guardian_scanner import (
+    GuardianScanner,
+    PoisonPill,
+    SBOMRegistry,
+)
+from msb_v3.triumvirate.hardware_sovereignty import (
+    ClusterAwareDiscovery,
+    DocumentChunk,
+    PeerNode,
+    VectorHippocampus,
+)
 from msb_v3.triumvirate.meta_cognitive_planner import MetaCognitivePlanner, PlanRequest
 from msb_v3.triumvirate.mission_anchor import MissionAnchor
-from msb_v3.triumvirate.guardian_scanner import GuardianScanner, PoisonPill, SBOMRegistry
-from msb_v3.triumvirate.argus_auditor import ArgusAuditor, _MULCH_DB
-from msb_v3.triumvirate.hardware_sovereignty import ClusterAwareDiscovery, VectorHippocampus, PeerNode, DocumentChunk
-from msb_v3.triumvirate.multimodal_interfaces import VisionClaw, HapticHeartbeat, SpeechFunctions
-from msb_v3.observability.metrics import (
-    TRIUMVIRATE_PLAN,
-    TRIUMVIRATE_LOCK,
-    TRIUMVIRATE_AUDIT,
-    TRIUMVIRATE_SCAN,
-    TRIUMVIRATE_PEER_OPS,
-    TRIUMVIRATE_HIPPOCAMPUS,
-    TRIUMVIRATE_MULTIMODAL,
+from msb_v3.triumvirate.multimodal_interfaces import (
+    HapticHeartbeat,
+    SpeechFunctions,
+    VisionClaw,
 )
 
 router = APIRouter(tags=["triumvirate"])

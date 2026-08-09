@@ -12,7 +12,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from msb_v3.harnesses.base import BaseHarness, HarnessResult
 
-
 # =============================================================================
 # STATE SCHEMA
 # =============================================================================
@@ -338,7 +337,7 @@ class RalphLoopHarness(BaseHarness):
     def _anneal(self, status: Status, error: str) -> str:
         """Diagnose failure, update directives, reinforce protocol."""
         diagnosis = self._diagnose(error)
-        directive = {
+        directive: dict[str, Any] = {
             "error": error,
             "diagnosis": diagnosis,
             "fix": self._prescribe(diagnosis),
@@ -456,7 +455,7 @@ class RalphLoopHarness(BaseHarness):
             if status.constraints.budget_spent_usd >= status.constraints.budget_cap_usd:
                 status.status = "OPEN"
                 self._write_status(status)
-                self._journal(f"circuit_breaker breaker=BUDGET reason=budget_exhausted")
+                self._journal("circuit_breaker breaker=BUDGET reason=budget_exhausted")
                 raise CircuitBreakerTripped(
                     f"budget ${status.constraints.budget_spent_usd} >= cap ${status.constraints.budget_cap_usd}",
                     breaker="BUDGET",

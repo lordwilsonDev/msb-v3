@@ -1,7 +1,11 @@
 """Tests for Triumvirate Phase 6 — Multimodal interfaces."""
 from __future__ import annotations
 
-from msb_v3.triumvirate.multimodal_interfaces import HapticHeartbeat, SpeechFunctions, VisionClaw
+from msb_v3.triumvirate.multimodal_interfaces import (
+    HapticHeartbeat,
+    SpeechFunctions,
+    VisionClaw,
+)
 
 
 def test_vision_claw_capture_returns_stub():

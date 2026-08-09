@@ -34,9 +34,9 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 REPO = Path(os.environ.get('MSB_REPO', Path(__file__).resolve().parents[2]))
 EVIDENCE_DIR = REPO / 'artifacts' / 'hygiene'

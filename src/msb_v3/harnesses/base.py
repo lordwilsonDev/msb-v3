@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from msb_v3.local_ai.client_factory import active_backend, get_client
 from msb_v3.local_ai.llama_client import LlamaCPPClient
@@ -49,11 +49,6 @@ class ChatHarness(BaseHarness):
         **kwargs: Any,
     ) -> HarnessResult:
         context = context or {}
-        hist = context.get("history")
-        prompt = query
-        if hist:
-            prompt = f"{hist}\nUser: {query}"
-
         system = context.get("system")
         tools = context.get("tools")
         dispatcher = active_backend()

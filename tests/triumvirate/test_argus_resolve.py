@@ -1,8 +1,6 @@
 """Tests for Triumvirate Phase 4 — Argus mulch resolve endpoint."""
 from __future__ import annotations
 
-import sqlite3
-
 import httpx
 
 BASE = "http://127.0.0.1:8766"
@@ -23,7 +21,7 @@ def _get(path, expected=200):
 
 
 def test_argus_mulch_resolve():
-    audit = _post("/triumvirate/argus/audit", {})
+    _post("/triumvirate/argus/audit", {})
     mulch = _get("/triumvirate/argus/mulch")
     rows = mulch.get("rows", [])
     if not rows:

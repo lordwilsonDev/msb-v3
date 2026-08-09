@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
-from sovereign_runtime.brain.plan_models import Action, PlanNode
+from sovereign_runtime.brain.plan_models import Action
 from sovereign_runtime.brain.planner_memory import PlannerMemory
 from sovereign_runtime.brain.recursive_planner import MAX_DEPTH, RecursivePlanner
 
@@ -47,7 +45,7 @@ def test_recursion_terminates_at_max_depth():
 def test_planner_memory_records_nodes():
     memory = PlannerMemory()
     planner = RecursivePlanner(memory=memory)
-    node = planner.plan("root", depth=0)
+    planner.plan("root", depth=0)
     assert len(memory.nodes) == 1
     assert memory.goal_nodes("root") == [memory.nodes.keys().__iter__().__next__()]
 

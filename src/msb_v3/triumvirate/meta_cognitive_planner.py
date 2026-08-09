@@ -3,16 +3,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from msb_v3.core.config import settings
-from msb_v3.memory.store import Message, MemoryStore
-
+from msb_v3.memory.store import MemoryStore, Message
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _PLANNER_STATE_FILE = _RUNTIME_ROOT / "plan_state.json"
@@ -223,7 +221,6 @@ class MetaCognitivePlanner:
 
     def _stage_plan_schema(self, goal: str, prior: Dict[str, Any]) -> StageResult:
         t0 = datetime.now(timezone.utc).timestamp()
-        now = datetime.now(timezone.utc).isoformat()
         timeline = {
             "now": ["initialize mission anchor", "verify local model execution"],
             "next": ["deploy guardian scanner", "wire sac monitoring"],

@@ -8,7 +8,11 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from msb_v3.core.config import settings
-from msb_v3.local_ai.client_factory import active_backend, get_client, set_active_backend
+from msb_v3.local_ai.client_factory import (
+    active_backend,
+    get_client,
+    set_active_backend,
+)
 from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
 

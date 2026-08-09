@@ -1,7 +1,6 @@
 """Argus Auditor — self-annealing audit engine + mulch learnings store."""
 from __future__ import annotations
 
-import os
 import sqlite3
 import time
 from dataclasses import dataclass

@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter
 
-from msb_v3.core.config import settings
-from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
 
 router = APIRouter(tags=["metrics"])
@@ -24,20 +22,6 @@ async def metrics_json() -> Dict[str, Any]:
 
 @router.get("/prometheus")
 async def metrics_prometheus() -> str:
-    from msb_v3.observability.metrics import (
-        QUERIES,
-        DISPATCHER_EVENTS,
-        LATENCY,
-        READY,
-        ACTIVE_CONNECTIONS,
-        TRIUMVIRATE_PLAN,
-        TRIUMVIRATE_LOCK,
-        TRIUMVIRATE_AUDIT,
-        TRIUMVIRATE_SCAN,
-        TRIUMVIRATE_PEER_OPS,
-        TRIUMVIRATE_HIPPOCAMPUS,
-        TRIUMVIRATE_MULTIMODAL,
-    )
     from prometheus_client import generate_latest
 
-    return generate_latest()
+    return generate_latest().decode("utf-8")

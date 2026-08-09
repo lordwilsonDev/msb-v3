@@ -100,7 +100,7 @@ def _render_argus_mulch(data: dict) -> str:
 @router.get("/", include_in_schema=False)
 async def home() -> HTMLResponse:
     items = (
-        f'<li><a href="/research/assistant/latest">latest</a>: <span class="ok">ready</span></li>'
+        '<li><a href="/research/assistant/latest">latest</a>: <span class="ok">ready</span></li>'
         + "".join(f"<li>{name}</li>" for name in _list_research_runs()[:20])
     )
     triumph = _get_triumvirate_dashboard()

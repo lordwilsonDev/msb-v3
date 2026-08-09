@@ -4,9 +4,11 @@ from __future__ import annotations
 import os
 import tempfile
 
-import pytest
-
-from msb_v3.triumvirate.guardian_scanner import GuardianScanner, PoisonPill, SBOMRegistry
+from msb_v3.triumvirate.guardian_scanner import (
+    GuardianScanner,
+    PoisonPill,
+    SBOMRegistry,
+)
 
 
 def test_scanner_blocks_dangerous_patterns():

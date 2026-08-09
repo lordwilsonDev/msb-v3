@@ -114,6 +114,8 @@ class AuditChain:
                 (component, event_type, json.dumps(payload, ensure_ascii=False), timestamp, prev_hash, record_hash),
             )
             seq = cur.lastrowid
+            if seq is None:
+                raise RuntimeError("audit insert did not return a rowid")
         return AuditRecord(
             seq=seq, component=component, event_type=event_type, payload=payload,
             timestamp=timestamp, prev_hash=prev_hash, record_hash=record_hash,

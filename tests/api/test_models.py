@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
-from msb_v3.core.config import settings
 from msb_v3.api.models import _list_models, _switch_backend, get_model_client
 
 

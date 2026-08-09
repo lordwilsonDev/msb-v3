@@ -5,7 +5,7 @@ Returns component health status in a stable JSON shape.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
 

@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from personal_intelligence.agent_factory import AgentFactory
 from personal_intelligence.context_engine import (
     ContextChunk,

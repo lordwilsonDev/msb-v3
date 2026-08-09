@@ -134,7 +134,7 @@ def test_chat_includes_memory_history(monkeypatch):
 
 
 def test_dispatcher_metrics_increment():
-    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+    from msb_v3.harnesses.base import ChatHarness
 
     class FakeClient:
         def generate(self, *args, **kwargs):

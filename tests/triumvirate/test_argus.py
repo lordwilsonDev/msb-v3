@@ -1,9 +1,7 @@
 """Tests for Triumvirate Phase 4 — Argus self-annealing audits."""
 from __future__ import annotations
 
-import os
 import sqlite3
-import tempfile
 
 from msb_v3.triumvirate.argus_auditor import ArgusAuditor, MulchFinding
 

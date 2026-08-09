@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import List, Optional
 
 from personal_intelligence.context_engine import ContextEngine
 from personal_intelligence.memory_graph import MemoryGraph

@@ -20,7 +20,7 @@ NOTIFY_URL = "https://api.telegram.org/bot{token}/sendMessage"
 router = APIRouter(tags=["research"])
 
 _RESEARCH_ROOT = Path("/Users/lordwilson/msb-v3/runtime/research")
-_RUN_STATE = {"active": None, "queue": [], "history": []}
+_RUN_STATE: dict[str, Any] = {"active": None, "queue": [], "history": []}
 _CACHE = "max-age=5"
 
 
@@ -194,7 +194,12 @@ class RalphLoopRunRequest(BaseModel):
 @router.post("/assistant/ralph-loop")
 async def run_ralph_loop(body: RalphLoopRunRequest) -> dict:
     """Execute a Ralph Loop research run with deterministic state guards."""
-    from msb_v3.agent.ralph_loop import create_ralph_loop, Status, Constraints, create_research_action
+    from msb_v3.agent.ralph_loop import (
+        Constraints,
+        Status,
+        create_ralph_loop,
+        create_research_action,
+    )
     from msb_v3.harnesses.base import ChatHarness
 
     slug = body.slug or re.sub(r"[^a-z0-9]+", "-", body.goal.lower()).strip("-")

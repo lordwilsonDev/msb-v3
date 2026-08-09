@@ -29,8 +29,6 @@ import sqlite3
 import tempfile
 from pathlib import Path
 from typing import Any
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError
 
 from msb_v3.uac.audit_chain import AuditChain
 

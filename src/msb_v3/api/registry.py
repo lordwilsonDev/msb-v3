@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from importlib.metadata import entry_points
-
+from msb_v3.api.chat import router as chat_router
 from msb_v3.api.health import router as health_router
 from msb_v3.api.memory import router as memory_router
-from msb_v3.api.chat import router as chat_router
 from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.studio import router as studio_router
 from msb_v3.api.system import router as system_router
-
 
 REGISTRY = [
     {"router": health_router, "prefix": "/health", "tags": ["health"]},

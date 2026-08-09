@@ -4,8 +4,6 @@ from __future__ import annotations
 import importlib
 import json
 
-import pytest
-
 import msb_v3.triumvirate.mission_anchor as mission_mod
 
 

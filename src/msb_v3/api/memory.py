@@ -7,7 +7,6 @@ from typing import Any, Dict, List
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from msb_v3.core.config import settings
 from msb_v3.memory.store import MemoryStore, Message
 
 router = APIRouter()

@@ -1,11 +1,13 @@
 """Tests for Triumvirate Phase 5 — Hardware Sovereignty."""
 from __future__ import annotations
 
-import os
-import tempfile
-
 from msb_v3.triumvirate import hardware_sovereignty as hw_mod
-from msb_v3.triumvirate.hardware_sovereignty import ClusterAwareDiscovery, VectorHippocampus, PeerNode, DocumentChunk
+from msb_v3.triumvirate.hardware_sovereignty import (
+    ClusterAwareDiscovery,
+    DocumentChunk,
+    PeerNode,
+    VectorHippocampus,
+)
 
 
 def test_cluster_register_and_peers(tmp_path, monkeypatch):
