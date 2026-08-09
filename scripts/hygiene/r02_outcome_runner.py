@@ -29,6 +29,7 @@ import datetime as dt
 import json
 import math
 import os
+import statistics
 import sys
 import time
 import uuid
@@ -49,6 +50,17 @@ EMBED_DIM = 768
 NDCG_MIN_IMPROVEMENT = 0.15   # >= 15% over vector-only baseline
 PRECISION_MIN = 0.90          # > 0.90 routing precision
 P95_MAX_MS = 500.0            # < 500 ms p95 latency
+
+# Absolute floor on router mean NDCG: the relative-improvement gate alone can
+# pass when BOTH plans are mediocre (0.4 -> 0.46 = +15%). This closes the
+# "both bad but 15% less bad" hole; routing precision only guards the planner.
+NDCG_ROUTER_FLOOR = 0.50
+# Relative improvement is only meaningful when the baseline actually retrieves;
+# below this, treat the comparison as "baseline broken" (see main()).
+NDCG_MIN_BASELINE = 0.10
+# Timed trials per case; the per-case median feeds p95. A single cold/Ollama
+# hiccup otherwise becomes p95 itself (12 samples -> p95 == max).
+LATENCY_TRIALS = 3
 
 
 def _now() -> str:
@@ -143,10 +155,11 @@ def ranked_doc_ids(matches: list[dict]) -> list[str]:
     return [m["metadata"].get("doc_id", m["id"]) for m in matches]
 
 
-def build_artifact(metrics: dict, cases_detail: list[dict], started: float,
+def build_artifact(metrics: dict, n_cases: int, started: float,
                    errors: list[str]) -> dict:
     passed = (
         metrics["ndcg_improvement_ok"]
+        and metrics["ndcg_floor_ok"]
         and metrics["routing_precision_ok"]
         and metrics["latency_ok"]
     )
@@ -156,7 +169,7 @@ def build_artifact(metrics: dict, cases_detail: list[dict], started: float,
         "artifact": str(EVIDENCE_DIR / f"r02_outcome_{_now()}.json"),
         "skill": SKILL,
         "input": f"pytest-style offline eval over {FIXTURE.name} "
-                 f"({len(cases_detail)} labeled cases, live Qdrant+Ollama)",
+                 f"({n_cases} labeled cases, live Qdrant+Ollama)",
         "environment": f"msb-v3 repo @ {REPO}",
         "expected_behavior": (
             f"NDCG@10 improvement >= {NDCG_MIN_IMPROVEMENT:.0%} over vector-only, "
@@ -266,9 +279,15 @@ async def main() -> int:
             baseline_scores.append(
                 ndcg_at_k(ranked_doc_ids(baseline["matches"]), relevant))
 
-            started_case = time.perf_counter()
-            routed = await router.run(query, top_k=TOP_K)
-            latencies.append((time.perf_counter() - started_case) * 1000.0)
+            # Timed trials: the per-case MEDIAN feeds p95, so a single
+            # cold/hiccup trial can't become the p95 by itself.
+            lat_trials: list[float] = []
+            routed = None
+            for _ in range(LATENCY_TRIALS):
+                started_case = time.perf_counter()
+                routed = await router.run(query, top_k=TOP_K)
+                lat_trials.append((time.perf_counter() - started_case) * 1000.0)
+            latencies.append(statistics.median(lat_trials))
             router_scores.append(
                 ndcg_at_k(ranked_doc_ids(routed["matches"]), relevant))
 
@@ -293,10 +312,14 @@ async def main() -> int:
 
         baseline_mean = sum(baseline_scores) / len(baseline_scores)
         router_mean = sum(router_scores) / len(router_scores)
-        if baseline_mean > 0:
+        if baseline_mean >= NDCG_MIN_BASELINE:
+            # Relative improvement, as the blueprint states it.
             improvement = (router_mean - baseline_mean) / baseline_mean
         else:
-            improvement = 1.0 if router_mean > 0 else 0.0
+            # Baseline effectively broken (empty/near-empty retrieval): the
+            # ratio would amplify noise. The router must clear the absolute
+            # floor to count as an improvement.
+            improvement = 1.0 if router_mean >= NDCG_ROUTER_FLOOR else 0.0
         improvement_pct = improvement * 100.0
 
         sorted_lat = sorted(latencies)
@@ -308,6 +331,7 @@ async def main() -> int:
             "ndcg_router_mean": round(router_mean, 4),
             "ndcg_improvement_pct": round(improvement_pct, 1),
             "ndcg_improvement_ok": improvement_pct >= NDCG_MIN_IMPROVEMENT * 100.0,
+            "ndcg_floor_ok": router_mean >= NDCG_ROUTER_FLOOR,
             "routing_precision": round(routing_precision, 4),
             "routing_recall": round(routing_recall, 4),
             "routing_precision_ok": routing_precision > PRECISION_MIN,
@@ -318,10 +342,11 @@ async def main() -> int:
             "route_errors": route_errors,
             "per_case": cases_detail,
         }
-        artifact = build_artifact(metrics, cases_detail, started, errors)
+        artifact = build_artifact(metrics, len(cases), started, errors)
         artifact["state_after"] = metrics
         artifact["actual_behavior"] = (
             f"improvement={improvement_pct:.1f}% (gate >= {NDCG_MIN_IMPROVEMENT * 100:.0f}%) | "
+            f"router_ndcg={router_mean:.3f} (floor {NDCG_ROUTER_FLOOR}) | "
             f"precision={routing_precision:.3f} (gate > {PRECISION_MIN}) | "
             f"p95={p95:.0f}ms (gate < {P95_MAX_MS:.0f}ms) | verdict={artifact['verdict']}"
         )

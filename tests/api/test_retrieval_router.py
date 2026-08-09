@@ -86,6 +86,32 @@ def test_temporal_cutoff_quarter():
         assert abs(cutoff - (_time.time() - 90 * 86400)) < 60
 
 
+def test_r02_fixture_routing_precision():
+    """The deterministic planner leg of the r02 outcome gate, runnable in CI
+    (no Qdrant/Ollama needed): every labeled eval case's cue-based plan must
+    match its human-labeled expected routes. Pins the fixture to the planner
+    so a cue-list change can't silently drift routing precision — the live
+    NDCG/latency legs still need infra and stay machine-run."""
+    import json
+    from pathlib import Path
+
+    fixture = Path(__file__).resolve().parents[2] / "scripts" / "hygiene" / "r02_eval_cases.jsonl"
+    assert fixture.exists(), f"missing fixture: {fixture}"
+    cases = [
+        json.loads(line)
+        for line in fixture.read_text(encoding="utf-8").splitlines()
+        if line.strip() and json.loads(line).get("kind") == "case"
+    ]
+    assert len(cases) >= 10
+    for case in cases:
+        plan = planner.plan_query(case["query"], top_k=10)
+        predicted = {r["index"] for r in plan["routes"]}
+        assert predicted == set(case["expected_routes"]), (
+            f"{case['query']!r}: planner {sorted(predicted)} != "
+            f"labeled {case['expected_routes']}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Fusion — weighted RRF
 # ---------------------------------------------------------------------------
