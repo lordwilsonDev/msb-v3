@@ -145,7 +145,12 @@ try:
     code7, body7, lat7 = probe(record, 'restored_ready', '/ready')
     code8, body8, lat8 = probe(record, 'restored_status', '/status')
 
-    recovered = code6 == 200 and code7 == 200
+    # Recovery means returning to the pre-subtraction posture. /ready's
+    # absolute value depends on host provisioning (ollama/db present or
+    # not), so compare against the baseline captured at the start rather
+    # than hard-coding 200 — otherwise the experiment fails on any host
+    # that legitimately reports 503 (e.g. CI without ollama).
+    recovered = code6 == 200 and code7 == code1
     record['state_after']['restoration_recovered'] = recovered
     record['evidence'].append(f"restored: health={code6} ready={code7} status={code8} recovered={recovered}")
     record['recovery'] = f"restored truth dir; health={code6} ready={code7}"
