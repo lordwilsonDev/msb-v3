@@ -30,7 +30,6 @@ def test_guardian_scan_allows_clean_script():
 
 
 def test_guardian_sbom_round_trip():
-    import tempfile
     with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tf:
         tf.write(b"x=1\n")
         path = tf.name

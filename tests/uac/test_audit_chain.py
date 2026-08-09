@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from msb_v3.uac.audit_chain import AuditChain, _GENESIS_HASH
+from msb_v3.uac.audit_chain import _GENESIS_HASH, AuditChain
 
 
 def _chain(tmp_path) -> AuditChain:

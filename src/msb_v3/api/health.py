@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, Response
 
 from msb_v3.core.config import settings
-from msb_v3.observability.metrics import Metrics
 
 router = APIRouter(tags=["health"])
 
@@ -43,8 +41,8 @@ async def _check_ollama() -> str:
         writer.close()
         await writer.wait_closed()
         return "ok"
-    except Exception as exc:
-        return f"error"
+    except Exception:
+        return "error"
 
 
 async def _check_db() -> str:

@@ -37,11 +37,11 @@ import socket
 import subprocess
 import sys
 import time
+from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any
-from http.client import IncompleteRead
-from urllib.request import Request, urlopen
 from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 REPO = Path(os.environ.get('MSB_REPO', Path(__file__).resolve().parents[2]))
 EVIDENCE_DIR = REPO / 'artifacts' / 'hygiene'

@@ -1,8 +1,9 @@
 """Knowledge endpoints — extracted briefs from NotebookLM and sovereign stack research."""
 from __future__ import annotations
 
-from fastapi import APIRouter
 from pathlib import Path
+
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter()

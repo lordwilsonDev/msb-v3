@@ -14,8 +14,8 @@ import time
 
 import pytest
 
-from sovereign_runtime import EventBus, Event, identity, load_config, get
-from sovereign_runtime.core.health import HealthSystem, ComponentHealth
+from sovereign_runtime import Event, EventBus, get, identity, load_config
+from sovereign_runtime.core.health import HealthSystem
 
 
 def test_event_bus_emit_and_deliver():

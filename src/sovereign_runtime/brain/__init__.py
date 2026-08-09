@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from sovereign_runtime.brain.plan_models import PlanNode
 from sovereign_runtime.brain.planner_memory import PlannerMemory
 from sovereign_runtime.brain.recursive_planner import RecursivePlanner
-from sovereign_runtime.events.event_bus import Event, EventBus
 from sovereign_runtime.core.identity import identity
+from sovereign_runtime.events.event_bus import Event, EventBus
 
 
 class BrainService:

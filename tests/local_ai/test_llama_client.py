@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from msb_v3.local_ai.llama_client import LlamaCPPClient, LocalAIResponse
 
 

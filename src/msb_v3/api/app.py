@@ -13,29 +13,27 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
-from msb_v3.api.health import router as health_router
-from msb_v3.api.memory import router as memory_router
 from msb_v3.api.chat import router as chat_router
-from msb_v3.api.metrics import router as metrics_router
-from msb_v3.api.studio import router as studio_router
-from msb_v3.api.system import router as system_router
-from msb_v3.api.status import router as status_router
-from msb_v3.api.research import router as research_router
-from msb_v3.api.safety import router as safety_router
 from msb_v3.api.evolution import router as evolution_router
-from msb_v3.api.notify import router as notify_router
+from msb_v3.api.graph import router as graph_router
+from msb_v3.api.health import router as health_router
 from msb_v3.api.home import router as home_router
-from msb_v3.api.triumvirate import router as triumvirate_router
-from msb_v3.api.skill_router import router as skill_router
-from msb_v3.api.models import router as models_router
 from msb_v3.api.knowledge import router as knowledge_router
 from msb_v3.api.mcp_bridge import router as mcp_router
-from msb_v3.business.registry import router as business_router
-from msb_v3.api.graph import router as graph_router
-from msb_v3.api.smi import router as smi_router
-from msb_v3.api.tenants import router as tenants_router
+from msb_v3.api.memory import router as memory_router
+from msb_v3.api.metrics import router as metrics_router
+from msb_v3.api.models import router as models_router
+from msb_v3.api.notify import router as notify_router
 from msb_v3.api.rag import router as rag_router
-from msb_v3.core.config import settings
+from msb_v3.api.research import router as research_router
+from msb_v3.api.safety import router as safety_router
+from msb_v3.api.skill_router import router as skill_router
+from msb_v3.api.smi import router as smi_router
+from msb_v3.api.studio import router as studio_router
+from msb_v3.api.system import router as system_router
+from msb_v3.api.tenants import router as tenants_router
+from msb_v3.api.triumvirate import router as triumvirate_router
+from msb_v3.business.registry import router as business_router
 
 
 @asynccontextmanager

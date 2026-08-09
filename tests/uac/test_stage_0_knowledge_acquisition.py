@@ -14,8 +14,15 @@ from msb_v3.uac.audit_chain import AuditChain
 from msb_v3.uac.axiom_library import AxiomLibrary
 from msb_v3.uac.models import RequirementsSpecification
 from msb_v3.uac.observer_log import ObserverLog
-from msb_v3.uac.research_backend import NullResearchBackend, ResearchBackendError, SearchResult
-from msb_v3.uac.stage_0_knowledge_acquisition import Stage0KnowledgeAcquisitionEngine, _RESEARCH_CATEGORIES
+from msb_v3.uac.research_backend import (
+    NullResearchBackend,
+    ResearchBackendError,
+    SearchResult,
+)
+from msb_v3.uac.stage_0_knowledge_acquisition import (
+    _RESEARCH_CATEGORIES,
+    Stage0KnowledgeAcquisitionEngine,
+)
 
 
 def _isolated_mission_anchor(tmp_path, monkeypatch):

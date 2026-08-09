@@ -1,10 +1,9 @@
-import json
 
 import pytest
 from fastapi.testclient import TestClient
 
-from msb_v3.api.app import create_app
 from msb_v3.api import mcp_bridge
+from msb_v3.api.app import create_app
 
 
 @pytest.fixture()

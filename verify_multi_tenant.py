@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Quick verification of multi-tenant platform deployment."""
+
 import requests
-import time
 
 BASE = "http://localhost:8766"
 
@@ -70,10 +70,8 @@ def main():
         )
         ok = r.status_code == 200
         data = r.json() if ok else {}
-        text = data.get("payload", {}).get("text", data.get("text", ""))
     except Exception as e:
         ok = False
-        text = ""
         print(f"  chat error: {e}")
     check("POST /chat with X-Tenant-ID", ok, f"model={data.get('payload',{}).get('model','?')}")
 
@@ -94,7 +92,7 @@ def main():
         vault = Path("/Users/lordwilson/Documents/Vault")
         dirs = sorted([d.name for d in vault.iterdir() if d.is_dir() and not d.name.startswith('.')])
         ok = len(dirs) >= 10
-    except Exception as e:
+    except Exception:
         ok = False
         dirs = []
     check("Vault directory structure", ok, f"{len(dirs)} top-level dirs")

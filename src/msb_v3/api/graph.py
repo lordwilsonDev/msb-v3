@@ -5,14 +5,13 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from msb_v3.core.config import settings
 from msb_v3.memory.store import MemoryStore, Message
 
 router = APIRouter()

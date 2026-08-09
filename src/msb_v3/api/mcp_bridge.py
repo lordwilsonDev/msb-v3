@@ -215,7 +215,7 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                         root = _normalize_vault_path(call.args.get("path", ""))
                         if not root.exists() or not root.is_dir():
                             raise HTTPException(status_code=404, detail=f"Directory not found: {call.args.get('path')}")
-                        tree = {}
+                        tree: dict[str, Any] = {}
                         for p in sorted(root.rglob("*.md")):
                             rel = p.relative_to(root)
                             parts = rel.parts
@@ -231,7 +231,7 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                     case "search_query":
                         root = _VAULT_BASE
                         query = call.args.get("query", "")
-                        results = []
+                        results: list[dict[str, Any]] = []
                         for p in root.rglob("*.md"):
                             text = p.read_text(encoding="utf-8", errors="replace")
                             if query.lower() in text.lower():

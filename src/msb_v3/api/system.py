@@ -18,9 +18,9 @@ def system_info() -> Dict[str, Any]:
 
 @router.get("/health")
 def system_health() -> Dict[str, Any]:
+    from msb_v3.db import sqlite as db
     from msb_v3.local_ai.ollama import LocalAIClient
     from msb_v3.observability.metrics import Metrics
-    from msb_v3.db import sqlite as db
 
     checks: Dict[str, Any] = {"app": "ok", "ready": bool(Metrics._ready)}
     try:
@@ -42,7 +42,13 @@ def system_health() -> Dict[str, Any]:
 def list_routes() -> Dict[str, Any]:
     from msb_v3.api.registry import REGISTRY
 
-    return {"routes": [{"prefix": e["prefix"], "tags": e["tags"]} for e in REGISTRY]}
+    # Guarded iteration: a malformed (non-dict) registry entry is skipped
+    # rather than raising — /routes is a diagnostic surface and must not 500.
+    routes = []
+    for e in REGISTRY:
+        if isinstance(e, dict):
+            routes.append({"prefix": e["prefix"], "tags": e["tags"]})
+    return {"routes": routes}
 
 
 @router.get("/config")

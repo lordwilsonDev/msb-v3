@@ -1,7 +1,6 @@
 """Skill router — discover and execute Hermes skills via FastAPI."""
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List
@@ -21,7 +20,7 @@ class SkillExecuteRequest(BaseModel):
 
 
 def _list_skills() -> List[Dict[str, str]]:
-    skills = []
+    skills: List[Dict[str, str]] = []
     if not _SKILLS_DIR.exists():
         return skills
     for category_dir in sorted(_SKILLS_DIR.iterdir()):

@@ -5,15 +5,12 @@ import ast
 import hashlib
 import hmac
 import json
-import os
 import re
-import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from msb_v3.core.config import settings
-
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _SBOM_FILE = _RUNTIME_ROOT / "sbom_registry.json"

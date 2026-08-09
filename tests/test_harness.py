@@ -1,8 +1,9 @@
 """API tests for long-horizon harness routes."""
 from __future__ import annotations
 
-import httpx
 from typing import Any
+
+import httpx
 
 BASE = "http://127.0.0.1:8766"
 

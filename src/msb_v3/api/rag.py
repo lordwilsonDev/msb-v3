@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
-import httpx
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 

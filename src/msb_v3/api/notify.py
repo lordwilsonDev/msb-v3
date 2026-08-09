@@ -1,11 +1,10 @@
 """Notify router with Telegram delivery."""
 from __future__ import annotations
 
-import datetime
 import json
 import os
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 from fastapi import APIRouter
