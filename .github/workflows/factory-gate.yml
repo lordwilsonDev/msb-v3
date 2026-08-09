@@ -1,0 +1,68 @@
+name: factory-gate
+
+# Engineering-hygiene factory gate for msb-v3.
+# Every push/PR to main re-runs the real pytest suite, the offline hygiene
+# experiments, and a live x-mcp-secret auth probe against a freshly booted
+# server. Any non-PASS leg fails the job, which blocks the push/merge.
+#
+# Requires one repo secret:
+#   MSB_MCP_SECRET  ->  the MCP_BRIDGE_SECRET the server must accept.
+#                       The probe is fail-closed: missing secret = failed job.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  gate:
+    name: factory-gate (pytest + hygiene + live auth)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install (editable + dev extras)
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # Note: bare `pytest` follows pyproject testpaths = tests +
+      # src/sovereign_runtime/tests (253 tests). The factory gate artifact
+      # (factory_gate.json) runs `pytest tests/` (232) — CI is deliberately
+      # the wider net. factory_gate.json is a point-in-time record, not a CI
+      # mirror.
+      - name: Regression suite (pytest)
+        run: pytest -q
+
+      - name: Hygiene suite (offline experiments)
+        env:
+          MSB_REPO: ${{ github.workspace }}
+        run: python scripts/hygiene/hygiene_runner.py --all
+
+      - name: Live auth probe (x-mcp-secret contract)
+        env:
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+        run: |
+          set -euo pipefail
+          : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"
+          python -m msb_v3 > /tmp/msb-server.log 2>&1 &
+          SRV=$!
+          trap 'kill $SRV 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
+            sleep 1
+          done
+          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
+            echo "server failed to boot — log follows"; cat /tmp/msb-server.log; exit 1
+          fi
+          missing=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8766/mcp/tools)
+          wrong=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: wrong-secret" http://127.0.0.1:8766/mcp/tools)
+          correct=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: $MCP_BRIDGE_SECRET" http://127.0.0.1:8766/mcp/tools)
+          echo "auth probe: missing=$missing wrong=$wrong correct=$correct (expect 401 401 200)"
+          [ "$missing" = "401" ] && [ "$wrong" = "401" ] && [ "$correct" = "200" ]
