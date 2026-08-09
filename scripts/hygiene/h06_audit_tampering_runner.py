@@ -29,7 +29,7 @@ if dotenv.exists():
         if '=' in line:
             k, v = line.split('=', 1)
             env[k.strip()] = v.strip()
-SECRET = env.get('MCP_BRIDGE_SECRET', os.environ.get('MCP_BRIDGE_SECRET', ''))
+SECRET = os.environ.get('MCP_BRIDGE_SECRET', env.get('MCP_BRIDGE_SECRET', ''))
 BASE_URL = env.get('MSB_BASE_URL', os.environ.get('MSB_BASE_URL', 'http://127.0.0.1:8766'))
 TRUTH_DIR = REPO / env.get('MSB_TRUTH_DIR', 'data/truth')
 TRUTH_DIR.mkdir(parents=True, exist_ok=True)
