@@ -27,8 +27,8 @@ import threading
 from datetime import datetime, timedelta, timezone
 
 _FILTER_PATTERN = re.compile(r"\b(tag|tags|folder|author|category|type)\s*[:=]\s*([a-z0-9_\-/.]+)", re.IGNORECASE)
-_WINDOW_PATTERN = re.compile(r"last\s+(\d+)\s+(day|week|month|year)s?", re.IGNORECASE)
-_UNIT_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
+_WINDOW_PATTERN = re.compile(r"last\s+(\d+)\s+(day|week|month|quarter|year)s?", re.IGNORECASE)
+_UNIT_DAYS = {"day": 1, "week": 7, "month": 30, "quarter": 90, "year": 365}
 
 # One shared Qdrant client for the whole retrieval package: the per-query
 # adapter instances reuse it instead of opening a fresh client per route
@@ -75,10 +75,15 @@ def _temporal_cutoff(query: str) -> float:
     Returned as epoch seconds: Qdrant Range filters are numeric, and the
     conventional payload encoding for timestamps is Unix time (float).
     """
-    m = _WINDOW_PATTERN.search(query.lower())
+    q = query.lower()
+    m = _WINDOW_PATTERN.search(q)
     if m:
         days = _UNIT_DAYS[m.group(2)] * int(m.group(1))
-    elif any(c in query.lower() for c in ("recent", "last week", "this week", "yesterday", "today")):
+    elif "quarter" in q and ("last" in q or "this" in q):
+        days = 90
+    elif "month" in q and ("last" in q or "this" in q):
+        days = 30
+    elif any(c in q for c in ("recent", "last week", "this week", "yesterday", "today")):
         days = 7
     else:
         days = 30

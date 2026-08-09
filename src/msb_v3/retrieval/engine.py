@@ -14,16 +14,24 @@ from typing import Any
 
 from msb_v3.retrieval.fusion import rrf
 from msb_v3.retrieval.indexes import get_adapter
-from msb_v3.retrieval.planner import plan_query
+from msb_v3.retrieval.planner import plan_explicit, plan_query
 
 
 class RetrievalRouter:
     def __init__(self, tenant_id: str = "default"):
         self.tenant_id = tenant_id
 
-    async def run(self, query: str, top_k: int = 5) -> dict[str, Any]:
+    async def run(
+        self, query: str, top_k: int = 5, routes: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Run the retrieval plan for a query.
+
+        routes=None -> the cue-based plan (normal path). routes=[...] forces
+        an explicit route set with equal weights — used by the outcome gate to
+        measure the single-index baseline vs the full plan.
+        """
         started = time.perf_counter()
-        plan = plan_query(query, top_k)
+        plan = plan_query(query, top_k) if routes is None else plan_explicit(routes, top_k)
         weights = {r["index"]: r["weight"] for r in plan["routes"]}
 
         results_by_route: dict[str, list[dict]] = {}
@@ -44,6 +52,7 @@ class RetrievalRouter:
         matches: list[dict[str, Any]] = []
         for item in fused[: max(top_k, 1)]:
             matches.append({
+                "id": item["best"].get("id", ""),
                 "score": item["score"],
                 "source": item["best"].get("source", ""),
                 "text": item["best"].get("text", ""),
