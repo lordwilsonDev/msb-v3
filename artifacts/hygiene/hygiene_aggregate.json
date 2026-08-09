@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-08-09T14:57:38.387660+00:00",
+  "environment": {
+    "repo": "/Users/lordwilson/msb-v3",
+    "python": "/opt/homebrew/Caskroom/miniforge/base/bin/python",
+    "experiments": 2
+  },
+  "results": [
+    {
+      "experiment": "h05_contract_fuzzing",
+      "verdict": "pass",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260809T145738Z.json",
+      "returncode": 0
+    },
+    {
+      "experiment": "h07_auto_healing",
+      "verdict": "fail",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h07_auto_healing_20260809T145738Z.json",
+      "returncode": 1
+    }
+  ],
+  "factory_verdict": "fail",
+  "factory_gate": {
+    "any_fail": true,
+    "any_unknown": false,
+    "all_pass": false
+  }
+}
