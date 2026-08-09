@@ -11,16 +11,41 @@ All three routes are served from that same collection:
 Adapters normalize every hit to {id, score, text, source, metadata}. They are
 lazily imported from msb_v3.api.rag so this package imports cleanly even
 where qdrant/ollama are absent (offline unit tests never touch them).
+
+Temporal contract: the temporal route filters on payload
+``metadata.timestamp`` as EPOCH SECONDS (float) via a numeric Qdrant Range.
+msb-v3's /rag/index passes metadata through untouched, so indexers must store
+timestamps in that encoding for the temporal route to match. The opt-in live
+test (test_live_smi_query_temporal) seeds conforming data and proves the
+filter works end-to-end.
 """
 
 from __future__ import annotations
 
 import re
+import threading
 from datetime import datetime, timedelta, timezone
 
 _FILTER_PATTERN = re.compile(r"\b(tag|tags|folder|author|category|type)\s*[:=]\s*([a-z0-9_\-/.]+)", re.IGNORECASE)
 _WINDOW_PATTERN = re.compile(r"last\s+(\d+)\s+(day|week|month|year)s?", re.IGNORECASE)
 _UNIT_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
+
+# One shared Qdrant client for the whole retrieval package: the per-query
+# adapter instances reuse it instead of opening a fresh client per route
+# (3 per request otherwise). Lazy init under a lock — safe under the
+# engine's concurrent route dispatch.
+_shared_client = None
+_shared_client_lock = threading.Lock()
+
+
+def _client():
+    global _shared_client
+    if _shared_client is None:
+        with _shared_client_lock:
+            if _shared_client is None:
+                from msb_v3.api.rag import _qdrant_client  # lazy: Qdrant optional
+                _shared_client = _qdrant_client()
+    return _shared_client
 
 
 def _collection(tenant_id: str) -> str:
@@ -69,16 +94,12 @@ class _QdrantBase:
 
     def __init__(self, tenant_id: str = "default"):
         self.tenant_id = tenant_id
-        self._client = None
 
     async def search(self, query: str, top_k: int = 5, **_kw) -> list[dict]:
         raise NotImplementedError  # overridden by VectorIndex/StructuralIndex/TemporalIndex
 
     def _qdrant(self):
-        if self._client is None:
-            from msb_v3.api.rag import _qdrant_client  # lazy: Qdrant optional
-            self._client = _qdrant_client()
-        return self._client
+        return _client()
 
     async def _embed(self, text: str) -> list[float]:
         from msb_v3.api.rag import _embed  # lazy: Ollama optional
@@ -123,6 +144,12 @@ class StructuralIndex(_QdrantBase):
 
 
 class TemporalIndex(_QdrantBase):
+    """Recency-filtered vector search over metadata.timestamp.
+
+    Contract: payload metadata.timestamp must be EPOCH SECONDS (float) —
+    Qdrant Range is numeric. See the module docstring.
+    """
+
     name = "temporal"
 
     async def search(self, query: str, top_k: int = 5, **_kw) -> list[dict]:
