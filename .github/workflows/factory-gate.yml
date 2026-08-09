@@ -55,9 +55,10 @@ jobs:
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
         run: |
           set -euo pipefail
+          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
           python -m msb_v3 > /tmp/msb-test-server.log 2>&1 &
           SRV=$!
-          trap 'kill $SRV 2>/dev/null || true' EXIT
+          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
           for _ in $(seq 1 60); do
             curl -sf -o /dev/null http://127.0.0.1:8766/health && break
             sleep 1
@@ -105,21 +106,34 @@ jobs:
       - name: Live auth probe (x-mcp-secret contract)
         env:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+          MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
         run: |
           set -euo pipefail
           : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"
+          # The hygiene step just ran a supervised server on :8766. Make sure
+          # nothing is left bound (an orphaned respawn could collide with this
+          # boot) and wait for the port to actually free.
+          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
+          for _ in $(seq 1 10); do
+            lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | grep -q . || break
+            sleep 1
+          done
           python -m msb_v3 > /tmp/msb-server.log 2>&1 &
           SRV=$!
-          trap 'kill $SRV 2>/dev/null || true' EXIT
-          for _ in $(seq 1 30); do
+          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
+          for _ in $(seq 1 60); do
             curl -sf -o /dev/null http://127.0.0.1:8766/health && break
             sleep 1
           done
           if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-            echo "server failed to boot — log follows"; cat /tmp/msb-server.log; exit 1
+            echo "server failed to boot — log follows"
+            cat /tmp/msb-server.log
+            exit 1
           fi
-          missing=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8766/mcp/tools)
-          wrong=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: wrong-secret" http://127.0.0.1:8766/mcp/tools)
-          correct=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: $MCP_BRIDGE_SECRET" http://127.0.0.1:8766/mcp/tools)
+          # `|| echo 000`: if the server vanishes mid-probe, fail the assertion
+          # with a clear value instead of dying with curl's transport exit code.
+          missing=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8766/mcp/tools || echo 000)
+          wrong=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: wrong-secret" http://127.0.0.1:8766/mcp/tools || echo 000)
+          correct=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: $MCP_BRIDGE_SECRET" http://127.0.0.1:8766/mcp/tools || echo 000)
           echo "auth probe: missing=$missing wrong=$wrong correct=$correct (expect 401 401 200)"
           [ "$missing" = "401" ] && [ "$wrong" = "401" ] && [ "$correct" = "200" ]
