@@ -145,13 +145,18 @@ trace_id issued (or echoed)
 4. `output_guardrail.verdict == "SUPPORTING"` ⇒ `citation_rate ≥ threshold` (default 0.5) and `answer.citations` non-empty.
 5. Every `source_id` in `answer.citations` exists in `sources[]` (no ghost citations). **Memory-only citations are exempt:** a citation with `memory_ref` set is *not* required to appear in `sources[]` — it references session memory, not a retrieved document.
 6. `evidence_ref` is present on every `answered` and `blocked` response.
-7. `claim_id` is deterministic — same query+sources+answer ⇒ same claim_id (replay-safe, dedupe-safe).
-   **Canonicalization (the "canonical" in invariant 7):** `sources` are sorted by
-   `source_id` before hashing, so RRF tie-order jitter can never change a
-   claim_id for the same epistemic event. Live-model text is non-deterministic,
-   so cross-run stability of the *hash inputs* is guaranteed only in stub mode;
-   the §8 `evidence_id` is content-hashed on the artifact itself, which is what
-   replay dedupe actually relies on.
+7. `claim_id` is deterministic — same query+source_ids+answer ⇒ same claim_id (replay-safe, dedupe-safe).
+   **Canonicalization (the "canonical" in invariant 7) — pinned, matching the
+   ledger-producer spec:** `claim_id = sha256(canonical_json({query,
+   source_ids: sorted, answer_text}))[:12]`. The hash base is the **sorted
+   `source_id` list**, NOT the full source objects (score/provenance/source_ts
+   are evidence, not identity — and they vary with retrieval, which would break
+   determinism). `source_ids` are sorted lexicographically before hashing so RRF
+   tie-order jitter can never change a claim_id for the same epistemic event.
+   Live-model text is non-deterministic, so cross-run stability of the *hash
+   inputs* is guaranteed only in stub mode; the §8 `evidence_id` is
+   content-hashed on the artifact itself, which is what replay dedupe actually
+   relies on.
 8. `schema_version` is echoed unchanged.
 
 ---
@@ -179,7 +184,8 @@ One contract, two named verdicts — do not collapse them.
 > This is why blocked responses get their own claim (`claim:ok:query:<hash>`),
 > distinct from the answer claim. The ledger's verdict engine already handles
 > CONTRADICTING against never-supported claims → UNVERIFIED-with-evidence (no
-> false elevation).
+> false elevation), and a previously-supported `claim:ok:query` hit by a fresh
+> block → REGRESSED (historical green + current red).
 
 ---
 
