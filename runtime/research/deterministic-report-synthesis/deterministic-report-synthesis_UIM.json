@@ -2,12 +2,12 @@
   "topic": "deterministic report synthesis",
   "slug": "deterministic-report-synthesis",
   "phase1": {
-    "assumption": "Deterministic methods can fully and accurately synthesize reports without requiring probabilistic or contextual elements.",
-    "inversion": "Deterministic methods are inherently limited and cannot account for the complexity, ambiguity, or contextual nuances required for accurate report synthesis.",
+    "assumption": "Deterministic report synthesis can produce accurate, consistent, and contextually relevant reports without requiring human intervention or adaptive learning.",
+    "inversion": "Deterministic report synthesis cannot account for the complexity and variability required for accurate report generation, necessitating human oversight or adaptive algorithms.",
     "predictions": [
-      "Reports generated using deterministic methods will show 100% consistency across multiple runs.",
-      "Human reviewers will rate deterministic reports as accurate 95% of the time compared to probabilistic methods.",
-      "The time taken to synthesize a report using deterministic methods will be 40% faster than probabilistic methods."
+      "Reports synthesized using deterministic methods will achieve 95%+ accuracy in factual alignment with human-generated reports (measured via NLP evaluation tools).",
+      "Deterministic systems will produce reports with <5% variation in output when rerun on identical inputs (measured via text similarity metrics).",
+      "Deterministic report synthesis will complete tasks 70% faster than human-driven methods (measured via time-to-delivery benchmarks)."
     ]
   },
   "ok": true
