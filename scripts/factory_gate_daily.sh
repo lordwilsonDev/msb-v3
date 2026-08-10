@@ -112,8 +112,16 @@ if git -C "$REPO" status --porcelain -- artifacts/hygiene/ | grep -q .; then
   if [ "$VERDICT" = "PASS" ]; then
     git -C "$REPO" add artifacts/hygiene/
     git -C "$REPO" commit -m "chore: daily gate evidence (PASS) $(date +%Y-%m-%d)"
-    git -C "$REPO" push origin HEAD
-    log "committed and pushed PASS evidence"
+    # launchd has no SSH agent/keychain: bound the push so a hang or auth
+    # failure can never stall the job or leave stale committed evidence
+    # unobserved. Outcome is recorded in the events log either way.
+    if timeout 60 git -C "$REPO" push origin HEAD 2>/dev/null; then
+      log "committed and pushed PASS evidence"
+      printf '{"ts": "%s", "event": "evidence_push", "ok": true, "verdict": "%s"}\n' "$ts" "$VERDICT" >> "$EVENTS_LOG"
+    else
+      log "WARN: evidence committed locally but push FAILED (launchd keychain?) — will push on next run"
+      printf '{"ts": "%s", "event": "evidence_push", "ok": false, "verdict": "%s"}\n' "$ts" "$VERDICT" >> "$EVENTS_LOG"
+    fi
   else
     git -C "$REPO" add artifacts/hygiene/
     git -C "$REPO" commit -m "chore: daily gate evidence ($VERDICT) $(date +%Y-%m-%d) [do-not-push]"
