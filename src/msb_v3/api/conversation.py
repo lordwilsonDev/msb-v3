@@ -130,8 +130,11 @@ def _envelope_error(status_code: int, trace_id: str, code: str, message: str) ->
     return JSONResponse(status_code=status_code, content=_error_body(trace_id, code, message))
 
 
-@router.post("/ask")
-async def conversation_ask(body: ConversationRequest, request: Request) -> dict[str, Any]:
+# response_model=None: the handler returns a mix of raw dicts (envelope
+# bodies) and JSONResponse (error bodies) — FastAPI must not build a Pydantic
+# model from the union annotation.
+@router.post("/ask", response_model=None)
+async def conversation_ask(body: ConversationRequest, request: Request) -> dict[str, Any] | JSONResponse:
     """The envelope — one request handler, both modes (spec §3/§4/§5).
 
     `sources_hint` is accepted for legacy RunRequest passthrough compatibility
