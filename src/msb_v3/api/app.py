@@ -34,6 +34,7 @@ from msb_v3.api.system import router as system_router
 from msb_v3.api.tenants import router as tenants_router
 from msb_v3.api.triumvirate import router as triumvirate_router
 from msb_v3.business.registry import router as business_router
+from msb_v3.core.config import settings
 
 
 @asynccontextmanager
@@ -65,10 +66,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    allow_credentials = False if "*" in origins else True
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
