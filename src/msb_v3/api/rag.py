@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from typing import Any
 
 import httpx
@@ -35,19 +36,47 @@ def _collection(tenant_id: str) -> str:
     return f"tenant_{safe}"
 
 
+_ID_NS = uuid.UUID("9c5c7c3e-6f1a-4b0e-9a2d-3d3e3f4f5f6f")
+
+
+def _stable_point_id(source: str, chunk: int = 0) -> str:
+    """Deterministic point ID for a (source, chunk) pair.
+
+    Qdrant only accepts unsigned integers or UUIDs as point IDs. We derive a
+    UUIDv5 from the source path + chunk index, so re-indexing a file replaces
+    its own points (idempotent) instead of overwriting other files' points.
+    The previous `id: idx` scheme collided across batches (every batch reused
+    ids 0..14), silently capping the collection at BATCH_SIZE points no matter
+    how many documents were submitted.
+    """
+    return str(uuid.uuid5(_ID_NS, f"{source}#{chunk}"))
+
+
 async def _embed(text: str) -> list[float]:
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{_OLLAMA}/api/embeddings",
-            json={"model": _EMBED_MODEL, "prompt": text},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        vec = data.get("embedding") or []
-        if len(vec) != _EMBED_DIM:
-            # Pad or truncate to expected dimension
-            vec = (vec + [0.0] * _EMBED_DIM)[:_EMBED_DIM]
-        return vec
+    # nomic-embed-text has a 2048-token context; Ollama rejects longer prompts
+    # with HTTP 500 ("input length exceeds the context length"). Truncate and
+    # retry so a single long document can never fail the whole batch.
+    for attempt in range(4):
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{_OLLAMA}/api/embeddings",
+                    json={"model": _EMBED_MODEL, "prompt": text},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                vec = data.get("embedding") or []
+                if len(vec) != _EMBED_DIM:
+                    # Pad or truncate to expected dimension
+                    vec = (vec + [0.0] * _EMBED_DIM)[:_EMBED_DIM]
+                return vec
+        except httpx.HTTPStatusError as exc:
+            body = (exc.response.text or "").lower()
+            if "context length" in body and len(text) > 500:
+                text = text[: len(text) // 2]
+                continue
+            raise
+    raise RuntimeError(f"embedding failed after truncation retries for {len(text)} chars")
 
 
 class IndexRequest(BaseModel):
@@ -82,14 +111,17 @@ async def rag_index(payload: IndexRequest) -> dict[str, Any]:
     for idx, doc in enumerate(payload.documents):
         text = str(doc.get("text", ""))
         vector = await _embed(text)
+        source = str(doc.get("source", ""))
+        chunk = int(doc.get("chunk", 0))
         points.append(
             {
-                "id": idx,
+                "id": str(doc.get("id") or _stable_point_id(source, chunk)),
                 "vector": vector,
                 "payload": {
                     "tenant_id": tenant_id,
                     "text": text,
-                    "source": doc.get("source", ""),
+                    "source": source,
+                    "chunk": chunk,
                     "metadata": doc.get("metadata", {}),
                 },
             }
