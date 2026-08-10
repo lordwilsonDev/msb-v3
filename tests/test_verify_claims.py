@@ -562,3 +562,316 @@ files:
 
     assert code == 1
     assert "duplicate key" in report["failures"][0]["error"]
+
+
+# ---------------------------------------------------------------------------
+# PROSE FABRICATION (v0.2) -- closes the dd66dd3 gap
+# ---------------------------------------------------------------------------
+
+
+def test_prose_fabrication_with_missing_file_fails(tmp_path):
+    """The dd66dd3 shape: 'Tests: N/N passing' + a file that does not exist.
+
+    No smi-018-claim block is present -- this is the exact gap the v0.2
+    detector closes.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "status.md",
+        """# Build status
+
+Tests: 53/53 passing. The factory lives in `core/factory.py`.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 1
+    assert len(report["failures"]) == 1
+    assert "prose fabrication" in report["failures"][0]["error"]
+    assert "core/factory.py (line 3)" in report["failures"][0]["missing_files"]
+    # The failure is prose-only -- no claim block was involved.
+    assert report["claims_found"] == 0
+
+
+def test_prose_no_signature_no_failure(tmp_path):
+    """Mentioning a not-yet-built path is fine -- plans are not fabrications.
+
+    The hard-signature gate is what separates a roadmap from a false
+    completed-checkpoint report.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "plan.md",
+        """# Roadmap
+
+Next quarter we intend to build `core/factory.py` and its adapters.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    code, report = run_verifier(docs_root, report_path)
+
+    assert code == 0
+    assert report["failures"] == []
+
+
+def test_prose_negated_missing_path_passes(tmp_path):
+    """Forensic records must be able to say a file DOES NOT exist."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "incident.md",
+        """# Incident record
+
+Tests: 53/53 passing was claimed, but `core/factory.py` does not exist
+anywhere in this repository.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+
+
+def test_prose_no_quote_negation_passes(tmp_path):
+    """RECONCILIATION.md's exact phrasing: 'No X, Y, or Z exists anywhere'.
+
+    The 'no ... exists' pattern is the long-form negation the forensic
+    review uses -- covered by the widened regex.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "incident.md",
+        """# Incident record
+
+Tests: 53/53 passing. No core/factory.py, core/contracts/, or
+core/orchestrator/router.py exists anywhere in this repository.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+
+
+def test_prose_exempt_marker_passes(tmp_path):
+    """A curated incident record can opt out with a visible source marker.
+
+    RECONCILIATION.md is the one real doc that must quote a fabrication to
+    refute it; the marker is an HTML comment in the source, not a hidden
+    flag, and requires an explicit justification.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "incident.md",
+        """<!-- verify-claims: prose-exempt: quotes the dd66dd3 fabrication to refute it -->
+
+# Incident record
+
+Tests: 53/53 passing was the fabricated claim; `core/factory.py` never
+existed on any branch.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+    assert report["prose_exempt"] == 1
+
+
+def test_prose_exempt_marker_without_reason_is_not_honored(tmp_path):
+    """The marker must carry an explicit justification.
+
+    A bare `<!-- verify-claims: prose-exempt -->` (no reason) does not
+    match the strict marker regex, so the doc is scanned like any other --
+    the reason requirement keeps the escape hatch honest and auditable.
+    Here the doc asserts existence positively (no negation to save it), so
+    the un-honored marker must leave the fabrication to FAIL.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "incident.md",
+        """<!-- verify-claims: prose-exempt -->
+
+# Incident record
+
+Tests: 53/53 passing. The factory is live in `core/factory.py`.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert report["prose_exempt"] == 0
+    assert result.returncode == 1
+    assert "prose fabrication" in report["failures"][0]["error"]
+
+
+def test_prose_plain_checklist_roadmap_passes(tmp_path):
+    """A roadmap with plain task-list checkboxes is NOT a fabrication.
+
+    Review fix: a bare "[x]" checkbox fires the old signature, so any
+    checklist roadmap mentioning a not-yet-built path false-positived.
+    Plain "- [x] research" is not a completed-state claim -- only
+    verification-context checkboxes ("definition-of-done items checked
+    [x]") are.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "roadmap.md",
+        """# Roadmap
+
+- [x] Research phase
+- [x] Spike complete
+- [ ] Build `core/factory.py`
+- [ ] Wire `adapters/ghl/ghl_client.py`
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+
+
+def test_prose_verification_context_checkbox_fails(tmp_path):
+    """The dd66dd3 shape -- 'definition-of-done items checked [x]' -- trips.
+
+    Review fix: the [x] alternative is narrowed to verification context,
+    but the original incident phrasing must still be caught.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "status.md",
+        """# Phase 2
+
+Definition-of-done items checked [x]: `core/factory.py`, `core/registry/`,
+`adapters/prime_agent/` -- all built and live.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 1
+    assert len(report["failures"]) == 1
+    assert "prose fabrication" in report["failures"][0]["error"]
+
+
+def test_prose_traversal_reference_skipped(tmp_path):
+    """A traversal reference escapes the repo root; it is not a claim.
+
+    Review fix: the old lstrip-then-check turned "../core/factory.py" into
+    a repo-relative "core/factory.py" and the startswith("..") guard was
+    dead code. Traversal is now rejected before normalization.
+    """
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "status.md",
+        """# Build status
+
+Tests: 53/53 passing. See `../core/factory.py` for the implementation.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+
+
+def test_prose_real_path_with_signature_passes(tmp_path):
+    """A genuine completed doc referencing a file that actually exists is fine."""
+    real_file = tmp_path / "core" / "factory.py"
+    real_file.parent.mkdir(parents=True)
+    real_file.write_text("# real\n", encoding="utf-8")
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "status.md",
+        """# Build status
+
+Tests: 12/12 passing. The factory lives in `core/factory.py`.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+
+
+def test_prose_glob_uri_template_skipped(tmp_path):
+    """Globs, URIs, and brace/angle templates are never file claims."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "status.md",
+        """# Build status
+
+Tests: 12/12 passing.
+
+- `artifacts/h10_*.json`
+- `ledger://claims/abc123`
+- `https://example.com/readme.py`
+- `/etc/hosts`
+- `~/code/thing.py`
+- `core/{env}/factory.py`
+- `core/<id>/factory.py`
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
+
+
+def test_prose_bare_filename_not_a_claim(tmp_path):
+    """A bare filename with no directory component carries no provenance."""
+    docs_root = tmp_path / "docs"
+    write_doc(
+        docs_root,
+        "status.md",
+        """# Build status
+
+Tests: 12/12 passing. See factory.py for details.
+""",
+    )
+    report_path = tmp_path / "report.json"
+
+    result = run_verifier_raw(docs_root, report_path, cwd=tmp_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert result.returncode == 0
+    assert report["failures"] == []
