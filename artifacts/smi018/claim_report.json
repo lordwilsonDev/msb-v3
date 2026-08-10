@@ -1,0 +1,14 @@
+{
+  "claims_found": 1,
+  "implemented": 1,
+  "planned": 0,
+  "claims": [
+    {
+      "id": "smi018-evidence-verifier",
+      "doc": "docs/superpowers/specs/2026-08-07-smi-018-evidence-claim-verifier-design.md",
+      "status": "implemented",
+      "commit_status": null
+    }
+  ],
+  "failures": []
+}
