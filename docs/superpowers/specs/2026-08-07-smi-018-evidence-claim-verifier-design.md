@@ -77,8 +77,11 @@ Fields:
 - `id` (required) — free-text identifier for the claim.
 - `status` (required) — `planned` or `implemented`. Anything else is
   malformed.
-- `files` (optional list) — paths checked with `Path.exists()`, relative
-  to repo root.
+- `files` (optional list) — repo-root-relative paths, each checked with
+  `Path.is_file()` after rejecting anything absolute or escaping the repo
+  root. Not `Path.exists()`: that is also true for directories, for `.`,
+  and for absolute paths like `/etc`, any of which would satisfy the gate
+  without naming real evidence.
 - `tests` (optional list) — same check as `files`, separate field for
   readability/reporting only; mechanically identical.
 - `commit` (optional scalar) — checked with `git cat-file -t <hash>`.
@@ -95,7 +98,8 @@ Fields:
 | `status` not in `{planned, implemented}` | FAIL — malformed |
 | `status: planned` | PASS — recorded, no repository check performed |
 | `status: implemented`, no `files` and no `tests` (commit alone doesn't count) | FAIL — "implemented claim has no evidence target" |
-| `status: implemented` with `files` and/or `tests` | each listed path checked with `Path.exists()`; any missing path → FAIL, listing exactly which paths are missing |
+| duplicate key inside one block (e.g. two `status:` lines) | FAIL — malformed; the last value would silently win otherwise |
+| `status: implemented` with `files` and/or `tests` | each listed path must be repo-relative, inside the repo root, and a real file; any path failing that → FAIL, listing exactly which paths failed |
 
 **Unknown evidence state is a failure state.** No silent skipping of
 malformed blocks — a block that can't be parsed/validated fails the same
@@ -108,10 +112,14 @@ otherwise) to dodge the gate.
 the current diff. A claim made in one commit can be falsified by an
 unrelated later commit deleting the claimed file; diff-scoping would miss
 that ("claim rot"). Excluded: `docs/README.md`, `docs/CHANGELOG.md`, and
-any file under a directory literally named `notes/` or `research/`
-anywhere in the `docs/` tree (none exist under `docs/` today, but excluded
-pre-emptively since those paths are where speculative, non-claim prose
-naturally accumulates).
+any file under a directory literally named `notes/`, `research/`, or
+`plans/` anywhere in the `docs/` tree. `docs/superpowers/plans/` does
+exist and is exactly why `plans/` is on that list: implementation plans
+carry illustrative claim-block fixtures that are real, line-anchored
+fences, so they would otherwise be scanned as live claims. `notes/` and
+`research/` don't exist under `docs/` today and are excluded
+pre-emptively, since those paths are where speculative, non-claim prose
+naturally accumulates.
 
 ## Architecture
 
@@ -126,6 +134,7 @@ CI (ci.yml)
       ▼
  scripts/verify_claims.py <docs-root> [--report-path PATH]
       │
+      ├─ refuse to run at all if docs-root is not a directory (exit 2)
       ├─ walk docs-root for *.md (respecting the exclusions above)
       ├─ extract every ```smi-018-claim fenced block
       ├─ parse (scalar / list grammar above)
@@ -139,8 +148,11 @@ CI (ci.yml)
       │
       ▼
  exit 0: no claim blocks found, or every implemented claim's files/tests exist
- exit 1: any malformed block, or any implemented claim missing a file/test
+ exit 1: any malformed block, any unreadable doc, or any implemented claim
+         missing a file/test
          (stderr: failing id + doc path + exactly which paths are missing)
+ exit 2: invocation error -- docs-root is not a directory. No report is
+         written; a typo must not read as "no claims, all clear."
 ```
 
 ## Report shape (`claim_report.json`)
@@ -191,8 +203,13 @@ Cases:
 ## CI integration
 
 New `claims` job in `.github/workflows/ci.yml`, parallel to the existing
-`test`/`lint`/`security`/`docker` jobs, gated the same way (`needs:
-preflight`). Runs `python scripts/verify_claims.py docs/` with the repo
+`test`/`lint`/`security`/`docker` jobs but deliberately **not** gated the
+same way: no `needs: preflight` and no `if:` condition, so it runs on
+every push and PR unconditionally. `preflight`'s `paths-filter` only
+watches `src/**`, `tests/**`, `pyproject.toml`, and `requirements*.txt` —
+not `docs/**` — so gating this job behind it would let a docs-only PR (the
+exact shape of the `dd66dd3` incident) skip the claims check entirely.
+Runs `python scripts/verify_claims.py docs/` with the repo
 root as the working directory — all `files`/`tests` paths in claim blocks,
 and the `docs-root` / `--report-path` arguments themselves, resolve
 relative to that. Uploads
@@ -230,3 +247,14 @@ pattern already in the workflow) regardless of pass/fail.
   `docs/audits/phase2_architecture_audit/`) with claim blocks — a
   separate decision, not required for the gate to exist and work going
   forward
+
+## Self-verification
+
+```smi-018-claim
+id: smi018-evidence-verifier
+status: implemented
+files:
+  - scripts/verify_claims.py
+tests:
+  - tests/test_verify_claims.py
+```

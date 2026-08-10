@@ -192,9 +192,31 @@ jobs:
           curl -f http://127.0.0.1:8766/status || (docker logs msb-v3-test && exit 1)
           docker rm -f msb-v3-test
 
+  claims:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify evidence claims
+        run: python scripts/verify_claims.py docs/
+
+      - name: Upload claim report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claim-report
+          path: artifacts/smi018/claim_report.json
+          retention-days: 7
+
   notify:
-    needs: [test, lint, security, docker]
-    if: always() && (needs.test.result == 'failure' || needs.lint.result == 'failure' || needs.security.result == 'failure' || needs.docker.result == 'failure')
+    needs: [test, lint, security, docker, claims]
+    if: always() && (needs.test.result == 'failure' || needs.lint.result == 'failure' || needs.security.result == 'failure' || needs.docker.result == 'failure' || needs.claims.result == 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: Notify failure
@@ -204,7 +226,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
-    needs: [test, lint, security, docker]
+    needs: [test, lint, security, docker, claims]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: production
