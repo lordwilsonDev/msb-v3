@@ -57,8 +57,9 @@ async def test_embed_truncates_and_retries_on_context_length(monkeypatch):
                 text = '{"error":"the input length exceeds the context length"}'
 
                 def raise_for_status(self):
-                    import httpx
                     import types
+
+                    import httpx
 
                     err = httpx.HTTPStatusError("ctx", request=types.SimpleNamespace(), response=types.SimpleNamespace(text=self.text))
                     raise err
@@ -111,8 +112,9 @@ async def test_embed_raises_after_truncation_floor(monkeypatch):
             text = '{"error":"the input length exceeds the context length"}'
 
             def raise_for_status(self):
-                import httpx
                 import types
+
+                import httpx
 
                 err = httpx.HTTPStatusError("ctx", request=types.SimpleNamespace(), response=types.SimpleNamespace(text=self.text))
                 raise err
