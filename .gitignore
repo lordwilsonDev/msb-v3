@@ -52,3 +52,4 @@ build/
 storage/
 artifacts/hygiene/r01_*.json
 artifacts/hygiene/r02_*.json
+.superpowers/

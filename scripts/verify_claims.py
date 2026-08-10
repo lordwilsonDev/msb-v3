@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""SMI-018 v0.1 -- Evidence Claim Verifier.
+
+Scans markdown files for ```smi-018-claim fenced blocks and checks that
+any block with status: implemented references files/tests that actually
+exist in the repository. See
+docs/superpowers/specs/2026-08-07-smi-018-evidence-claim-verifier-design.md
+for the full design and rationale.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+# Line-anchored on purpose: the opening and closing fence must each be the
+# ENTIRE line. That makes the zero-width-space escape used in the design
+# spec's illustrative example actually work -- a ZWSP before the backticks
+# means the line no longer starts with "```", so it is not a claim block.
+CLAIM_BLOCK_RE = re.compile(r"^```smi-018-claim$\n(.*?)\n^```$", re.DOTALL | re.MULTILINE)
+
+
+class ClaimParseError(Exception):
+    """Raised when a claim block's internal grammar is invalid."""
+
+
+def parse_claim_block(text: str) -> dict:
+    """Parse a claim block body into a dict of scalar/list fields.
+
+    Grammar: blank lines are ignored. A line `key: value` sets a scalar
+    field. A line `key:` (nothing after the colon) starts a list field,
+    populated by subsequent `- item` lines until the next key line.
+    """
+    fields: dict = {}
+    current_list_key: str | None = None
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        if line.startswith("- "):
+            if current_list_key is None:
+                raise ClaimParseError(f"list item with no preceding key: {raw_line!r}")
+            fields[current_list_key].append(line[2:].strip())
+            continue
+
+        if ":" not in line:
+            raise ClaimParseError(f"malformed line (no ':'): {raw_line!r}")
+
+        key, _, rest = line.partition(":")
+        key = key.strip()
+        rest = rest.strip()
+        if key in fields:
+            # A duplicate key would silently win by dict overwrite, so a human
+            # skimming top-to-bottom could read a different status than the one
+            # actually checked. Unknown evidence state is a failure state.
+            raise ClaimParseError(f"duplicate key in claim block: {key!r}")
+        if rest:
+            fields[key] = rest
+            current_list_key = None
+        else:
+            fields[key] = []
+            current_list_key = key
+
+    return fields
+
+
+def validate_claim(claim: dict) -> list[str]:
+    errors: list[str] = []
+
+    if "id" not in claim:
+        errors.append("missing required field: id")
+    if "status" not in claim:
+        errors.append("missing required field: status")
+    elif claim["status"] not in ("planned", "implemented"):
+        errors.append(f"invalid status: {claim['status']!r} (must be 'planned' or 'implemented')")
+
+    if claim.get("status") == "implemented":
+        has_files = bool(claim.get("files"))
+        has_tests = bool(claim.get("tests"))
+        if not has_files and not has_tests:
+            errors.append("implemented claim has no evidence target (files or tests required)")
+
+    return errors
+
+
+def is_valid_evidence_path(raw: str) -> bool:
+    """Return True only for a repo-relative path naming a real file.
+
+    `Path.exists()` alone is a gate bypass: it is true for directories, for
+    `.`, and for absolute paths like `/etc`, so a claim could satisfy the
+    gate without pointing at any real evidence. Same defensive shape as
+    `src/msb_v3/api/mcp_bridge.py`'s `_normalize_vault_path`: reject
+    absolutes, resolve, confirm containment, and only then check the target.
+    """
+    raw = raw.strip()
+    if not raw:
+        return False
+
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        return False
+
+    root = Path.cwd().resolve()
+    try:
+        resolved = (root / candidate).resolve()
+        resolved.relative_to(root)
+    except (ValueError, OSError):
+        return False
+
+    # .is_file(), not .exists() -- a directory is not evidence.
+    return candidate.is_file()
+
+
+def check_evidence(claim: dict) -> dict:
+    missing_files = [f for f in claim.get("files", []) if not is_valid_evidence_path(f)]
+    missing_tests = [t for t in claim.get("tests", []) if not is_valid_evidence_path(t)]
+
+    commit_status = None
+    commit = claim.get("commit")
+    if commit:
+        try:
+            result = subprocess.run(
+                # `--` so a commit value that looks like a flag is still
+                # treated as an object name; timeout so a wedged git can't
+                # hang CI.
+                ["git", "cat-file", "-t", "--", commit],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            commit_status = result.stdout.strip() if result.returncode == 0 else "not_found"
+        except (OSError, subprocess.SubprocessError):
+            # TimeoutExpired is a SubprocessError, not an OSError.
+            commit_status = "error"
+
+    return {"missing_files": missing_files, "missing_tests": missing_tests, "commit_status": commit_status}
+
+
+_EXCLUDED_FILENAMES = {"README.md", "CHANGELOG.md"}
+_EXCLUDED_DIR_NAMES = {"notes", "research", "plans"}
+
+
+def find_markdown_files(docs_root: Path) -> list[Path]:
+    result = []
+    for path in sorted(docs_root.rglob("*.md")):
+        if path.name in _EXCLUDED_FILENAMES and path.parent == docs_root:
+            continue
+        rel_parts = path.relative_to(docs_root).parts[:-1]
+        if any(part in _EXCLUDED_DIR_NAMES for part in rel_parts):
+            continue
+        result.append(path)
+    return result
+
+
+def _write_report(report_path: Path, report: dict) -> None:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Verify smi-018-claim blocks in markdown docs against repository state."
+    )
+    parser.add_argument("docs_root", type=Path, help="Directory to scan for *.md files")
+    parser.add_argument(
+        "--report-path",
+        type=Path,
+        default=Path("artifacts/smi018/claim_report.json"),
+        help="Where to write the JSON report (default: artifacts/smi018/claim_report.json)",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_arg_parser().parse_args(argv)
+
+    if not args.docs_root.is_dir():
+        # Fail closed on a bad docs_root. Path.rglob on a missing directory
+        # yields nothing, so a typo or a directory rename would otherwise
+        # silently disable the gate forever with a clean exit 0. No report is
+        # written: this is an invocation error, not a claim-verification
+        # result. Exit 2 distinguishes it from exit 1 ("found real failures").
+        print(
+            f"ERROR: docs_root is not a directory: {args.docs_root}",
+            file=sys.stderr,
+        )
+        return 2
+
+    claims_found = 0
+    implemented_count = 0
+    planned_count = 0
+    claims: list[dict] = []
+    failures: list[dict] = []
+
+    for md_file in find_markdown_files(args.docs_root):
+        try:
+            text = md_file.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            # An unreadable doc is an unknown evidence state, which is a
+            # failure state -- not a crash that skips the report entirely.
+            failures.append(
+                {
+                    "id": None,
+                    "doc": str(md_file),
+                    "error": f"could not read file: {exc}",
+                    "missing_files": [],
+                    "missing_tests": [],
+                }
+            )
+            continue
+
+        for block_text in CLAIM_BLOCK_RE.findall(text):
+            claims_found += 1
+
+            try:
+                claim = parse_claim_block(block_text)
+            except ClaimParseError as exc:
+                failures.append(
+                    {"id": None, "doc": str(md_file), "error": str(exc), "missing_files": [], "missing_tests": []}
+                )
+                continue
+
+            errors = validate_claim(claim)
+            if errors:
+                failures.append(
+                    {
+                        "id": claim.get("id"),
+                        "doc": str(md_file),
+                        "error": "; ".join(errors),
+                        "missing_files": [],
+                        "missing_tests": [],
+                    }
+                )
+                continue
+
+            if claim["status"] == "planned":
+                planned_count += 1
+                claims.append(
+                    {"id": claim["id"], "doc": str(md_file), "status": "planned", "commit_status": None}
+                )
+                continue
+
+            implemented_count += 1
+            evidence = check_evidence(claim)
+            claims.append(
+                {
+                    "id": claim["id"],
+                    "doc": str(md_file),
+                    "status": "implemented",
+                    "commit_status": evidence["commit_status"],
+                }
+            )
+            if evidence["missing_files"] or evidence["missing_tests"]:
+                failures.append(
+                    {
+                        "id": claim["id"],
+                        "doc": str(md_file),
+                        "error": None,
+                        "missing_files": evidence["missing_files"],
+                        "missing_tests": evidence["missing_tests"],
+                    }
+                )
+
+    report = {
+        "claims_found": claims_found,
+        "implemented": implemented_count,
+        "planned": planned_count,
+        "claims": claims,
+        "failures": failures,
+    }
+    _write_report(args.report_path, report)
+
+    for failure in failures:
+        print(f"FAIL {failure['doc']}: claim id={failure['id']!r}", file=sys.stderr)
+        if failure["error"]:
+            print(f"  {failure['error']}", file=sys.stderr)
+        for path in failure["missing_files"]:
+            print(f"  missing file: {path}", file=sys.stderr)
+        for path in failure["missing_tests"]:
+            print(f"  missing test: {path}", file=sys.stderr)
+
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
