@@ -82,7 +82,8 @@ class LocalAIClient:
         latency = round(time.perf_counter() - t0, 4)
 
         text = data.get("response", "")
-        return LocalAIResponse(text=text, model=self.model, latency_s=latency)
+        tool_calls = data.get("tool_calls") or []
+        return LocalAIResponse(text=text, model=self.model, latency_s=latency, tool_calls=tool_calls)
 
     def execute_tool_loop(
         self,
@@ -108,8 +109,23 @@ class LocalAIClient:
 
         final_text = ""
         enforcer = StepEnforcer(required_steps=[], terminal_tools=frozenset([t["name"] for t in (tools or [])]))
-        for _ in range(max_steps):
-            resp = self.generate(query, system=system, tools=tools, max_tokens=max_tokens)
+        current_prompt = query
+        for step_idx in range(max_steps):
+            if step_idx > 0:
+                history_parts = []
+                for msg in messages:
+                    role = msg["role"]
+                    content = msg.get("content", "")
+                    if role == "tool":
+                        history_parts.append(f"[Tool Result]: {content}")
+                    elif role == "assistant" and msg.get("tool_calls"):
+                        tc_names = ", ".join(tc["function"]["name"] for tc in msg["tool_calls"])
+                        history_parts.append(f"[Assistant called tools: {tc_names}] {content}")
+                    elif role != "system":
+                        history_parts.append(f"[{role.capitalize()}]: {content}")
+                current_prompt = "\n".join(history_parts)
+
+            resp = self.generate(current_prompt, system=system, tools=tools, max_tokens=max_tokens)
             final_text = resp.text
             tool_calls = resp.tool_calls
             if not tool_calls:
