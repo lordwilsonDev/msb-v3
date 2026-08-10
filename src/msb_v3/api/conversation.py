@@ -11,13 +11,13 @@ counter so a black-box probe can assert zero model spend on BLOCK.
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from msb_v3.api.auth import check_auth
 from msb_v3.conversation import producer
 from msb_v3.conversation.envelope import (
     SCHEMA_VERSION,
@@ -42,22 +42,11 @@ router = APIRouter(tags=["conversation"])
 _stub = StubModel()
 
 
-def _check_auth(request: Request) -> None:
-    """Live-auth gate, opt-in: enforced when MCP_BRIDGE_SECRET is set (CI
-    seeds it and the probe sends x-mcp-secret — auth is supplied, never
-    bypassed). Unset secret = dev mode, mirroring the rest of the app."""
-    secret = os.getenv("MCP_BRIDGE_SECRET", "")
-    if not secret:
-        return
-    if request.headers.get("x-mcp-secret") != secret:
-        raise HTTPException(status_code=401, detail="unauthorized")
-
-
 @router.get("/test-hook")
 async def test_hook(request: Request) -> dict[str, Any]:
     """Zero-model-spend assertion surface (harness spec §3): the stub
     invocation counter. Active in stub mode; harmless in live mode."""
-    _check_auth(request)
+    check_auth(request)
     return {
         "stub_mode": model_mode() == "stub",
         "stub_invocations": _stub.invocations,
@@ -142,7 +131,7 @@ async def conversation_ask(body: ConversationRequest, request: Request) -> dict[
     RetrievalRouter (live) or the stub fixtures (CI), never by client-supplied
     file paths. Wiring it would create an unauthenticated file-read surface.
     """
-    _check_auth(request)
+    check_auth(request)
     trace_id = body.trace_id or mint_trace_id()
     started = time.perf_counter()
 
