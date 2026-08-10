@@ -13,7 +13,7 @@ from __future__ import annotations
 import hashlib
 import os
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from msb_v3.conversation.envelope import canonical_json
 
@@ -324,10 +324,11 @@ def validate_contract(entry: Any, dag_task_ids: set[str]) -> list[str]:
 # --- dag caps (spec §7 — the graph-explosion governor) ---
 
 
-def _depth_of(task_id: str, parent_map: dict[str, Any]) -> int:
+def _depth_of(task_id: str, parent_map: dict[str, Optional[str]]) -> int:
     """Longest parent chain depth; a parent cycle is treated as unbounded
     (returns MAX_DAG_DEPTH + 1 so the cap fires)."""
-    depth, seen, cur = 0, set(), task_id
+    depth, seen = 0, set()
+    cur: Optional[str] = task_id
     while cur is not None:
         if cur in seen:
             return MAX_DAG_DEPTH + 1  # cycle
@@ -361,7 +362,7 @@ def validate_dag(dag: Any) -> list[str]:
         errors += validate_contract(entry, id_set)
 
     if task_ids:
-        parent_map = {
+        parent_map: dict[str, Optional[str]] = {
             e["task_id"]: e.get("parent") for e in dag
             if isinstance(e, dict) and isinstance(e.get("task_id"), str) and "task_id" in e
         }
@@ -418,6 +419,9 @@ def run_predicates(
     outcomes: list[PredicateOutcome] = []
     for pred in predicates:
         kind = pred.get("kind")
+        if not isinstance(kind, str):
+            outcomes.append({"kind": kind, "passed": False, "detail": f"unknown predicate kind {kind!r}"})
+            continue
         runner = _PREDICATE_RUNNERS.get(kind)
         if runner is None:
             outcomes.append({"kind": kind, "passed": False, "detail": f"unknown predicate kind {kind!r}"})

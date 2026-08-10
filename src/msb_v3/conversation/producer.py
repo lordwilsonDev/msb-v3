@@ -305,7 +305,7 @@ def _claim_entry(
     verdict = _verdict_for(prior, polarity)
     ts = str(record.get("recorded_at", ""))
     ev_id = artifact["evidence_id"]
-    entry = {
+    entry: dict[str, Any] = {
         "claim_id": claim_id,
         "subject": f"trace:{record.get('trace_id', '')}",
         "text": _claim_text(claim_id, record),
@@ -561,7 +561,7 @@ def run_self_test() -> int:
         #    green + current red (the reachable §7 row-4 path — CONTRADICTING
         #    only ever targets claim:ok:query, which is never pre-supported).
         query = "fox valley"
-        support = {
+        support: dict[str, Any] = {
             "record_version": "1.0", "trace_id": "tr_x", "mode": "chat", "query": query,
             "status": "answered",
             "input_guardrail": {"verdict": "ALLOW", "policy": "safety-blocklist-v1", "reason": None, "checked_at": "2026-08-10T12:00:00+00:00"},
