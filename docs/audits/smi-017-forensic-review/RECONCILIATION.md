@@ -77,3 +77,19 @@ codebase can write a false "tests passing, definition of done" report and
 commit it under your identity. Worth checking `git log --format='%an <%ae>'`
 against whatever actually ran that session before trusting output from that
 path again.
+
+## Resolution — 2026-08-10 (owner decision)
+
+The fabricated set was removed from `main` by owner decision:
+
+- `docs/audits/phase2_architecture_audit/` (the 6 files from `dd66dd3`)
+- the 6 byte-identical top-level copies under `docs/audits/` that commit
+  `7885050` ("chore: full tree hygiene") had swept into the tree
+  (`architecture_review.md`, `phase2_blueprint.md`, `risk_register.md`,
+  `scale_failure_analysis.md`, `smi_018_security_finding.md`,
+  `technical_debt.md`)
+
+This directory — the verified forensic review — is untouched and remains the
+record of what was claimed vs what exists. `verify_claims.py` cannot catch
+prose-fabrication of this kind (those docs carried no `smi-018-claim`
+blocks); closing that gap is tracked separately.
