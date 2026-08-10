@@ -56,7 +56,8 @@ async def _embed(text: str) -> list[float]:
     # nomic-embed-text has a 2048-token context; Ollama rejects longer prompts
     # with HTTP 500 ("input length exceeds the context length"). Truncate and
     # retry so a single long document can never fail the whole batch.
-    for attempt in range(4):
+    last_exc: Exception | None = None
+    while len(text) > 500:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
@@ -72,11 +73,29 @@ async def _embed(text: str) -> list[float]:
                 return vec
         except httpx.HTTPStatusError as exc:
             body = (exc.response.text or "").lower()
-            if "context length" in body and len(text) > 500:
+            if "context length" in body:
                 text = text[: len(text) // 2]
+                last_exc = exc
                 continue
             raise
-    raise RuntimeError(f"embedding failed after truncation retries for {len(text)} chars")
+    # Final attempt at the minimum size; if that still fails, surface the
+    # original context-length error so the failure isn't masked.
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{_OLLAMA}/api/embeddings",
+                json={"model": _EMBED_MODEL, "prompt": text},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            vec = data.get("embedding") or []
+            if len(vec) != _EMBED_DIM:
+                vec = (vec + [0.0] * _EMBED_DIM)[:_EMBED_DIM]
+            return vec
+    except Exception as exc:
+        raise RuntimeError(
+            f"embedding failed after truncation retries for {len(text)} chars"
+        ) from (last_exc or exc)
 
 
 class IndexRequest(BaseModel):
