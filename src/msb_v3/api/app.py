@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
 from msb_v3.api.chat import router as chat_router
+from msb_v3.api.conversation import router as conversation_router
 from msb_v3.api.evolution import router as evolution_router
 from msb_v3.api.graph import router as graph_router
 from msb_v3.api.health import router as health_router
@@ -120,5 +121,6 @@ def create_app() -> FastAPI:
     app.include_router(rag_router, prefix="/rag", tags=["rag"])
     app.include_router(graph_router, prefix="/graph", tags=["knowledge-graph"])
     app.include_router(smi_router, prefix="/smi", tags=["smi"])
+    app.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
 
     return app
