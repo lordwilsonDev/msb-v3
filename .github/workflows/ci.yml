@@ -249,12 +249,35 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  deploy:
+  # Only MSB_MCP_SECRET is configured today. The secrets context is NOT valid
+  # in job-level `if`, so a tiny probe job checks the four DEPLOY_* secrets in
+  # a step (where secrets ARE valid) and gates deploy on the result — until
+  # they exist, deploy skips cleanly instead of firing an SSH deployment with
+  # empty credentials on every push.
+  deploy-ready:
     needs: [test, lint, security, docker, claims]
-    # Only MSB_MCP_SECRET is configured today — gate on ALL four deploy
-    # secrets existing (a half-configured repo would fire an SSH deploy with
-    # empty credentials mid-flight). Until they exist, deploy stays inert.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' && secrets.DEPLOY_PATH != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Check deploy secrets configured
+        id: check
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          if [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_PATH" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: deploy-ready
+    if: needs.deploy-ready.outputs.ready == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
