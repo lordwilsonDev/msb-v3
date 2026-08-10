@@ -30,7 +30,6 @@ from msb_v3.conversation.envelope import (  # noqa: E402
     source_ts_from_metadata,
 )
 
-
 # --------------------------------------------------------------------------
 # claim_id canonicalization (envelope invariant 7, pinned with the producer)
 # --------------------------------------------------------------------------
