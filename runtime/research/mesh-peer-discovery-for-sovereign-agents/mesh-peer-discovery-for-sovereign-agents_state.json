@@ -1,7 +1,7 @@
 {
   "slug": "mesh-peer-discovery-for-sovereign-agents",
   "status": "completed",
-  "ts": "2026-08-08T12:55:23.271849+00:00",
+  "ts": "2026-08-10T05:08:04.149144+00:00",
   "result": {
     "topic": "mesh peer discovery for sovereign agents",
     "slug": "mesh-peer-discovery-for-sovereign-agents",
@@ -10,24 +10,15 @@
         "phase": "inversion",
         "ok": true,
         "result": {
-          "assumption": "Centralized coordination is essential for reliable mesh peer discovery in sovereign agent networks.",
-          "inversion": "Decentralized, peer-to-peer discovery mechanisms are sufficient for reliable mesh peer discovery in sovereign agent networks.",
+          "assumption": "Mesh peer discovery for sovereign agents can function effectively without a centralized directory, relying solely on decentralized protocols.",
+          "inversion": "Mesh peer discovery for sovereign agents requires a centralized directory to ensure reliability and scalability.",
           "predictions": [
-            {
-              "metric": "Discovery latency",
-              "threshold": "Decentralized methods reduce latency by \u226540% compared to centralized approaches in large-scale networks."
-            },
-            {
-              "metric": "Resilience to node failures",
-              "threshold": "Decentralized systems maintain \u226595% connectivity during simulated node failures, while centralized systems drop to \u226480%."
-            },
-            {
-              "metric": "Scalability",
-              "threshold": "Decentralized discovery scales to \u226510,000 nodes without performance degradation, whereas centralized methods fail at \u22645,000 nodes."
-            }
+            "Discovery latency would be 50% lower in decentralized systems compared to centralized ones.",
+            "The system would scale linearly with the number of agents without a central directory.",
+            "Security breaches would decrease by 30% using decentralized discovery methods."
           ]
         },
-        "ts": "2026-08-08T12:55:23.235698+00:00"
+        "ts": "2026-08-10T05:08:04.095911+00:00"
       },
       {
         "phase": "evidence",
@@ -40,7 +31,7 @@
             "claim_count": 0
           }
         },
-        "ts": "2026-08-08T12:55:23.237966+00:00"
+        "ts": "2026-08-10T05:08:04.098753+00:00"
       },
       {
         "phase": "report",
@@ -51,21 +42,12 @@
           "abstract": "Autonomous research brief for mesh peer discovery for sovereign agents.",
           "background": "",
           "uim": {
-            "assumption": "Centralized coordination is essential for reliable mesh peer discovery in sovereign agent networks.",
-            "inversion": "Decentralized, peer-to-peer discovery mechanisms are sufficient for reliable mesh peer discovery in sovereign agent networks.",
+            "assumption": "Mesh peer discovery for sovereign agents can function effectively without a centralized directory, relying solely on decentralized protocols.",
+            "inversion": "Mesh peer discovery for sovereign agents requires a centralized directory to ensure reliability and scalability.",
             "predictions": [
-              {
-                "metric": "Discovery latency",
-                "threshold": "Decentralized methods reduce latency by \u226540% compared to centralized approaches in large-scale networks."
-              },
-              {
-                "metric": "Resilience to node failures",
-                "threshold": "Decentralized systems maintain \u226595% connectivity during simulated node failures, while centralized systems drop to \u226480%."
-              },
-              {
-                "metric": "Scalability",
-                "threshold": "Decentralized discovery scales to \u226510,000 nodes without performance degradation, whereas centralized methods fail at \u22645,000 nodes."
-              }
+              "Discovery latency would be 50% lower in decentralized systems compared to centralized ones.",
+              "The system would scale linearly with the number of agents without a central directory.",
+              "Security breaches would decrease by 30% using decentralized discovery methods."
             ]
           },
           "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
@@ -88,11 +70,11 @@
           "guard_events": [],
           "sovereignty_notes": "Local-first artifacts; no external publish step."
         },
-        "ts": "2026-08-08T12:55:23.240272+00:00"
+        "ts": "2026-08-10T05:08:04.099868+00:00"
       }
     ],
     "status": "completed",
-    "ts": "2026-08-08T12:55:23.242992+00:00",
+    "ts": "2026-08-10T05:08:04.116239+00:00",
     "notify": {
       "ok": true,
       "async": true

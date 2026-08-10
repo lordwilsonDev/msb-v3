@@ -2,12 +2,12 @@
   "topic": "lineage-safe memory consolidation",
   "slug": "lineage-safe-memory-consolidation",
   "phase1": {
-    "assumption": "Lineage-safe memory consolidation relies on stable genetic factors across generations.",
-    "inversion": "Lineage-safe memory consolidation is primarily driven by environmental epigenetic modifications rather than genetic stability.",
+    "assumption": "Traditional memory consolidation processes are inherently lineage-safe, ensuring stable and error-free retention of information across generations or iterations.",
+    "inversion": "Traditional memory consolidation processes are not lineage-safe, leading to unpredictable degradation, corruption, or instability in memory retention over time.",
     "predictions": [
-      "Genetic mutations in key memory-related genes will significantly impair cross-generational memory retention.",
-      "Epigenetic markers will show consistent heritability in lineage-safe memory consolidation across generations.",
-      "Environmental interventions that disrupt epigenetic stability will correlate with reduced memory consolidation efficiency."
+      "Experiments will show significantly higher memory retention rates in systems using lineage-safe consolidation compared to traditional methods.",
+      "Neural activity patterns (in biological systems) or computational models (in AI) will exhibit measurable instability when using non-lineage-safe consolidation techniques.",
+      "Error rates in memory recall tasks will increase exponentially with repeated iterations in non-lineage-safe consolidation frameworks."
     ]
   },
   "ok": true
