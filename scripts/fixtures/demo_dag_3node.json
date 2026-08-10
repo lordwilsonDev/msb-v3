@@ -1,0 +1,71 @@
+[
+  {
+    "task_id": "a",
+    "objective": "Scaffold the retrieval module",
+    "skill": "python-developer",
+    "args": {
+      "writes": [
+        {"path": "src/retrieval.py", "content": "def search(query):\n    return [\"hit1\", \"hit2\"]\n"}
+      ]
+    },
+    "allowed_tools": ["filesystem"],
+    "side_effects": [{"kind": "file_write", "path": "src/**"}],
+    "expected_output": {
+      "schema": {},
+      "predicates": [
+        {"kind": "exit_code", "code": 0},
+        {"kind": "file_exists", "path": "src/retrieval.py"},
+        {"kind": "file_contains", "path": "src/retrieval.py", "text": "def search"}
+      ]
+    },
+    "status": "READY"
+  },
+  {
+    "task_id": "b",
+    "objective": "Add the answer endpoint",
+    "skill": "python-developer",
+    "args": {
+      "writes": [
+        {"path": "src/api.py", "content": "def answer(query):\n    return search(query)[0]\n"}
+      ]
+    },
+    "allowed_tools": ["filesystem"],
+    "inputs": ["a"],
+    "preconditions": ["a:VERIFIED"],
+    "side_effects": [{"kind": "file_write", "path": "src/**"}],
+    "expected_output": {
+      "schema": {},
+      "predicates": [
+        {"kind": "exit_code", "code": 0},
+        {"kind": "file_exists", "path": "src/api.py"},
+        {"kind": "file_contains", "path": "src/api.py", "text": "def answer"}
+      ]
+    },
+    "status": "READY"
+  },
+  {
+    "task_id": "c",
+    "objective": "Ship the package (must produce checksums)",
+    "skill": "devops",
+    "args": {
+      "writes": [
+        {"path": "dist/lock.txt", "content": "lockfile written by the ship step"}
+      ],
+      "artifacts": ["dist/lock.txt"]
+    },
+    "allowed_tools": ["filesystem"],
+    "inputs": ["b"],
+    "preconditions": ["b:VERIFIED"],
+    "side_effects": [{"kind": "file_write", "path": "dist/**"}],
+    "rollback": {"kind": "file_delete", "scope": "dist/"},
+    "expected_output": {
+      "schema": {},
+      "predicates": [
+        {"kind": "exit_code", "code": 0},
+        {"kind": "file_exists", "path": "dist/checksums.txt"},
+        {"kind": "file_contains", "path": "dist/checksums.txt", "text": "sha256"}
+      ]
+    },
+    "status": "READY"
+  }
+]

@@ -84,6 +84,18 @@ def _cmd_execute(args) -> int:
     for e in updated:
         if isinstance(e, dict) and e.get("task_id"):
             print(f"    {e.get('task_id')}: {e.get('status')}")
+    if args.write_back:
+        try:
+            # atomic: write the temp then replace, so a killed process can
+            # never leave a truncated dag (the ledger survives; the store
+            # must too — reviewer follow-up)
+            tmp = dag_path.with_name(dag_path.name + ".tmp")
+            tmp.write_text(json.dumps(updated, indent=2) + "\n", encoding="utf-8")
+            os.replace(tmp, dag_path)
+        except OSError as exc:
+            print(f"FAIL: cannot write back dag: {exc}")
+            return 1
+        print(f"  wrote {len(updated)} entries back to {dag_path}")
     return 0 if result.status in ("VERIFIED", "SUBMITTED") else 1
 
 
@@ -96,7 +108,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--tenant", default="default")
     parser.add_argument("--goal", default=None)
     parser.add_argument("--dry-run", action="store_true", help="execute but write no evidence")
+    parser.add_argument("--write-back", action="store_true",
+                        help="persist the advanced dag statuses to the dag file — repeat --execute to drive the whole dag (spec §9: one node per call)")
     args = parser.parse_args(argv)
+
+    if args.write_back and args.dry_run:
+        parser.error("cannot combine --write-back with --dry-run")
 
     if args.self_test:
         return _cmd_self_test()
