@@ -3,8 +3,9 @@ name: factory-gate
 # Engineering-hygiene factory gate for msb-v3.
 # Every push/PR to main re-runs the real pytest suite (with a coverage gate),
 # mypy, ruff (E9/F/I — syntax + pyflakes + import-sort), the offline hygiene
-# experiments, and a live x-mcp-secret auth probe against a freshly booted
-# server. Any non-PASS leg fails the job, which blocks the push/merge.
+# experiments, a live x-mcp-secret auth probe, and the conversation E2E probe
+# (the ask->retrieve->guardrail->answer->log contract) against freshly booted
+# servers. Any non-PASS leg fails the job, which blocks the push/merge.
 #
 # Coverage baseline: 68% measured on 2026-08-09 (253 tests). The gate
 # prevents regression below 65% — raise it as coverage grows.
@@ -137,3 +138,39 @@ jobs:
           correct=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: $MCP_BRIDGE_SECRET" http://127.0.0.1:8766/mcp/tools || echo 000)
           echo "auth probe: missing=$missing wrong=$wrong correct=$correct (expect 401 401 200)"
           [ "$missing" = "401" ] && [ "$wrong" = "401" ] && [ "$correct" = "200" ]
+
+      - name: Conversation E2E probe (stub, zero-spend)
+        # The conversation contract is the E2E probe: ask -> retrieve -> input
+        # guardrail -> compose -> output guardrail -> answer -> log, every hop
+        # emitting evidence into a scratch ledger. Stub model + deterministic
+        # producer + recorded replay = zero spend, zero keys, runs on every
+        # push. A failing assertion fails the job (docs/conversation-e2e-harness-v1.md).
+        env:
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+          MSB_CONVERSATION_MODEL: stub
+          MSB_CONVERSATION_LEDGER_DIR: ${{ runner.temp }}/msb-conversation-ledger
+          MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
+        run: |
+          set -euo pipefail
+          : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"
+          # Same boot discipline as the auth probe: clear :8766, boot, poll
+          # health, then run the probe under the SAME ledger env the server
+          # writes to (the probe verifies that ledger, not a copy).
+          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
+          for _ in $(seq 1 10); do
+            lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | grep -q . || break
+            sleep 1
+          done
+          python -m msb_v3 > /tmp/msb-e2e-server.log 2>&1 &
+          SRV=$!
+          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
+            sleep 1
+          done
+          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
+            echo "server failed to boot — log follows"
+            cat /tmp/msb-e2e-server.log
+            exit 1
+          fi
+          python scripts/probe_conversation_e2e.py --mode stub --replay
