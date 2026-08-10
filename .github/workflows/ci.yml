@@ -31,9 +31,12 @@ jobs:
               - 'pyproject.toml'
               - 'requirements*.txt'
 
+  # dorny/paths-filter@v3 emits BOOLEAN outputs (its v3.0.0 breaking change),
+  # so `outputs.changed == 'true'` evaluates `true == 'true'` = false and every
+  # gated job skipped on every push. Truthy check is correct for v3 booleans.
   test:
     needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -56,7 +59,27 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run tests with coverage
+        env:
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+          MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
         run: |
+          set -euo pipefail
+          # The triumvirate/harness/skill-router suites are LIVE integration
+          # tests hitting a real server on 127.0.0.1:8766 — boot it exactly
+          # like the factory gate does, or they fail on every run.
+          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
+          python -m msb_v3 > /tmp/msb-ci-test-server.log 2>&1 &
+          SRV=$!
+          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
+            sleep 1
+          done
+          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
+            echo "server failed to boot — log follows"
+            cat /tmp/msb-ci-test-server.log
+            exit 1
+          fi
           PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json
 
       - name: Upload coverage
@@ -79,7 +102,7 @@ jobs:
 
   lint:
     needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -115,7 +138,7 @@ jobs:
 
   security:
     needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -167,7 +190,7 @@ jobs:
 
   docker:
     needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -189,7 +212,8 @@ jobs:
         run: |
           docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
           sleep 5
-          curl -f http://127.0.0.1:8766/status || (docker logs msb-v3-test && exit 1)
+          # /status does not exist — /health is the app's liveness route.
+          curl -f http://127.0.0.1:8766/health || (docker logs msb-v3-test && exit 1)
           docker rm -f msb-v3-test
 
   claims:
@@ -227,7 +251,10 @@ jobs:
 
   deploy:
     needs: [test, lint, security, docker, claims]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Only MSB_MCP_SECRET is configured today — gate on ALL four deploy
+    # secrets existing (a half-configured repo would fire an SSH deploy with
+    # empty credentials mid-flight). Until they exist, deploy stays inert.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' && secrets.DEPLOY_PATH != ''
     runs-on: ubuntu-latest
     environment: production
     steps:
