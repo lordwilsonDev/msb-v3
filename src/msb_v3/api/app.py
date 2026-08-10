@@ -34,6 +34,7 @@ from msb_v3.api.studio import router as studio_router
 from msb_v3.api.system import router as system_router
 from msb_v3.api.tenants import router as tenants_router
 from msb_v3.api.triumvirate import router as triumvirate_router
+from msb_v3.api.workflow import router as workflow_router
 from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
 
@@ -122,5 +123,6 @@ def create_app() -> FastAPI:
     app.include_router(graph_router, prefix="/graph", tags=["knowledge-graph"])
     app.include_router(smi_router, prefix="/smi", tags=["smi"])
     app.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
+    app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
 
     return app
