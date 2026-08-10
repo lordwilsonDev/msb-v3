@@ -1,0 +1,5 @@
+{
+  "coverage_floor": 0.65,
+  "coverage_source": "src/msb_v3",
+  "note": "msb-v3 keeps the built-in factory SUITE for its member experiments (no experiments key here by design). This file exists only to declare the coverage-floor gate: line coverage of src/msb_v3 must stay >= 65% (measured baseline 70% on 2026-08-10)."
+}
