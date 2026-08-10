@@ -6,15 +6,15 @@
       "phase": "inversion",
       "ok": true,
       "result": {
-        "assumption": "Lineage-safe memory consolidation relies on stable genetic factors across generations.",
-        "inversion": "Lineage-safe memory consolidation is primarily driven by environmental epigenetic modifications rather than genetic stability.",
+        "assumption": "Traditional memory consolidation processes are inherently lineage-safe, ensuring stable and error-free retention of information across generations or iterations.",
+        "inversion": "Traditional memory consolidation processes are not lineage-safe, leading to unpredictable degradation, corruption, or instability in memory retention over time.",
         "predictions": [
-          "Genetic mutations in key memory-related genes will significantly impair cross-generational memory retention.",
-          "Epigenetic markers will show consistent heritability in lineage-safe memory consolidation across generations.",
-          "Environmental interventions that disrupt epigenetic stability will correlate with reduced memory consolidation efficiency."
+          "Experiments will show significantly higher memory retention rates in systems using lineage-safe consolidation compared to traditional methods.",
+          "Neural activity patterns (in biological systems) or computational models (in AI) will exhibit measurable instability when using non-lineage-safe consolidation techniques.",
+          "Error rates in memory recall tasks will increase exponentially with repeated iterations in non-lineage-safe consolidation frameworks."
         ]
       },
-      "ts": "2026-08-08T08:54:38.650305+00:00"
+      "ts": "2026-08-10T01:07:09.169408+00:00"
     },
     {
       "phase": "evidence",
@@ -27,7 +27,7 @@
           "claim_count": 0
         }
       },
-      "ts": "2026-08-08T08:54:38.652550+00:00"
+      "ts": "2026-08-10T01:07:09.173152+00:00"
     },
     {
       "phase": "report",
@@ -38,12 +38,12 @@
         "abstract": "Autonomous research brief for lineage-safe memory consolidation.",
         "background": "",
         "uim": {
-          "assumption": "Lineage-safe memory consolidation relies on stable genetic factors across generations.",
-          "inversion": "Lineage-safe memory consolidation is primarily driven by environmental epigenetic modifications rather than genetic stability.",
+          "assumption": "Traditional memory consolidation processes are inherently lineage-safe, ensuring stable and error-free retention of information across generations or iterations.",
+          "inversion": "Traditional memory consolidation processes are not lineage-safe, leading to unpredictable degradation, corruption, or instability in memory retention over time.",
           "predictions": [
-            "Genetic mutations in key memory-related genes will significantly impair cross-generational memory retention.",
-            "Epigenetic markers will show consistent heritability in lineage-safe memory consolidation across generations.",
-            "Environmental interventions that disrupt epigenetic stability will correlate with reduced memory consolidation efficiency."
+            "Experiments will show significantly higher memory retention rates in systems using lineage-safe consolidation compared to traditional methods.",
+            "Neural activity patterns (in biological systems) or computational models (in AI) will exhibit measurable instability when using non-lineage-safe consolidation techniques.",
+            "Error rates in memory recall tasks will increase exponentially with repeated iterations in non-lineage-safe consolidation frameworks."
           ]
         },
         "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
@@ -66,9 +66,9 @@
         "guard_events": [],
         "sovereignty_notes": "Local-first artifacts; no external publish step."
       },
-      "ts": "2026-08-08T08:54:38.654296+00:00"
+      "ts": "2026-08-10T01:07:09.175456+00:00"
     }
   ],
   "status": "completed",
-  "ts": "2026-08-08T08:54:38.663429+00:00"
+  "ts": "2026-08-10T01:07:09.178191+00:00"
 }

@@ -2,21 +2,12 @@
   "topic": "mesh peer discovery for sovereign agents",
   "slug": "mesh-peer-discovery-for-sovereign-agents",
   "phase1": {
-    "assumption": "Centralized coordination is essential for reliable mesh peer discovery in sovereign agent networks.",
-    "inversion": "Decentralized, peer-to-peer discovery mechanisms are sufficient for reliable mesh peer discovery in sovereign agent networks.",
+    "assumption": "Mesh peer discovery for sovereign agents can function effectively without a centralized directory, relying solely on decentralized protocols.",
+    "inversion": "Mesh peer discovery for sovereign agents requires a centralized directory to ensure reliability and scalability.",
     "predictions": [
-      {
-        "metric": "Discovery latency",
-        "threshold": "Decentralized methods reduce latency by \u226540% compared to centralized approaches in large-scale networks."
-      },
-      {
-        "metric": "Resilience to node failures",
-        "threshold": "Decentralized systems maintain \u226595% connectivity during simulated node failures, while centralized systems drop to \u226480%."
-      },
-      {
-        "metric": "Scalability",
-        "threshold": "Decentralized discovery scales to \u226510,000 nodes without performance degradation, whereas centralized methods fail at \u22645,000 nodes."
-      }
+      "Discovery latency would be 50% lower in decentralized systems compared to centralized ones.",
+      "The system would scale linearly with the number of agents without a central directory.",
+      "Security breaches would decrease by 30% using decentralized discovery methods."
     ]
   },
   "ok": true

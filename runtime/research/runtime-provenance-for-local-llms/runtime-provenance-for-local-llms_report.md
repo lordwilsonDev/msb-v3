@@ -4,12 +4,12 @@
   "abstract": "Autonomous research brief for runtime provenance for local LLMs.",
   "background": "",
   "uim": {
-    "assumption": "Runtime provenance for local LLMs significantly enhances transparency and accountability by providing detailed, real-time tracking of data flows and model decisions during execution.",
-    "inversion": "Runtime provenance for local LLMs provides no meaningful transparency benefits and may degrade performance, privacy, or usability due to overhead and complexity.",
+    "assumption": "Runtime provenance tracking is essential for ensuring transparency, accountability, and security in local LLMs.",
+    "inversion": "Runtime provenance tracking is unnecessary or detrimental for local LLMs, as it introduces overhead without meaningful benefits.",
     "predictions": [
-      "Systems with runtime provenance will show a 20% improvement in traceability metrics (e.g., auditability scores) compared to baseline models.",
-      "Provenance-enabled LLMs will exhibit a 30% higher incidence of security vulnerabilities due to increased data exposure during tracking.",
-      "User trust in model outputs will increase by 15% in provenance-enabled systems, as measured by post-hoc confidence surveys."
+      "Systems with runtime provenance tracking will demonstrate 30% higher auditability compared to those without.",
+      "Local LLMs lacking runtime provenance will experience 20% more security vulnerabilities in sensitive use cases.",
+      "Runtime provenance tracking will increase average inference latency by 15% in benchmark tests."
     ]
   },
   "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",

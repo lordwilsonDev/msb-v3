@@ -60,16 +60,29 @@ def main() -> int:
         print(json.dumps(artifact, indent=2))
         return 1
 
-    try:
-        proc = subprocess.run(
-            [PY, "-m", "pytest", str(TARGET), "-q"],
-            capture_output=True, text=True, timeout=600, check=False,
-        )
-    except subprocess.TimeoutExpired:
-        proc = type("P", (), {"returncode": 124, "stdout": "", "stderr": "timed out after 600s"})()
+    attempts = []
+    for attempt in (1, 2):
+        try:
+            proc = subprocess.run(
+                [PY, "-m", "pytest", str(TARGET), "-q"],
+                capture_output=True, text=True, timeout=600, check=False,
+            )
+        except subprocess.TimeoutExpired:
+            proc = type("P", (), {"returncode": 124, "stdout": "", "stderr": "timed out after 600s"})()
+        combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
+        attempts.append({"attempt": attempt, "exit": proc.returncode,
+                         "stderr_tail": (proc.stderr or "")[-300:]})
+        if proc.returncode == 0:
+            break
+        # Infra-flake signature: pytest died before it could emit anything
+        # (exit 2 with empty stderr, e.g. startup crash under launchd). A real
+        # test failure prints an error report, so empty stderr + non-zero exit
+        # is safe to retry once; both attempts are recorded in the artifact.
+        if proc.returncode != 0 and (proc.stdout or "").strip() == "" and (proc.stderr or "").strip() == "":
+            continue
+        break
     latency_ms = int((time.perf_counter() - started) * 1000)
 
-    combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
     passed = proc.returncode == 0
     evidence = [line.strip() for line in combined.splitlines() if re.search(r"\d+ passed", line)]
     summary = evidence[-1] if evidence else f"pytest exit {proc.returncode}"
@@ -85,6 +98,7 @@ def main() -> int:
         "actual_behavior": f"exit={proc.returncode} {summary}",
         "latency_ms": latency_ms,
         "errors": [] if passed else [(proc.stderr or "")[-300:]],
+        "attempts": attempts,
         "state_before": {"zero_spend": True, "network": False, "llm": False},
         "state_after": {"exit": proc.returncode, "passed": passed, "summary": summary},
         "recovery": "n/a — read-only verification",
