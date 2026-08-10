@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-10T06:27:34.042065+00:00",
+  "timestamp": "2026-08-10T06:33:46.681859+00:00",
   "environment": {
     "repo": "/Users/lordwilson/msb-v3",
     "python": "/opt/homebrew/Caskroom/miniforge/base/bin/python",
@@ -9,73 +9,73 @@
     {
       "experiment": "h01_mcp_load",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h01_mcp_load_20260810T062714Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h01_mcp_load_20260810T063326Z.json",
       "returncode": 0
     },
     {
       "experiment": "h02_restart_hygiene",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h02_restart_hygiene_20260810T062718Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h02_restart_hygiene_20260810T063330Z.json",
       "returncode": 0
     },
     {
       "experiment": "h03_idempotency",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h03_idempotency_20260810T062718Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h03_idempotency_20260810T063330Z.json",
       "returncode": 0
     },
     {
       "experiment": "h04_race",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h04_race_20260810T062718Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h04_race_20260810T063331Z.json",
       "returncode": 0
     },
     {
       "experiment": "h05_contract_fuzzing",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260810T062718Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260810T063331Z.json",
       "returncode": 0
     },
     {
       "experiment": "h06_audit_tampering",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h06_audit_tampering_20260810T062719Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h06_audit_tampering_20260810T063331Z.json",
       "returncode": 0
     },
     {
       "experiment": "h07_auto_healing",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h07_auto_healing_20260810T062719Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h07_auto_healing_20260810T063331Z.json",
       "returncode": 0
     },
     {
       "experiment": "h08_chaos",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h08_chaos_20260810T062723Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h08_chaos_20260810T063335Z.json",
       "returncode": 0
     },
     {
       "experiment": "r01_retrieval_router",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/r01_retrieval_router_20260810T062723Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/r01_retrieval_router_20260810T063335Z.json",
       "returncode": 0
     },
     {
       "experiment": "r02_outcome",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/r02_outcome_20260810T062731Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/r02_outcome_20260810T063344Z.json",
       "returncode": 0
     },
     {
       "experiment": "h09_dependency_subtraction",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h09_dependency_subtraction_20260810T062733Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h09_dependency_subtraction_20260810T063346Z.json",
       "returncode": 0
     },
     {
       "experiment": "h10_resource_chaos",
       "verdict": "pass",
-      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h10_resource_chaos_20260810T062734Z.json",
+      "artifact": "/Users/lordwilson/msb-v3/artifacts/hygiene/h10_resource_chaos_20260810T063346Z.json",
       "returncode": 0
     }
   ],
