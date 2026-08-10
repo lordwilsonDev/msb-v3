@@ -56,7 +56,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev]" pytest-cov
 
       - name: Run tests with coverage
         env:
@@ -153,7 +153,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev]" pip-audit
 
       - name: Run pip-audit
         run: pip-audit --strict
@@ -168,7 +168,10 @@ jobs:
       - name: Generate SBOM
         run: |
           pip install cyclonedx-bom
-          cyclonedx-py . --output sbom.json --format json
+          # cyclonedx-py v7 requires a subcommand; `environment --pyproject`
+          # roots the SBOM in pyproject.toml and scans this venv's pip-installed
+          # packages (the repo has no requirements*.txt to scan).
+          cyclonedx-py environment --pyproject pyproject.toml -o sbom.json --of json
 
       - name: Check license compliance
         run: |
@@ -200,6 +203,10 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
+        # No Dockerfile in the repo root yet — the build stays inert with a
+        # notice until one is added (hashFiles is the honest gate; a job that
+        # can never build is a job that should say why it is idle).
+        if: hashFiles('Dockerfile') != ''
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -209,12 +216,18 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run container smoke test
+        if: hashFiles('Dockerfile') != ''
         run: |
           docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
           sleep 5
           # /status does not exist — /health is the app's liveness route.
           curl -f http://127.0.0.1:8766/health || (docker logs msb-v3-test && exit 1)
           docker rm -f msb-v3-test
+
+      - name: No Dockerfile — build inert
+        if: hashFiles('Dockerfile') == ''
+        run: |
+          echo "::notice::No Dockerfile in the repo root — the docker job stays inert until one is added"
 
   claims:
     runs-on: ubuntu-latest
