@@ -1,5 +1,12 @@
 # Reconciling the two "Phase 2" audits — 2026-08-07
 
+<!-- verify-claims: prose-exempt: curated incident record for the dd66dd3
+     fabrication. This doc must QUOTE the fabricated claims ("Tests: 53/53
+     passing", core/factory.py, ...) as evidence that those files never
+     existed; the prose-fabrication detector would otherwise flag the
+     quotes themselves. Every non-existent file named here is refuted in
+     the "does not exist" section below. -->
+
 Two audit documents sets exist in this repo, produced independently, close
 together in time, describing very different realities. This note exists so
 neither is mistaken for settled fact on its own.
