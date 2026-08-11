@@ -5,12 +5,13 @@ description = "Sovereign local-first AI runtime — sovereign core"
 requires-python = ">=3.11"
 
 dependencies = [
-  "fastapi==0.115.6",
+  "fastapi==0.141.1",
   "uvicorn[standard]==0.34.1",
   "pydantic==2.10.6",
   "httpx==0.28.1",
   "prometheus-client==0.21.1",
   "pydantic-settings==2.7.1",
+  "qdrant-client==1.18.0",
 ]
 
 [project.optional-dependencies]

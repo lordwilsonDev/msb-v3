@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections import defaultdict
 from contextlib import asynccontextmanager
-from ipaddress import ip_address
-from threading import Lock
-from typing import Dict, Tuple
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +21,7 @@ from msb_v3.api.memory import router as memory_router
 from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.models import router as models_router
 from msb_v3.api.notify import router as notify_router
+from msb_v3.api.openai_compat import router as openai_compat_router
 from msb_v3.api.rag import router as rag_router
 from msb_v3.api.research import router as research_router
 from msb_v3.api.safety import router as safety_router
@@ -37,6 +34,8 @@ from msb_v3.api.triumvirate import router as triumvirate_router
 from msb_v3.api.workflow import router as workflow_router
 from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
+from msb_v3.core.rate_limit import RateLimiter
+from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
 
 
 @asynccontextmanager
@@ -46,19 +45,12 @@ async def lifespan(app: FastAPI):
 
 _RUN_RATE_LIMIT_WINDOW_S = 60
 _RUN_RATE_LIMIT_MAX = 10
-_RUN_RATE_WINDOW: Dict[str, Tuple[float, int]] = defaultdict(lambda: (0.0, 0))
-_RUN_RATE_LOCK = Lock()
-
-
-def _client_key(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    host = request.client.host if request.client else "unknown"
-    try:
-        return str(ip_address(host))
-    except ValueError:
-        return host
+# /research/assistant/run is an expensive generative call; cap each client at
+# _RUN_RATE_LIMIT_MAX requests per window (one unit per request).
+_RUN_LIMITER = RateLimiter(
+    window_s=lambda: _RUN_RATE_LIMIT_WINDOW_S,
+    max_count=lambda: _RUN_RATE_LIMIT_MAX,
+)
 
 
 def create_app() -> FastAPI:
@@ -89,16 +81,13 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def run_rate_limit_middleware(request: Request, call_next):
         if request.method == "POST" and request.url.path == "/research/assistant/run":
-            key = _client_key(request)
-            with _RUN_RATE_LOCK:
-                window_start, count = _RUN_RATE_WINDOW[key]
-                now = time.time()
-                if now - window_start > _RUN_RATE_LIMIT_WINDOW_S:
-                    _RUN_RATE_WINDOW[key] = (now, 1)
-                elif count >= _RUN_RATE_LIMIT_MAX:
-                    return Response(content='{"detail":"rate_limit_exceeded"}', status_code=429, media_type="application/json")
-                else:
-                    _RUN_RATE_WINDOW[key] = (window_start, count + 1)
+            if not _RUN_LIMITER.check(request, units=1):
+                RATE_LIMIT_REJECTIONS.labels(limiter="run", reason="rate").inc()
+                return Response(
+                    content='{"detail":"rate_limit_exceeded"}',
+                    status_code=429,
+                    media_type="application/json",
+                )
         return await call_next(request)
 
     app.include_router(health_router, tags=["health"])
@@ -124,5 +113,6 @@ def create_app() -> FastAPI:
     app.include_router(smi_router, prefix="/smi", tags=["smi"])
     app.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
     app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
+    app.include_router(openai_compat_router, prefix="/v1", tags=["openai"])
 
     return app

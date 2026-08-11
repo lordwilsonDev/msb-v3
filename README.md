@@ -26,6 +26,12 @@ See `.env.example`. Key vars:
 - `OLLAMA_URL`, `OLLAMA_MODEL`
 - `MSB_DB_PATH`
 
+## Open WebUI (ready-made chat UI)
+
+MSB exposes an OpenAI-compatible `/v1` adapter so Open WebUI (or any OpenAI
+SDK client) can drive the native harness. Setup, auth, and Tencent COS file
+storage: [docs/open-webui-adapter-v1.md](docs/open-webui-adapter-v1.md).
+
 ## Run
 
 bash scripts/start.sh
