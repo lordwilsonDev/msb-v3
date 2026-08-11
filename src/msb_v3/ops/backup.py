@@ -6,7 +6,11 @@ copies. Everything lands in a timestamped folder OUTSIDE the repo.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import shutil
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -21,12 +25,6 @@ def _backup_sqlite(src: Path, dst: Path) -> None:
             target.close()
     finally:
         source.close()
-
-
-import hashlib
-import json
-import shutil
-from dataclasses import dataclass
 
 
 @dataclass
@@ -73,7 +71,7 @@ def create_backup(data_dir: Path, storage_dir: Path, dest_root: Path, *, timesta
 
     checksums: dict[str, str] = {}
     for f in sorted(out.rglob("*")):
-        if f.is_file() and f.name != "manifest.json":
+        if f.is_file() and f != out / "manifest.json":
             checksums[f.relative_to(out).as_posix()] = _sha256(f)
 
     manifest = BackupManifest(path=out, timestamp=timestamp, checksums=checksums, db_count=db_count)
