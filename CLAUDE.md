@@ -85,3 +85,5 @@ Dual-push: `origin` and `sovereign_intelligence_core` both point to `https://git
   Repo root resolves from the package/script location; override with
   `MSB_HOME` (Python) or `MSB_REPO` (shell scripts).
 - Obsidian-first data; skills automate on top.
+- `runtime/research/` is regenerated on every run and never versioned
+  (gitignored wholesale); keep hand-written research notes in `docs/`.
