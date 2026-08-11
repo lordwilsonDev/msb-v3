@@ -82,8 +82,12 @@ def create_backup(data_dir: Path, storage_dir: Path, dest_root: Path, *, timesta
 
 
 def verify_backup(backup_dir: Path) -> bool:
-    manifest = json.loads((backup_dir / "manifest.json").read_text())
-    for rel, expected in manifest["checksums"].items():
+    try:
+        manifest = json.loads((backup_dir / "manifest.json").read_text())
+        checksums = manifest["checksums"]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return False
+    for rel, expected in checksums.items():
         f = backup_dir / rel
         if not f.is_file() or _sha256(f) != expected:
             return False
@@ -97,6 +101,15 @@ def restore_backup(backup_dir: Path, data_dir: Path, storage_dir: Path) -> None:
         src = backup_dir / name
         if not src.exists():
             continue
+        tmp = target.parent / (target.name + ".restore-tmp")
+        old = target.parent / (target.name + ".restore-old")
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        shutil.copytree(src, tmp)          # build new copy first (non-destructive)
         if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(src, target)
+            if old.exists():
+                shutil.rmtree(old)
+            target.rename(old)             # move existing aside (atomic rename)
+        tmp.rename(target)                 # swap in new copy (atomic rename)
+        if old.exists():
+            shutil.rmtree(old)             # drop old only after success
