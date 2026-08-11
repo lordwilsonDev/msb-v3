@@ -62,6 +62,11 @@ TRIUMVIRATE_MULTIMODAL = Counter(
     "Multimodal interface calls",
     ["interface"],
 )
+RATE_LIMIT_REJECTIONS = Counter(
+    "msb_v3_rate_limit_rejections_total",
+    "Requests refused by the rate/batch guards, by limiter and reason",
+    ["limiter", "reason"],
+)
 
 # Ensure all Triumvirate metrics are registered in the default registry at import time.
 for _metric in (

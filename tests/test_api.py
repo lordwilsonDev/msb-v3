@@ -160,6 +160,38 @@ def test_prometheus_scrape():
     assert "msb_v3_ready" in text
 
 
+def test_research_rate_limit_rejection_counts_on_prometheus():
+    """The /research/assistant/run middleware refusal increments the
+    msb_v3_rate_limit_rejections_total{limiter="run"} counter."""
+    from starlette.requests import Request
+
+    from msb_v3.api.app import _RUN_LIMITER, _RUN_RATE_LIMIT_MAX, create_app
+    from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+
+    # Pre-exhaust the run limiter with a synthetic request that keys exactly
+    # like the middleware's (TestClient peer host is "testclient"), so the
+    # single real POST drives the rejection path without 10 pipeline runs.
+    client = TestClient(create_app())
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/research/assistant/run",
+        "headers": [(b"host", b"testserver")],
+        "client": ("testclient", 50000),
+    }
+    for _ in range(_RUN_RATE_LIMIT_MAX):
+        assert _RUN_LIMITER.check(Request(scope))
+
+    before = RATE_LIMIT_REJECTIONS.labels(limiter="run", reason="rate")._value.get()
+    r = client.post("/research/assistant/run", json={"topic": "q"})
+    assert r.status_code == 429
+    assert RATE_LIMIT_REJECTIONS.labels(limiter="run", reason="rate")._value.get() == before + 1
+
+    r = client.get("/metrics/prometheus")
+    assert r.status_code == 200
+    assert "msb_v3_rate_limit_rejections_total" in r.text
+
+
 def test_execute_tool_loop_single_tool():
     from msb_v3.local_ai.ollama import LocalAIClient
 

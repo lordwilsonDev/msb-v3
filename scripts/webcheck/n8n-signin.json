@@ -1,0 +1,24 @@
+{
+  "name": "n8n sign-in flow",
+  "base_url": "http://127.0.0.1:5678",
+  "timeout": 15,
+  "_comment": "Template multi-step flow for webcheck run. Usage: make webcheck FLOW=scripts/webcheck/n8n-signin.json  (start n8n first). IMPORTANT: selectors below are best-effort guesses for n8n editor-ui (1.x) and are UNVERIFIED against a real n8n instance (none is running in this environment). Comma lists only work when the alternatives target the SAME element - Playwright strict mode throws if they match different elements (e.g. a data-test-id wrapper + an inner input). Run with --headed and adjust selectors to your n8n version before relying on this.",
+  "steps": [
+    { "_comment": "n8n is a Vue SPA - wait for the app shell before asserting",
+      "open": "/signin",
+      "wait_until": "domcontentloaded" },
+    { "_comment": "wait_for tolerates multiple matches; fill/click do NOT (strict mode)",
+      "wait_for": { "selector": "input[name=email], #input-email, [data-test-id=email]", "timeout": 20 } },
+    { "assert_text": { "text": "Sign in", "exact": false } },
+    { "_comment": "Pick ONE selector that resolves to the real input on your version",
+      "fill": { "selector": "input[name=email]", "value": "admin" } },
+    { "fill": { "selector": "input[name=password]", "value": "${N8N_PASSWORD}" } },
+    { "_comment": "data-test-id on the submit button varies by version; text match is the stable fallback but only if it does not also match other elements",
+      "click": "button[type=submit]" },
+    { "_comment": "After sign-in n8n lands on the Workflows list; wait for a stable element",
+      "wait_for": { "selector": "text=Workflows", "state": "visible", "timeout": 30 } },
+    { "assert_selector": { "selector": "[data-test-id=resources-list]" } },
+    { "eval": "document.querySelector('h1, .heading, [data-test-id=resources-list]')?.textContent?.trim()" },
+    { "shot": "signed-in.png" }
+  ]
+}

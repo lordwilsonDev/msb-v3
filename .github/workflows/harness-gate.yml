@@ -1,0 +1,115 @@
+name: harness-gate
+
+# Browser + video-harness evidence gate: runs the full webcheck-all suite
+# with the `endpoints` and `harness` stages in one pass and uploads the
+# harness-evidence-report/v1 artifact so CI consumers (e.g.
+# scripts/ci-harness-gate.sh) can gate downstream jobs on it.
+#
+# WHY SELF-HOSTED: these two stages exercise machine-local state that a
+# hosted runner cannot have:
+#   - ~/bin/webcheck.py (the Playwright driver, channel="chrome") is not in
+#     the repo
+#   - ~/video-harness/evidence (the evidence dir the harness stage gates) is
+#     not a git repo
+#   - the live server (:8766), Qdrant (:6333), and system Chrome
+# Pre-push local dry-run of these exact steps: make harness-gate-dryrun
+# (same probes + gate, minus the upload).
+#
+# Register a runner on the sovereign box and set its labels to match
+# `runs-on` below (or change the labels). This gate tests the pushed commit's
+# *checks* against the machine's live stack (server/Qdrant/Chrome/evidence);
+# the hosted ci.yml / factory-gate.yml workflows test the commit's *code*.
+#
+# Secrets: the auth-gated /mcp/status check resolves x-mcp-secret env ->
+# .env (absent in a fresh checkout) -> shipped default, so a server running
+# the shipped default needs no secrets. If the live server runs a custom
+# secret, set the MSB_MCP_SECRET repo secret (same one factory-gate.yml
+# documents) -- it is passed through on the webcheck-all step.
+#
+# RUNNER USER ACCOUNT: $HOME is load-bearing -- ~/bin/webcheck.py,
+# ~/video-harness/evidence, miniforge python, and system Chrome all live in
+# the dev user's home. Register the runner under the SAME account
+# (lordwilson); a runner under any other account fails with not-found errors.
+#
+# Services are shared infrastructure: `make qdrant-start` / `make
+# server-start` are best-effort (both exit 1 when already healthy) and the
+# workflow never stops them -- same policy as the local routine. MSB_REPO is
+# set to the workspace so scripts write artifacts/ inside the checkout, not
+# the live ~/msb-v3.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: harness-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: endpoints + harness evidence
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure Qdrant is up (best-effort, idempotent)
+        run: |
+          make qdrant-start || true
+          i=0
+          until curl -fsS -m 2 http://127.0.0.1:6333/healthz >/dev/null; do
+            i=$((i + 1))
+            [ "$i" -ge 10 ] && { echo "qdrant not healthy on :6333 after 10s" >&2; exit 1; }
+            sleep 1
+          done
+          echo "qdrant healthy on :6333"
+        env:
+          MSB_REPO: ${{ github.workspace }}
+
+      - name: Ensure msb-v3 server is up (best-effort, idempotent)
+        run: |
+          make server-start || true
+          i=0
+          until curl -fsS -m 2 http://127.0.0.1:8766/health >/dev/null; do
+            i=$((i + 1))
+            [ "$i" -ge 30 ] && { echo "msb-v3 not healthy on :8766 after 30s" >&2; exit 1; }
+            sleep 1
+          done
+          echo "msb-v3 healthy on :8766"
+        env:
+          MSB_REPO: ${{ github.workspace }}
+
+      - name: Run webcheck-all (endpoints + harness evidence gate)
+        run: make webcheck-all STAGES=endpoints,harness
+        env:
+          MSB_REPO: ${{ github.workspace }}
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
+
+      # Portability gate: stages a temp copy of the checkout and runs the
+      # FULL pytest suite there (scripts/test.sh, no server boot — pure
+      # pytest), failing if any /Users/... machine literal remains or if
+      # any test needs the original machine path. Self-contained; the live
+      # server from the step above is only relied on by the live endpoint
+      # tests, exactly as in the local routine.
+      - name: Portability gate (full suite from a foreign checkout path)
+        run: make portability
+        env:
+          MSB_REPO: ${{ github.workspace }}
+
+      # Upload even on failure so a red gate still ships the report, the
+      # stage logs (producer FAIL lines + consumer BLOCK detail), and the
+      # endpoint screenshots for inspection.
+      - name: Upload report + logs + screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-gate-artifacts
+          path: |
+            artifacts/harness-evidence-report.json
+            artifacts/webcheck-all-*.log
+            artifacts/webcheck-*
+          if-no-files-found: warn
+          retention-days: 14

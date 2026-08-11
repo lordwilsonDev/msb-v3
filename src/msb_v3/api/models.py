@@ -55,9 +55,15 @@ def _switch_backend(req: SwitchRequest | Dict[str, Any]) -> Dict[str, str]:
     return {"status": "ok", "backend": backend}
 
 
+def list_models() -> List[Dict[str, object]]:
+    """Public accessor for the configured models (used by /models and the
+    OpenAI-compatible /v1 adapter)."""
+    return _list_models()
+
+
 @router.get("/", response_model=List[ModelInfo])
 async def list_models_endpoint() -> List[Dict[str, object]]:
-    return _list_models()
+    return list_models()
 
 
 @router.post("/switch")

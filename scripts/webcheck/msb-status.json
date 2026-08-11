@@ -1,0 +1,16 @@
+{
+  "name": "msb-v3 /mcp/status flow",
+  "base_url": "http://127.0.0.1:8766",
+  "timeout": 15,
+  "headers": { "x-mcp-secret": "${MCP_BRIDGE_SECRET}" },
+  "steps": [
+    { "_comment": "authed-open the h03-gate endpoint; body renders as JSON text",
+      "open": "/mcp/status" },
+    { "_comment": "the endpoint returns compact JSON - no space after the colon",
+      "assert_text": { "text": "\"ready\":true" } },
+    { "assert_text": { "text": "\"service\":\"msb-v3\"" } },
+    { "_comment": "tolerant tools-count extraction (JSON viewer formatting varies)",
+      "eval": "(document.body.innerText.match(/\"tools\":(\\d+)/) || [])[1]" },
+    { "shot": "mcp-status.png" }
+  ]
+}

@@ -340,38 +340,45 @@ def test_live_smi_query_temporal_route():
 
     tenant_id = f"live_test_{int(time.time())}"
     client = TestClient(create_app())
+    try:
+        seeded = {
+            "tenant_id": tenant_id,
+            "documents": [
+                {
+                    "text": "the quarterly renewal process for the fox valley fleet",
+                    "source": "live-seed",
+                    "metadata": {"timestamp": time.time(), "tag": "renewal"},
+                }
+            ],
+        }
+        idx = client.post("/rag/index", json=seeded)
+        assert idx.status_code == 200, idx.text
 
-    seeded = {
-        "tenant_id": tenant_id,
-        "documents": [
-            {
-                "text": "the quarterly renewal process for the fox valley fleet",
-                "source": "live-seed",
-                "metadata": {"timestamp": time.time(), "tag": "renewal"},
-            }
-        ],
-    }
-    idx = client.post("/rag/index", json=seeded)
-    assert idx.status_code == 200, idx.text
+        resp = client.post(
+            "/smi/query",
+            json={"query": "what changed last week in the renewal process", "top_k": 3,
+                  "context": {"tenant_id": tenant_id}},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
 
-    resp = client.post(
-        "/smi/query",
-        json={"query": "what changed last week in the renewal process", "top_k": 3,
-              "context": {"tenant_id": tenant_id}},
-    )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-
-    # Temporal cue present -> the planner added the temporal route and it
-    # actually returned the seeded doc (proving the epoch-seconds Range works).
-    assert "temporal" in {r["index"] for r in data["plan"]["routes"]}
-    assert data["route_errors"] == {}
-    temporal_hits = [
-        m for m in data["matches"]
-        if any(p["route"] == "temporal" for p in m["provenance"])
-    ]
-    assert temporal_hits, f"temporal route returned nothing: {data}"
-    assert any("renewal" in m["text"] for m in temporal_hits)
+        # Temporal cue present -> the planner added the temporal route and it
+        # actually returned the seeded doc (proving the epoch-seconds Range works).
+        assert "temporal" in {r["index"] for r in data["plan"]["routes"]}
+        assert data["route_errors"] == {}
+        temporal_hits = [
+            m for m in data["matches"]
+            if any(p["route"] == "temporal" for p in m["provenance"])
+        ]
+        assert temporal_hits, f"temporal route returned nothing: {data}"
+        assert any("renewal" in m["text"] for m in temporal_hits)
+    finally:
+        # Leak guard: /rag/index creates tenant_live_test_<ts> and nothing else
+        # removes it, so a bare pytest run would accumulate one collection per
+        # run in Qdrant. Best-effort; no-op if seeding failed before the
+        # collection existed.
+        from msb_v3.api.rag import delete_tenant_collection
+        delete_tenant_collection(tenant_id)
 
 
 # ---------------------------------------------------------------------------
