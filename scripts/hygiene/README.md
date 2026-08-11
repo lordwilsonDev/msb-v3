@@ -44,6 +44,10 @@ make qdrant-sweep ARGS=--dry-run   # preview without deleting
 
 `make hygiene` runs the sweep automatically after the battery.
 
+The sweep's per-run JSON audit trail is ephemeral — disk-only, never
+versioned (unlike `factory_gate.json` / `hygiene_aggregate.json`, which the
+ignore policy keeps).
+
 ## Runner table
 
 | Experiment | Standalone runner | Tests | What "pass" means | Requires live server? |
