@@ -15,8 +15,18 @@ REPO = Path(os.environ.get('MSB_REPO', Path(__file__).resolve().parents[2]))
 EVIDENCE_DIR = REPO / 'artifacts' / 'hygiene'
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 SKILL = 'api-hygiene'
-BASE_URL = os.environ.get('MSB_BASE_URL', 'http://127.0.0.1:8766')
-SECRET = os.environ.get('MCP_BRIDGE_SECRET', '')
+dotenv = REPO / '.env'
+env: dict[str, str] = {}
+if dotenv.exists():
+    for line in dotenv.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if '=' in line:
+            k, v = line.split('=', 1)
+            env[k.strip()] = v.strip()
+SECRET = os.environ.get('MCP_BRIDGE_SECRET', env.get('MCP_BRIDGE_SECRET', ''))
+BASE_URL = env.get('MSB_BASE_URL', os.environ.get('MSB_BASE_URL', 'http://127.0.0.1:8766'))
 
 
 def new_record(experiment_id: str, input_desc: str, environment: str) -> dict[str, Any]:
@@ -93,11 +103,18 @@ def main() -> int:
     record['evidence'].append('repeated identical read-only MCP status requests')
     record['evidence'].append('observed stable status payload hashes across repetitions')
 
-    if unique_codes == 1 and unique_hashes == 1:
+    ok_http = all(code == 200 for code in codes)
+    if ok_http and unique_codes == 1 and unique_hashes == 1:
         record['verdict'] = 'pass'
     else:
         record['verdict'] = 'fail'
-        record['errors'].append('non-idempotent or unstable response detected')
+        if not ok_http:
+            # A stable 404 is idempotent but proves nothing — the endpoint must
+            # actually exist and serve. Without this, h03 passed on a missing
+            # route (8 identical 404s), a false green.
+            record['errors'].append(f'expected HTTP 200, got {sorted(set(codes))}')
+        else:
+            record['errors'].append('non-idempotent or unstable response detected')
 
     path = save(record)
     print(json.dumps({
