@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# portability-check.sh — prove the suite passes from a foreign checkout path.
+#
+# Stages the repo (minus VCS/agent/junk) into a temp dir, verifies no
+# /Users/... machine literals remain in live code, and runs the full pytest
+# suite there with MSB_HOME pointed at the copy. Anything still hardcoded to
+# the original machine path fails the copy's import, path derivation, or
+# tests — this gate catches portability regressions before they ship.
+#
+#   bash scripts/portability-check.sh                       # run + auto-cleanup
+#   PORTABILITY_KEEP=1 bash scripts/portability-check.sh    # keep the copy
+#   PORTABILITY_DEST=/tmp/x bash scripts/portability-check.sh  # fixed dest
+#
+# Exit 0 = suite green from the foreign path. Non-zero otherwise.
+set -euo pipefail
+
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
+
+# Only auto-remove a dir we created (mktemp). A user-supplied PORTABILITY_DEST
+# is never rm -rf'd or rsync --delete'd — a typo pointing at a meaningful
+# directory can't be destroyed.
+DEST_AUTO=0
+if [ -z "${PORTABILITY_DEST:-}" ]; then
+  DEST="$(mktemp -d /tmp/msb-v3-portable-XXXX)"
+  DEST_AUTO=1
+else
+  DEST="$PORTABILITY_DEST"
+fi
+KEEP="${PORTABILITY_KEEP:-0}"
+
+# Make exports MSB_DB_PATH pointing at the ORIGINAL repo's data dir; the
+# portable run must be fully self-contained, so drop it (scripts/test.sh
+# defaults to the copy's own data/).
+unset MSB_DB_PATH 2>/dev/null || true
+
+EXCLUDES=(
+  --exclude .git/ --exclude .claude/ --exclude __pycache__/ --exclude .pytest_cache/
+  --exclude '*.pyc' --exclude .env --exclude logs/ --exclude '*.log'
+  --exclude 'artifacts/artifacts-backup-*/'
+)
+
+cleanup() {
+  if [ "$KEEP" = "1" ]; then
+    echo "[portability] kept copy at $DEST"
+  elif [ "$DEST_AUTO" = "1" ]; then
+    rm -rf "$DEST"
+    echo "[portability] removed temp copy"
+  else
+    echo "[portability] left user-supplied dir in place: $DEST"
+  fi
+}
+trap cleanup EXIT
+
+echo "[portability] source repo: $REPO"
+echo "[portability] staging copy: $DEST"
+RSYNC_DELETE=()
+if [ "$DEST_AUTO" = "1" ]; then
+  RSYNC_DELETE=(--delete)
+fi
+rsync -a "${RSYNC_DELETE[@]}" "${EXCLUDES[@]}" "$REPO/" "$DEST/"
+
+# Fail loudly if the copy is incomplete — a broken stage must not masquerade
+# as a passing gate.
+[ -f "$DEST/scripts/test.sh" ] || { echo "[portability] FAIL: copy incomplete (scripts/test.sh missing)"; exit 1; }
+[ -f "$DEST/pyproject.toml" ] || { echo "[portability] FAIL: copy incomplete (pyproject.toml missing)"; exit 1; }
+
+echo
+echo "[portability] scanning the copy for /Users/... literals in live code..."
+# The needle is written as two adjacent quoted strings so this file's own
+# scanner cannot match itself — a contiguous literal would trip the very
+# check it implements.
+NEEDLE="/Users/""lordwilson"
+# Scan every *.py / *.sh in the copy, pruning dirs that hold data rather
+# than live code. find + xargs instead of grep -r --include: BSD grep's
+# --include is unreliable during -r traversal (it matched .plist templates
+# too), and only *.py / *.sh are live code.
+PRUNE=(-name data -o -name runtime -o -name artifacts -o -name docs -o -name .claude \
+       -o -name __pycache__ -o -name .pytest_cache -o -name logs -o -name .git)
+# No-op guard: a scanner that always prints "clean" is worse than none.
+# The split-string NEEDLE trick can be silently broken by an edit (it was —
+# the assignment once landed inside a comment and the gate became a no-op),
+# and a find error or an empty scan must FAIL loudly, never masquerade.
+[ -n "$NEEDLE" ] || { echo "[portability] FAIL: needle is empty — scanner is a no-op"; exit 1; }
+FILE_COUNT=$(find "$DEST" \( "${PRUNE[@]}" \) -prune -o \( -name '*.py' -o -name '*.sh' \) -type f -print 2>/dev/null | wc -l | tr -d ' ') || FILE_COUNT=0
+[ "$FILE_COUNT" -gt 0 ] || { echo "[portability] FAIL: literal scan found 0 files to judge"; exit 1; }
+echo "  scanning $FILE_COUNT live-code files for the needle"
+if find "$DEST" \( "${PRUNE[@]}" \) -prune -o \( -name '*.py' -o -name '*.sh' \) -type f -print0 2>/dev/null \
+    | xargs -0 grep -Fq -- "$NEEDLE"; then
+  echo "[portability] FAIL: hardcoded machine path found in the copy:"
+  find "$DEST" \( "${PRUNE[@]}" \) -prune -o \( -name '*.py' -o -name '*.sh' \) -type f -print0 2>/dev/null \
+    | xargs -0 grep -Fn -- "$NEEDLE" | head -5
+  exit 1
+elif [ "${PIPESTATUS[0]}" != "0" ]; then
+  # find errored (e.g. the copy vanished) — that must FAIL loudly, never
+  # masquerade as a clean scan.
+  echo "[portability] FAIL: literal scan could not run (find error)"
+  exit 1
+fi
+echo "[portability] clean — no machine literals in live code"
+
+echo
+echo "[portability] settings sanity under MSB_HOME=$DEST:"
+HOME_CHECK=$(cd "$DEST" && MSB_HOME="$DEST" PYTHONPATH="$DEST/src" "$PY" -c 'from msb_v3.core.config import settings; print(settings.msb_home)')
+echo "  settings.msb_home -> $HOME_CHECK"
+[ "$HOME_CHECK" = "$DEST" ] || { echo "[portability] FAIL: msb_home did not resolve to the copy"; exit 1; }
+
+echo
+echo "[portability] running the full suite from the copy (MSB_HOME=$DEST)..."
+if ! (cd "$DEST" && MSB_HOME="$DEST" bash scripts/test.sh); then
+  echo "[portability] FAIL: suite exited non-zero from the foreign path"
+  exit 1
+fi
+echo
+echo "[portability] PASS: full suite green from a foreign checkout path"

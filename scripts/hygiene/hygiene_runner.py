@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPO = Path(os.environ.get("MSB_REPO", "/Users/lordwilson/msb-v3"))
+REPO = Path(os.environ.get("MSB_REPO", Path(__file__).resolve().parents[2]))
 HERE = Path(__file__).resolve().parent
 EVIDENCE_DIR = REPO / "artifacts" / "hygiene"
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)

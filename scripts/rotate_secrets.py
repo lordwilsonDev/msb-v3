@@ -10,8 +10,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ENV_PATH = Path("/Users/lordwilson/msb-v3/.env")
-ROTATION_LOG = Path("/Users/lordwilson/msb-v3/runtime/secret-rotation.log")
+# Repo root: MSB_HOME / MSB_REPO env, else derived from this script's
+# location (scripts/ -> parents[1] = repo root).
+_REPO = Path(os.getenv("MSB_HOME") or os.getenv("MSB_REPO") or str(Path(__file__).resolve().parents[1]))
+
+ENV_PATH = _REPO / ".env"
+ROTATION_LOG = _REPO / "runtime" / "secret-rotation.log"
 ROTATION_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 _SECRETS = {

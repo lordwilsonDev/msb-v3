@@ -33,6 +33,25 @@ def test_missing_secret_returns_401(client):
     assert response.json()["detail"] == "unauthorized"
 
 
+def test_mcp_status_requires_auth(client):
+    response = client.get("/mcp/status")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "unauthorized"
+
+
+def test_mcp_status_returns_service_shape(client):
+    response = client.get("/mcp/status", headers={"x-mcp-secret": SECRET})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["service"] == "msb-v3"
+    assert data["version"] == "0.1.0"
+    assert isinstance(data["ready"], bool)
+    # Tool count must track the manifest — a stale hardcoded number would
+    # silently drift from what /mcp/tools actually serves.
+    assert data["tools"] == len(mcp_bridge._MCP_TOOLS)
+    assert data["tools"] >= 1
+
+
 def test_invalid_secret_returns_401(client):
     response = client.post(
         "/mcp/proxy",

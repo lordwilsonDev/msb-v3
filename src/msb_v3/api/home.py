@@ -1,19 +1,41 @@
 """Lightweight home dashboard for msb-v3."""
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
+from msb_v3.core.config import settings
+
 router = APIRouter(tags=["ui"])
+
+# Repo-relative runtime paths (no hardcoded /Users/... homes): the dashboard
+# only ever runs from the installed repo, so the root comes from settings
+# (MSB_HOME / MSB_REPO env, else derived from the package location).
+_RUNTIME_DIR = Path(settings.msb_home) / "runtime"
+_RESEARCH_DIR = _RUNTIME_DIR / "research"
+_MULCH_DB = _RUNTIME_DIR / "triumvirate" / "mulch_learnings.db"
+
+# The dashboard can be reached through a proxy (e.g. Open WebUI on :3001), so
+# relative URLs like /health would resolve against the *proxy* and return its
+# HTML -> ValueError. Status probes are always pinned to the real MSB base so
+# the dashboard reads the same no matter how it is opened. Loopback, not
+# settings.host: the bind address may be a wildcard (0.0.0.0) or an interface
+# address, and these probes are always self-fetches on this machine.
+_MSB_BASE = f"http://127.0.0.1:{settings.port}"
+
+# Per-probe timeout; monkeypatched by tests to measure parallel vs sequential
+# behavior via wall-clock time.
+_PROBE_DELAY_S = 8.0
 
 
 def _list_research_runs() -> list[str]:
-    run_path = Path("/Users/lordwilson/msb-v3/runtime/research")
     try:
-        return sorted([p.name for p in run_path.iterdir() if p.is_dir()]) if run_path.exists() else []
+        return sorted([p.name for p in _RESEARCH_DIR.iterdir() if p.is_dir()]) if _RESEARCH_DIR.exists() else []
     except Exception:
         return []
 
@@ -36,7 +58,7 @@ def _get_triumvirate_dashboard() -> dict:
 
 
 def _get_argus_mulch() -> dict:
-    db_path = Path("/Users/lordwilson/msb-v3/runtime/triumvirate/mulch_learnings.db")
+    db_path = _MULCH_DB
     try:
         with sqlite3.connect(db_path) as conn:
             rows = conn.execute(
@@ -59,15 +81,43 @@ def _get_argus_mulch() -> dict:
         return {"rows": []}
 
 
-def _render_status(label: str, url: str) -> str:
+async def _probe(client: httpx.AsyncClient, url: str, *, method: str = "GET", json_body: dict | None = None) -> str:
+    """Short status string for one dashboard probe. Async so the probes never
+    block the event loop (a sync call here would deadlock: the dashboard
+    can't answer the very request it is making). POST-only endpoints
+    (telegram) get the right method; a non-JSON response (e.g. a proxy's
+    HTML) is reported as INVALID rather than a bare error."""
     try:
-        import urllib.request
-        with urllib.request.urlopen(url, timeout=3) as r:
-            status = r.status
+        r = await client.request(method, url, json=json_body, timeout=_PROBE_DELAY_S)
+        if r.status_code != 200:
+            return f"HTTP {r.status_code}"
+        if "json" not in r.headers.get("content-type", "") and not r.content[:64].strip().startswith((b"{", b"[")):
+            return "INVALID (non-JSON)"
+        return "ok"
     except Exception as exc:
-        status = f"ERR:{type(exc).__name__}"
-    css = "ok" if status == 200 else "bad"
-    return f'<li><a href="{url}">{label}</a>: <span class="{css}">{status}</span></li>'
+        return f"ERR:{type(exc).__name__}"
+
+
+async def _render_status(client: httpx.AsyncClient, label: str, path: str, *, method: str = "GET", json_body: dict | None = None) -> str:
+    status = await _probe(client, _MSB_BASE + path, method=method, json_body=json_body)
+    css = "ok" if status == "ok" else "bad"
+    return f'<li><a href="{_MSB_BASE + path}">{label}</a>: <span class="{css}">{status}</span></li>'
+
+
+async def _render_statuses() -> str:
+    """All five status probes in parallel — sequential awaits would stack
+    their timeouts (5 x 8s worst case = ~40s page load)."""
+    async with httpx.AsyncClient() as client:
+        lines = await asyncio.gather(
+            _render_status(client, "health", "/health"),
+            _render_status(client, "preflight", "/research/assistant/preflight"),
+            _render_status(client, "safety", "/safety/status"),
+            _render_status(client, "evolution", "/evolution/scan"),
+            _render_status(
+                client, "telegram", "/notify/telegram", method="POST", json_body={"text": "dashboard-health-probe"}
+            ),
+        )
+    return "\n".join(lines)
 
 
 def _render_triumvirate_status(data: dict) -> str:
@@ -105,11 +155,7 @@ async def home() -> HTMLResponse:
     )
     triumph = _get_triumvirate_dashboard()
     items += "\n" + _render_triumvirate_status(triumph)
-    items += "\n" + _render_status("health", "/health")
-    items += "\n" + _render_status("preflight", "/research/assistant/preflight")
-    items += "\n" + _render_status("safety", "/safety/status")
-    items += "\n" + _render_status("evolution", "/evolution/scan")
-    items += "\n" + _render_status("telegram", "/notify/telegram")
+    items += "\n" + await _render_statuses()
     items += "\n" + _render_argus_mulch(_get_argus_mulch())
 
     html = f"""<!doctype html>

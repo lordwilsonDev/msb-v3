@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Quick verification of multi-tenant platform deployment."""
 
+import os
+from pathlib import Path
+
 import requests
 
-BASE = "http://localhost:8766"
+BASE = os.getenv("MSB_URL", "http://localhost:8766")
+VAULT = Path(os.getenv("MSB_VAULT_PATH", str(Path.home() / "Documents" / "Vault")))
 
 def check(name, condition, detail=""):
     status = "✅" if condition else "❌"
@@ -37,7 +41,7 @@ def main():
         "name": "Test Client",
         "llm_provider": "ollama",
         "llm_model": "qwen3:8b",
-        "vault_path": "/Users/lordwilson/Documents/Vault"
+        "vault_path": str(VAULT)
     }
     try:
         r = requests.post(f"{BASE}/tenants/tenants/register", json=test_tenant, timeout=5)
@@ -88,9 +92,7 @@ def main():
 
     # 7. Vault structure
     try:
-        from pathlib import Path
-        vault = Path("/Users/lordwilson/Documents/Vault")
-        dirs = sorted([d.name for d in vault.iterdir() if d.is_dir() and not d.name.startswith('.')])
+        dirs = sorted([d.name for d in VAULT.iterdir() if d.is_dir() and not d.name.startswith('.')])
         ok = len(dirs) >= 10
     except Exception:
         ok = False

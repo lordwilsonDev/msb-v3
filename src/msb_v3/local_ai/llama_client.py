@@ -23,8 +23,8 @@ class LlamaCPPClient:
     """Thin wrapper around llama-server with tool-call awareness."""
 
     def __init__(self, base_url: str | None = None) -> None:
-        self.base_url = base_url or getattr(settings, "llama_cpp_url", "http://127.0.0.1:8080")
-        self.model = getattr(settings, "llama_cpp_model", "/Users/lordwilson/models/gemma-4-12b-it/gemma-4-12b-it-q4_k_m.gguf")
+        self.base_url = base_url or settings.llama_cpp_url
+        self.model = settings.llama_cpp_model
         self._tools: Dict[str, Callable[..., str]] = {}
 
     def register_tool(self, name: str, func: Callable[..., str]) -> None:
