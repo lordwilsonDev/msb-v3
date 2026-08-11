@@ -13,12 +13,18 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from msb_v3.core.config import settings
+from msb_v3.observability.metrics import Metrics
+
 router = APIRouter()
 
 BASE_URL = os.getenv("MSB_MCP_BASE_URL", "http://127.0.0.1:8766")
 REQUEST_TIMEOUT = int(os.getenv("MSB_MCP_REQUEST_TIMEOUT", "120"))
 _MCP_BRIDGE_SECRET = os.getenv("MCP_BRIDGE_SECRET", "")
-_VAULT_BASE = Path("/Users/lordwilson/Documents/Vault").resolve()
+# Vault root from config (MSB_VAULT_PATH env or ~/Documents/Vault default), not
+# a hardcoded machine home — the containment check in _normalize_vault_path
+# pins every vault_* tool to this root.
+_VAULT_BASE = Path(settings.vault_path).resolve()
 _VERIFY_BUILD_ECHO_DIR = Path(os.path.expanduser("~/.local/share/msb-v3/verify-build"))
 _AUDIT_LOGGER = logging.getLogger("msb_v3.mcp_audit")
 
@@ -382,38 +388,56 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
         ))
 
 
+_MCP_TOOLS: list[dict[str, Any]] = [
+    {"name": "chat", "description": "Chat with the local model", "args": ["query", "session"]},
+    {"name": "memory_recent", "description": "Recent memory messages", "args": ["session", "limit"]},
+    {"name": "memory_append", "description": "Append to memory", "args": ["session", "role", "content"]},
+    {"name": "memory_clear", "description": "Clear memory", "args": ["session"]},
+    {"name": "status", "description": "Runtime status", "args": []},
+    {"name": "metrics_json", "description": "JSON metrics summary", "args": []},
+    {"name": "prometheus_metrics", "description": "Prometheus metrics text", "args": []},
+    {"name": "ralph_loop_dashboard", "description": "Ralph Loop dashboard", "args": ["loop_id"]},
+    {"name": "ralph_loop_run", "description": "Run Ralph Loop research mission", "args": ["goal", "max_loops", "budget_cap_usd", "slug"]},
+    {"name": "vault_list", "description": "List vault directory contents", "args": ["path"]},
+    {"name": "vault_read", "description": "Read a vault file", "args": ["path"]},
+    {"name": "vault_write", "description": "Create/overwrite a vault file", "args": ["path", "content"]},
+    {"name": "vault_append", "description": "Append to a vault file", "args": ["path", "content"]},
+    {"name": "vault_patch", "description": "Patch a vault file section", "args": ["path", "operation", "target", "content"]},
+    {"name": "vault_delete", "description": "Delete a vault file", "args": ["path"]},
+    {"name": "vault_move", "description": "Move/rename a vault file", "args": ["from_path", "to_path"]},
+    {"name": "vault_get_document_map", "description": "Get vault file structure", "args": ["path"]},
+    {"name": "active_file_get_path", "description": "Get currently open Obsidian file path", "args": []},
+    {"name": "periodic_note_get_path", "description": "Get current periodic note path", "args": ["period"]},
+    {"name": "search_query", "description": "Search vault with JsonLogic query", "args": ["query"]},
+    {"name": "search_simple", "description": "Simple vault search", "args": ["query"]},
+    {"name": "tag_list", "description": "List all tags in vault", "args": []},
+    {"name": "command_list", "description": "List Obsidian commands", "args": []},
+    {"name": "command_execute", "description": "Execute Obsidian command", "args": ["id"]},
+    {"name": "open_file", "description": "Open file in Obsidian UI", "args": ["path"]},
+    {"name": "verify_build", "description": "Verify claimed files/tests exist; echo locally and to vault only if verified", "args": ["id", "files", "tests"]},
+]
+
+
+@router.get("/status")
+async def mcp_status(request: Request) -> dict[str, Any]:
+    """Bridge status — identity, readiness, and the tool manifest size.
+
+    Auth-gated like /tools and /proxy: the bridge surface is internal
+    knowledge. Also gives health checks a probe that proves the auth gate
+    itself is wired (a 401 here means a misconfigured secret, not a dead
+    bridge)."""
+    _check_auth(request)
+    return {
+        "service": "msb-v3",
+        "version": "0.1.0",
+        "ready": bool(Metrics._ready),
+        "tools": len(_MCP_TOOLS),
+    }
+
+
 @router.get("/tools")
 async def list_tools(request: Request) -> dict[str, Any]:
     """Return available MCP-like tools for Make.com / Claude Code discovery.
     Auth-gated like /proxy — the tool manifest is internal knowledge."""
     _check_auth(request)
-    return {
-        "tools": [
-            {"name": "chat", "description": "Chat with the local model", "args": ["query", "session"]},
-            {"name": "memory_recent", "description": "Recent memory messages", "args": ["session", "limit"]},
-            {"name": "memory_append", "description": "Append to memory", "args": ["session", "role", "content"]},
-            {"name": "memory_clear", "description": "Clear memory", "args": ["session"]},
-            {"name": "status", "description": "Runtime status", "args": []},
-            {"name": "metrics_json", "description": "JSON metrics summary", "args": []},
-            {"name": "prometheus_metrics", "description": "Prometheus metrics text", "args": []},
-            {"name": "ralph_loop_dashboard", "description": "Ralph Loop dashboard", "args": ["loop_id"]},
-            {"name": "ralph_loop_run", "description": "Run Ralph Loop research mission", "args": ["goal", "max_loops", "budget_cap_usd", "slug"]},
-            {"name": "vault_list", "description": "List vault directory contents", "args": ["path"]},
-            {"name": "vault_read", "description": "Read a vault file", "args": ["path"]},
-            {"name": "vault_write", "description": "Create/overwrite a vault file", "args": ["path", "content"]},
-            {"name": "vault_append", "description": "Append to a vault file", "args": ["path", "content"]},
-            {"name": "vault_patch", "description": "Patch a vault file section", "args": ["path", "operation", "target", "content"]},
-            {"name": "vault_delete", "description": "Delete a vault file", "args": ["path"]},
-            {"name": "vault_move", "description": "Move/rename a vault file", "args": ["from_path", "to_path"]},
-            {"name": "vault_get_document_map", "description": "Get vault file structure", "args": ["path"]},
-            {"name": "active_file_get_path", "description": "Get currently open Obsidian file path", "args": []},
-            {"name": "periodic_note_get_path", "description": "Get current periodic note path", "args": ["period"]},
-            {"name": "search_query", "description": "Search vault with JsonLogic query", "args": ["query"]},
-            {"name": "search_simple", "description": "Simple vault search", "args": ["query"]},
-            {"name": "tag_list", "description": "List all tags in vault", "args": []},
-            {"name": "command_list", "description": "List Obsidian commands", "args": []},
-            {"name": "command_execute", "description": "Execute Obsidian command", "args": ["id"]},
-            {"name": "open_file", "description": "Open file in Obsidian UI", "args": ["path"]},
-            {"name": "verify_build", "description": "Verify claimed files/tests exist; echo locally and to vault only if verified", "args": ["id", "files", "tests"]},
-        ]
-    }
+    return {"tools": _MCP_TOOLS}

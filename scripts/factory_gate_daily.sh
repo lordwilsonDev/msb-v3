@@ -15,9 +15,9 @@
 #             1 = gate FAILED (alert sent) | 2 = could not start the server
 set -uo pipefail
 
-REPO="/Users/lordwilson/msb-v3"
-FACTORY="/Users/lordwilson/.hermes/skills/engineering/engineering-hygiene-factory/scripts/run_factory.py"
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
+FACTORY="${FACTORY_RUNNER:-$HOME/.hermes/skills/engineering/engineering-hygiene-factory/scripts/run_factory.py}"
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 LOG="$HOME/Library/Logs/msb-factory-gate.log"
 BASE_URL="http://127.0.0.1:8766"
 SESSION="msb-v3"
@@ -84,19 +84,19 @@ if [ "$rc" -ne 0 ]; then
   exit 1
 fi
 
-VERDICT=$(python3 -c '
-import json
+VERDICT=$(REPO="$REPO" python3 -c '
+import json, os
 try:
-    d = json.load(open("/Users/lordwilson/msb-v3/artifacts/hygiene/factory_gate.json"))
+    d = json.load(open(os.path.join(os.environ["REPO"], "artifacts/hygiene/factory_gate.json")))
     print(d["RELEASE_VERDICT"]["release_verdict"])
 except Exception:
     print("UNKNOWN")
 ' 2>/dev/null)
 
-UNKNOWNS=$(python3 -c '
-import json
+UNKNOWNS=$(REPO="$REPO" python3 -c '
+import json, os
 try:
-    d = json.load(open("/Users/lordwilson/msb-v3/artifacts/hygiene/factory_gate.json"))
+    d = json.load(open(os.path.join(os.environ["REPO"], "artifacts/hygiene/factory_gate.json")))
     print(len(d["RELEASE_VERDICT"].get("unresolved_unknowns", [])))
 except Exception:
     print(-1)

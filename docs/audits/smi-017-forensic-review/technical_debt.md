@@ -113,6 +113,12 @@
     reading it from config. This directly contradicts the project's own
     "sovereign, portable, local-first" framing — the code will not run
     correctly for any other user or deployment target without source edits.
+    **MITIGATED (2026-08-11)**: the vault root now comes from
+    `settings.vault_path` (`MSB_VAULT_PATH` env, `~/Documents/Vault`
+    home-derived default); `_VAULT_BASE` is no longer a machine literal.
+    Same pass removed the remaining `/Users/lordwilson` literals from
+    `core/config.py`, `api/knowledge.py`, `local_ai/llama_client.py`, and
+    `api/home.py` (repo root via `settings.msb_home` / `MSB_HOME` / `MSB_REPO`).
 
 ## Priority ordering
 

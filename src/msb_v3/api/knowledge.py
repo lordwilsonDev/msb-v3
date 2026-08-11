@@ -6,9 +6,11 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from msb_v3.core.config import settings
+
 router = APIRouter()
 
-_RESEARCH_ROOT = Path("/Users/lordwilson/msb-v3/runtime/research")
+_RESEARCH_ROOT = Path(settings.msb_home) / "runtime" / "research"
 
 
 class RalphLoopBrief(BaseModel):
@@ -109,8 +111,7 @@ async def run_ralph_loop_demo() -> dict:
 async def get_active_cluster() -> dict:
     """Return the NotebookLM active cluster index."""
     import json
-    from pathlib import Path
-    p = Path("/Users/lordwilson/notebooklm-library-deep-dive/active-index.json")
+    p = Path(settings.notebooklm_active_index)
     if p.exists():
         return {"notebooks": json.loads(p.read_text())}
     return {"detail": "not found"}

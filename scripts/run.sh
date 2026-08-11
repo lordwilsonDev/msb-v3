@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Machine defaults; MSB_REPO / MSB_PYTHON override for portable runs (CI
+# Portable: MSB_REPO / MSB_PYTHON override (CI sets these); defaults resolve
 # sets them from the checkout + actions/setup-python).
-REPO="${MSB_REPO:-/Users/lordwilson/msb-v3}"
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
+
+# Load the repo .env (gitignored secrets) so the server resolves env the
+# same way scripts/webcheck.sh does: env -> .env -> shipped default. Pre-
+# exported env still wins because every export below uses ${VAR:-default}.
+set -a
+[ -f "$REPO/.env" ] && . "$REPO/.env"
+set +a
 
 unset VIRTUAL_ENV
 export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"

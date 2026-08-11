@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/Users/lordwilson/msb-v3"
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 
 unset VIRTUAL_ENV
 export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"

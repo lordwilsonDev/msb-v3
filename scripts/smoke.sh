@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/Users/lordwilson/msb-v3"
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 HOST="${MSB_HOST:-127.0.0.1}"
 PORT="${MSB_PORT:-8767}"
 BASE="http://${HOST}:${PORT}"

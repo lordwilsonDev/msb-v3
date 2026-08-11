@@ -49,5 +49,10 @@ def test_guardian_least_privilege_blocks():
 
 
 def test_guardian_poison_pill_cycle():
+    """Arm -> detonate, then re-arm so the live server never leaves the
+    repo's committed poison_pill.json kill-switched (audit SMI-017 #6: a
+    locked pill committed to the tree breaks least-privilege tests on every
+    fresh checkout)."""
     _post("/triumvirate/guardian/poison-pill/arm", {})
     _post("/triumvirate/guardian/poison-pill/detonate", {})
+    _post("/triumvirate/guardian/poison-pill/arm", {})

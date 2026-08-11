@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/Users/lordwilson/msb-v3"
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}" || exit 1
 MSB="${MSB_URL:-http://localhost:8766}"
-CRAWL_PY="/Users/lordwilson/.local/venv/crawl/bin/python3"
-BASE_PY="/opt/homebrew/Caskroom/miniforge/base/bin/python3"
+CRAWL_PY="${CRAWL_PY:-$HOME/.local/venv/crawl/bin/python3}"
+BASE_PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python3}"
+CRAWL4AI_LIB="${CRAWL4AI_LIB:-$HOME/.local/lib/crawl4ai}"
 export MSB_RAG_API_KEY="${MSB_RAG_API_KEY:-07bd51761bde7dce3268473773cef30f6ded1062bd7351b33f50863d2d184277}"
 
 index_document() {
@@ -91,9 +92,9 @@ ingest_pdf() {
   echo "[ingest] PDF: ${pdf_path} -> tenant ${tenant_id}"
 
   local text
-  text=$(PYTHONPATH="/Users/lordwilson/.local/lib/crawl4ai" "$BASE_PY" - "$pdf_path" << 'PY'
-import sys
-sys.path.insert(0, "/Users/lordwilson/.local/lib/crawl4ai")
+  text=$(CRAWL4AI_LIB="$CRAWL4AI_LIB" PYTHONPATH="$CRAWL4AI_LIB" "$BASE_PY" - "$pdf_path" << 'PY'
+import sys, os
+sys.path.insert(0, os.environ.get("CRAWL4AI_LIB", ""))
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -116,9 +117,9 @@ ingest_web() {
   echo "[ingest] Web: ${url} -> tenant ${tenant_id}"
 
   local text
-  text=$("$CRAWL_PY" - "$url" << 'PY'
-import sys
-sys.path.insert(0, "/Users/lordwilson/.local/lib/crawl4ai")
+  text=$(CRAWL4AI_LIB="$CRAWL4AI_LIB" "$CRAWL_PY" - "$url" << 'PY'
+import sys, os
+sys.path.insert(0, os.environ.get("CRAWL4AI_LIB", ""))
 import asyncio
 from crawl4ai import AsyncWebCrawler
 
