@@ -33,6 +33,52 @@ So the environment has one job: **keep research, repos, code, and the running sy
 
 ---
 
+## 0.5 The engine — the Research→Build Flywheel (the heart)
+
+The environment exists to run **one loop** — the owner's cognitive flywheel. Everything else (Cockpit, harvest, panels) is in service of turning this wheel faster and recording each turn.
+
+```
+        ┌──────────────────────────────────────────────────────────┐
+        ▼                                                          │
+ 1. VERIFY NOVELTY ──► does it already exist?  (gate: build only if not)
+ 2. DRAFT BLUEPRINT
+ 3. CHARGE ── AIL + MoIE run the research ──► UIM
+ 4. UPDATE BLUEPRINT (from the UIM)
+ 5. SCAN NEW PAPERS ──► do they solve a standing problem?
+ 6. SURFACE NEXT PROBLEMS
+ 7. RUN THE SKILL ──► BUILD THE THING
+ 8. COMBINE with something new (cross-domain)
+ 9. RECORD to the vault ──────────────────────────────────────────┘
+        (Ouroboros = Yin governor throttles runaway expansion)
+```
+
+**The owner's frameworks, used precisely:**
+
+- **AIL — Axiom Inversion Logic:** excavate the hidden axioms behind a claim, invert them systematically to reveal alternative possible worlds. *The reasoning method.*
+- **MoIE — Mixture of Inversion Experts:** three synthetic experts — **Inversion Critic**, **Positive Deviant Scout**, **Mechanism Synthesizer** — in iterative dialectic. *The brain.*
+- **UIM — Unified Inversion Model:** their output — core inverted axiom, boundary conditions, causal architecture, measurable constructs, falsifiable predictions, and a meta-inversion that critiques its own reasoning.
+- **Ouroboros (Yin governor):** the deterministic/subtractive counterweight to MoIE's (Yang) generative expansion — keeps the loop convergent instead of runaway.
+- **Vault doc-trail:** the durable record of every turn.
+
+**Why this stays current:** you don't chase the frontier — you run a machine that ingests it. New papers enter at step 5, get tested against open problems, and either close one or reveal the next.
+
+**It's already ~half-built — the job is to connect it, not invent it:**
+
+| Flywheel stage | Existing asset to wire in |
+|---|---|
+| 1 Verify novelty | SRSE `synthesizing-cross-domain` + `validating-adversarially` skills |
+| 3 Charge (AIL+MoIE) | `moie-os` server (scanner_chain / verify / telemetry), MoIE task-scoped runtime |
+| 3→4 UIM output | research runs already emit `*_UIM.json` (`runtime/research/`) |
+| 5 Scan papers | UAC `stage_0_knowledge_acquisition`, Tavily, NotebookLM, `Papers-Index-2026` |
+| 7 Run skill / build | skills system + `agent_factory`, MSB runtime |
+| 8 Combine | SRSE cross-domain synthesis |
+| 9 Record | vault doc-trail (LM-Wiki `raw/`+`wiki/` pattern), UAC `axiom_library` |
+| Governor | Ouroboros Yin/subtractive layer |
+
+The Cockpit (Phases 1–2) becomes the **control surface for this flywheel** — see each stage, drive it, and watch a turn complete.
+
+---
+
 ## 1. What already exists (so we build, not rebuild)
 
 **Runtime:** FastAPI on `:8766`, launchd-supervised (`com.lordwilson.msb-v3`), 516 tests green, ruff clean.
@@ -77,9 +123,9 @@ Each phase is independently usable — you are never stuck in a half-built state
 
 **Done when:** you open one screen and see everything, and can find anything by asking.
 
-### Phase 2 — The build loop: research + repos + capture (your method, made real)
+### Phase 2 — Stand up the Flywheel (§0.5), one turn end-to-end
 
-*This is where the dashboard becomes a **build cockpit**.*
+*This is where the dashboard becomes a **build cockpit** — the control surface for the loop. Target: drive one full turn (verify → charge → build → combine → record) from the cockpit.*
 
 - **Research panel:** launch deep research (Tavily / NotebookLM / SRSE) from the cockpit while you code; results shown alongside, not in another window.
 - **Harvest action:** paste a paper URL / repo link / snippet → it's chunked and ingested into MSB knowledge (Qdrant RAG + `axiom_library` evidence store) → immediately searchable. **This is the "everything compounds" loop.**
@@ -127,7 +173,7 @@ Keep it light early. Adaptive is a direction, not a v1 feature to over-engineer.
 
 ## 5. Success (one sentence)
 
-> You open one screen, see your whole system, research + harvest + build without leaving it, everything you pull compounds into your own knowledge, you can trust it, and you can never lose it.
+> You open one screen, turn the flywheel (§0.5) — verify → charge with AIL+MoIE → build → combine → record — without leaving it, everything you pull compounds into your own knowledge, you can trust it, and you can never lose it.
 
 ---
 
