@@ -36,6 +36,22 @@ def _collection(tenant_id: str) -> str:
     return f"tenant_{safe}"
 
 
+def delete_tenant_collection(tenant_id: str) -> None:
+    """Best-effort deletion of the Qdrant collection backing a tenant.
+
+    Normalizes the tenant id exactly like the engine does (the same
+    `_collection` used by /rag/index and the retrieval adapters) and swallows
+    failures — callers use this as a cleanup guard (test fixtures, experiment
+    runners), never as a gate.
+    """
+    if not _HAS_QDRANT:
+        return
+    try:
+        _qdrant_client().delete_collection(collection_name=_collection(tenant_id))
+    except Exception:  # noqa: BLE001 — cleanup is best-effort
+        pass
+
+
 _ID_NS = uuid.UUID("9c5c7c3e-6f1a-4b0e-9a2d-3d3e3f4f5f6f")
 
 

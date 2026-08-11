@@ -104,6 +104,13 @@ class AuditChain:
     def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord:
         timestamp = _now_iso()
         with self._conn() as conn:
+            # BEGIN IMMEDIATE acquires the write lock BEFORE the prev-hash
+            # read, so two threads cannot both read the same tail and fork
+            # the chain (the classic read-then-write race that silently
+            # corrupts a hash chain under concurrency — found by the phase-2
+            # chaos suite's concurrent-append test). The read+insert now run
+            # inside one write transaction.
+            conn.execute("BEGIN IMMEDIATE")
             prev_hash = self._last_hash(conn)
             record_hash = _compute_hash(prev_hash, component, event_type, payload, timestamp)
             cur = conn.execute(

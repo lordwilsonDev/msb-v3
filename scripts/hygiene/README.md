@@ -24,6 +24,26 @@ python scripts/hygiene/hygiene_runner.py --all --json
 
 Exit code: `0` unless any experiment reports `fail`.
 
+Convenience wrapper (battery + cleanup in one command):
+
+```bash
+make hygiene   # hygiene_runner.py --all, then qdrant-sweep.sh
+```
+
+## Cleanup: test-named Qdrant collections
+
+The live integration test (`tests/api/test_retrieval_router.py`) and the r02
+runner delete their own throwaway collections in a `finally` block, so a bare
+run normally leaves nothing behind (best-effort). The sweep stays as a safety
+net for anything older or unforeseen (it never touches `tenant_wilson-vault`):
+
+```bash
+make qdrant-sweep              # delete test-named collections (audit trail written)
+make qdrant-sweep ARGS=--dry-run   # preview without deleting
+```
+
+`make hygiene` runs the sweep automatically after the battery.
+
 ## Runner table
 
 | Experiment | Standalone runner | Tests | What "pass" means | Requires live server? |

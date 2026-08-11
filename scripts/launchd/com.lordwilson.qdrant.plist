@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Qdrant supervised by launchd. launchd runs the qdrant binary DIRECTLY
+         (not via start-qdrant.sh) with WorkingDirectory=$REPO so storage
+         resolves as ./storage (the tenant collections, incl.
+         tenant_wilson-vault), and KeepAlive restarts it if it crashes
+         mid-session.
+
+         start-qdrant.sh detects this agent (launchctl print) and maps its
+         start/stop/status to launchctl bootstrap/bootout/print, so the
+         script and launchd never fight over qdrant's lifecycle. When the
+         agent is not loaded the script falls back to its nohup+pidfile path.
+
+         Install: cp to ~/Library/LaunchAgents/ then
+           launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.lordwilson.qdrant.plist
+         Stop/unload: launchctl bootout gui/$(id -u)/com.lordwilson.qdrant
+                      (or: make qdrant-stop / scripts/start-qdrant.sh stop) -->
+    <key>Label</key>
+    <string>com.lordwilson.qdrant</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/lordwilson/.local/bin/qdrant</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lordwilson/msb-v3</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Back off between respawns if qdrant crashes in a loop. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lordwilson/msb-v3/logs/qdrant.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/lordwilson/msb-v3/logs/qdrant.log</string>
+</dict>
+</plist>

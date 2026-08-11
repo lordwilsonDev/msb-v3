@@ -373,11 +373,8 @@ async def main() -> int:
         print(json.dumps(artifact, indent=2))
         return 1
     finally:
-        try:
-            from msb_v3.api.rag import _collection
-            client.delete_collection(collection_name=_collection(tenant))
-        except Exception:  # noqa: BLE001 — cleanup is best-effort
-            pass
+        from msb_v3.api.rag import delete_tenant_collection
+        delete_tenant_collection(tenant)
 
 
 if __name__ == "__main__":
