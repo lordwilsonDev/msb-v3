@@ -79,6 +79,25 @@ The Cockpit (Phases 1–2) becomes the **control surface for this flywheel** —
 
 ---
 
+## 0.6 Autonomous operation (fully-auto) — Yang engine, Yin governor
+
+**Decision:** the flywheel runs **fully autonomously**. It turns itself; the owner supervises and approves. This is the Yang (generative) engine — and it is only safe because the Yin (governing) gates are load-bearing, not decorative. This matches the repo's own principle: *never trust unverified output.*
+
+**What auto-runs (no lever needed):** stage 5 scan new papers → stage 1 verify novelty → stage 3 charge (AIL+MoIE → UIM) → stage 4 propose an updated blueprint → stage 6 surface next problems. The loop generates and reasons continuously.
+
+**What passes through an approval gate (irreversible / side-effecting):** stage 7 build, stage 8 combine, stage 9 promote-to-permanent knowledge, and any git commit or vault write. These land in an **approval queue** in the Cockpit — one-click approve/reject, with the UIM and evidence attached so the owner decides fast.
+
+**The brakes that MUST exist before auto-run is enabled (moved into Phase 0):**
+
+1. **Ouroboros governor** — the deterministic/subtractive throttle on MoIE expansion; convergence enforced, not requested.
+2. **Budget + rate limits** — hard caps on research calls, tokens, and loop iterations per period; the loop halts when a cap is hit (fail-closed).
+3. **Approval queue** — nothing irreversible executes without an explicit owner approval; queue survives restarts.
+4. **Kill switch + audit** — one control to pause the whole loop; every autonomous action written to the UAC audit chain so it's never a black box.
+
+> **Sequencing consequence:** these four guardrails are Phase 0 foundation work, alongside backups. The engine does not run itself until the brakes are proven.
+
+---
+
 ## 1. What already exists (so we build, not rebuild)
 
 **Runtime:** FastAPI on `:8766`, launchd-supervised (`com.lordwilson.msb-v3`), 516 tests green, ruff clean.
@@ -108,8 +127,9 @@ Each phase is independently usable — you are never stuck in a half-built state
 - **Finish path/config portability** (`MSB_HOME`/`MSB_REPO`/`MSB_VAULT_PATH` — mostly done today).
 - **Provisioning script** — pull `qwen3:8b` + `nomic-embed-text` on a fresh box.
 - **Reproducible rebuild** — a `Dockerfile` *or* `setup.sh` that stands the whole stack up from `MANIFEST.md`.
+- **The brakes (required before fully-auto — see §0.6):** Ouroboros governor, budget/rate/iteration caps (fail-closed), a restart-surviving **approval queue**, and a **kill switch** with every autonomous action logged to the UAC audit chain.
 
-**Done when:** you can wipe and rebuild from clone + backups, and prove the restore works.
+**Done when:** you can wipe and rebuild from clone + backups and prove the restore works — *and* the loop's brakes are proven (caps halt it, kill switch stops it, nothing irreversible runs without approval).
 
 ### Phase 1 — The Cockpit: one screen, read-only (the "look at it" win)
 
