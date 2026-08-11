@@ -26,7 +26,7 @@ class Settings:
     msb_home: str = field(default_factory=lambda: str(_REPO_ROOT))
     vault_path: str = field(default_factory=lambda: str(_VAULT_ROOT))
     ollama_url: str = field(default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434"))
-    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "deepseek-r1:1.5b"))
+    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "qwen3:8b"))
     db_path: str = field(default_factory=lambda: os.getenv("MSB_DB_PATH", "data/msb_v3.db"))
     log_level: str = field(default_factory=lambda: os.getenv("MSB_LOG_LEVEL", "info"))
     cors_origins: str = field(default_factory=lambda: os.getenv("MSB_CORS_ORIGINS", "*"))
