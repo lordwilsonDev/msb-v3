@@ -79,3 +79,24 @@ def create_backup(data_dir: Path, storage_dir: Path, dest_root: Path, *, timesta
         json.dumps({"timestamp": timestamp, "db_count": db_count, "checksums": checksums}, indent=2)
     )
     return manifest
+
+
+def verify_backup(backup_dir: Path) -> bool:
+    manifest = json.loads((backup_dir / "manifest.json").read_text())
+    for rel, expected in manifest["checksums"].items():
+        f = backup_dir / rel
+        if not f.is_file() or _sha256(f) != expected:
+            return False
+    return True
+
+
+def restore_backup(backup_dir: Path, data_dir: Path, storage_dir: Path) -> None:
+    if not verify_backup(backup_dir):
+        raise ValueError(f"backup failed checksum verification: {backup_dir}")
+    for name, target in (("data", data_dir), ("storage", storage_dir)):
+        src = backup_dir / name
+        if not src.exists():
+            continue
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(src, target)
