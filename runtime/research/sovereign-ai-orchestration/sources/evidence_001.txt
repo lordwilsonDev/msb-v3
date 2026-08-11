@@ -1,1 +1,0 @@
-Sovereign AI orchestration requires local model execution, isolated runtime state, and evidence-grounded claim validation.
