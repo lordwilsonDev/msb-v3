@@ -94,8 +94,20 @@ class ActionGate:
     def tier_of(self, capability: str) -> int:
         return RISK_TIERS.get(capability, 1)
 
-    def gate(self, capability: str, *, tainted_inputs: bool = False) -> GateVerdict:
-        """Gate one action. Caller must honor the verdict."""
+    def gate(
+        self,
+        capability: str,
+        *,
+        tainted_inputs: bool = False,
+        approved: Optional[set[str]] = None,
+    ) -> GateVerdict:
+        """Gate one action. Caller must honor the verdict.
+
+        `approved` is the operator's pre-authorization for this run: a tainted
+        write that was declared in the approved plan (capability in approved)
+        executes; a tainted write that was NOT declared is REVIEW-gated — the
+        A8 correction, enforced without blocking the approved happy path.
+        """
         tier = self.tier_of(capability)
 
         # Kill switch — cheapest, most absolute, fail-closed.
@@ -103,7 +115,7 @@ class ActionGate:
             return self._refuse("BLOCK", "kill switch armed — loop paused", tier, tainted_inputs, capability)
 
         # A8 correction: tainted writes must not execute on their own.
-        if tainted_inputs and capability in _TAINT_ESCALATED:
+        if tainted_inputs and capability in _TAINT_ESCALATED and not (approved and capability in approved):
             return self._refuse(
                 "REVIEW",
                 "action driven by untrusted content requires approval",
@@ -131,9 +143,16 @@ class ActionGate:
 class SafeProvider:
     """ToolProvider wrapper that gates every tool call and tracks taint."""
 
-    def __init__(self, provider: ToolProvider, gate: ActionGate) -> None:
+    def __init__(
+        self,
+        provider: ToolProvider,
+        gate: ActionGate,
+        *,
+        approved: Optional[set[str]] = None,
+    ) -> None:
         self._provider = provider
         self._gate = gate
+        self._approved = set(approved or ())
         self._tainted: set[str] = set()  # task_ids whose outputs carry untrusted content
 
     async def run_tool(self, name: str, *, task: Task, inputs: Dict[str, Any], session: str) -> Any:
@@ -141,14 +160,19 @@ class SafeProvider:
         declared = task.inputs and [i.get("from") for i in task.inputs] or []
         tainted_inputs = any(pid in self._tainted for pid in declared if pid)
 
-        verdict = self._gate.gate(capability, tainted_inputs=tainted_inputs)
+        verdict = self._gate.gate(capability, tainted_inputs=tainted_inputs, approved=self._approved)
         if verdict.action == "BLOCK":
             raise GateBlocked(verdict)
         if verdict.action == "REVIEW":
             raise GateReview(verdict)
 
         result = await self._provider.run_tool(name, task=task, inputs=inputs, session=session)
-        if name in _TAINTED_TOOLS:
+        # Taint flows with the data: this task is tainted if it consumed
+        # tainted inputs OR produced untrusted content itself — so a write
+        # whose brief derives from tainted research stays tainted all the way
+        # down the graph (a dead taint at intermediate nodes would let the
+        # injected instruction drive the write it was never approved for).
+        if tainted_inputs or name in _TAINTED_TOOLS:
             self._tainted.add(task.task_id)
         return result
 

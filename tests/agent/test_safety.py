@@ -73,6 +73,15 @@ def test_tainted_write_escalates_to_review() -> None:
     assert gate.gate("read_vault", tainted_inputs=True).action == "SAFE"  # reads stay safe
 
 
+def test_pre_approved_tainted_write_executes() -> None:
+    # The operator's plan authorization: a write declared in the approved plan
+    # runs; the same tainted write without approval is REVIEW-gated (A8).
+    gate = ActionGate()
+    assert gate.gate("write_file", tainted_inputs=True, approved={"write_file"}).action == "SAFE"
+    assert gate.gate("write_file", tainted_inputs=True, approved=set()).action == "REVIEW"
+    assert gate.gate("permissions", tainted_inputs=False, approved={"permissions"}).action == "BLOCK"  # tier wins
+
+
 def test_kill_switch_blocks_everything() -> None:
     gate = ActionGate(killswitch=_Switch(armed=True), audit_chain=_Audit())
     assert gate.gate("read_vault").action == "BLOCK"
