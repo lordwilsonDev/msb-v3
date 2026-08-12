@@ -54,3 +54,51 @@ def test_system_config_exposes_rate_limit_guards(monkeypatch):
     # reload) is visible on the next call
     monkeypatch.setattr(settings, "openai_chat_rate_max", 7)
     assert client.get("/system/config").json()["rate_limits"]["OPENAI_CHAT_RATE_MAX"] == 7
+
+
+def test_system_config_exposes_governance_approvals_flywheel(monkeypatch):
+    """/system/config exposes the Phase 0B brake settings keyed by env-var
+    name, the approval policy constants, and the flywheel loop mechanics —
+    all reflecting live settings / true constants."""
+    from msb_v3.core.config import settings
+    from msb_v3.flywheel.models import (
+        APPROVAL_STAGES,
+        ITERATIONS_PER_STAGE,
+        RESEARCH_STAGES,
+        STAGES,
+    )
+    from msb_v3.governance.approval import APPROVAL_KINDS
+
+    client = TestClient(create_app())
+    cfg = client.get("/system/config").json()
+
+    gov = cfg["governance"]
+    assert set(gov) == {
+        "GOV_BUDGET_RESEARCH_CALLS",
+        "GOV_BUDGET_TOKENS",
+        "GOV_BUDGET_ITERATIONS",
+        "GOV_BUDGET_WINDOW_MIN",
+        "GOV_GOVERNOR_STALL_LIMIT",
+        "GOV_GOVERNOR_NOVELTY_MIN",
+        "GOV_GOVERNOR_DUP_RATIO_HALT",
+        "GOV_GOVERNOR_HISTORY",
+    }
+    assert gov["GOV_BUDGET_RESEARCH_CALLS"] == settings.gov_budget_research_calls
+    assert gov["GOV_BUDGET_TOKENS"] == settings.gov_budget_tokens
+    assert gov["GOV_BUDGET_ITERATIONS"] == settings.gov_budget_iterations
+    assert gov["GOV_GOVERNOR_STALL_LIMIT"] == settings.gov_governor_stall_limit
+    assert gov["GOV_GOVERNOR_NOVELTY_MIN"] == settings.gov_governor_novelty_min
+    assert gov["GOV_GOVERNOR_DUP_RATIO_HALT"] == settings.gov_governor_dup_ratio_halt
+    assert gov["GOV_GOVERNOR_HISTORY"] == settings.gov_governor_history
+
+    assert cfg["approvals"]["kinds_requiring_approval"] == list(APPROVAL_KINDS)
+    assert cfg["approvals"]["stages_requiring_approval"] == APPROVAL_STAGES
+
+    assert cfg["flywheel"]["stages"] == list(STAGES)
+    assert cfg["flywheel"]["iterations_per_stage"] == ITERATIONS_PER_STAGE
+    assert cfg["flywheel"]["research_stages"] == list(RESEARCH_STAGES)
+
+    # live read: a settings change is visible on the next call
+    monkeypatch.setattr(settings, "gov_budget_tokens", 12345)
+    cfg2 = client.get("/system/config").json()
+    assert cfg2["governance"]["GOV_BUDGET_TOKENS"] == 12345
