@@ -22,7 +22,7 @@ import hashlib
 import json
 import random
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 _PREDICTION_POOL = [
     "A 6-month longitudinal measurement shows the expected effect at 2x the control baseline.",
@@ -57,7 +57,7 @@ class SovereignCharger:
     """Opt-in real charger: runs the SovereignResearchAssistant inversion
     (local LLM) and returns its UIM artifact."""
 
-    def __init__(self, runtime_root: Path | None = None) -> None:
+    def __init__(self, runtime_root: Optional[Path] = None) -> None:
         self.runtime_root = runtime_root
 
     def charge(self, problem: str, slug: str) -> Dict[str, Any]:

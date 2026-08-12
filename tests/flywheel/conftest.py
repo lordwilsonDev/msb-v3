@@ -38,6 +38,7 @@ def env(tmp_path):
         vault_root=tmp_path / "vault",
         runtime_root=tmp_path / "rt",
         novelty_threshold=0.85,
+        novelty_fn=lambda problem: 0.0,  # hermetic: never depends on the live vault
     )
     return {"engine": engine, "queue": queue, "chain": chain, "tmp_path": tmp_path}
 
@@ -63,6 +64,7 @@ def rebuild(env):
             axiom_library=AxiomLibrary(db_path=str(p / "axiom.db")),
             vault_root=p / "vault",
             runtime_root=p / "rt",
+            novelty_fn=lambda problem: 0.0,  # hermetic: never depends on the live vault
         )
         base.update(overrides)
         return FlywheelEngine(**base)

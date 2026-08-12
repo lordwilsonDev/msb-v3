@@ -17,7 +17,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 
@@ -62,10 +62,11 @@ class FlywheelEngine:
         governor: Optional[OuroborosGovernor] = None,
         audit_chain: Optional[AuditChain] = None,
         axiom_library: Optional[AxiomLibrary] = None,
-        scanner: Any = None,
+        scanner: Optional[StubScanner] = None,
         vault_root: Optional[Path] = None,
         runtime_root: Optional[Path] = None,
         novelty_threshold: float = 0.85,
+        novelty_fn: Optional[Callable[[str], float]] = None,
     ) -> None:
         self.db_path = str(default_db_path() if db_path is None else db_path)
         self._queue = queue or ApprovalQueue()
@@ -76,6 +77,7 @@ class FlywheelEngine:
         self._chain = audit_chain or AuditChain()
         self._axiom = axiom_library or AxiomLibrary()
         self._scanner = scanner if scanner is not None else StubScanner()
+        self._novelty_fn = novelty_fn or self._vault_novelty
         self._vault_root = Path(vault_root or settings.vault_path)
         self._runtime_root = Path(runtime_root or (Path(settings.msb_home) / "runtime" / "flywheel"))
         self._novelty_threshold = novelty_threshold
@@ -151,11 +153,20 @@ class FlywheelEngine:
 
     def _audit(self, event_type: str, payload: Dict[str, Any]) -> None:
         """Audit one flywheel event. Contained: a failing audit chain must
-        never kill the loop it is watching."""
+        never kill the loop it is watching — but the failure is surfaced on
+        the turn (repo lesson: decisions never vanish without a trace)."""
         try:
             self._chain.append("flywheel", event_type, payload)
-        except Exception:  # noqa: BLE001 — audit failure must not kill the loop
-            pass
+        except Exception as exc:  # noqa: BLE001 — audit failure must not kill the loop
+            tid = payload.get("turn_id") if isinstance(payload, dict) else None
+            if tid:
+                try:
+                    turn = self.get(tid)
+                    if turn is not None:
+                        turn.notes.append(f"audit failed: {type(exc).__name__}: {exc}")
+                        self._save(turn)
+                except Exception:  # noqa: BLE001 — containment
+                    pass
 
     # --- guards ------------------------------------------------------------
 
@@ -199,10 +210,21 @@ class FlywheelEngine:
         turn = self.get(turn_id)
         if turn is None:
             raise ValueError(f"unknown turn {turn_id}")
-        if turn.status in ("DONE", "ALREADY_EXISTS"):
+        if turn.status in ("DONE", "ALREADY_EXISTS", "RUNNING"):
             return turn
+        # Claim the turn with a status CAS: two concurrent drivers (API
+        # background task + CLI resume) must not both execute stages. The
+        # repo already learned this lesson on the audit chain and budget
+        # ledger — the turns table gets the same treatment.
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.execute(
+                "UPDATE turns SET status='RUNNING', updated_at=? WHERE turn_id=?"
+                " AND status NOT IN ('RUNNING','DONE','ALREADY_EXISTS')",
+                (_now_iso(), turn_id),
+            )
+            if cur.rowcount == 0:
+                return self.get(turn_id) or turn
         turn.status = "RUNNING"
-        self._save(turn)
 
         while True:
             if turn.status != "RUNNING":
@@ -291,11 +313,10 @@ class FlywheelEngine:
         return self.resume(turn_id)
 
     def resume(self, turn_id: str) -> Turn:
-        turn = self.get(turn_id)
-        if turn is None:
+        """Resume a parked/halted turn. The status CAS in run() is the
+        concurrency guard — resume itself just re-enters the loop."""
+        if self.get(turn_id) is None:
             raise ValueError(f"unknown turn {turn_id}")
-        turn.status = "RUNNING"
-        self._save(turn)
         return self.run(turn_id)
 
     # --- stages ------------------------------------------------------------
@@ -305,7 +326,7 @@ class FlywheelEngine:
         fn(turn)
 
     def _stage_verify_novelty(self, turn: Turn) -> None:
-        novelty = self._vault_novelty(turn.problem)
+        novelty = self._novelty_fn(turn.problem)
         turn.novelty = novelty
         if novelty >= self._novelty_threshold:
             turn.status = "ALREADY_EXISTS"
@@ -471,7 +492,9 @@ class FlywheelEngine:
             return f"unavailable: {type(exc).__name__}"
 
     def _newest_other_uim(self, turn: Turn) -> Optional[Path]:
-        base = Path(settings.msb_home) / "runtime" / "research"
+        # Research UIMs live beside the flywheel runtime root — derive from
+        # the injected root, never from settings (path-injection consistency).
+        base = self._runtime_root.parent / "research"
         try:
             candidates = sorted(base.glob("**/*_UIM.json"), key=lambda p: p.stat().st_mtime, reverse=True)
         except Exception:  # noqa: BLE001 — containment
