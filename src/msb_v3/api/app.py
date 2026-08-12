@@ -12,6 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from msb_v3.api.chat import router as chat_router
 from msb_v3.api.conversation import router as conversation_router
 from msb_v3.api.evolution import router as evolution_router
+from msb_v3.api.governance import router as governance_router
 from msb_v3.api.graph import router as graph_router
 from msb_v3.api.health import router as health_router
 from msb_v3.api.home import router as home_router
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(system_router, prefix="/system", tags=["system"])
     app.include_router(research_router, prefix="/research", tags=["research"])
     app.include_router(evolution_router, prefix="/evolution", tags=["evolution"])
+    app.include_router(governance_router, prefix="/governance", tags=["governance"])
     app.include_router(safety_router, prefix="/safety", tags=["safety"])
     app.include_router(notify_router, prefix="/notify", tags=["notify"])
     app.include_router(triumvirate_router, prefix="/triumvirate", tags=["triumvirate"])
