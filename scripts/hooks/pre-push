@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# pre-push — run the portability gate before any push lands.
+#
+# Git invokes this hook for every `git push` (including pushes to scratch
+# remotes). It runs the same gate as `make portability`: stage the repo to a
+# temp copy, scan for /Users/... machine literals in live code, and run the
+# full pytest suite from the foreign path. A failing gate blocks the push.
+#
+#   MSB_SKIP_PORTABILITY=1 git push ...    # explicit escape hatch
+#
+# Note: the gate tests the WORKING TREE (same as `make portability`), not
+# just the commits being pushed — unrelated local edits can block a push.
+#
+# Exit 0 = gate green, push proceeds. Non-zero = push blocked.
+set -euo pipefail
+
+REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}" || exit 1
+
+# Not a git work tree? Nothing to gate. (Belt-and-braces: git only runs
+# hooks from a work tree, but a stale/foreign copy shouldn't hard-fail.)
+git -C "$REPO" rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+
+if [ "${MSB_SKIP_PORTABILITY:-0}" = "1" ]; then
+  echo "[pre-push] MSB_SKIP_PORTABILITY=1 — skipping portability gate"
+  exit 0
+fi
+
+cd "$REPO"
+
+echo "[pre-push] running portability gate before push..."
+echo "[pre-push]   (bypass with: MSB_SKIP_PORTABILITY=1 git push)"
+start=$(date +%s)
+
+# Prefer the Makefile target (what the gate is documented as); fall back to
+# the script directly on a checkout without the target (foreign clone).
+# `|| code=$?` (not a bare call): under `set -e` the failing gate command
+# would exit the hook before the summary lines below ever printed.
+code=0
+if [ -f Makefile ] && make -n portability >/dev/null 2>&1; then
+  make portability || code=$?
+else
+  bash scripts/portability-check.sh || code=$?
+fi
+
+elapsed=$(( $(date +%s) - start ))
+if [ "$code" -eq 0 ]; then
+  echo "[pre-push] portability gate PASS (${elapsed}s) — push proceeds"
+else
+  echo "[pre-push] PORTABILITY GATE FAILED (${elapsed}s) — push blocked"
+  echo "[pre-push]   fix the failure above, then re-push."
+  echo "[pre-push]   to push anyway: MSB_SKIP_PORTABILITY=1 git push"
+fi
+exit "$code"
