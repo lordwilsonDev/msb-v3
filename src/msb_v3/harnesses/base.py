@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict
@@ -53,13 +54,17 @@ class ChatHarness(BaseHarness):
         tools = context.get("tools")
         dispatcher = active_backend()
         client = self._client or get_client()
+        started = time.perf_counter()
         try:
             resp = client.execute_tool_loop(
                 query,
                 system=system,
                 tools=[t for t in tools] if tools else None,
             )
+            elapsed = time.perf_counter() - started
             Metrics.inc_dispatcher(dispatcher)
+            Metrics.inc("chat", "chat:completed")
+            Metrics.latency("chat", elapsed)
             text = resp.text
             telemetry = {
                 "latency_s": resp.latency_s,
@@ -74,8 +79,11 @@ class ChatHarness(BaseHarness):
                 telemetry=telemetry,
             )
         except Exception:
+            elapsed = time.perf_counter() - started
             dispatcher = "fallback"
             Metrics.inc_dispatcher(dispatcher)
+            Metrics.inc("chat", "chat:fallback")
+            Metrics.latency("chat", elapsed)
             text, telemetry = self._fallback(query, system)
             return HarnessResult(
                 ok=True,

@@ -147,6 +147,66 @@ def test_dispatcher_metrics_increment():
     assert result.telemetry.get("model") == "local-fallback"
 
 
+def test_chat_harness_records_query_counter_and_latency_on_success():
+    """Chaos-finding #5: Metrics.inc + Metrics.latency must move on the live
+    chat path — queries_total and latency_seconds can no longer sit at zero."""
+    from prometheus_client.registry import REGISTRY
+
+    from msb_v3.harnesses.base import ChatHarness
+
+    def sample(name: str, labels: dict) -> float:
+        return REGISTRY.get_sample_value(name, labels) or 0.0
+
+    class FakeClient:
+        def execute_tool_loop(self, query, *, system=None, tools=None):
+            class Resp:
+                text = "ok"
+                model = "fake"
+                latency_s = 0.01
+
+            return Resp()
+
+    before_q = sample("msb_v3_queries_total", {"harness": "chat", "event": "chat:completed"})
+    before_c = sample("msb_v3_latency_seconds_count", {"harness": "chat"})
+
+    result = ChatHarness(client=FakeClient()).execute("probe", session="obs")
+
+    assert result.ok is True
+    after_q = sample("msb_v3_queries_total", {"harness": "chat", "event": "chat:completed"})
+    after_c = sample("msb_v3_latency_seconds_count", {"harness": "chat"})
+    after_sum = sample("msb_v3_latency_seconds_sum", {"harness": "chat"})
+    assert after_q == before_q + 1
+    assert after_c == before_c + 1
+    assert after_sum > 0
+
+
+def test_chat_harness_fallback_records_fallback_event_and_latency():
+    """The fallback path counts chat:fallback (not silently dropped) and still
+    records latency."""
+    from prometheus_client.registry import REGISTRY
+
+    from msb_v3.harnesses.base import ChatHarness
+
+    def sample(name: str, labels: dict) -> float:
+        return REGISTRY.get_sample_value(name, labels) or 0.0
+
+    class FakeClient:
+        def execute_tool_loop(self, query, *, system=None, tools=None):
+            raise ConnectionError("ollama unreachable")
+
+    before_q = sample("msb_v3_queries_total", {"harness": "chat", "event": "chat:fallback"})
+    before_c = sample("msb_v3_latency_seconds_count", {"harness": "chat"})
+
+    result = ChatHarness(client=FakeClient()).execute("probe", session="obs")
+
+    assert result.ok is True  # harness falls back, still serves
+    assert result.payload["text"].startswith("[fallback]")
+    after_q = sample("msb_v3_queries_total", {"harness": "chat", "event": "chat:fallback"})
+    after_c = sample("msb_v3_latency_seconds_count", {"harness": "chat"})
+    assert after_q == before_q + 1
+    assert after_c == before_c + 1
+
+
 def test_prometheus_scrape():
     from msb_v3.api.app import create_app
 
@@ -157,6 +217,7 @@ def test_prometheus_scrape():
     text = r.text
     assert "msb_v3_queries_total" in text
     assert "msb_v3_dispatcher_total" in text
+    assert "msb_v3_latency_seconds" in text
     assert "msb_v3_ready" in text
 
 
