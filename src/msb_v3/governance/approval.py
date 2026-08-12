@@ -55,6 +55,7 @@ class ApprovalItem:
     decided_at: Optional[str] = None
     decided_by: Optional[str] = None
     reason: Optional[str] = None
+    audit_failed: Optional[str] = None  # set on the deciding call if the audit write failed
 
 
 class ApprovalQueue:
@@ -94,6 +95,19 @@ class ApprovalQueue:
             reason=row["reason"],
         )
 
+    def _audit_append(self, event_type: str, payload: Dict[str, Any]) -> Optional[str]:
+        """Append to the audit chain; on failure return the error instead of
+        silently dropping it. The decision itself is already committed (the
+        audit chain is a separate DB, so cross-DB atomicity is impossible) —
+        surfacing the failure on the returned item/state keeps the "never a
+        black box" contract honest: an un-audited decision is visible, not
+        silent."""
+        try:
+            self._audit.append("approval", event_type, payload)
+            return None
+        except Exception as exc:
+            return str(exc)
+
     def submit(
         self,
         kind: str,
@@ -116,28 +130,37 @@ class ApprovalQueue:
                 (iid, kind, title, json.dumps(payload, ensure_ascii=False),
                  json.dumps(refs, ensure_ascii=False), "PENDING", created),
             )
-        self._audit.append("approval", "submitted", {"item_id": iid, "kind": kind, "title": title})
-        return self.get(iid)
+        item = self.get(iid)
+        item.audit_failed = self._audit_append(
+            "submitted", {"item_id": iid, "kind": kind, "title": title}
+        )
+        return item
 
     def _decide(self, item_id: str, operator: str, status: str, reason: Optional[str]) -> ApprovalItem:
+        # Atomic transition: the PENDING guard lives in the UPDATE's WHERE
+        # clause, not in a separate read-then-write, so two concurrent
+        # decisions cannot both succeed (the same race the audit chain's
+        # BEGIN IMMEDIATE fix closed). rowcount == 0 means the item was
+        # missing or already decided.
         with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            row = conn.execute("SELECT * FROM approval_items WHERE id=?", (item_id,)).fetchone()
-            if row is None:
-                raise ApprovalError(f"unknown approval item {item_id}")
-            if row["status"] != "PENDING":
-                raise IdempotencyError(f"approval {item_id} already {row['status']}")
-            decided_at = _now_iso()
-            conn.execute(
+            conn.execute("BEGIN IMMEDIATE")
+            cur = conn.execute(
                 "UPDATE approval_items SET status=?, decided_at=?, decided_by=?, reason=?"
-                " WHERE id=?",
-                (status, decided_at, operator, reason, item_id),
+                " WHERE id=? AND status='PENDING'",
+                (status, _now_iso(), operator, reason, item_id),
             )
-        self._audit.append(
-            "approval", status.lower(),
-            {"item_id": item_id, "operator": operator, "reason": reason},
+            if cur.rowcount == 0:
+                row = conn.execute(
+                    "SELECT status FROM approval_items WHERE id=?", (item_id,)
+                ).fetchone()
+                if row is None:
+                    raise ApprovalError(f"unknown approval item {item_id}")
+                raise IdempotencyError(f"approval {item_id} already {row[0]}")
+        item = self.get(item_id)
+        item.audit_failed = self._audit_append(
+            status.lower(), {"item_id": item_id, "operator": operator, "reason": reason}
         )
-        return self.get(item_id)
+        return item
 
     def approve(self, item_id: str, operator: str, reason: Optional[str] = None) -> ApprovalItem:
         return self._decide(item_id, operator, "APPROVED", reason)
