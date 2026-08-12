@@ -22,7 +22,12 @@ from typing import Any, Callable, Dict, List, Optional
 import httpx
 
 from msb_v3.core.config import settings
-from msb_v3.flywheel.chargers import SovereignCharger, StubCharger, StubScanner
+from msb_v3.flywheel.chargers import (
+    PaperScanner,
+    SovereignCharger,
+    StubCharger,
+    TavilyScanner,
+)
 from msb_v3.flywheel.models import (
     APPROVAL_STAGES,
     ITERATIONS_PER_STAGE,
@@ -62,7 +67,7 @@ class FlywheelEngine:
         governor: Optional[OuroborosGovernor] = None,
         audit_chain: Optional[AuditChain] = None,
         axiom_library: Optional[AxiomLibrary] = None,
-        scanner: Optional[StubScanner] = None,
+        scanner: Optional[PaperScanner] = None,
         vault_root: Optional[Path] = None,
         runtime_root: Optional[Path] = None,
         novelty_threshold: float = 0.85,
@@ -76,7 +81,10 @@ class FlywheelEngine:
         self._guard = Guard(self._switch, self._ledger, self._queue, self._governor)
         self._chain = audit_chain or AuditChain()
         self._axiom = axiom_library or AxiomLibrary()
-        self._scanner = scanner if scanner is not None else StubScanner()
+        # Default is the real feed (Tavily, arxiv-restricted); it degrades
+        # to an honest 0-papers note when the key is absent or the feed is
+        # down, so offline turns still run — they just scan nothing.
+        self._scanner = scanner if scanner is not None else TavilyScanner()
         self._novelty_fn = novelty_fn or self._vault_novelty
         self._vault_root = Path(vault_root or settings.vault_path)
         self._runtime_root = Path(runtime_root or (Path(settings.msb_home) / "runtime" / "flywheel"))
@@ -382,16 +390,33 @@ class FlywheelEngine:
             except Exception:  # noqa: BLE001 — containment
                 pass
         scanned = self._scanner.scan(turn.problem, uim)
+        # Persist the full scan (matches + candidates) beside the other stage
+        # artifacts — evidence the real feed ran, and input for the surface
+        # stage that follows.
+        path = self._runtime_root / "scans" / f"{turn.turn_id}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(scanned, indent=2) + "\n")
         turn.notes.append(f"scan: {scanned['papers_scanned']} papers ({scanned['notes']})")
 
     def _stage_surface_problems(self, turn: Turn) -> None:
-        uim: Dict[str, Any] = {}
-        if turn.uim_path:
+        # Paper-derived candidates lead (from the persisted scan artifact);
+        # fall back to the UIM's own predictions when there was no scan.
+        candidates: List[str] = []
+        scan_path = self._runtime_root / "scans" / f"{turn.turn_id}.json"
+        if scan_path.exists():
             try:
-                uim = json.loads(Path(turn.uim_path).read_text())
+                scan = json.loads(scan_path.read_text())
+                candidates = [str(c) for c in (scan.get("candidates") or [])]
             except Exception:  # noqa: BLE001 — containment
                 pass
-        candidates = (uim.get("phase1") or {}).get("predictions", [])[:3]
+        if not candidates:
+            uim: Dict[str, Any] = {}
+            if turn.uim_path:
+                try:
+                    uim = json.loads(Path(turn.uim_path).read_text())
+                except Exception:  # noqa: BLE001 — containment
+                    pass
+            candidates = list((uim.get("phase1") or {}).get("predictions", []))[:3]
         turn.notes.append(f"next problems: {len(candidates)} candidate(s) surfaced")
 
     def _stage_build(self, turn: Turn) -> None:
