@@ -62,6 +62,26 @@ trap cleanup EXIT
 
 echo "[portability] source repo: $REPO"
 echo "[portability] staging copy: $DEST"
+
+# Env drift guard: warn (or block, with PORTABILITY_FAIL_ON_DRIFT=1) when the
+# live .env drifts from the locked .env.example. Runs against the ORIGINAL
+# repo before staging — .env is excluded from the copy (secrets must never
+# be staged), and a stale/missing seam var (e.g. OPENAI_FRONTIER_URL) would
+# otherwise silently fall back to a default in the running server. Warn-only
+# by default; the escape hatch is documented in check-env-drift.sh.echo
+  echo "[portability] env drift guard (live .env vs locked .env.example)..."
+  # Explicit truthiness check: PORTABILITY_FAIL_ON_DRIFT must be exactly "1"
+  # to block — "=0" or unset stays warn-only (a `:+` expansion would treat
+  # any non-empty value, including "0", as strict).
+  DRIFT_ARGS=()
+  if [ "${PORTABILITY_FAIL_ON_DRIFT:-0}" = "1" ]; then
+    DRIFT_ARGS=(--fail)
+  fi
+  if ! bash "$REPO/scripts/check-env-drift.sh" "${DRIFT_ARGS[@]}"; then
+    echo "[portability] FAIL: .env drifts from the locked .env.example (see above)"
+    exit 1
+  fi
+
 RSYNC_DELETE=()
 if [ "$DEST_AUTO" = "1" ]; then
   RSYNC_DELETE=(--delete)

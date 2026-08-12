@@ -1,4 +1,4 @@
-.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test portability env-drift server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -20,6 +20,13 @@ test:
 # the de-hardcode pass. Auto-cleans the copy; keep it with PORTABILITY_KEEP=1.
 portability:
 	bash scripts/portability-check.sh
+
+# Warn when the live .env drifts from the locked .env.example (non-secret
+# contract vars only; secrets are never compared or printed). --fail makes
+# mismatches exit non-zero for scripting. The portability gate runs this
+# automatically; set PORTABILITY_FAIL_ON_DRIFT=1 there to block on drift.
+env-drift:
+	bash scripts/check-env-drift.sh
 
 # Install the pre-push hook (scripts/hooks/pre-push -> .git/hooks/pre-push)
 # so every future push runs the portability gate first. Git hooks aren't
