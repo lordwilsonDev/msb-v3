@@ -133,7 +133,8 @@ untouched — the cockpit is a separate surface.
 
 The Research→Build loop (blueprint §0.5), one turn end-to-end **behind the
 brakes**. Package `msb_v3/flywheel/`, CLI `python -m msb_v3.flywheel`
-(`turn "PROBLEM"` / `status` / `show <id>` / `approve <id>` / `resume <id>`),
+(`turn "PROBLEM"` / `status` / `show <id>` / `approve <id>` / `resume <id>` /
+`config` — the same blocks as `make governance-config`, identical output),
 HTTP `/flywheel/*` (turn/turns/approve/resume).
 
 Every stage transition is gated by the Phase 0B brakes: kill switch +

@@ -58,45 +58,15 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_config(args: argparse.Namespace) -> int:
     """Print the guard/brake/approval/flywheel config — same blocks as
     /system/config, from the shared guard_config() builder. --json emits
-    the verbatim blocks for scripts; the default is human-readable lines."""
-    from msb_v3.core.guard_config import guard_config
+    the verbatim blocks for scripts; the default is the shared
+    human-readable rendering (identical to the flywheel console)."""
+    from msb_v3.core.guard_config import guard_config, render_human
 
     cfg = guard_config()
     if args.json:
         print(json.dumps(cfg, indent=2))
         return 0
-
-    gov = cfg["governance"]
-    window_min = gov["GOV_BUDGET_WINDOW_MIN"]
-    print("[governance] budget caps per rolling window:")
-    print(f"  research_calls: {gov['GOV_BUDGET_RESEARCH_CALLS']}  (window {window_min}m)")
-    print(f"  tokens: {gov['GOV_BUDGET_TOKENS']}  (window {window_min}m)")
-    print(f"  iterations: {gov['GOV_BUDGET_ITERATIONS']}  (window {window_min}m)")
-    print(
-        "[governance] governor thresholds: "
-        f"stall_limit={gov['GOV_GOVERNOR_STALL_LIMIT']} "
-        f"novelty_min={gov['GOV_GOVERNOR_NOVELTY_MIN']} "
-        f"dup_ratio_halt={gov['GOV_GOVERNOR_DUP_RATIO_HALT']} "
-        f"history={gov['GOV_GOVERNOR_HISTORY']}"
-    )
-    kinds = ", ".join(cfg["approvals"]["kinds_requiring_approval"])
-    print(f"[governance] approval kinds: {kinds}")
-    stages = ", ".join(
-        f"{s}->{k}" for s, k in cfg["approvals"]["stages_requiring_approval"].items()
-    )
-    print(f"[governance] approval stages: {stages}")
-    fw = cfg["flywheel"]
-    print(f"[flywheel] stages ({len(fw['stages'])}): {', '.join(fw['stages'])}")
-    print(f"[flywheel] iterations per stage: {fw['iterations_per_stage']}")
-    print(f"[flywheel] research-call spenders: {', '.join(fw['research_stages'])}")
-    rl = cfg["rate_limits"]
-    print(
-        "[rate] chat: "
-        f"{rl['OPENAI_CHAT_RATE_MAX']} req / {rl['OPENAI_CHAT_RATE_WINDOW_S']}s; "
-        "embed: "
-        f"{rl['OPENAI_EMBED_RATE_MAX']} items / {rl['OPENAI_EMBED_RATE_WINDOW_S']}s, "
-        f"max batch {rl['OPENAI_EMBED_MAX_BATCH']}"
-    )
+    sys.stdout.write(render_human(cfg))
     return 0
 
 
