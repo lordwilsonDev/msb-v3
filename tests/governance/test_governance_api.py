@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 import msb_v3.api.governance as gov_api
 from msb_v3.api.app import create_app
+from msb_v3.core.config import settings
 from msb_v3.governance.approval import ApprovalQueue
 from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import OuroborosGovernor
@@ -31,7 +32,11 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(gov_api, "_governor", governor)
     monkeypatch.setattr(gov_api, "_audit", chain)
     monkeypatch.setattr(gov_api, "_guard", Guard(switch, ledger, queue, governor, audit_chain=chain))
-    return TestClient(create_app())
+    # Phase 3: the control surface requires the operator token. Set it for
+    # the fixture and send it as a default header so the existing control
+    # tests exercise the authenticated path; the auth tests below toggle it.
+    monkeypatch.setattr(settings, "operator_token", "test-operator-token")
+    return TestClient(create_app(), headers={"Authorization": "Bearer test-operator-token"})
 
 
 def test_status_shape(client: TestClient) -> None:
@@ -127,3 +132,75 @@ def test_status_degrades_gracefully_when_governor_db_broken(client: TestClient, 
     r = client.get("/governance/status")
     assert r.status_code == 200
     assert "error" in r.json()["governor"]
+
+
+# --- Phase 3 operator auth ------------------------------------------------
+
+
+def test_control_fail_closed_when_token_unset(client: TestClient, monkeypatch) -> None:
+    """No MSB_OPERATOR_TOKEN configured -> the control surface is closed
+    (503), exactly like the /v1 adapter without OPENAI_API_KEY."""
+    monkeypatch.setattr(settings, "operator_token", "")
+    r = client.post("/governance/killswitch/arm", json={"operator": "wilson", "reason": "x"})
+    assert r.status_code == 503
+    assert "MSB_OPERATOR_TOKEN" in r.json()["detail"]
+
+
+def test_control_rejects_wrong_token(client: TestClient) -> None:
+    r = client.post(
+        "/governance/killswitch/arm",
+        headers={"Authorization": "Bearer wrong"},
+        json={"operator": "wilson"},
+    )
+    assert r.status_code == 401
+
+
+def test_control_works_with_token(client: TestClient) -> None:
+    r = client.post("/governance/killswitch/arm", json={"operator": "wilson", "reason": "phase3"})
+    assert r.status_code == 200
+    assert r.json()["armed"] is True
+
+
+def test_reads_stay_open_without_token(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "operator_token", "")
+    assert client.get("/governance/status").status_code == 200
+    assert client.get("/governance/budget").status_code == 200
+    assert client.get("/governance/approvals").status_code == 200
+
+
+def test_check_drill_protected(client: TestClient, monkeypatch) -> None:
+    """The /check drill spends budget units and audits — an unauthenticated
+    caller could burn budget through it, so it is a control endpoint."""
+    monkeypatch.setattr(settings, "operator_token", "")
+    r = client.post(
+        "/governance/check",
+        json={"action": "research", "budget_units": {"research_calls": 1}},
+    )
+    assert r.status_code == 503
+
+
+def test_rejected_check_spends_no_budget(client: TestClient, monkeypatch) -> None:
+    """The gate runs before the handler: a rejected drill must not burn
+    budget. After the 503, the same drill with the token still clears the
+    research_calls cap of 1 — proving nothing was spent by the rejection."""
+    monkeypatch.setattr(settings, "operator_token", "")
+    r = client.post(
+        "/governance/check",
+        json={"action": "research", "budget_units": {"research_calls": 1}},
+    )
+    assert r.status_code == 503
+    # same drill with the fixture token restored — still allowed, proving the
+    # rejection spent nothing (research_calls cap is 1)
+    monkeypatch.setattr(settings, "operator_token", "test-operator-token")
+    r = client.post(
+        "/governance/check",
+        json={"action": "research", "budget_units": {"research_calls": 1}},
+    )
+    assert r.status_code == 200
+    assert r.json()["allowed"] is True
+
+
+def test_check_drill_works_with_token(client: TestClient) -> None:
+    r = client.post("/governance/check", json={"action": "charge"})
+    assert r.status_code == 200
+    assert r.json()["allowed"] is True

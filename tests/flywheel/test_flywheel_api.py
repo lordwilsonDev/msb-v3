@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 import msb_v3.api.flywheel as flywheel_api
 from msb_v3.api.app import create_app
+from msb_v3.core.config import settings
 from msb_v3.flywheel.engine import FlywheelEngine
 from msb_v3.governance.approval import ApprovalQueue
 from msb_v3.governance.budget import BudgetLedger
@@ -36,7 +37,11 @@ def client(tmp_path, monkeypatch):
         runtime_root=tmp_path / "rt",
     )
     monkeypatch.setattr(flywheel_api, "_engine", engine)
-    return TestClient(create_app()), engine
+    # Phase 3: control endpoints require the operator token. Fixture sets it
+    # and sends it as a default header so the existing control tests run the
+    # authenticated path; the auth tests below toggle it.
+    monkeypatch.setattr(settings, "operator_token", "test-operator-token")
+    return TestClient(create_app(), headers={"Authorization": "Bearer test-operator-token"}), engine
 
 
 def _parked(client, turn_id: str):
@@ -87,3 +92,45 @@ def test_turn_list_and_validation(client) -> None:
         "/flywheel/turn", json={"problem": "x", "charger": "bogus"}
     ).status_code == 422
     assert client.get("/flywheel/turns/nope").status_code == 404
+
+
+# --- Phase 3 operator auth ------------------------------------------------
+
+
+def test_turn_start_fail_closed_without_token(client, monkeypatch) -> None:
+    client, _engine = client
+    monkeypatch.setattr(settings, "operator_token", "")
+    before = len(client.get("/flywheel/turns").json()["turns"])
+    r = client.post("/flywheel/turn", json={"problem": "auth-gated", "charger": "stub"})
+    assert r.status_code == 503
+    assert "MSB_OPERATOR_TOKEN" in r.json()["detail"]
+    # the gate runs before any work — nothing was created
+    assert len(client.get("/flywheel/turns").json()["turns"]) == before
+
+
+def test_turn_start_wrong_token_401(client) -> None:
+    client, _engine = client
+    r = client.post(
+        "/flywheel/turn",
+        headers={"Authorization": "Bearer wrong"},
+        json={"problem": "x", "charger": "stub"},
+    )
+    assert r.status_code == 401
+
+
+def test_turn_reads_stay_open_without_token(client, monkeypatch) -> None:
+    client, _engine = client
+    monkeypatch.setattr(settings, "operator_token", "")
+    assert client.get("/flywheel/turns").status_code == 200
+    assert client.get("/flywheel/turns/nope").status_code == 404  # read path, not auth
+
+
+def test_approve_resume_protected(client, monkeypatch) -> None:
+    client, _engine = client
+    # park a turn while the token is present (fixture default)
+    r = client.post("/flywheel/turn", json={"problem": "park me", "charger": "stub"})
+    assert r.status_code == 202
+    turn_id = r.json()["turn"]["turn_id"]
+    monkeypatch.setattr(settings, "operator_token", "")
+    assert client.post(f"/flywheel/turns/{turn_id}/approve", json={"operator": "wilson"}).status_code == 503
+    assert client.post(f"/flywheel/turns/{turn_id}/resume").status_code == 503
