@@ -71,6 +71,29 @@ def test_verify_backup_false_on_malformed_manifest(tmp_path: Path):
         assert verify_backup(b) is False
 
 
+def test_backup_excludes_wal_sidecars_and_restores_live_db(tmp_path: Path):
+    data = tmp_path / "data"
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    db = data / "msb_v3.db"
+    db.parent.mkdir(parents=True)
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("CREATE TABLE t (k TEXT)")
+    conn.execute("INSERT INTO t VALUES ('committed')")
+    conn.commit()
+    # leave conn OPEN so -wal/-shm sidecars are present on disk during backup
+    m = create_backup(data, storage, tmp_path / "backups", timestamp="20260811T120000Z")
+    conn.close()
+    assert not (m.path / "data" / "msb_v3.db-wal").exists()
+    assert not (m.path / "data" / "msb_v3.db-shm").exists()
+    shutil.rmtree(data)
+    shutil.rmtree(storage)
+    restore_backup(m.path, data, storage)
+    rows = sqlite3.connect(data / "msb_v3.db").execute("SELECT k FROM t").fetchall()
+    assert rows == [("committed",)]
+
+
 def test_restore_midcopy_failure_leaves_original_intact(tmp_path: Path, monkeypatch):
     import msb_v3.ops.backup as backup_mod
     data = tmp_path / "data"

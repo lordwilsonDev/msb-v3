@@ -50,7 +50,7 @@ def _copy_tree(src: Path, dst: Path, *, skip_db: bool) -> None:
     for item in src.rglob("*"):
         if item.is_dir():
             continue
-        if skip_db and item.suffix == ".db":
+        if skip_db and (item.suffix == ".db" or item.name.endswith((".db-wal", ".db-shm", ".db-journal"))):
             continue
         rel = item.relative_to(src)
         out = dst / rel
