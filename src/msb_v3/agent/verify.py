@@ -96,7 +96,8 @@ def _check_file_written_with_heading(output: Dict[str, Any]) -> Dict[str, Any]:
                 return _receipt(False, f"file not found: {path}", "file_written_with_heading")
             if os.path.getsize(path) == 0:
                 return _receipt(False, f"file exists but empty: {path}", "file_written_with_heading")
-            first_lines = [line.strip() for line in open(path, encoding="utf-8", errors="replace").read().splitlines() if line.strip()]
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                first_lines = [line.strip() for line in fh.read().splitlines() if line.strip()]
             has_heading = bool(first_lines and first_lines[0].startswith("# "))
             if not has_heading:
                 return _receipt(False, f"file has no leading markdown heading: {path}", "file_written_with_heading")
