@@ -189,6 +189,23 @@ def _mission_state() -> Dict[str, Any]:
     return {"mission": mission, "argus": argus}
 
 
+def _flywheel_state() -> Dict[str, Any]:
+    from msb_v3.flywheel.engine import FlywheelEngine
+
+    turns = FlywheelEngine().list()
+    newest = turns[0] if turns else None
+    problem = newest.problem if newest else None
+    if problem and len(problem) > 80:
+        problem = problem[:80] + "…"
+    return {
+        "turn_count": len(turns),
+        "newest_status": newest.status if newest else None,
+        "newest_stage": newest.stage if newest else None,
+        "newest_problem": problem,
+        "waiting_approval": sum(1 for t in turns if t.status == "WAITING_APPROVAL"),
+    }
+
+
 def _vault_state() -> Dict[str, Any]:
     try:
         from qdrant_client import QdrantClient
@@ -237,6 +254,7 @@ async def cockpit_api() -> dict:
         },
         "memory": {"summary": mem_summary, "latest": mem_latest},
         "mission": _safe(_mission_state),
+        "flywheel": _safe(_flywheel_state),
         "governance": _safe(_governance_state),
         "hygiene": _safe(_hygiene_state),
         "audit": _safe(_audit_state),
@@ -409,6 +427,7 @@ a{color:var(--teal);text-decoration:none}
     <div class="card" data-panel="services"><h2>SERVICES <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="mission"><h2>MISSION</h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="governance"><h2>GOVERNANCE BRAKES <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+    <div class="card" data-panel="flywheel"><h2>FLYWHEEL <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="hygiene"><h2>HYGIENE GATE <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="audit"><h2>AUDIT CHAIN <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="vault"><h2>VAULT / RAG <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
@@ -464,6 +483,21 @@ function renderMission(d){
   const argus = (d.argus || []).map(a =>
     '<div class="ev"><b>#'+esc(a.id)+'</b> '+esc(a.finding_type)+' · '+esc((a.description||'').slice(0,60))+' · <span style="color:'+(a.resolution_status==='resolved'?'var(--green)':'var(--amber)')+'">'+esc(a.resolution_status||'open')+'</span></div>').join('');
   b.innerHTML = rowsHtml + (argus ? '<div class="group-title">ARGUS</div>' + argus : '<div class="empty">no argus findings</div>');
+}
+
+function renderFlywheel(d){
+  const b = bodyFor('flywheel'), p = document.querySelector('[data-panel="flywheel"] [data-pill]');
+  if (d.error) return panelErr(b, d);
+  const waiting = d.waiting_approval || 0;
+  const cls = (d.newest_status === 'DONE') ? 'ok' : (waiting ? 'warn' : 'ok');
+  pill(p, cls, d.newest_status || '—');
+  rows(b, [
+    ['turns', d.turn_count ?? 0],
+    ['newest', d.newest_status || '—'],
+    ['stage', d.newest_stage || '—'],
+    ['waiting approval', waiting],
+  ]);
+  if (d.newest_problem) b.innerHTML += '<div class="ev">' + esc(d.newest_problem) + '</div>';
 }
 
 function renderGovernance(d){
@@ -564,8 +598,8 @@ function renderFocus(d){
 }
 
 const RENDERERS = { services: renderServices, mission: renderMission, governance: renderGovernance,
-                    hygiene: renderHygiene, audit: renderAudit, vault: renderVault,
-                    research: renderResearch, memory: renderMemory, errors: renderErrors };
+                    flywheel: renderFlywheel, hygiene: renderHygiene, audit: renderAudit,
+                    vault: renderVault, research: renderResearch, memory: renderMemory, errors: renderErrors };
 
 async function load(){
   try {

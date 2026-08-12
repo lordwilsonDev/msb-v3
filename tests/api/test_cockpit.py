@@ -29,7 +29,7 @@ def test_cockpit_api_shape_with_error_containment(client: TestClient) -> None:
     r = client.get("/cockpit/api")
     assert r.status_code == 200
     body = r.json()
-    for key in ("services", "mission", "governance", "hygiene", "audit", "vault", "research", "memory", "errors"):
+    for key in ("services", "mission", "flywheel", "governance", "hygiene", "audit", "vault", "research", "memory", "errors"):
         assert key in body, f"missing panel {key}"
         assert isinstance(body[key], dict), f"panel {key} is not a dict"
     assert "ts" in body
@@ -74,7 +74,7 @@ def test_cockpit_api_containment_with_all_probes_down(client: TestClient, monkey
     # panel still renders.
     assert "error" in body["services"]["status"]
     assert "error" in body["services"]["models"]
-    for key in ("governance", "hygiene", "audit", "vault", "mission", "errors"):
+    for key in ("governance", "hygiene", "audit", "vault", "mission", "flywheel", "errors"):
         assert "error" not in body[key], f"in-process panel {key} must not fail"
 
 
