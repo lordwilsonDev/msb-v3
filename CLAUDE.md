@@ -27,6 +27,14 @@ FastAPI + SQLite + Ollama + Prometheus. No `.venv`; Python is at `/opt/homebrew/
 - `make portability` — prove the full suite passes from a foreign checkout
   path (stages a temp copy, scans for machine literals, runs pytest there;
   the pre-push portability gate, wired into the harness-gate CI job)
+- `make hooks-install` / `make hooks-uninstall` — install/remove the
+  pre-push hook that runs the portability gate before every push
+- `make governance-status|arm|disarm|approvals|approve|reject` — the brakes (see
+  Governance brakes section)
+- `make provision-models` — idempotent `ollama pull` of the two models the
+  stack uses (qwen3:8b, nomic-embed-text)
+- `make setup` — idempotent host rebuild from a fresh clone (deps, launchd
+  agents, qdrant, models, /health smoke)
 - `scripts/start.sh` / `scripts/stop.sh` (`start` / `stop` / `status`) — launchd-aware server control
 - `scripts/start-qdrant.sh` (`start` / `stop` / `status`) — Qdrant control
 
@@ -70,9 +78,43 @@ Vector store for the RAG/vault index (`tenant_wilson-vault`, ~5.4k chunks).
   own throwaway collections in a `finally` block; `make qdrant-sweep` remains
   the safety net (or just use `make hygiene`, which sweeps automatically).
 
+## Governance brakes (Phase 0B)
+
+The autonomy brakes the flywheel runs behind (blueprint §0.6 — the engine
+does not run itself until these are proven). Package
+`msb_v3/governance/`, HTTP surface `/governance/*`, CLI
+`python -m msb_v3.governance` (or `make governance-*`). All state is
+SQLite (`data/governance/governance.db`), all decisions audited to the UAC
+`AuditChain` — never a black box. Fail-closed everywhere: unreadable state
+⇒ halted/denied, never allowed.
+
+- **Ouroboros governor** — deterministic convergence throttle on MoIE
+  expansion (HALT on stall/duplicate-ratio, SLOW on declining novelty;
+  suggests `trim_candidates`, never deletes).
+- **Budget caps** — research_calls / tokens / iterations per rolling
+  window; `-1` unlimited, `0` denies all. Caps halt the loop.
+- **Approval queue** — `build`, `combine`, `promote_knowledge`,
+  `git_commit`, `vault_write` never run without an owner-APPROVED item;
+  survives restarts; transitions only from PENDING (double-decide = 409).
+- **Kill switch** — one control to pause the whole loop; survives
+  restarts; unreadable ⇒ armed.
+- `POST /governance/check` is the drill endpoint: run the exact gate the
+  flywheel calls and see the verdict without executing anything
+  (prove the brakes halt work).
+
+Operator control endpoints (arm/disarm/approve) are intentionally
+unauthenticated for now (loopback-bound, same as the rest of the control
+surface); operator auth lands in Phase 3 hardening.
+
 ## Git
 
 Dual-push: `origin` and `sovereign_intelligence_core` both point to `https://github.com/lordwilsonDev/msb-v3.git`.
+
+**Pre-push hook:** `scripts/hooks/pre-push` runs `make portability` before
+any push and blocks the push on failure (bypass: `MSB_SKIP_PORTABILITY=1 git
+push`). It gates the working tree, so unrelated local edits can block a push.
+Git hooks aren't versioned, so install once per fresh clone with
+`make hooks-install` (remove: `make hooks-uninstall`).
 
 ## MCP
 
