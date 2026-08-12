@@ -10,6 +10,8 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from msb_v3.observability.metrics import TRIUMVIRATE_HIPPOCAMPUS
+
 router = APIRouter()
 
 try:
@@ -163,6 +165,7 @@ async def rag_index(payload: IndexRequest) -> dict[str, Any]:
         )
 
     client.upsert(collection_name=collection, points=points)
+    TRIUMVIRATE_HIPPOCAMPUS.labels(op="upsert").inc()
     return {"ok": True, "tenant_id": tenant_id, "collection": collection, "indexed": len(points)}
 
 
@@ -187,6 +190,7 @@ async def rag_search(payload: SearchRequest) -> dict[str, Any]:
         limit=payload.limit,
         with_payload=True,
     )
+    TRIUMVIRATE_HIPPOCAMPUS.labels(op="search").inc()
     return {
         "ok": True,
         "tenant_id": tenant_id,

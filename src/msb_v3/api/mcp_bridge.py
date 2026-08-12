@@ -235,40 +235,85 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                     case "periodic_note_get_path":
                         return {"ok": True, "tool": call.tool, "result": {"error": "no periodic note tracker — use vault_write to create one"}}
                     case "search_query":
-                        root = _VAULT_BASE
-                        query = call.args.get("query", "")
+                        # Semantic-first search: /rag/search (Qdrant + embeddings)
+                        # handles multi-word and phrase queries the old literal
+                        # substring scan could not ("sovereign core architecture"
+                        # used to return [] while the words sat in the vault). On
+                        # any failure — qdrant down, collection missing, embed
+                        # error — fall back to the substring scan, so the tool
+                        # degrades loudly (mode: substring) rather than silently
+                        # returning no results. A JSON null query must behave
+                        # like an empty one (str(None) == "None" would search
+                        # for the literal word "None").
+                        query = str(call.args.get("query") or "")
+                        if not query.strip():
+                            return {"ok": True, "tool": call.tool, "result": {"matches": [], "mode": "empty", "note": "empty query"}}
+                        tenant = str(call.args.get("tenant", "wilson-vault"))
+                        try:
+                            limit = min(int(call.args.get("limit", 20)), 50)
+                        except (TypeError, ValueError):
+                            limit = 20
                         results: list[dict[str, Any]] = []
-                        for p in root.rglob("*.md"):
-                            text = p.read_text(encoding="utf-8", errors="replace")
-                            if query.lower() in text.lower():
-                                idx = text.lower().index(query.lower())
-                                start = max(0, idx - 60)
-                                end = min(len(text), idx + 140)
-                                results.append({"path": str(p.relative_to(root)), "snippet": text[start:end]})
+                        mode = "substring"
+                        try:
+                            r = await client.post("/rag/search", json={"tenant_id": tenant, "query": query, "limit": limit})
+                            r.raise_for_status()
+                            hits = r.json().get("results", [])
+                            if hits:
+                                mode = "semantic"
+                                results = [
+                                    {
+                                        "path": h.get("source", ""),
+                                        "snippet": (h.get("text", "") or "")[:200],
+                                        "score": round(float(h.get("score", 0.0)), 4),
+                                    }
+                                    for h in hits
+                                ]
+                        except (httpx.HTTPError, ValueError, KeyError):
+                            # Real failure modes (network, 404/501, bad JSON,
+                            # missing key) degrade to substring; genuine coding
+                            # bugs still raise instead of being masked.
+                            results = []
+                        if not results:
+                            # Substring fallback (the old behavior): literal
+                            # phrase match with a context window.
+                            for p in _VAULT_BASE.rglob("*.md"):
+                                text = p.read_text(encoding="utf-8", errors="replace")
+                                q = query.lower()
+                                if q in text.lower():
+                                    idx = text.lower().index(q)
+                                    start = max(0, idx - 60)
+                                    end = min(len(text), idx + 140)
+                                    results.append({
+                                        "path": str(p.relative_to(_VAULT_BASE)),
+                                        "snippet": text[start:end],
+                                        "score": None,
+                                    })
                         _log_audit(_AuditEvent(
                             actor=actor,
                             action="search_query",
                             target=query,
                             timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result=f"{len(results[:20])} matches",
+                            result=f"{len(results[:20])} matches ({mode})",
                         ))
-                        return {"ok": True, "tool": call.tool, "result": {"matches": results[:20]}}
+                        return {"ok": True, "tool": call.tool, "result": {"matches": results[:20], "mode": mode}}
                     case "search_simple":
-                        root = _VAULT_BASE
-                        query = call.args.get("query", "")
-                        results = []
-                        for p in root.rglob("*.md"):
-                            text = p.read_text(encoding="utf-8", errors="replace")
-                            if query.lower() in text.lower():
-                                results.append({"path": str(p.relative_to(root)), "score": 1.0})
+                        # Retired: it returned literal substring matches with a
+                        # hardcoded score of 1.0 and firehosed on empty queries.
+                        # search_query now does semantic search with a substring
+                        # fallback. Kept as a dispatch case so downstream callers
+                        # get a clear signal instead of a silent 404.
                         _log_audit(_AuditEvent(
                             actor=actor,
                             action="search_simple",
-                            target=query,
+                            target="retired",
                             timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result=f"{len(results[:20])} matches",
+                            result="retired — use search_query",
                         ))
-                        return {"ok": True, "tool": call.tool, "result": {"matches": results[:20]}}
+                        return {"ok": True, "tool": call.tool, "result": {
+                            "retired": True,
+                            "note": "search_simple is retired — use search_query (semantic via /rag/search, substring fallback).",
+                        }}
                     case "tag_list":
                         root = _VAULT_BASE
                         tags = set()
@@ -408,8 +453,7 @@ _MCP_TOOLS: list[dict[str, Any]] = [
     {"name": "vault_get_document_map", "description": "Get vault file structure", "args": ["path"]},
     {"name": "active_file_get_path", "description": "Get currently open Obsidian file path", "args": []},
     {"name": "periodic_note_get_path", "description": "Get current periodic note path", "args": ["period"]},
-    {"name": "search_query", "description": "Search vault with JsonLogic query", "args": ["query"]},
-    {"name": "search_simple", "description": "Simple vault search", "args": ["query"]},
+    {"name": "search_query", "description": "Semantic vault search (Qdrant + embeddings, substring fallback)", "args": ["query", "tenant", "limit"]},
     {"name": "tag_list", "description": "List all tags in vault", "args": []},
     {"name": "command_list", "description": "List Obsidian commands", "args": []},
     {"name": "command_execute", "description": "Execute Obsidian command", "args": ["id"]},
