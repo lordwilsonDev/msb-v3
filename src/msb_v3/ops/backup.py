@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+
+from msb_v3.core.config import settings
 
 
 def _backup_sqlite(src: Path, dst: Path) -> None:
@@ -115,3 +118,23 @@ def restore_backup(backup_dir: Path, data_dir: Path, storage_dir: Path) -> None:
         tmp.rename(target)                 # swap in new copy (atomic rename)
         if old.exists():
             shutil.rmtree(old)             # drop old only after success
+
+
+def list_backups(dest_root: Path) -> list[Path]:
+    if not dest_root.exists():
+        return []
+    return sorted((p for p in dest_root.iterdir() if p.is_dir()), key=lambda p: p.name)
+
+
+def prune_backups(dest_root: Path, keep: int) -> list[Path]:
+    backups = list_backups(dest_root)
+    doomed = backups[:-keep] if keep > 0 else []
+    for p in doomed:
+        shutil.rmtree(p)
+    return doomed
+
+
+def default_paths() -> tuple[Path, Path, Path]:
+    home = Path(settings.msb_home)
+    dest = Path(os.getenv("MSB_BACKUP_DIR", str(Path.home() / "msb-backups" / "msb-v3")))
+    return home / "data", home / "storage", dest

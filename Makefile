@@ -1,4 +1,4 @@
-.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep
+.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -111,4 +111,13 @@ qdrant-status:
 # make qdrant-sweep ARGS=--dry-run
 qdrant-sweep:
 	bash scripts/qdrant-sweep.sh $(ARGS)
+
+backup:
+	$(PY) -m msb_v3.ops backup
+
+restore:
+	$(PY) -m msb_v3.ops restore $(TS)
+
+backup-verify:
+	$(PY) -m pytest tests/ops -q
 
