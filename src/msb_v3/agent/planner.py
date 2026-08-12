@@ -43,7 +43,13 @@ _PLAN_SYSTEM = (
 )
 
 # Grounded verification methods the slice's verifier registry knows (T1.4).
-_KNOWN_VERIFY = {"search_returned_hits", "synthesis_nonempty", "file_written", "none"}
+_KNOWN_VERIFY = {
+    "search_returned_hits",
+    "synthesis_nonempty",
+    "file_written",
+    "file_written_with_heading",  # Phase 1 canonical task (vault note + heading)
+    "none",
+}
 _KNOWN_CAPABILITIES = {"read_vault", "llm_synthesis", "write_file"}
 
 
@@ -101,8 +107,8 @@ def template_dag(intent: Intent) -> TaskGraph:
                 required_capabilities=("write_file",),
                 tools=("vault_write",),
                 permissions=("write_file",),
-                expected_output="a non-empty file containing the brief",
-                verification_method="file_written",
+                expected_output="a non-empty file containing the brief, starting with a # heading",
+                verification_method="file_written_with_heading",
                 timeout_s=30.0,
                 retry_policy="retry:1",
             )

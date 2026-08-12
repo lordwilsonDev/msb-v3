@@ -85,6 +85,19 @@ def build_trace(
             }
         )
 
+    # Phase 1: cost logged per run. Token counts ride the task outputs (the
+    # chat tool returns {"text", "prompt_tokens", "completion_tokens"}); sum
+    # them and estimate cost at $0.001 / 1K completion tokens (the same
+    # approximation ralph_loop uses — honest local-model costing).
+    prompt_tokens = 0
+    completion_tokens = 0
+    for result in report.results:
+        for value in result.output.values():
+            if isinstance(value, dict):
+                prompt_tokens += int(value.get("prompt_tokens", 0) or 0)
+                completion_tokens += int(value.get("completion_tokens", 0) or 0)
+    estimated_cost_usd = round((completion_tokens / 1000.0) * 0.001, 6)
+
     trace = AgentTrace(
         run_id=run_id,
         request=request,
@@ -97,6 +110,9 @@ def build_trace(
             "skipped": list(report.skipped),
             "error": report.error,
             "total_latency_s": report.total_latency_s,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "estimated_cost_usd": estimated_cost_usd,
         },
         created_ts=_now(),
     )

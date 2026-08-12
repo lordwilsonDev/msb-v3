@@ -89,7 +89,9 @@ class BridgeProvider:
         result = await router.run(query, top_k=5)
         return result.get("matches", [])
 
-    def _synthesize(self, task: Task, inputs: Dict[str, Any]) -> str:
+    def _synthesize(self, task: Task, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Synthesize via the chat harness; return text + token usage so the
+        executor's output carries the cost data (Phase 1: cost logged per run)."""
         sources = _format_sources(inputs)
         prompt = (
             f"{task.goal}\n\nSources from the vault:\n{sources}\n\n"
@@ -97,11 +99,28 @@ class BridgeProvider:
         )
         harness = ChatHarness(client=self._client)
         result = harness.execute(prompt, context={"system": "You are a research brief writer."})
-        return result.payload.get("text", "")
+        telemetry = result.telemetry or {}
+        return {
+            "text": result.payload.get("text", ""),
+            "prompt_tokens": int(telemetry.get("prompt_tokens", 0) or 0),
+            "completion_tokens": int(telemetry.get("completion_tokens", 0) or 0),
+        }
 
     def _write(self, task: Task, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Write the brief as a vault note starting with a # heading.
+
+        Phase 1's canonical task is "produce a vault note and verify it exists
+        with the expected heading" — so the note always leads with a markdown
+        H1 derived from the goal, then the brief body. The grounded
+        file_written_with_heading verifier reads the file back and checks the
+        heading is actually there.
+        """
         content = _extract_brief(inputs)
+        title = _slug(task.goal).replace("-", " ").title() or "Brief"
+        heading = f"# {title}"
+        body = content.strip() or "(empty brief)"
+        note = f"{heading}\n\n{body}\n"
         self._output_dir.mkdir(parents=True, exist_ok=True)
         path = self._output_dir / f"{_slug(task.goal)}.md"
-        path.write_text(content or "# (empty brief)\n")
-        return {"path": str(path)}
+        path.write_text(note)
+        return {"path": str(path), "heading": heading}
