@@ -139,6 +139,55 @@ def test_plan_llm_path_parses_valid_tasks() -> None:
     assert graph.order()[0].task_id == "research"
 
 
+def test_llm_path_derives_inputs_from_parent_id() -> None:
+    """Regression: an LLM DAG with parent_id must wire inputs so the
+    executor passes parent outputs downstream (found live — the demo run
+    wrote an empty brief because downstream tasks received no inputs)."""
+    client = _FakeClient(
+        '{"tasks": ['
+        '{"task_id": "research", "goal": "search the vault", "parent_id": null, '
+        '"capabilities": ["read_vault"], "tools": ["search_query"], '
+        '"expected_output": "sources", "verification_method": "search_returned_hits", '
+        '"timeout_s": 90, "retry_policy": "retry:3"}, '
+        '{"task_id": "synthesize", "goal": "write brief", "parent_id": "research", '
+        '"capabilities": ["llm_synthesis"], "tools": ["chat"], '
+        '"expected_output": "brief", "verification_method": "synthesis_nonempty", '
+        '"timeout_s": 60, "retry_policy": "retry:1"}, '
+        '{"task_id": "write", "goal": "write brief to file", "parent_id": "synthesize", '
+        '"capabilities": ["write_file"], "tools": ["vault_write"], '
+        '"expected_output": "file", "verification_method": "file_written", '
+        '"timeout_s": 30, "retry_policy": "retry:1"}]}'
+    )
+    graph = plan(_write_intent(), client=client)
+    assert graph.source == "llm"
+    # roots declare no inputs; every child derives (from: parent) wiring
+    assert graph.by_id("research").inputs == ()
+    assert graph.by_id("synthesize").inputs == ({"from": "research", "kind": "output"},)
+    assert graph.by_id("write").inputs == ({"from": "synthesize", "kind": "output"},)
+
+
+def test_llm_path_floors_synthesis_timeout_at_120s() -> None:
+    """Regression: the LLM planner must not hand the executor a sub-120s
+    timeout for model generation (found live — qwen3 chose 30s for a real
+    synthesis over actual vault sources and the executor timed out
+    mid-generation). Non-chat tasks keep their model-chosen values."""
+    client = _FakeClient(
+        '{"tasks": ['
+        '{"task_id": "research", "goal": "search", "parent_id": null, '
+        '"capabilities": ["read_vault"], "tools": ["search_query"], '
+        '"verification_method": "search_returned_hits", '
+        '"timeout_s": 20, "retry_policy": "retry:2"}, '
+        '{"task_id": "synthesize", "goal": "write brief", "parent_id": "research", '
+        '"capabilities": ["llm_synthesis"], "tools": ["chat"], '
+        '"verification_method": "synthesis_nonempty", '
+        '"timeout_s": 30, "retry_policy": "retry:1"}]}'
+    )
+    graph = plan(_read_intent(), client=client)
+    assert graph.source == "llm"
+    assert graph.by_id("research").timeout_s == 20.0  # untouched (no chat tool)
+    assert graph.by_id("synthesize").timeout_s == 120.0  # floored
+
+
 def test_plan_falls_back_on_garbage() -> None:
     graph = plan(_read_intent(), client=_FakeClient("sorry, no plan for you"))
     assert graph.source == "template"
