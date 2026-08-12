@@ -4,10 +4,11 @@ Serves a single self-contained page at /cockpit (inline CSS/JS, no CDN, no
 build step) plus two JSON surfaces:
 
 - /cockpit/api  — aggregated state for every panel: services, mission,
-  governance brakes, hygiene gate, audit chain, vault/RAG freshness,
-  research runs, memory, recent errors. Probes are parallel and bounded
-  (asyncio.gather + short timeouts — the home.py lesson) and every panel
-  is error-contained, so one dead service costs one panel, never the page.
+  governance brakes, flywheel, hygiene gate, audit chain, vault/RAG
+  freshness, research runs, memory, rate-limit rejections, recent errors.
+  Probes are parallel and bounded (asyncio.gather + short timeouts — the
+  home.py lesson) and every panel is error-contained, so one dead service
+  costs one panel, never the page.
 - /cockpit/find — the find-box: vault semantic search (/rag/search),
   audit-chain text match, and research-run titles, grouped.
 
@@ -189,6 +190,44 @@ def _mission_state() -> Dict[str, Any]:
     return {"mission": mission, "argus": argus}
 
 
+def _rate_limits_state() -> Dict[str, Any]:
+    """Live rejection counts from the shared rate/batch guards (the /v1
+    chat + embeddings limiters). In-process read of the Prometheus counter
+    — the /v1 handlers and this cockpit run in the same server process, so
+    the registry is exact in the current single-worker deployment (same
+    caveat rate_limit.py documents). Zero-state is honest: no samples ->
+    total 0, no counters."""
+    from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+
+    counters: List[Dict[str, Any]] = []
+    total = 0
+    for metric in RATE_LIMIT_REJECTIONS.collect():
+        for sample in metric.samples:
+            # prometheus-client emits a companion "<name>_created" sample
+            # whose value is the creation *timestamp*, not a count — skip it
+            # or the panel would show epoch times as rejections.
+            if sample.name.endswith("_created"):
+                continue
+            count = int(sample.value)
+            total += count
+            counters.append(
+                {
+                    "limiter": sample.labels.get("limiter", "?"),
+                    "reason": sample.labels.get("reason", "?"),
+                    "count": count,
+                }
+            )
+    counters.sort(key=lambda c: (c["limiter"], c["reason"]))
+    return {
+        "total": total,
+        "counters": counters,
+        "caps": {
+            "chat_per_window": settings.openai_chat_rate_max,
+            "embeddings_per_window": settings.openai_embed_rate_max,
+        },
+    }
+
+
 def _flywheel_state() -> Dict[str, Any]:
     from msb_v3.flywheel.engine import FlywheelEngine
 
@@ -256,6 +295,7 @@ async def cockpit_api() -> dict:
         "mission": _safe(_mission_state),
         "flywheel": _safe(_flywheel_state),
         "governance": _safe(_governance_state),
+        "limits": _safe(_rate_limits_state),
         "hygiene": _safe(_hygiene_state),
         "audit": _safe(_audit_state),
         "vault": _safe(_vault_state),
@@ -427,6 +467,7 @@ a{color:var(--teal);text-decoration:none}
     <div class="card" data-panel="services"><h2>SERVICES <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="mission"><h2>MISSION</h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="governance"><h2>GOVERNANCE BRAKES <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+    <div class="card" data-panel="limits"><h2>RATE LIMIT REJECTIONS <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="flywheel"><h2>FLYWHEEL <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="hygiene"><h2>HYGIENE GATE <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="audit"><h2>AUDIT CHAIN <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
@@ -483,6 +524,26 @@ function renderMission(d){
   const argus = (d.argus || []).map(a =>
     '<div class="ev"><b>#'+esc(a.id)+'</b> '+esc(a.finding_type)+' · '+esc((a.description||'').slice(0,60))+' · <span style="color:'+(a.resolution_status==='resolved'?'var(--green)':'var(--amber)')+'">'+esc(a.resolution_status||'open')+'</span></div>').join('');
   b.innerHTML = rowsHtml + (argus ? '<div class="group-title">ARGUS</div>' + argus : '<div class="empty">no argus findings</div>');
+}
+
+function renderLimits(d){
+  const b = bodyFor('limits'), p = document.querySelector('[data-panel="limits"] [data-pill]');
+  if (d.error) return panelErr(b, d);
+  const total = d.total || 0;
+  pill(p, total === 0 ? 'ok' : 'warn', total === 0 ? 'CLEAR' : total + ' rejected');
+  const caps = d.caps || {};
+  let html = '<div class="row"><span class="k">total rejections</span><span class="v">' + total + '</span></div>';
+  const counters = d.counters || [];
+  if (counters.length === 0) {
+    html += '<div class="empty">no rejections recorded</div>';
+  } else {
+    html += counters.map(c =>
+      '<div class="row"><span class="k">' + esc(c.limiter) + ' · ' + esc(c.reason) + '</span><span class="v">' + esc(c.count) + '</span></div>').join('');
+  }
+  if (caps.chat_per_window !== undefined && caps.embeddings_per_window !== undefined) {
+    html += '<div class="ev">caps: chat ' + esc(caps.chat_per_window) + '/window · embed ' + esc(caps.embeddings_per_window) + '/window</div>';
+  }
+  b.innerHTML = html;
 }
 
 function renderFlywheel(d){
@@ -598,7 +659,7 @@ function renderFocus(d){
 }
 
 const RENDERERS = { services: renderServices, mission: renderMission, governance: renderGovernance,
-                    flywheel: renderFlywheel, hygiene: renderHygiene, audit: renderAudit,
+                    limits: renderLimits, flywheel: renderFlywheel, hygiene: renderHygiene, audit: renderAudit,
                     vault: renderVault, research: renderResearch, memory: renderMemory, errors: renderErrors };
 
 async function load(){
