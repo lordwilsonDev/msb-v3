@@ -88,12 +88,30 @@ jobs:
           MSB_REPO: ${{ github.workspace }}
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
 
+      # Env drift guard, strict: a fresh checkout has no .env (the guard
+      # would skip), so generate one from the locked .env.example and prove
+      # strict mode. What this catches despite the env being template-
+      # generated: (a) template/parser regressions — a malformed or
+      # non-parsing .env.example fails the contract-var check; (b) the real
+      # invariant — --template-secrets-block fails if ANY secret placeholder
+      # carries a value in the committed template (a key in .env.example
+      # would ship to every checkout); and (c) the portability step below
+      # then runs its warn-only drift guard against a real .env instead of
+      # skipping.
+      - name: Env drift guard (template-generated .env, strict)
+        run: |
+          cp .env.example .env
+          bash scripts/check-env-drift.sh --fail --template-secrets-block
+        env:
+          MSB_REPO: ${{ github.workspace }}
+
       # Portability gate: stages a temp copy of the checkout and runs the
       # FULL pytest suite there (scripts/test.sh, no server boot — pure
       # pytest), failing if any /Users/... machine literal remains or if
       # any test needs the original machine path. Self-contained; the live
       # server from the step above is only relied on by the live endpoint
-      # tests, exactly as in the local routine.
+      # tests, exactly as in the local routine. Also re-runs the drift guard
+      # (warn-only) against the .env generated above.
       - name: Portability gate (full suite from a foreign checkout path)
         run: make portability
         env:

@@ -21,6 +21,10 @@
 #   bash scripts/check-env-drift.sh                    # warn only; exit 0 always
 #   bash scripts/check-env-drift.sh --fail             # exit 1 on any mismatch
 #   bash scripts/check-env-drift.sh --selftest         # run embedded fixtures
+#   bash scripts/check-env-drift.sh --template-secrets-block
+#                                                     # + fail if the template
+#                                                     # itself ships a value for
+#                                                     # any SECRET_KEYS entry
 #   bash scripts/check-env-drift.sh [ENV] [EXAMPLE]    # custom paths (tests)
 #
 # Missing .env -> "skipped" notice, exit 0: fresh clones / CI have no .env,
@@ -31,12 +35,14 @@ set -uo pipefail
 
 FAIL=0
 SELFTEST=0
+TEMPLATE_SECRETS_BLOCK=0
 ENV_FILE=""
 EXAMPLE_FILE=""
 for arg in "$@"; do
   case "$arg" in
     --fail) FAIL=1 ;;
     --selftest) SELFTEST=1 ;;
+    --template-secrets-block) TEMPLATE_SECRETS_BLOCK=1 ;;
     *)
       if [ -z "$ENV_FILE" ]; then ENV_FILE="$arg"; else EXAMPLE_FILE="$arg"; fi
       ;;
@@ -140,6 +146,14 @@ EOF
   case "$out" in *sekrit-default-xyz*|*sk-actual-999*) fail=1 ;; esac
   # 7. missing .env.example -> FAIL (exit 1)
   bash "${BASH_SOURCE[0]}" "$en" "$tmp/nope.example" >/dev/null 2>&1 && fail=1
+  # 8. template leaking a secret value -> --template-secrets-block exits 1,
+  #    names the key, and never prints the leaked value
+  cat >"$tmp/leak.example" <<'EOF'
+OPENAI_API_KEY=sk-committed-by-mistake-42
+EOF
+  out="$(bash "${BASH_SOURCE[0]}" --fail --template-secrets-block "$tmp/leak.example" "$tmp/leak.example")" || [ $? -eq 1 ] || fail=1
+  case "$out" in *"carries a value for secret OPENAI_API_KEY"*) ;; *) fail=1 ;; esac
+  case "$out" in *sk-committed-by-mistake-42*) fail=1 ;; esac
   rm -rf "$tmp"
   if [ "$fail" -eq 0 ]; then
     echo "[env-drift] selftest PASS"
@@ -169,6 +183,21 @@ done < <(parse "$EXAMPLE_FILE")
 seen_flags=()
 warn_count=0
 masked=()
+
+# Template leak guard: a non-empty value for any SECRET_KEYS entry in the
+# committed template ships that value to every checkout. CI (harness-gate.yml)
+# generates .env from .env.example and runs --fail --template-secrets-block to
+# enforce this — the one drift check that is NOT self-referential when the
+# env is generated from the template. Values are never printed.
+if [ "$TEMPLATE_SECRETS_BLOCK" = "1" ]; then
+  for i in "${!example_keys[@]}"; do
+    [ -n "${example_vals[$i]}" ] || continue
+    if _is_secret "${example_keys[$i]}"; then
+      echo "[env-drift] WARN: .env.example carries a value for secret ${example_keys[$i]} (leak risk — template must ship placeholders only)"
+      warn_count=$((warn_count + 1))
+    fi
+  done
+fi
 
 while IFS=$'\t' read -r key value; do
   found=0
