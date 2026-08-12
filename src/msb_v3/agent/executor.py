@@ -22,6 +22,7 @@ are chains, and sequential topological execution is deterministic and simple.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
@@ -29,6 +30,8 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 from msb_v3.agent.dag import Task, TaskGraph
 from msb_v3.agent.verify import verify_task
 from msb_v3.observability.metrics import Metrics
+
+logger = logging.getLogger(__name__)
 
 
 class ToolProvider(Protocol):
@@ -86,11 +89,27 @@ async def execute_graph(
     *,
     verify: Verifier | None = None,
     session: str = "default",
+    store: Any | None = None,
+    run_id: str = "",
 ) -> ExecReport:
-    """Execute a TaskGraph through the provider. Returns an ExecReport."""
+    """Execute a TaskGraph through the provider. Returns an ExecReport.
+
+    store/run_id are optional persistence hooks (Phase 0): when a store with
+    save_task(run_id, task, result, status) is provided, each task row is
+    persisted as it completes. Persistence is best-effort — a store failure
+    must never break the run.
+    """
     started = time.perf_counter()
     results: List[TaskResult] = []
     outputs: Dict[str, Any] = {}
+
+    def _persist(task: Task, result: TaskResult, status: str) -> None:
+        if store is None:
+            return
+        try:
+            store.save_task(run_id, task, result, status)
+        except Exception as exc:  # noqa: BLE001 — best-effort projection, I7 note
+            logger.warning("task store unavailable for %s/%s: %s", run_id, task.task_id, exc)
 
     try:
         ordered = graph.order()
@@ -146,8 +165,17 @@ async def execute_graph(
             )
 
         results.append(task_result)
+        _persist(task, task_result, "ok" if task_ok else "failed")
         if not task_ok:
             skipped = tuple(t.task_id for t in ordered[ordered.index(task) + 1 :])
+            if store is not None:
+                for skipped_task in ordered[ordered.index(task) + 1 :]:
+                    try:
+                        store.save_task(
+                            run_id, skipped_task, TaskResult(task_id=skipped_task.task_id, ok=False), "skipped"
+                        )
+                    except Exception as exc:  # noqa: BLE001 — best-effort projection
+                        logger.warning("task store unavailable for %s/%s: %s", run_id, skipped_task.task_id, exc)
             total_latency = round(time.perf_counter() - started, 4)
             Metrics.inc("agentic", "exec:failed")
             Metrics.latency("agentic", total_latency)
