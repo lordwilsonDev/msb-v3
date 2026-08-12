@@ -66,5 +66,15 @@ def system_config() -> Dict[str, Any]:
         "log_level": settings.log_level,
         "cors_origins": settings.cors_origins,
         "request_timeout_s": settings.request_timeout_s,
+        # Live guard settings for the /v1 surface — keys are the env-var
+        # names so operators can map them 1:1 to .env. Values read live,
+        # so a config change applies without a restart (same as the guards).
+        "rate_limits": {
+            "OPENAI_CHAT_RATE_MAX": settings.openai_chat_rate_max,
+            "OPENAI_CHAT_RATE_WINDOW_S": settings.openai_chat_rate_window_s,
+            "OPENAI_EMBED_MAX_BATCH": settings.openai_embed_max_batch,
+            "OPENAI_EMBED_RATE_MAX": settings.openai_embed_rate_max,
+            "OPENAI_EMBED_RATE_WINDOW_S": settings.openai_embed_rate_window_s,
+        },
         "ready": Metrics._ready,
     }
