@@ -26,14 +26,16 @@ from msb_v3.harnesses.base import HarnessResult  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _clear_embed_rate_window() -> None:
-    """The /v1/embeddings limiter is module-level state shared across tests;
-    clear it so earlier tests' consumption never bleeds into later ones."""
-    from msb_v3.api.openai_compat import _EMBED_LIMITER
+def _clear_rate_windows() -> None:
+    """The /v1 limiters are module-level state shared across tests; clear
+    them so earlier tests' consumption never bleeds into later ones."""
+    from msb_v3.api.openai_compat import _CHAT_LIMITER, _EMBED_LIMITER
 
     _EMBED_LIMITER.clear()
+    _CHAT_LIMITER.clear()
     yield
     _EMBED_LIMITER.clear()
+    _CHAT_LIMITER.clear()
 
 
 class _FakeHarness:
@@ -362,6 +364,93 @@ def test_models_includes_embed_model(client) -> None:
     r = client.get("/v1/models", headers={"authorization": "Bearer test-key"})
     ids = [m["id"] for m in r.json()["data"]]
     assert rag._EMBED_MODEL in ids
+
+
+# --- chat rate guard (Phase 3 hardening) ------------------------------------
+
+
+def test_chat_rate_exhaustion_is_429(client, monkeypatch) -> None:
+    """One unit per chat request; once the per-client window cap is hit the
+    client is refused with 429 before any work reaches the harness."""
+    monkeypatch.setattr(settings, "openai_chat_rate_max", 2)
+    monkeypatch.setattr(settings, "openai_chat_rate_window_s", 60)
+    headers = {"authorization": "Bearer test-key"}
+    harness = client.app.state.chat
+
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 200
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 200
+    calls_before = len(harness.calls)
+    r = client.post("/v1/chat/completions", headers=headers, json=_chat_body())
+    assert r.status_code == 429
+    assert "rate_limit_exceeded" in r.json()["detail"]
+    assert len(harness.calls) == calls_before  # refused before any work
+
+
+def test_chat_validation_error_consumes_no_quota(client, monkeypatch) -> None:
+    """The n>1 400 runs before the rate check — a client error must not
+    consume the only unit toward a cap of 1."""
+    monkeypatch.setattr(settings, "openai_chat_rate_max", 1)
+    monkeypatch.setattr(settings, "openai_chat_rate_window_s", 60)
+    headers = {"authorization": "Bearer test-key"}
+
+    assert client.post(
+        "/v1/chat/completions", headers=headers, json=_chat_body(n=3)
+    ).status_code == 400
+    # the valid request still clears the cap of 1 — the 400 spent nothing
+    assert client.post(
+        "/v1/chat/completions", headers=headers, json=_chat_body()
+    ).status_code == 200
+
+
+def test_chat_rate_streaming_counts_once(client, monkeypatch) -> None:
+    """A streaming request is still one request toward the window cap."""
+    monkeypatch.setattr(settings, "openai_chat_rate_max", 1)
+    monkeypatch.setattr(settings, "openai_chat_rate_window_s", 60)
+    headers = {"authorization": "Bearer test-key"}
+
+    r = client.post(
+        "/v1/chat/completions", headers=headers, json=_chat_body(stream=True)
+    )
+    assert r.status_code == 200
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 429
+
+
+def test_chat_rate_window_resets(client, monkeypatch) -> None:
+    """After the window elapses the counter resets and the client is served
+    again."""
+    from msb_v3.api.openai_compat import _CHAT_LIMITER
+
+    monkeypatch.setattr(settings, "openai_chat_rate_max", 1)
+    monkeypatch.setattr(settings, "openai_chat_rate_window_s", 60)
+    headers = {"authorization": "Bearer test-key"}
+
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 200
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 429
+
+    # age this client's window start into the past -> next request is served.
+    # Starlette's TestClient always presents the peer host as "testclient".
+    _CHAT_LIMITER.table["testclient"] = (time.time() - 61, 1)
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 200
+
+
+def test_chat_rate_rejection_increments_prometheus_counter(client, monkeypatch) -> None:
+    """A 429 from /v1/chat/completions is visible on the Prometheus scrape
+    under limiter="chat", and does not touch the embeddings counter."""
+    from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+
+    monkeypatch.setattr(settings, "openai_chat_rate_max", 0)  # every request is refused
+    monkeypatch.setattr(settings, "openai_chat_rate_window_s", 60)
+    headers = {"authorization": "Bearer test-key"}
+
+    chat_before = RATE_LIMIT_REJECTIONS.labels(limiter="chat", reason="rate")._value.get()
+    embed_before = RATE_LIMIT_REJECTIONS.labels(limiter="embeddings", reason="rate")._value.get()
+    assert client.post("/v1/chat/completions", headers=headers, json=_chat_body()).status_code == 429
+    assert RATE_LIMIT_REJECTIONS.labels(limiter="chat", reason="rate")._value.get() == chat_before + 1
+    assert RATE_LIMIT_REJECTIONS.labels(limiter="embeddings", reason="rate")._value.get() == embed_before
+
+    r = client.get("/metrics/prometheus")
+    assert r.status_code == 200
+    assert "msb_v3_rate_limit_rejections_total" in r.text
 
 
 def test_rate_limit_rejection_increments_prometheus_counter(client, monkeypatch) -> None:

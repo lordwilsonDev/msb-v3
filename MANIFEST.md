@@ -98,6 +98,8 @@ keys (Open WebUI / storage / RAG) marked *(ext)*.
 | `OPENAI_EMBED_MAX_BATCH` | `32` | `/v1/embeddings` per-request cap (413 over) |
 | `OPENAI_EMBED_RATE_MAX` | `120` | sliding-window item cap (429 over) |
 | `OPENAI_EMBED_RATE_WINDOW_S` | `60` | rate window seconds |
+| `OPENAI_CHAT_RATE_MAX` | `120` | `/v1/chat/completions` per-client request cap (429 over; 1 unit/request, streaming counted once) |
+| `OPENAI_CHAT_RATE_WINDOW_S` | `60` | chat rate window seconds |
 | `RAG_EMBEDDING_ENGINE` / `RAG_EMBEDDING_MODEL` *(ext)* | — | Open WebUI RAG embedding config |
 | `OLLAMA_EMBED_MODEL` *(ext)* | — | embedding model for RAG layer |
 | `STORAGE_PROVIDER` / `TENCENT_COS_*` *(ext)* | — | 🔒 object-storage provider (Tencent COS) |
