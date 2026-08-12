@@ -110,27 +110,30 @@ class BridgeProvider:
         )
         from msb_v3.fabric.model_router import resolve_client
 
-        client, _ = resolve_client("verify_synth", client=self._client, router=self._router)
-        if getattr(client, "generate", None) is None:
-            # A harness-shaped client (e.g. injected test client) — keep the
-            # original ChatHarness path.
-            harness = ChatHarness(client=self._client)
-            result = harness.execute(prompt, context={"system": "You are a research brief writer."})
-            telemetry = result.telemetry or {}
+        client, decision = resolve_client("verify_synth", client=self._client, router=self._router)
+        if decision is not None and decision.tier == "frontier" and decision.available:
+            # Frontier seam: call the routed client directly (a failure here
+            # propagates to the executor's retry/fail path — never faked).
+            resp = client.generate(
+                prompt,
+                system="You are a research brief writer.",
+                temperature=0.2,
+            )
             return {
-                "text": result.payload.get("text", ""),
-                "prompt_tokens": int(telemetry.get("prompt_tokens", 0) or 0),
-                "completion_tokens": int(telemetry.get("completion_tokens", 0) or 0),
+                "text": resp.text,
+                "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
+                "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
             }
-        resp = client.generate(
-            prompt,
-            system="You are a research brief writer.",
-            temperature=0.2,
-        )
+        # Local tier (or an injected test client): keep the ChatHarness path
+        # so dispatcher metrics, latency histogram, and the [fallback]
+        # degradation stay observable — the slice's telemetry contract.
+        harness = ChatHarness(client=self._client)
+        result = harness.execute(prompt, context={"system": "You are a research brief writer."})
+        telemetry = result.telemetry or {}
         return {
-            "text": resp.text,
-            "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
-            "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
+            "text": result.payload.get("text", ""),
+            "prompt_tokens": int(telemetry.get("prompt_tokens", 0) or 0),
+            "completion_tokens": int(telemetry.get("completion_tokens", 0) or 0),
         }
 
     def _write(self, task: Task, inputs: Dict[str, Any]) -> Dict[str, Any]:

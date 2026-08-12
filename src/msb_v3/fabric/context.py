@@ -99,24 +99,21 @@ class ContextBuilder:
             key=lambda m: (-float(m.get("score", 0.0)), str(m.get("id", ""))),
         )
 
-        sections: List[str] = []
-        item_tokens: List[int] = []
+        # Candidate selection under a loose per-item budget. The HARD budget
+        # check happens on the assembled text below (headers/separators are
+        # real output too), so this pass is only a first cut.
+        kept: List[Dict[str, Any]] = []
         used = 0
         evicted = 0
-        truncated = overflow
-
         for match in ranked:
             text = str(match.get("text", "")).strip()
             cost = _tokens(text) + _ITEM_OVERHEAD
             if used + cost > budget_for_items:
-                if text:
-                    evicted += 1
+                evicted += 1
                 continue
             used += cost
-            source = str(match.get("source") or match.get("id") or "?")
-            sections.append(f"- [{source}] {text}")
-            item_tokens.append(cost)
-            if len(sections) >= 20:  # cap item count; the budget usually binds first
+            kept.append(match)
+            if len(kept) >= 20:  # cap item count; the budget usually binds first
                 break
 
         # If the query had to be truncated to fit, do it now (deterministic
@@ -131,32 +128,45 @@ class ContextBuilder:
                 q_budget = self._budget - _QUERY_LABEL
             if _tokens(query) > q_budget:
                 query_out = query[: max(0, q_budget * _CHARS_PER_TOKEN)]
-                truncated = True
 
-        parts: List[str] = []
-        if system:
-            parts.append(system)
-        if query_out:
-            parts.append(f"Query: {query_out}")
-        if sections:
-            parts.append("Sources:\n" + "\n".join(sections))
-        if declare_domain:
-            parts.append(f"Domain: {declare_domain}")
+        # Assemble, then enforce the budget on the REAL output: section
+        # headers ("Sources:") and "\n\n" separators are text we emit, so if
+        # the assembled context is over budget we drop the lowest-score item
+        # and rebuild until it fits. This keeps the invariant exact.
+        truncated = query_out != query
+        while True:
+            parts: List[str] = []
+            if system:
+                parts.append(system)
+            if query_out:
+                parts.append(f"Query: {query_out}")
+            if kept:
+                sections = [
+                    f"- [{str(m.get('source') or m.get('id') or '?')}] {str(m.get('text', '')).strip()}"
+                    for m in kept
+                ]
+                parts.append("Sources:\n" + "\n".join(sections))
+            if declare_domain:
+                parts.append(f"Domain: {declare_domain}")
 
-        text = "\n\n".join(p for p in parts if p)
-        total = _tokens(text)
+            text = "\n\n".join(p for p in parts if p)
+            total = _tokens(text)
+            if total <= self._budget or not kept:
+                break
+            kept.pop()  # evict lowest score (kept is score-descending)
+            evicted += 1
 
         ledger = ContextLedger(
             budget_tokens=self._budget,
             system_tokens=system_tokens,
             query_tokens=_tokens(query_out),
-            included_matches=len(sections),
+            included_matches=len(kept),
             evicted_matches=evicted,
             truncated=truncated,
             total_tokens=total,
             items=[
                 {"source": str(m.get("source") or m.get("id") or "?"), "score": m.get("score", 0.0)}
-                for m in ranked[: len(sections)]
+                for m in kept
             ],
         )
         return BuiltContext(text=text, ledger=ledger)

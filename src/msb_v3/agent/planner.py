@@ -226,6 +226,12 @@ def plan(
     router decides which client plans (frontier via /v1 when configured,
     local otherwise). An injected `client` wins over the router, so existing
     tests and callers keep full control.
+
+    NOTE (privacy floor): the slice's intents default privacy=True, which the
+    router treats as privacy_scoped — so plan() stays on the local client in
+    practice (the honest choice; a plan built from private vault content
+    should not leave the device). The frontier path exists for explicitly
+    public/non-scoped tasks.
     """
     if client is None:
         from msb_v3.fabric.model_router import resolve_client
