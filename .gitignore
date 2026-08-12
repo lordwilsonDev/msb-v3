@@ -61,4 +61,5 @@ artifacts/artifacts-backup-*/
 artifacts/harness-evidence-report.json
 # Research run outputs are regenerated on every run — never versioned
 /runtime/research/*/
+/runtime/flywheel/
 .superpowers/
