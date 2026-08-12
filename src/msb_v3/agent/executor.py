@@ -11,10 +11,9 @@ Execution semantics (T1.3):
   their declared inputs (parent outputs) keyed by parent task_id.
 - Any task that still fails after retries stops the graph; remaining tasks
   are recorded as skipped. No task runs without its parent's success.
-- Verification is a hook, not a built-in: `verify(task, output)` is optional
-  here and becomes the grounded registry in T1.4. With verify=None, results
-  carry {"ok": True, "detail": "no verifier wired"} and task success reflects
-  tool execution only.
+- Verification is the grounded registry (T1.4, `verify_task`) by default:
+  search_returned_hits / synthesis_nonempty / file_written / none. A custom
+  verifier can be injected; with verify=None the registry is used.
 
 Parallel ready-node dispatch is deliberately future work: the slice's graphs
 are chains, and sequential topological execution is deterministic and simple.
@@ -28,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from msb_v3.agent.dag import Task, TaskGraph
+from msb_v3.agent.verify import verify_task
 from msb_v3.observability.metrics import Metrics
 
 
@@ -123,11 +123,7 @@ async def execute_graph(
 
         latency = round(time.perf_counter() - task_started, 4)
         if error is None:
-            verification = (
-                verify(task, output)
-                if verify is not None
-                else {"ok": True, "detail": "no verifier wired"}
-            )
+            verification = verify(task, output) if verify is not None else verify_task(task, output)
             task_ok = bool(verification.get("ok", False))
             task_result = TaskResult(
                 task_id=task.task_id,
