@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from msb_v3.flywheel.chargers import StubScanner
 from msb_v3.flywheel.engine import FlywheelEngine
 from msb_v3.governance.approval import ApprovalQueue
 from msb_v3.governance.budget import BudgetLedger
@@ -39,6 +40,7 @@ def env(tmp_path):
         runtime_root=tmp_path / "rt",
         novelty_threshold=0.85,
         novelty_fn=lambda problem: 0.0,  # hermetic: never depends on the live vault
+        scanner=StubScanner(),  # hermetic: never depends on the live Tavily feed
     )
     return {"engine": engine, "queue": queue, "chain": chain, "tmp_path": tmp_path}
 
@@ -65,6 +67,7 @@ def rebuild(env):
             vault_root=p / "vault",
             runtime_root=p / "rt",
             novelty_fn=lambda problem: 0.0,  # hermetic: never depends on the live vault
+            scanner=StubScanner(),  # hermetic: never depends on the live Tavily feed
         )
         base.update(overrides)
         return FlywheelEngine(**base)
