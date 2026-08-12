@@ -121,3 +121,22 @@ def test_cockpit_api_rate_limit_panel_reflects_rejections(client: TestClient) ->
         assert limits["caps"]["embeddings_per_window"] == settings.openai_embed_rate_max
     finally:
         label._value.set(before)  # restore — the counter is global state
+
+
+def test_cockpit_limits_caps_derive_from_shared_builder(client: TestClient, monkeypatch) -> None:
+    """The panel's caps are a rename over guard_config() — the same builder
+    /system/config and both CLIs serve — so the fourth surface cannot drift
+    from the other three. Also proves the live-read: a settings change is
+    visible on the next call, no restart."""
+    from msb_v3.core.config import settings
+    from msb_v3.core.guard_config import guard_config
+
+    limits = client.get("/cockpit/api").json()["limits"]
+    rl = guard_config()["rate_limits"]
+    assert limits["caps"] == {
+        "chat_per_window": rl["OPENAI_CHAT_RATE_MAX"],
+        "embeddings_per_window": rl["OPENAI_EMBED_RATE_MAX"],
+    }
+
+    monkeypatch.setattr(settings, "openai_chat_rate_max", 9)
+    assert client.get("/cockpit/api").json()["limits"]["caps"]["chat_per_window"] == 9
