@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from msb_v3.governance.governor import OuroborosGovernor
@@ -88,10 +89,10 @@ def test_budget_halts_charge(env, rebuild) -> None:
     assert any("budget cap hit" in n for n in turn.notes)
 
 
-def test_novelty_gate_stops_before_build(env) -> None:
-    env["engine"]._vault_novelty = lambda problem: 0.99  # vault already covers it
-    turn = env["engine"].start("Already documented thing", charger="stub")
-    turn = env["engine"].run(turn.turn_id)
+def test_novelty_gate_stops_before_build(env, rebuild) -> None:
+    engine = rebuild(novelty_fn=lambda problem: 0.99)  # vault already covers it
+    turn = engine.start("Already documented thing", charger="stub")
+    turn = engine.run(turn.turn_id)
     assert turn.status == "ALREADY_EXISTS"
     assert turn.blueprint_path is None  # nothing built
     assert turn.approval_ids == {}  # no approvals ever submitted
@@ -118,11 +119,48 @@ def test_governor_halts_charge(env, rebuild) -> None:
     governor = OuroborosGovernor(
         db_path=str(env["tmp_path"] / "gov.db"), stall_limit=1, novelty_min=0.5
     )
+    # novelty_fn is fixture-injected to 0.0 (below the 0.5 floor), so the
+    # governor stalls on the first iteration deterministically.
     engine = rebuild(governor=governor)
-    # Deterministic novelty: force it below the floor (0.5) so the governor
-    # stalls on the first iteration regardless of the live vault's /rag/search.
-    engine._vault_novelty = lambda problem: 0.0  # type: ignore[method-assign]
     turn = engine.start("Governor should halt me", charger="stub")
     turn = engine.run(turn.turn_id)
     assert turn.status == "HALTED"
     assert turn.stage == "charge"
+
+
+def test_concurrent_runs_claim_once(env, rebuild) -> None:
+    """Two drivers calling run() at once: the status CAS lets exactly one
+    claim the turn — no double stage execution, no duplicate approval items."""
+    engine = rebuild()
+    turn = engine.start("Race the drivers", charger="stub")
+
+    barrier = threading.Barrier(2)
+    results: list = []
+
+    def drive() -> None:
+        barrier.wait()
+        try:
+            results.append(engine.run(turn.turn_id))
+        except Exception as exc:  # noqa: BLE001 — capture, don't crash the thread
+            results.append(exc)
+
+    t1 = threading.Thread(target=drive)
+    t2 = threading.Thread(target=drive)
+    t1.start()
+    t2.start()
+    t1.join(timeout=30)
+    t2.join(timeout=30)
+
+    assert len(results) == 2
+    finals = [r.status for r in results if hasattr(r, "status")]
+    assert finals, "both drivers returned turns"
+    assert any(s == "WAITING_APPROVAL" for s in finals)  # winner parked at build
+
+    # Exactly one driver claimed the turn: one 'UIM charged' note, no ERROR,
+    # and approval ids have no duplicates.
+    final = engine.get(turn.turn_id)
+    assert final.status == "WAITING_APPROVAL"
+    charged = [n for n in final.notes if n.startswith("UIM charged")]
+    assert len(charged) == 1
+    assert len(final.approval_ids) == len(set(final.approval_ids.values()))
+    assert "build" in final.approval_ids
