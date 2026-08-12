@@ -15,15 +15,21 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from msb_v3.agent.dag import TaskGraph
 from msb_v3.agent.executor import ExecReport
 from msb_v3.agent.intent import Intent
 from msb_v3.observability.metrics import Metrics
 from msb_v3.uac.audit_chain import AuditChain
+
+logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:  # pragma: no cover — import guard for circular safety
+    from msb_v3.runtime.store import RuntimeStore
 
 
 @dataclass
@@ -115,10 +121,17 @@ def _deterministic_hash(trace: AgentTrace) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
-def record_trace(trace: AgentTrace, audit_chain: Optional[AuditChain] = None) -> None:
-    """Append the trace's stages to the UAC audit chain (component="agentic").
+def record_trace(
+    trace: AgentTrace,
+    audit_chain: Optional[AuditChain] = None,
+    store: Optional[RuntimeStore] = None,
+) -> None:
+    """Record a run: append evidence events to the UAC audit chain (authoritative)
+    and persist the trace row to the runtime store (queryable projection).
 
-    One event per evidence stage: run start, plan, execution, outcome.
+    One event per evidence stage: run start, plan, execution, outcome. Store
+    persistence is best-effort — a store failure must never break the run
+    (phase0-substrate-hardening.md, I7 note).
     """
     chain = audit_chain if audit_chain is not None else AuditChain()
     chain.append(
@@ -141,4 +154,13 @@ def record_trace(trace: AgentTrace, audit_chain: Optional[AuditChain] = None) ->
         "trace:outcome",
         {"run_id": trace.run_id, "verdict": trace.verdict, "outcome": trace.outcome},
     )
+    if store is not None:
+        try:
+            store.save_trace(trace)
+        except Exception as exc:  # noqa: BLE001 — best-effort projection
+            # I7 note (phase0-substrate-hardening.md): a store failure must
+            # never break the run. The chain events above are already written
+            # and remain the authoritative record; this is a convenience
+            # projection, so log and continue.
+            logger.warning("trace store unavailable for run %s: %s", trace.run_id, exc)
     Metrics.inc("agentic", "trace:recorded")

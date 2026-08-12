@@ -28,6 +28,7 @@ from msb_v3.agent.trace import AgentTrace, build_trace, record_trace
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
+from msb_v3.runtime.store import RuntimeStore
 
 
 @dataclass
@@ -77,10 +78,11 @@ async def handle(
             provider = BridgeProvider(tenant=tenant, output_dir=output_dir, client=client)
 
         safe = SafeProvider(provider, gate, approved=approved)
-        report = await execute_graph(graph, safe, session=session)
+        store = RuntimeStore()
+        report = await execute_graph(graph, safe, session=session, store=store, run_id=run_id)
 
         trace: AgentTrace = build_trace(run_id, request, intent, graph, report)
-        record_trace(trace)
+        record_trace(trace, store=store)
 
         return HandleResult(
             ok=report.ok,
