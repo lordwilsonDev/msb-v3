@@ -130,7 +130,10 @@ def _render_triumvirate_status(data: dict) -> str:
         '<li>Triumvirate: '
         f'<span class="{valid}">{phase}</span> | '
         f'goal=<code>{goal}</code> | '
-        f'hash=<code>{data.get("scope_hash", "?")[:12]}</code></li>'
+        # scope_hash is present-but-None on a fresh checkout (no mission anchor
+        # state yet): .get(key, default) does NOT cover a None value, and
+        # None[:12] would crash the whole dashboard render.
+        f'hash=<code>{(data.get("scope_hash") or "?")[:12]}</code></li>'
     )
 
 

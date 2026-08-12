@@ -132,3 +132,16 @@ async def test_full_dashboard_renders_with_all_sections(monkeypatch) -> None:
     for label in _LABELS:
         assert re.search(rf'>{label}</a>.*?class="ok"', body, re.S)
     assert "Argus mulch: <span class='ok'>none</span>" in body
+
+
+def test_triumvirate_line_handles_none_scope_hash() -> None:
+    """A fresh checkout has no mission-anchor state — MissionAnchor.verify()
+    returns scope_hash=None (key present, value None). .get(key, default)
+    does not cover that, and None[:12] would crash the whole dashboard. The
+    line must render a '?' instead."""
+    html = home_mod._render_triumvirate_status(
+        {"goal": None, "phase": None, "valid": False, "scope_hash": None, "iteration_count": 0}
+    )
+    assert "Triumvirate:" in html
+    assert 'hash=<code>?</code>' in html
+    assert 'class="bad">unknown</span>' in html
