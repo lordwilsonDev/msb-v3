@@ -110,6 +110,17 @@ The brakes gate the **flywheel (Phase 2)** — today's endpoints don't call
 `Guard.check_run` yet. `POST /governance/check` is the drill that proves
 the gates; the loop wires `check_run` + `record_action` when it lands.
 
+## Cockpit
+
+`/cockpit` — one read-only screen over the whole system (services, mission,
+governance brakes, hygiene gate, audit chain, vault/RAG freshness, research
+runs, memory, recent errors). Self-contained page (no CDN/build), data via
+`/cockpit/api` (parallel bounded probes, per-panel error containment — a dead
+service costs one panel, never the page) and the find-box at `/cockpit/find`
+(vault semantic search + audit-chain match + research-run titles).
+Read-only by design; control actions stay on the API/CLI. `/` dashboard is
+untouched — the cockpit is a separate surface.
+
 ## Git
 
 Dual-push: `origin` and `sovereign_intelligence_core` both point to `https://github.com/lordwilsonDev/msb-v3.git`.
