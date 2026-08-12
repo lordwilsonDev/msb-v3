@@ -20,6 +20,9 @@ def test_cockpit_html_serves_page(client: TestClient) -> None:
     assert "text/html" in r.headers["content-type"]
     assert "MSB COCKPIT" in r.text
     assert "/cockpit/api" in r.text  # the page fetches the aggregated data
+    # the GUARDS card replaced the GOVERNANCE BRAKES card
+    assert 'data-panel="guards"' in r.text
+    assert "GOVERNANCE BRAKES" not in r.text
 
 
 def test_cockpit_api_shape_with_error_containment(client: TestClient) -> None:
@@ -29,7 +32,7 @@ def test_cockpit_api_shape_with_error_containment(client: TestClient) -> None:
     r = client.get("/cockpit/api")
     assert r.status_code == 200
     body = r.json()
-    for key in ("services", "mission", "flywheel", "governance", "limits", "hygiene", "audit", "vault", "research", "memory", "errors"):
+    for key in ("services", "mission", "flywheel", "guards", "limits", "hygiene", "audit", "vault", "research", "memory", "errors"):
         assert key in body, f"missing panel {key}"
         assert isinstance(body[key], dict), f"panel {key} is not a dict"
     assert "ts" in body
@@ -74,7 +77,7 @@ def test_cockpit_api_containment_with_all_probes_down(client: TestClient, monkey
     # panel still renders.
     assert "error" in body["services"]["status"]
     assert "error" in body["services"]["models"]
-    for key in ("governance", "limits", "hygiene", "audit", "vault", "mission", "flywheel", "errors"):
+    for key in ("guards", "limits", "hygiene", "audit", "vault", "mission", "flywheel", "errors"):
         assert "error" not in body[key], f"in-process panel {key} must not fail"
 
 
@@ -95,7 +98,6 @@ def test_cockpit_api_rate_limit_panel_reflects_rejections(client: TestClient) ->
     """The RATE LIMIT REJECTIONS panel reads the live shared counter — an
     increment from the /v1 guard is visible on the cockpit, then restored
     so the global counter is not left polluted."""
-    from msb_v3.core.config import settings
     from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
 
     label = RATE_LIMIT_REJECTIONS.labels(limiter="chat", reason="rate")
@@ -116,27 +118,30 @@ def test_cockpit_api_rate_limit_panel_reflects_rejections(client: TestClient) ->
         combos = [(c["limiter"], c["reason"]) for c in limits["counters"]]
         assert len(combos) == len(set(combos))
         assert all(isinstance(c["count"], int) and c["count"] < 1_000_000 for c in limits["counters"])
-        # configured caps ride along for context
-        assert limits["caps"]["chat_per_window"] == settings.openai_chat_rate_max
-        assert limits["caps"]["embeddings_per_window"] == settings.openai_embed_rate_max
     finally:
         label._value.set(before)  # restore — the counter is global state
 
 
-def test_cockpit_limits_caps_derive_from_shared_builder(client: TestClient, monkeypatch) -> None:
-    """The panel's caps are a rename over guard_config() — the same builder
-    /system/config and both CLIs serve — so the fourth surface cannot drift
-    from the other three. Also proves the live-read: a settings change is
-    visible on the next call, no restart."""
+def test_cockpit_guards_panel_merges_caps_brakes_policy(client: TestClient, monkeypatch) -> None:
+    """The GUARDS panel is the one overview: live brake state (kill switch,
+    budgets, approvals pending, governor signals) merged with the configured
+    caps + approval policy from the shared guard_config() builder — the
+    same source /system/config and both CLIs serve, so it cannot drift.
+    Live-read: a settings change is visible on the next call, no restart."""
     from msb_v3.core.config import settings
     from msb_v3.core.guard_config import guard_config
 
-    limits = client.get("/cockpit/api").json()["limits"]
-    rl = guard_config()["rate_limits"]
-    assert limits["caps"] == {
-        "chat_per_window": rl["OPENAI_CHAT_RATE_MAX"],
-        "embeddings_per_window": rl["OPENAI_EMBED_RATE_MAX"],
-    }
+    r = client.get("/cockpit/api")
+    assert r.status_code == 200
+    g = r.json()["guards"]
+    assert "error" not in g
+    # live brake state rides along
+    assert "killswitch" in g and "budgets" in g
+    assert "approvals_pending" in g and "governor_history" in g
+    # the three config areas come from the one builder — exact equality
+    assert g["caps"] == guard_config()["rate_limits"]
+    assert g["brakes"] == guard_config()["governance"]
+    assert g["approval_policy"] == guard_config()["approvals"]
 
     monkeypatch.setattr(settings, "openai_chat_rate_max", 9)
-    assert client.get("/cockpit/api").json()["limits"]["caps"]["chat_per_window"] == 9
+    assert client.get("/cockpit/api").json()["guards"]["caps"]["OPENAI_CHAT_RATE_MAX"] == 9

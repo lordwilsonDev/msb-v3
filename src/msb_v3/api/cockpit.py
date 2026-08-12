@@ -4,7 +4,8 @@ Serves a single self-contained page at /cockpit (inline CSS/JS, no CDN, no
 build step) plus two JSON surfaces:
 
 - /cockpit/api  — aggregated state for every panel: services, mission,
-  governance brakes, flywheel, hygiene gate, audit chain, vault/RAG
+  guards overview (brakes + caps + approval policy), flywheel, hygiene
+  gate, audit chain, vault/RAG
   freshness, research runs, memory, rate-limit rejections, recent errors.
   Probes are parallel and bounded (asyncio.gather + short timeouts — the
   home.py lesson) and every panel is error-contained, so one dead service
@@ -117,17 +118,27 @@ def _audit_state() -> Dict[str, Any]:
     }
 
 
-def _governance_state() -> Dict[str, Any]:
+def _guards_state() -> Dict[str, Any]:
+    """One GUARDS overview: the live brake state (kill switch, budget
+    spend, approvals pending, governor signals) merged with the configured
+    guard caps + approval policy from the shared guard_config() builder —
+    the same source /system/config and both CLIs serve, so this panel
+    cannot drift from the other surfaces."""
+    from msb_v3.core.guard_config import guard_config
     from msb_v3.governance.approval import ApprovalQueue
     from msb_v3.governance.budget import BudgetLedger
     from msb_v3.governance.governor import OuroborosGovernor
     from msb_v3.governance.killswitch import KillSwitch
 
+    cfg = guard_config()
     return {
         "killswitch": KillSwitch().state(),
         "budgets": BudgetLedger.from_settings().state(),
         "approvals_pending": len(ApprovalQueue().pending()),
         "governor_history": len(OuroborosGovernor.from_settings().history()),
+        "caps": cfg["rate_limits"],
+        "brakes": cfg["governance"],
+        "approval_policy": cfg["approvals"],
     }
 
 
@@ -196,10 +207,8 @@ def _rate_limits_state() -> Dict[str, Any]:
     — the /v1 handlers and this cockpit run in the same server process, so
     the registry is exact in the current single-worker deployment (same
     caveat rate_limit.py documents). Zero-state is honest: no samples ->
-    total 0, no counters. The configured caps come from guard_config() —
-    the same builder /system/config and the CLIs serve, so this panel
-    cannot drift from the other three surfaces."""
-    from msb_v3.core.guard_config import guard_config
+    total 0, no counters. Configured caps live in the GUARDS panel
+    (guard_config()), not here — no duplicate sources."""
     from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
 
     counters: List[Dict[str, Any]] = []
@@ -221,14 +230,9 @@ def _rate_limits_state() -> Dict[str, Any]:
                 }
             )
     counters.sort(key=lambda c: (c["limiter"], c["reason"]))
-    rl = guard_config()["rate_limits"]
     return {
         "total": total,
         "counters": counters,
-        "caps": {
-            "chat_per_window": rl["OPENAI_CHAT_RATE_MAX"],
-            "embeddings_per_window": rl["OPENAI_EMBED_RATE_MAX"],
-        },
     }
 
 
@@ -298,7 +302,7 @@ async def cockpit_api() -> dict:
         "memory": {"summary": mem_summary, "latest": mem_latest},
         "mission": _safe(_mission_state),
         "flywheel": _safe(_flywheel_state),
-        "governance": _safe(_governance_state),
+        "guards": _safe(_guards_state),
         "limits": _safe(_rate_limits_state),
         "hygiene": _safe(_hygiene_state),
         "audit": _safe(_audit_state),
@@ -470,7 +474,7 @@ a{color:var(--teal);text-decoration:none}
   <div class="grid" id="grid">
     <div class="card" data-panel="services"><h2>SERVICES <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="mission"><h2>MISSION</h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
-    <div class="card" data-panel="governance"><h2>GOVERNANCE BRAKES <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+    <div class="card" data-panel="guards"><h2>GUARDS <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="limits"><h2>RATE LIMIT REJECTIONS <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="flywheel"><h2>FLYWHEEL <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="hygiene"><h2>HYGIENE GATE <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
@@ -535,7 +539,6 @@ function renderLimits(d){
   if (d.error) return panelErr(b, d);
   const total = d.total || 0;
   pill(p, total === 0 ? 'ok' : 'warn', total === 0 ? 'CLEAR' : total + ' rejected');
-  const caps = d.caps || {};
   let html = '<div class="row"><span class="k">total rejections</span><span class="v">' + total + '</span></div>';
   const counters = d.counters || [];
   if (counters.length === 0) {
@@ -543,9 +546,6 @@ function renderLimits(d){
   } else {
     html += counters.map(c =>
       '<div class="row"><span class="k">' + esc(c.limiter) + ' · ' + esc(c.reason) + '</span><span class="v">' + esc(c.count) + '</span></div>').join('');
-  }
-  if (caps.chat_per_window !== undefined && caps.embeddings_per_window !== undefined) {
-    html += '<div class="ev">caps: chat ' + esc(caps.chat_per_window) + '/window · embed ' + esc(caps.embeddings_per_window) + '/window</div>';
   }
   b.innerHTML = html;
 }
@@ -565,8 +565,8 @@ function renderFlywheel(d){
   if (d.newest_problem) b.innerHTML += '<div class="ev">' + esc(d.newest_problem) + '</div>';
 }
 
-function renderGovernance(d){
-  const b = bodyFor('governance'), p = document.querySelector('[data-panel="governance"] [data-pill]');
+function renderGuards(d){
+  const b = bodyFor('guards'), p = document.querySelector('[data-panel="guards"] [data-pill]');
   if (d.error) return panelErr(b, d);
   const ks = d.killswitch || {};
   const armed = ks.armed === true;
@@ -584,6 +584,23 @@ function renderGovernance(d){
     const label = s.limit < 0 ? (s.spent + '/unlimited') : (s.spent + '/' + s.limit);
     html += '<div class="row"><span class="k">'+cat+'</span><span class="v">'+label+'</span></div>' +
       '<div class="bar"><i style="width:'+pct+'%" class="'+cls+'"></i></div>';
+  }
+  const caps = d.caps || {}, brakes = d.brakes || {}, ap = d.approval_policy || {};
+  if (caps.OPENAI_CHAT_RATE_MAX !== undefined) {
+    html += '<div class="ev"><b>caps</b> · chat ' + esc(caps.OPENAI_CHAT_RATE_MAX) + ' req / ' +
+      esc(caps.OPENAI_CHAT_RATE_WINDOW_S) + 's · embed ' + esc(caps.OPENAI_EMBED_RATE_MAX) +
+      ' items / ' + esc(caps.OPENAI_EMBED_RATE_WINDOW_S) + 's · max batch ' + esc(caps.OPENAI_EMBED_MAX_BATCH) + '</div>';
+  }
+  if (brakes.GOV_GOVERNOR_STALL_LIMIT !== undefined) {
+    html += '<div class="ev"><b>governor</b> · stall ' + esc(brakes.GOV_GOVERNOR_STALL_LIMIT) +
+      ' · novelty_min ' + esc(brakes.GOV_GOVERNOR_NOVELTY_MIN) +
+      ' · dup_halt ' + esc(brakes.GOV_GOVERNOR_DUP_RATIO_HALT) +
+      ' · window ' + esc(brakes.GOV_BUDGET_WINDOW_MIN) + 'm</div>';
+  }
+  if (ap.kinds_requiring_approval) {
+    html += '<div class="ev"><b>approval</b> · ' + esc(ap.kinds_requiring_approval.join(', ')) + '</div>';
+    const gated = Object.entries(ap.stages_requiring_approval || {}).map(([s,k]) => s + '->' + k).join(', ');
+    if (gated) html += '<div class="ev"><b>gated stages</b> · ' + esc(gated) + '</div>';
   }
   b.innerHTML = html;
 }
@@ -662,7 +679,7 @@ function renderFocus(d){
   }
 }
 
-const RENDERERS = { services: renderServices, mission: renderMission, governance: renderGovernance,
+const RENDERERS = { services: renderServices, mission: renderMission, guards: renderGuards,
                     limits: renderLimits, flywheel: renderFlywheel, hygiene: renderHygiene, audit: renderAudit,
                     vault: renderVault, research: renderResearch, memory: renderMemory, errors: renderErrors };
 
