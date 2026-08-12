@@ -44,6 +44,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from msb_v3.api.auth import bearer_gate
 from msb_v3.api.chat import ToolSpec
 from msb_v3.api.models import list_models
 from msb_v3.core.config import settings
@@ -101,17 +102,16 @@ class EmbeddingsRequest(BaseModel):
 
 
 def _check_auth(request: Request) -> None:
-    """Fail-closed bearer gate: closed (503) until OPENAI_API_KEY is set,
-    then 401 on any mismatch. The key is read live from settings so a config
-    change takes effect without a restart."""
-    key = settings.openai_api_key
-    if not key:
-        raise HTTPException(
-            status_code=503,
-            detail="OPENAI_API_KEY not configured — /v1 adapter is closed (set it in .env)",
-        )
-    if request.headers.get("authorization") != f"Bearer {key}":
-        raise HTTPException(status_code=401, detail="invalid API key")
+    """Fail-closed bearer gate via the shared auth helper (Phase 3): closed
+    (503) until OPENAI_API_KEY is set, then 401 on any mismatch. The key is
+    read live from settings so a config change takes effect without a
+    restart; comparison is constant-time (secrets.compare_digest)."""
+    bearer_gate(
+        request,
+        settings.openai_api_key,
+        "OPENAI_API_KEY not configured — /v1 adapter is closed (set it in .env)",
+        "invalid API key",
+    )
 
 
 def _msb_tool(t: ToolDef) -> ToolSpec:

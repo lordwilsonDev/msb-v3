@@ -2,8 +2,12 @@
 
 POST /flywheel/turn starts a turn as a background task (returns fast; the
 turn parks at the first approval or completes on its own). Operator
-controls approve/resume mirror the governance controls — loopback-bound,
-same unauthenticated posture (Phase 3 hardening).
+controls approve/resume mirror the governance controls.
+
+Phase 3: the state-changing endpoints (turn start, approve, resume) require
+the operator bearer token (Depends(require_operator), MSB_OPERATOR_TOKEN —
+fail-closed 503 until set, 401 on mismatch). Read endpoints (turn lists,
+turn state) stay open for the cockpit.
 
 The module-level engine singleton is monkeypatched in tests (governance
 pattern) so the whole router runs against tmp-backed state.
@@ -11,8 +15,9 @@ pattern) so the whole router runs against tmp-backed state.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from msb_v3.api.auth import require_operator
 from msb_v3.flywheel.engine import FlywheelEngine
 
 router = APIRouter(tags=["flywheel"])
@@ -44,7 +49,7 @@ def _run_turn_background(turn_id: str) -> None:
         pass
 
 
-@router.post("/flywheel/turn", status_code=202)
+@router.post("/flywheel/turn", status_code=202, dependencies=[Depends(require_operator)])
 async def flywheel_turn(body: dict, background_tasks: BackgroundTasks) -> dict:
     problem = body.get("problem")
     if not isinstance(problem, str) or not problem.strip():
@@ -73,14 +78,14 @@ async def flywheel_turn_state(turn_id: str) -> dict:
     return _turn_payload(turn)
 
 
-@router.post("/flywheel/turns/{turn_id}/approve")
+@router.post("/flywheel/turns/{turn_id}/approve", dependencies=[Depends(require_operator)])
 async def flywheel_approve(turn_id: str, body: dict) -> dict:
     operator = str(body.get("operator", "operator") or "operator")
     turn = _engine.approve(turn_id, operator=operator)
     return _turn_payload(turn)
 
 
-@router.post("/flywheel/turns/{turn_id}/resume")
+@router.post("/flywheel/turns/{turn_id}/resume", dependencies=[Depends(require_operator)])
 async def flywheel_resume(turn_id: str) -> dict:
     try:
         turn = _engine.resume(turn_id)

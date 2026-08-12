@@ -5,17 +5,20 @@ kill-switch arm/disarm, and the approval queue (submit/approve/reject/
 cancel). Module-level singletons are monkeypatched in tests (mcp_bridge
 pattern) so the whole router runs against tmp-backed state.
 
-NOTE: operator authentication on these control endpoints is deferred to
-Phase 3 security hardening; the server binds to loopback and the existing
-control surface (safety, triumvirate) is unprotected in the same way.
+Phase 3: every state-changing endpoint requires the operator bearer token
+(Depends(require_operator), MSB_OPERATOR_TOKEN from .env — fail-closed
+503 until set, 401 on mismatch). Reads (/status, /budget, /approvals)
+stay open. The /check drill is protected too: it spends budget units and
+audits, so it is not side-effect-free.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from msb_v3.api.auth import require_operator
 from msb_v3.governance.approval import (
     APPROVAL_KINDS,
     ApprovalError,
@@ -69,7 +72,7 @@ async def budget_state() -> dict:
     return _ledger.state()
 
 
-@router.post("/budget/reset")
+@router.post("/budget/reset", dependencies=[Depends(require_operator)])
 async def budget_reset(body: dict) -> dict:
     category = _body(body, "category")
     if category is not None and not isinstance(category, str):
@@ -78,14 +81,14 @@ async def budget_reset(body: dict) -> dict:
     return {"reset": True, "category": category}
 
 
-@router.post("/killswitch/arm")
+@router.post("/killswitch/arm", dependencies=[Depends(require_operator)])
 async def killswitch_arm(body: dict) -> dict:
     operator = str(_body(body, "operator", "operator") or "operator")
     reason = str(_body(body, "reason", "") or "")
     return _switch.arm(operator, reason)
 
 
-@router.post("/killswitch/disarm")
+@router.post("/killswitch/disarm", dependencies=[Depends(require_operator)])
 async def killswitch_disarm(body: dict) -> dict:
     operator = str(_body(body, "operator", "operator") or "operator")
     return _switch.disarm(operator)
@@ -109,7 +112,7 @@ async def approvals_list(status: Optional[str] = None) -> dict:
     }
 
 
-@router.post("/approvals", status_code=201)
+@router.post("/approvals", status_code=201, dependencies=[Depends(require_operator)])
 async def approvals_submit(body: dict) -> dict:
     kind = _body(body, "kind")
     title = _body(body, "title")
@@ -159,28 +162,30 @@ def _decide_endpoint(item_id: str, body: dict, action: str) -> dict:
     }
 
 
-@router.post("/approvals/{item_id}/approve")
+@router.post("/approvals/{item_id}/approve", dependencies=[Depends(require_operator)])
 async def approvals_approve(item_id: str, body: dict) -> dict:
     return _decide_endpoint(item_id, body, "approve")
 
 
-@router.post("/approvals/{item_id}/reject")
+@router.post("/approvals/{item_id}/reject", dependencies=[Depends(require_operator)])
 async def approvals_reject(item_id: str, body: dict) -> dict:
     return _decide_endpoint(item_id, body, "reject")
 
 
-@router.post("/approvals/{item_id}/cancel")
+@router.post("/approvals/{item_id}/cancel", dependencies=[Depends(require_operator)])
 async def approvals_cancel(item_id: str, body: dict) -> dict:
     return _decide_endpoint(item_id, body, "cancel")
 
 
-@router.post("/check")
+@router.post("/check", dependencies=[Depends(require_operator)])
 async def check(body: dict) -> dict:
     """Drill endpoint — run the same gate the flywheel calls, see the verdict.
 
     Lets an operator (or a test, or the Phase 2 loop) prove the brakes
     halt work without executing anything. Mirrors Guard.check_run's
     arguments: action, kind, budget_units, approval_id, signal.
+    Protected (Phase 3): check_run spends budget units and audits refusals,
+    so an unauthenticated caller could burn budget through it.
     """
     verdict: GuardVerdict = _guard.check_run(
         action=str(_body(body, "action", "drill")),
