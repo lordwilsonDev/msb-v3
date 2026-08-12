@@ -51,6 +51,11 @@ class Settings:
     openai_embed_max_batch: int = field(default_factory=lambda: int(os.getenv("OPENAI_EMBED_MAX_BATCH", "32")))
     openai_embed_rate_max: int = field(default_factory=lambda: int(os.getenv("OPENAI_EMBED_RATE_MAX", "120")))
     openai_embed_rate_window_s: int = field(default_factory=lambda: int(os.getenv("OPENAI_EMBED_RATE_WINDOW_S", "60")))
+    # /v1/chat/completions guard: per-client sliding-window cap on requests
+    # (1 unit per request, streaming included). Mirrors the embeddings rate
+    # guard; 0 denies all (fail-closed).
+    openai_chat_rate_max: int = field(default_factory=lambda: int(os.getenv("OPENAI_CHAT_RATE_MAX", "120")))
+    openai_chat_rate_window_s: int = field(default_factory=lambda: int(os.getenv("OPENAI_CHAT_RATE_WINDOW_S", "60")))
     # --- Governance brakes (Phase 0B) ---
     # Budget caps per rolling window; -1 = unlimited, 0 = deny all (fail-closed).
     gov_budget_research_calls: int = field(default_factory=lambda: int(os.getenv("GOV_BUDGET_RESEARCH_CALLS", "50")))

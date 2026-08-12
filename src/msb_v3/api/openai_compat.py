@@ -53,12 +53,17 @@ from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
 
 router = APIRouter(tags=["openai"])
 
-# /v1/embeddings guard: each embedded item consumes one unit toward the
-# per-client window cap. Window/max read live from settings (like auth) so
-# config changes apply without a restart.
+# /v1 guards: per-client sliding-window caps. Window/max read live from
+# settings (like auth) so config changes apply without a restart.
+# - embeddings: each embedded item consumes one unit (a batch of N = N units)
+# - chat: one unit per request (streaming requests count once)
 _EMBED_LIMITER = RateLimiter(
     window_s=lambda: float(settings.openai_embed_rate_window_s),
     max_count=lambda: settings.openai_embed_rate_max,
+)
+_CHAT_LIMITER = RateLimiter(
+    window_s=lambda: float(settings.openai_chat_rate_window_s),
+    max_count=lambda: settings.openai_chat_rate_max,
 )
 
 
@@ -230,6 +235,19 @@ async def chat_completions(request: Request, req: ChatCompletionRequest) -> Any:
     _check_auth(request)
     if req.n and req.n > 1:
         raise HTTPException(status_code=400, detail="n > 1 is not supported")
+    # Rate guard after validation: an invalid request (400) never consumes
+    # quota. One unit per request, streaming included. Refused before any
+    # work reaches the harness.
+    if not _CHAT_LIMITER.check(request, units=1):
+        RATE_LIMIT_REJECTIONS.labels(limiter="chat", reason="rate").inc()
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "rate_limit_exceeded (max "
+                f"{settings.openai_chat_rate_max} chat requests per "
+                f"{settings.openai_chat_rate_window_s}s)"
+            ),
+        )
 
     system: Optional[str] = None
     query = ""
