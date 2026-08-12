@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 from pathlib import Path
 
@@ -164,3 +165,66 @@ def test_concurrent_runs_claim_once(env, rebuild) -> None:
     assert len(charged) == 1
     assert len(final.approval_ids) == len(set(final.approval_ids.values()))
     assert "build" in final.approval_ids
+
+
+class _FakePaperScanner:
+    """A deterministic stand-in for the real Tavily feed — hermetic, but the
+    exact output shape TavilyScanner returns."""
+
+    def scan(self, problem: str, uim):
+        return {
+            "papers_scanned": 2,
+            "matches": [
+                {"title": "A Survey of Sovereign Mesh Networks", "url": "https://arxiv.org/abs/1", "content": "...", "score": 0.9},
+                {"title": "Local-First Agent Architectures", "url": "https://arxiv.org/abs/2", "content": "...", "score": 0.8},
+            ],
+            "candidates": ["A Survey of Sovereign Mesh Networks", "Local-First Agent Architectures", "fallback pred"],
+            "notes": "tavily: 2 paper(s) on 'mesh arxiv paper'",
+        }
+
+
+def test_real_scan_feeds_surface_stage(env, rebuild) -> None:
+    """Phase 2b: the scanner's real papers land in the persisted scan
+    artifact, and the surface stage surfaces them as next problems."""
+    engine = rebuild(scanner=_FakePaperScanner())
+    turn = engine.start("Mesh for local-first agents", charger="stub")
+    turn = _drive_with_approvals(engine, turn.turn_id)
+    assert turn.status == "DONE"
+
+    # scan note reports the real count; the artifact persists the evidence
+    assert any(n.startswith("scan: 2 papers (tavily:") for n in turn.notes)
+    scan_path = env["tmp_path"] / "rt" / "scans" / f"{turn.turn_id}.json"
+    assert scan_path.exists()
+    scan = json.loads(scan_path.read_text())
+    assert scan["papers_scanned"] == 2
+    assert len(scan["matches"]) == 2
+    assert scan["candidates"][0] == "A Survey of Sovereign Mesh Networks"  # papers lead
+    # the surface stage consumed those candidates
+    assert any("candidate(s) surfaced" in n for n in turn.notes)
+
+
+def test_engine_defaults_to_real_scanner(env, rebuild) -> None:
+    """Phase 2b: with no scanner injected, the engine wires the real Tavily
+    feed (it degrades to 0 papers offline — never fabricates)."""
+    from msb_v3.flywheel.chargers import TavilyScanner
+
+    engine = rebuild(scanner=None)
+    assert isinstance(engine._scanner, TavilyScanner)
+
+
+def test_surface_falls_back_to_uim_when_scan_missing(env, rebuild) -> None:
+    """A pre-2b turn (no scan artifact persisted) still surfaces candidates:
+    the fallback reads the UIM's own predictions — the loop never stalls on
+    a missing scan."""
+    engine = rebuild()
+    turn = engine.start("Pre-2b turn without a scan", charger="stub")
+    turn = _drive_with_approvals(engine, turn.turn_id)
+    assert turn.status == "DONE"
+
+    # simulate a pre-2b turn: remove the persisted scan artifact, then re-run
+    # the surface stage — candidates must come from the UIM, not the scan.
+    scan_path = env["tmp_path"] / "rt" / "scans" / f"{turn.turn_id}.json"
+    assert scan_path.exists()
+    scan_path.unlink()
+    engine._stage_surface_problems(turn)
+    assert turn.notes[-1] == "next problems: 3 candidate(s) surfaced"
