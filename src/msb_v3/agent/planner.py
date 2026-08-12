@@ -69,7 +69,7 @@ def template_dag(intent: Intent) -> TaskGraph:
             else f"Search the vault for evidence on: {intent.request}"
         ),
         required_capabilities=("read_vault",),
-        tools=("search_query", "vault_read"),
+        tools=("search_query",),
         permissions=("read_vault",),
         expected_output="a list of vault sources with snippets, 1+ hits",
         verification_method="search_returned_hits",
