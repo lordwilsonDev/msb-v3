@@ -139,9 +139,14 @@ restarts; every transition is audited (component `flywheel`).
 The generative brain is pluggable: `--charger stub` (deterministic,
 offline, UIM-format-compatible — the default and the only one that runs
 without burning tokens) or `--charger sovereign` (real
-`SovereignResearchAssistant`, local LLM). The paper scanner is a stub that
-says so; the real feed (Tavily/NotebookLM) wires in Phase 2b. The cockpit
-has a read-only FLYWHEEL panel.
+`SovereignResearchAssistant`, local LLM). The paper scanner is the **real
+Tavily feed (Phase 2b)**: `TavilyScanner` searches arxiv.org via the shared
+`TavilyResearchBackend` (`TAVILY_API_KEY` from `.env`), persists matches to
+`runtime/flywheel/scans/{turn_id}.json`, and the surface stage surfaces
+paper titles as next problems. No key or a feed outage degrades to an honest
+`0 papers` note — the scan never fabricates, and offline turns still run.
+`StubScanner` remains as the explicit offline fallback (inject it in tests;
+CI never touches the network). The cockpit has a read-only FLYWHEEL panel.
 
 ## Git
 
