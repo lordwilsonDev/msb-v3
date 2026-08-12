@@ -62,7 +62,7 @@ def test_template_with_write_permission_is_a_chain() -> None:
     assert graph.order() == list(graph.tasks)  # topological = parent order
     assert graph.by_id("research").verification_method == "search_returned_hits"
     assert graph.by_id("synthesize").verification_method == "synthesis_nonempty"
-    assert graph.by_id("write").verification_method == "file_written"
+    assert graph.by_id("write").verification_method == "file_written_with_heading"
     assert graph.by_id("write").parent_id == "synthesize"
     assert graph.by_id("synthesize").parent_id == "research"
 

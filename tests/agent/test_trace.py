@@ -101,6 +101,39 @@ def test_record_trace_writes_four_evidence_events() -> None:
     assert audit.events[3][2]["verdict"] == "PASS"
 
 
+def test_trace_logs_cost_per_run() -> None:
+    """Phase 1 acceptance: cost logged per run — token counts summed from task
+    outputs, estimated cost at $0.001/1K completion tokens (ralph pattern)."""
+    results = (
+        TaskResult(
+            task_id="synthesize",
+            ok=True,
+            output={
+                "chat": {
+                    "text": "brief",
+                    "prompt_tokens": 1200,
+                    "completion_tokens": 300,
+                }
+            },
+            verification={"ok": True, "detail": "5 chars"},
+        ),
+    )
+    report = ExecReport(ok=True, goal="g", results=results)
+    trace = build_trace("run-c", "x", _intent(), _graph(), report)
+
+    assert trace.outcome["prompt_tokens"] == 1200
+    assert trace.outcome["completion_tokens"] == 300
+    assert trace.outcome["estimated_cost_usd"] == round((300 / 1000.0) * 0.001, 6)
+    assert trace.outcome["estimated_cost_usd"] > 0
+
+
+def test_trace_zero_cost_when_no_tokens() -> None:
+    trace = build_trace("run-0", "x", _intent(), _graph(), _report())
+    assert trace.outcome["prompt_tokens"] == 0
+    assert trace.outcome["completion_tokens"] == 0
+    assert trace.outcome["estimated_cost_usd"] == 0.0
+
+
 def test_trace_metrics_move() -> None:
     from prometheus_client.registry import REGISTRY
 

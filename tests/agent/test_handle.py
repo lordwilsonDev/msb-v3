@@ -72,8 +72,8 @@ class FakeProvider:
             return "The client-ready brief."
         if name == "vault_write":
             path = self._tmp / "brief.md"
-            path.write_text("brief")
-            return {"path": str(path)}
+            path.write_text("# Brief\n\nbrief\n")  # Phase 1: heading required
+            return {"path": str(path), "heading": "# Brief"}
         raise ValueError(name)
 
 
@@ -167,7 +167,9 @@ async def test_empty_request_is_error() -> None:
 # BridgeProvider — the real tool wiring (write path is hermetic)
 # ---------------------------------------------------------------------------
 
-def test_bridge_provider_write_creates_file(tmp_path: Path) -> None:
+def test_bridge_provider_write_creates_file_with_heading(tmp_path: Path) -> None:
+    """Phase 1 canonical task: the vault note leads with a # heading so the
+    grounded file_written_with_heading check can verify it."""
     provider = BridgeProvider(output_dir=tmp_path)
     task = type("T", (), {"goal": "write a brief about sovereign architecture"})()
 
@@ -182,7 +184,10 @@ def test_bridge_provider_write_creates_file(tmp_path: Path) -> None:
     result = asyncio_run(run())
     path = Path(result["path"])
     assert path.exists()
-    assert path.read_text().strip() == "The client-ready brief."
+    text = path.read_text()
+    assert text.strip().startswith("# ")
+    assert "The client-ready brief." in text
+    assert result["heading"].startswith("# ")
     assert path.name.startswith(_slug(task.goal))
 
 

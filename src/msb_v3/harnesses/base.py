@@ -71,6 +71,9 @@ class ChatHarness(BaseHarness):
                 "session": session,
                 "model": resp.model,
                 "dispatcher": dispatcher,
+                # Phase 1: cost logged per run — token counts ride the telemetry.
+                "prompt_tokens": getattr(resp, "prompt_tokens", 0) or 0,
+                "completion_tokens": getattr(resp, "completion_tokens", 0) or 0,
             }
             return HarnessResult(
                 ok=True,

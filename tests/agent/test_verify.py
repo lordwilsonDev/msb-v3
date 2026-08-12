@@ -60,6 +60,26 @@ def test_file_written_no_path_in_output() -> None:
     assert verify_task(_task("file_written"), {"vault_write": {"status": "ok"}})["ok"] is False
 
 
+def test_file_written_with_heading_checks_disk(tmp_path: Path) -> None:
+    target = tmp_path / "note.md"
+    target.write_text("# The Brief\n\nbody\n")
+    result = verify_task(_task("file_written_with_heading"), {"vault_write": {"path": str(target)}})
+    assert result["ok"] is True
+    assert "heading" in result["detail"]
+
+    no_heading = tmp_path / "plain.md"
+    no_heading.write_text("body only")
+    result = verify_task(_task("file_written_with_heading"), {"vault_write": {"path": str(no_heading)}})
+    assert result["ok"] is False
+
+    empty = tmp_path / "empty.md"
+    empty.write_text("")
+    assert verify_task(_task("file_written_with_heading"), {"vault_write": {"path": str(empty)}})["ok"] is False
+
+    missing = tmp_path / "nope.md"
+    assert verify_task(_task("file_written_with_heading"), {"vault_write": {"path": str(missing)}})["ok"] is False
+
+
 def test_none_method_passes() -> None:
     assert verify_task(_task("none"), {})["ok"] is True
 
@@ -68,6 +88,41 @@ def test_unknown_method_fails() -> None:
     result = verify_task(_task("llm-judge-says-yes"), {})
     assert result["ok"] is False
     assert "unknown" in result["detail"]
+
+
+def test_receipts_are_grounded_high_trust() -> None:
+    """Spec §3.4: every receipt from a real check is kind=grounded, trust=high,
+    verdict pass|fail, confidence=1.0. No LLM-judge receipt can ever be a gate."""
+    ok_receipt = verify_task(_task("search_returned_hits"), {"search_query": [{"id": "a"}]})
+    assert ok_receipt["kind"] == "grounded"
+    assert ok_receipt["trust"] == "high"
+    assert ok_receipt["check"] == "search_returned_hits"
+    assert ok_receipt["verdict"] == "pass"
+    assert ok_receipt["confidence"] == 1.0
+
+    fail_receipt = verify_task(_task("search_returned_hits"), {"search_query": []})
+    assert fail_receipt["verdict"] == "fail"
+    assert fail_receipt["trust"] == "high"
+
+    write_receipt = verify_task(
+        _task("file_written_with_heading"),
+        {"vault_write": {"path": _temp_note()}},
+    )
+    assert write_receipt["kind"] == "grounded"
+    assert write_receipt["check"] == "file_written_with_heading"
+
+    none_receipt = verify_task(_task("none"), {})
+    assert none_receipt["kind"] == "grounded"
+    assert none_receipt["trust"] == "high"
+    assert none_receipt["verdict"] == "pass"
+
+
+def _temp_note() -> str:
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+        f.write("# Note\n\nbody\n")
+        return f.name
 
 
 # ---------------------------------------------------------------------------

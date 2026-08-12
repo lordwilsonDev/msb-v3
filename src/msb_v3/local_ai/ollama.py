@@ -32,6 +32,9 @@ class LocalAIResponse:
     model: str
     latency_s: float
     tool_calls: List[Dict[str, Any]] = field(default_factory=list)
+    # Token counts from the Ollama response (Phase 1: cost logged per run).
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 class LocalAIClient:
@@ -103,7 +106,14 @@ class LocalAIClient:
 
         text = _strip_think(data.get("response", ""))
         tool_calls = data.get("tool_calls") or []
-        return LocalAIResponse(text=text, model=self.model, latency_s=latency, tool_calls=tool_calls)
+        return LocalAIResponse(
+            text=text,
+            model=self.model,
+            latency_s=latency,
+            tool_calls=tool_calls,
+            prompt_tokens=int(data.get("prompt_eval_count") or 0),
+            completion_tokens=int(data.get("eval_count") or 0),
+        )
 
     def execute_tool_loop(
         self,
@@ -206,4 +216,11 @@ class LocalAIClient:
         msg = data.get("message", {}) or {}
         text = _strip_think(msg.get("content", "") or "")
         tool_calls = msg.get("tool_calls") or []
-        return LocalAIResponse(text=text, model=self.model, latency_s=latency, tool_calls=tool_calls)
+        return LocalAIResponse(
+            text=text,
+            model=self.model,
+            latency_s=latency,
+            tool_calls=tool_calls,
+            prompt_tokens=int(data.get("prompt_eval_count") or 0),
+            completion_tokens=int(data.get("eval_count") or 0),
+        )
