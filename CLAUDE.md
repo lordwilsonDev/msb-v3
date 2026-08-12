@@ -29,8 +29,9 @@ FastAPI + SQLite + Ollama + Prometheus. No `.venv`; Python is at `/opt/homebrew/
   the pre-push portability gate, wired into the harness-gate CI job)
 - `make hooks-install` / `make hooks-uninstall` — install/remove the
   pre-push hook that runs the portability gate before every push
-- `make governance-status|arm|disarm|approvals|approve|reject` — the brakes (see
-  Governance brakes section)
+- `make governance-status|arm|disarm|approvals|approve|reject|config` — the brakes (see
+  Governance brakes section); `config` prints the guard/brake/approval/flywheel
+  settings — the same blocks `/system/config` serves (`--json` for verbatim)
 - `make provision-models` — idempotent `ollama pull` of the two models the
   stack uses (qwen3:8b, nomic-embed-text)
 - `make setup` — idempotent host rebuild from a fresh clone (deps, launchd

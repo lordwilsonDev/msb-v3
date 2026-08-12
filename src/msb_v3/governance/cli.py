@@ -1,4 +1,4 @@
-"""CLI: python -m msb_v3.governance status|arm|disarm|approvals|approve|reject|budget
+"""CLI: python -m msb_v3.governance status|arm|disarm|approvals|approve|reject|budget|config
 
 The terminal surface for the brakes (the Cockpit UI is Phase 1). Mirrors
 the msb_v3.ops CLI style: argparse subparsers, human-readable lines.
@@ -7,6 +7,7 @@ the msb_v3.ops CLI style: argparse subparsers, human-readable lines.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from typing import Optional
 
@@ -51,6 +52,51 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"[governance] governor: {len(governor.history())} signals in history, newest novelty {recent[0]['novelty']:.2f}")
     else:
         print("[governance] governor: no signals yet")
+    return 0
+
+
+def cmd_config(args: argparse.Namespace) -> int:
+    """Print the guard/brake/approval/flywheel config — same blocks as
+    /system/config, from the shared guard_config() builder. --json emits
+    the verbatim blocks for scripts; the default is human-readable lines."""
+    from msb_v3.core.guard_config import guard_config
+
+    cfg = guard_config()
+    if args.json:
+        print(json.dumps(cfg, indent=2))
+        return 0
+
+    gov = cfg["governance"]
+    window_min = gov["GOV_BUDGET_WINDOW_MIN"]
+    print("[governance] budget caps per rolling window:")
+    print(f"  research_calls: {gov['GOV_BUDGET_RESEARCH_CALLS']}  (window {window_min}m)")
+    print(f"  tokens: {gov['GOV_BUDGET_TOKENS']}  (window {window_min}m)")
+    print(f"  iterations: {gov['GOV_BUDGET_ITERATIONS']}  (window {window_min}m)")
+    print(
+        "[governance] governor thresholds: "
+        f"stall_limit={gov['GOV_GOVERNOR_STALL_LIMIT']} "
+        f"novelty_min={gov['GOV_GOVERNOR_NOVELTY_MIN']} "
+        f"dup_ratio_halt={gov['GOV_GOVERNOR_DUP_RATIO_HALT']} "
+        f"history={gov['GOV_GOVERNOR_HISTORY']}"
+    )
+    kinds = ", ".join(cfg["approvals"]["kinds_requiring_approval"])
+    print(f"[governance] approval kinds: {kinds}")
+    stages = ", ".join(
+        f"{s}->{k}" for s, k in cfg["approvals"]["stages_requiring_approval"].items()
+    )
+    print(f"[governance] approval stages: {stages}")
+    fw = cfg["flywheel"]
+    print(f"[flywheel] stages ({len(fw['stages'])}): {', '.join(fw['stages'])}")
+    print(f"[flywheel] iterations per stage: {fw['iterations_per_stage']}")
+    print(f"[flywheel] research-call spenders: {', '.join(fw['research_stages'])}")
+    rl = cfg["rate_limits"]
+    print(
+        "[rate] chat: "
+        f"{rl['OPENAI_CHAT_RATE_MAX']} req / {rl['OPENAI_CHAT_RATE_WINDOW_S']}s; "
+        "embed: "
+        f"{rl['OPENAI_EMBED_RATE_MAX']} items / {rl['OPENAI_EMBED_RATE_WINDOW_S']}s, "
+        f"max batch {rl['OPENAI_EMBED_MAX_BATCH']}"
+    )
     return 0
 
 
@@ -115,6 +161,9 @@ def main(argv: Optional[list] = None) -> int:
     sub.add_parser("status", help="kill switch + budgets + pending approvals + governor")
     sub.add_parser("budget", help="per-category budget state")
 
+    cfgp = sub.add_parser("config", help="guard/brake/approval/flywheel config (same blocks as /system/config)")
+    cfgp.add_argument("--json", action="store_true", help="print the verbatim config blocks as JSON")
+
     arm = sub.add_parser("arm", help="arm the kill switch (pause the loop)")
     arm.add_argument("reason", nargs="?", default="")
     arm.add_argument("--operator", default="cli")
@@ -139,6 +188,7 @@ def main(argv: Optional[list] = None) -> int:
     return {
         "status": cmd_status,
         "budget": cmd_budget,
+        "config": cmd_config,
         "arm": cmd_arm,
         "disarm": cmd_disarm,
         "approvals": cmd_approvals,
