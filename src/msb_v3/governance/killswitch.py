@@ -49,6 +49,16 @@ class KillSwitch:
                 "INSERT OR IGNORE INTO kill_switch_state(id, armed) VALUES (1, 0)"
             )
 
+    def _audit_append(self, event_type: str, payload: dict) -> Optional[str]:
+        """Audit an arm/disarm; on failure return the error instead of dropping
+        it silently (the state change is already committed — the audit chain is
+        a separate DB, so the failure must be surfaced, not hidden)."""
+        try:
+            self._audit.append("killswitch", event_type, payload)
+            return None
+        except Exception as exc:
+            return str(exc)
+
     def arm(self, operator: str, reason: str = "") -> dict:
         now = _now_iso()
         with sqlite3.connect(self.db_path) as conn:
@@ -56,16 +66,22 @@ class KillSwitch:
                 "UPDATE kill_switch_state SET armed=1, armed_at=?, armed_by=?, reason=? WHERE id=1",
                 (now, operator, reason),
             )
-        self._audit.append("killswitch", "armed", {"operator": operator, "reason": reason})
-        return self.state()
+        state = self.state()
+        audit_failed = self._audit_append("armed", {"operator": operator, "reason": reason})
+        if audit_failed:
+            state["audit_failed"] = audit_failed
+        return state
 
     def disarm(self, operator: str) -> dict:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "UPDATE kill_switch_state SET armed=0, armed_at=NULL, armed_by=NULL, reason=NULL WHERE id=1"
             )
-        self._audit.append("killswitch", "disarmed", {"operator": operator})
-        return self.state()
+        state = self.state()
+        audit_failed = self._audit_append("disarmed", {"operator": operator})
+        if audit_failed:
+            state["audit_failed"] = audit_failed
+        return state
 
     def state(self) -> dict:
         """Current state; on read failure returns armed=True (fail-closed)."""

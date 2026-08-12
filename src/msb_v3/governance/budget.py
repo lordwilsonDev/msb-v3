@@ -84,8 +84,14 @@ class BudgetLedger:
             return True  # explicit unlimited
         if amount > limit:
             return False
+        # BEGIN IMMEDIATE takes the write lock BEFORE the read so spends from
+        # *different* BudgetLedger instances (CLI and server share the same
+        # DB path) are serialized too — without it, two fresh-window INSERTs
+        # could race on the primary key and raise instead of deny (the same
+        # lesson the audit chain's BEGIN IMMEDIATE fix taught).
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
+                conn.execute("BEGIN IMMEDIATE")
                 row = self._row(conn, category)
                 now = time.time()
                 if row is None:
@@ -97,6 +103,7 @@ class BudgetLedger:
                     return True
                 spent = row[1] + amount
                 if spent > limit:
+                    conn.execute("ROLLBACK")
                     return False  # cap hit — record nothing, caller must halt
                 conn.execute(
                     "UPDATE budget_entries SET spent=? WHERE category=?",

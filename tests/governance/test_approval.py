@@ -90,3 +90,17 @@ def test_restart_survival(tmp_path) -> None:
     pending = b.pending()
     assert len(pending) == 1
     assert pending[0].title == "survives restart"
+
+
+def test_audit_failure_surfaced_on_submit_and_decide(queue: ApprovalQueue, tmp_path) -> None:
+    # Break the audit chain's DB after construction: the decision must still
+    # land, but the failed audit write must be visible on the returned item
+    # (never a black box), not silently dropped.
+    audit_db = tmp_path / "audit.db"
+    audit_db.unlink()
+    audit_db.mkdir()
+    item = queue.submit("build", "audit chain is broken")
+    assert item.audit_failed is not None
+    decided = queue.approve(item.item_id, operator="wilson")
+    assert decided.status == "APPROVED"
+    assert decided.audit_failed is not None

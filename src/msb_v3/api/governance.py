@@ -45,13 +45,18 @@ def _body(req: Dict[str, Any], key: str, default: Any = None) -> Any:
 
 @router.get("/status")
 async def status() -> dict:
+    # Fail-closed status: an unreadable governor DB reports a degraded
+    # governor payload instead of 500ing the whole status surface (the kill
+    # switch already reports fail-closed armed on the same condition).
+    try:
+        recent = _governor.history()
+        governor = {"history_len": len(recent), "recent": recent[:5]}
+    except Exception as exc:
+        governor = {"error": str(exc), "history_len": 0, "recent": []}
     return {
         "killswitch": _switch.state(),
         "budgets": _ledger.state(),
-        "governor": {
-            "history_len": len(_governor.history()),
-            "recent": _governor.history()[:5],
-        },
+        "governor": governor,
         "approvals": {
             "pending": len(_queue.pending()),
             "kinds_requiring_approval": list(APPROVAL_KINDS),

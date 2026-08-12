@@ -58,3 +58,14 @@ def test_persistence_across_restarts(tmp_path) -> None:
     a.arm("wilson", "persist me")
     b = KillSwitch(db_path=p, audit_chain=AuditChain(db_path=str(tmp_path / "audit.db")))
     assert b.is_armed() is True  # a restart must never clear the switch
+
+
+def test_audit_failure_surfaced(switch: KillSwitch, tmp_path) -> None:
+    # Break the audit chain's DB: the arm must still land (fail-closed state
+    # is what the loop reads) but the failed audit write must be visible.
+    audit_db = tmp_path / "audit.db"
+    audit_db.unlink()
+    audit_db.mkdir()
+    st = switch.arm("wilson", "audit chain is broken")
+    assert st["armed"] is True
+    assert st.get("audit_failed") is not None

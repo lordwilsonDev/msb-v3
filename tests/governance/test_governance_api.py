@@ -116,3 +116,14 @@ def test_check_drill_all_clear(client: TestClient) -> None:
     assert r.status_code == 200
     assert r.json()["allowed"] is True
     assert r.json()["action"] == "OK"
+
+
+def test_status_degrades_gracefully_when_governor_db_broken(client: TestClient, tmp_path) -> None:
+    # Fail-closed status: a broken governor DB must not 500 the whole
+    # /governance/status surface.
+    gov_db = tmp_path / "gov.db"
+    gov_db.unlink()
+    gov_db.mkdir()
+    r = client.get("/governance/status")
+    assert r.status_code == 200
+    assert "error" in r.json()["governor"]

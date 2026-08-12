@@ -35,10 +35,12 @@ for entry in msb-v3:com.lordwilson.msb-v3 qdrant:com.lordwilson.qdrant backup:co
     continue
   fi
   cp "$plist" "$dst"
-  if launchctl bootstrap "gui/$(id -u)" "$dst" 2>/dev/null; then
+  if launchctl print "gui/$(id -u)/$agent_id" >/dev/null 2>&1; then
+    echo "[setup]   - $label already loaded"
+  elif launchctl bootstrap "gui/$(id -u)" "$dst" 2>/dev/null; then
     echo "[setup]   - $label bootstrapped"
   else
-    echo "[setup]   - $label already loaded or bootstrap declined (rc=$? — ok if loaded)"
+    echo "[setup]   - $label WARNING: bootstrap failed (rc=$?) — check the plist" >&2
   fi
 done
 

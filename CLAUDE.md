@@ -106,6 +106,10 @@ Operator control endpoints (arm/disarm/approve) are intentionally
 unauthenticated for now (loopback-bound, same as the rest of the control
 surface); operator auth lands in Phase 3 hardening.
 
+The brakes gate the **flywheel (Phase 2)** — today's endpoints don't call
+`Guard.check_run` yet. `POST /governance/check` is the drill that proves
+the gates; the loop wires `check_run` + `record_action` when it lands.
+
 ## Git
 
 Dual-push: `origin` and `sovereign_intelligence_core` both point to `https://github.com/lordwilsonDev/msb-v3.git`.
