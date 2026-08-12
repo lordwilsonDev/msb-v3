@@ -1,4 +1,4 @@
-.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify
+.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject provision-models setup
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -20,6 +20,18 @@ test:
 # the de-hardcode pass. Auto-cleans the copy; keep it with PORTABILITY_KEEP=1.
 portability:
 	bash scripts/portability-check.sh
+
+# Install the pre-push hook (scripts/hooks/pre-push -> .git/hooks/pre-push)
+# so every future push runs the portability gate first. Git hooks aren't
+# versioned, so each fresh clone needs this once. Idempotent; overwrites an
+# existing pre-push hook. Remove with `make hooks-uninstall`.
+hooks-install:
+	install -m 755 scripts/hooks/pre-push .git/hooks/pre-push
+	@echo "pre-push hook installed (.git/hooks/pre-push)"
+
+hooks-uninstall:
+	rm -f .git/hooks/pre-push
+	@echo "pre-push hook removed"
 
 # Full engineering hygiene battery, then sweep the test-named Qdrant
 # collections the live experiments leave behind (tenant_live_test_*, *-test).
@@ -120,4 +132,32 @@ restore:
 
 backup-verify:
 	$(PY) -m pytest tests/ops -q
+
+# Governance brakes (Phase 0B): status/control from the terminal. The
+# Cockpit UI is Phase 1; these targets are the operator surface until then.
+governance-status:
+	$(PY) -m msb_v3.governance status
+
+governance-arm:
+	$(PY) -m msb_v3.governance arm "$(REASON)"
+
+governance-disarm:
+	$(PY) -m msb_v3.governance disarm
+
+governance-approvals:
+	$(PY) -m msb_v3.governance approvals
+
+governance-approve:
+	$(PY) -m msb_v3.governance approve "$(ID)"
+
+governance-reject:
+	$(PY) -m msb_v3.governance reject "$(ID)" "$(REASON)"
+
+# Fresh-box provisioning: pull the two models the stack uses (idempotent).
+provision-models:
+	bash scripts/provision-models.sh
+
+# Reproducible rebuild from a fresh clone (host path; see MANIFEST.md).
+setup:
+	bash scripts/setup.sh
 
