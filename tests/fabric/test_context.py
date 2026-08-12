@@ -71,6 +71,33 @@ def test_domain_declared_is_annotated() -> None:
     assert "Domain: episodic" in context.text
 
 
+def test_budget_invariant_holds_at_boundary_with_headers() -> None:
+    """The assembled text (including the "Sources:" header and separators)
+    must never exceed the budget — even when an item exactly fills the
+    per-item allowance, the header pushes the total over and must trigger
+    eviction."""
+    builder = ContextBuilder(budget_tokens=100)
+    # A single body long enough that body+header+query would exceed 100.
+    matches = [_match(1, 0.99, "x" * 320)]  # 80 tokens + overhead
+    context = builder.build("q", matches, declare_domain="knowledge")
+    assert context.tokens <= 100
+    # Either the item was evicted or it fit; either way the invariant holds.
+    assert context.ledger.total_tokens <= context.ledger.budget_tokens
+
+
+def test_eviction_happens_at_the_assembly_level() -> None:
+    # Two items whose bodies fit the per-item allowance separately, but whose
+    # combined assembly (headers + separators) exceeds the budget — the
+    # rebuild loop must drop the lowest-score item, not overshoot.
+    builder = ContextBuilder(budget_tokens=120)
+    matches = [_match(1, 0.9, "a" * 300), _match(2, 0.8, "b" * 300)]
+    context = builder.build("q", matches)
+    assert context.tokens <= 120
+    # 300-char bodies (~75 tokens each) both fit the per-item allowance but
+    # their combined assembly exceeds 120 — the rebuild must drop one.
+    assert context.ledger.included_matches == 1
+
+
 def test_deterministic_given_same_input() -> None:
     builder = ContextBuilder(budget_tokens=400)
     matches = [_match(i, 0.9 - i * 0.05, "text" * 30) for i in range(5)]
