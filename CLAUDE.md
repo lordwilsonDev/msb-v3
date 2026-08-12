@@ -102,9 +102,16 @@ SQLite (`data/governance/governance.db`), all decisions audited to the UAC
   flywheel calls and see the verdict without executing anything
   (prove the brakes halt work).
 
-Operator control endpoints (arm/disarm/approve) are intentionally
-unauthenticated for now (loopback-bound, same as the rest of the control
-surface); operator auth lands in Phase 3 hardening.
+**Operator auth (Phase 3):** every state-changing endpoint on `/governance`
+(budget/reset, killswitch arm/disarm, approval submit/approve/reject/cancel,
+and the `/check` drill — it spends budget) and `/flywheel` (turn start,
+approve, resume) requires `Authorization: Bearer $MSB_OPERATOR_TOKEN`
+(fail-closed 503 until set, 401 on mismatch — shared `api/auth.py` gate,
+constant-time compare). Reads (status, budget, approvals, turn lists, the
+cockpit) stay open. Set the token idempotently with
+`bash scripts/set-operator-token.sh` (status: `make governance-token`),
+then restart the server. CLIs (`python -m msb_v3.governance` /
+`msb_v3.flywheel`) are in-process operator consoles — no token needed.
 
 The brakes gate the **flywheel (Phase 2)** — today's endpoints don't call
 `Guard.check_run` yet. `POST /governance/check` is the drill that proves

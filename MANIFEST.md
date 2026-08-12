@@ -93,7 +93,7 @@ keys (Open WebUI / storage / RAG) marked *(ext)*.
 | `LLAMA_CPP_MODEL` | `~/models/gemma-4-12b-it/...q4_k_m.gguf` | llama.cpp weights (opt) ⚠️ |
 | `NOTEBOOKLM_ACTIVE_INDEX` | `~/notebooklm-library-deep-dive/active-index.json` | NotebookLM cluster index |
 | `TAVILY_API_KEY` | `""` | ✅ web search — powers the flywheel's arxiv paper feed (Phase 2b, set in `.env`) |
-| `MSB_OPERATOR_TOKEN` | `""` | 🔒 operator auth (unset) |
+| `MSB_OPERATOR_TOKEN` | `""` | ✅ operator bearer token — gates the /governance + /flywheel control endpoints (Phase 3, set in `.env` via `scripts/set-operator-token.sh`) |
 | `OPENAI_API_KEY` | `""` | 🔒 bearer for `/v1` adapter — **empty = adapter fail-closed (503)** |
 | `OPENAI_EMBED_MAX_BATCH` | `32` | `/v1/embeddings` per-request cap (413 over) |
 | `OPENAI_EMBED_RATE_MAX` | `120` | sliding-window item cap (429 over) |
@@ -141,7 +141,7 @@ Honest ledger; these are why v3 is operational-for-you but not walk-away-done:
 
 1. ✅ ~~Default model missing~~ — **fixed 2026-08-11**: default is now `qwen3:8b` (installed); `.env.example` aligned.
 2. ⚠️ **llama.cpp weights missing** — the `:8080` backend can't start as configured. Fine while `MSB_ACTIVE_BACKEND=ollama`, but the fallback isn't real.
-3. 🔒 **Two secrets unset** — `OPENAI_API_KEY` (adapter is 503 until set), `MSB_OPERATOR_TOKEN`. `TAVILY_API_KEY` is now set (flywheel paper feed). Expected for local, required before exposing.
+3. 🔒 **One secret unset** — `OPENAI_API_KEY` (adapter is 503 until set). `TAVILY_API_KEY` set (flywheel feed), `MSB_OPERATOR_TOKEN` set (control-surface auth, Phase 3). Expected for local, required before exposing.
 4. ✅ ~~Dead dep~~ — **fixed 2026-08-11**: `pydantic-settings` removed (imported nowhere).
 5. 📦 **No `Dockerfile`** — CI docker job is inert until one exists (`REPO_REQUIREMENTS.md`); no container path to run this off this Mac.
 6. 🌿 **~40 files uncommitted** at manifest time — the running system is ahead of `main`; reproducibility from a fresh clone is not guaranteed until landed.
