@@ -39,3 +39,14 @@ bash scripts/start.sh
 ## Test
 
 bash scripts/test.sh
+
+Pre-push gate — install once per clone (git hooks aren't versioned):
+
+```
+make hooks-install
+```
+
+This installs a pre-push hook that runs `make portability` (full suite from
+a foreign checkout path) before every push and blocks the push on failure.
+Bypass explicitly with `MSB_SKIP_PORTABILITY=1 git push`; remove with
+`make hooks-uninstall`.
