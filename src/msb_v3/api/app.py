@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
+from msb_v3.api.agent import router as agent_router
 from msb_v3.api.chat import router as chat_router
 from msb_v3.api.cockpit import router as cockpit_router
 from msb_v3.api.conversation import router as conversation_router
@@ -120,5 +121,6 @@ def create_app() -> FastAPI:
     app.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
     app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
     app.include_router(openai_compat_router, prefix="/v1", tags=["openai"])
+    app.include_router(agent_router, prefix="/agent", tags=["agent"])
 
     return app

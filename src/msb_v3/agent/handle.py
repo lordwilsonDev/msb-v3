@@ -56,6 +56,7 @@ async def handle(
     session: str = "default",
     provider: ToolProvider | None = None,
     gate: ActionGate | None = None,
+    privacy: bool | None = None,
 ) -> HandleResult:
     """Run the slice end-to-end. Returns the HandleResult (ok + evidence)."""
     request = (request or "").strip()
@@ -66,6 +67,14 @@ async def handle(
 
     try:
         intent: Intent = interpret_intent(request, client=client)
+        # Explicit privacy override (Phase 2 live test): the caller may force
+        # the intent's privacy flag, which drives the router's privacy floor.
+        # privacy=None (the default) lets the interpreted intent decide; the
+        # model's word is final otherwise.
+        if privacy is not None:
+            from dataclasses import replace
+
+            intent = replace(intent, privacy=privacy)
         graph = plan(intent, client=client)
 
         # Approved capabilities: the operator pre-authorizes the declared
