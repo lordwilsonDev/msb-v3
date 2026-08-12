@@ -1,9 +1,9 @@
 """Shared in-process sliding-window rate limiter.
 
 One implementation for every endpoint that needs a per-client cap. The
-/research/assistant/run middleware and the /v1/embeddings adapter both use
-it; the window/max values come from a callable so middleware constants and
-live config both work.
+/research/assistant/run middleware and the /v1/embeddings and
+/v1/chat/completions adapters all use it; the window/max values come from
+a callable so middleware constants and live config both work.
 
 In-process only — exact counts assume a single worker (same caveat as the
 original app.py middleware). ``X-Forwarded-For`` is honored for client
