@@ -6,6 +6,11 @@ verification method, timeout, retry policy), the parser validates each one,
 and any failure degrades to the template DAG rather than an error. The loop
 can therefore always proceed to execution.
 
+Async by design (Phase 2 follow-up): planning can route through the /v1
+frontier seam (FrontierClient.agenerate), and even a sync local client is
+offloaded via asyncio.to_thread — so plan() never blocks the server's event
+loop when called from /agent/handle.
+
 Slice vocabulary (capability → real tool, wired in the executor):
     read_vault      → search_query + vault_read (MCP bridge / retrieval router)
     llm_synthesis   → model generation (ChatHarness)
@@ -18,12 +23,11 @@ which source produced the graph.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, List
 
 from msb_v3.agent.dag import Task, TaskGraph
 from msb_v3.agent.intent import Intent, _extract_json, _clean_str_list
-from msb_v3.local_ai.llama_client import LlamaCPPClient
-from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
 
 _PLAN_SYSTEM = (
@@ -214,9 +218,9 @@ def _is_acyclic_graph(tasks: List[Task]) -> bool:
     return TaskGraph(goal="", tasks=tuple(tasks), source="llm").is_acyclic()
 
 
-def plan(
+async def plan(
     intent: Intent,
-    client: LocalAIClient | LlamaCPPClient | None = None,
+    client: Any | None = None,  # local client or FrontierClient (router decides)
     *,
     router: Any | None = None,
 ) -> TaskGraph:
@@ -226,6 +230,11 @@ def plan(
     router decides which client plans (frontier via /v1 when configured,
     local otherwise). An injected `client` wins over the router, so existing
     tests and callers keep full control.
+
+    Never blocks the event loop: a client with `agenerate` (the async
+    FrontierClient) is awaited directly; a sync-only client (the local
+    Ollama/llama.cpp clients, fakes in tests) is offloaded via
+    asyncio.to_thread.
 
     NOTE (privacy floor): the slice's intents default privacy=True, which the
     router treats as privacy_scoped — so plan() stays on the local client in
@@ -239,7 +248,13 @@ def plan(
         client, _ = resolve_client("plan", privacy_scoped=intent.privacy, router=router)
 
     try:
-        resp = client.generate(intent.request, system=_PLAN_SYSTEM, temperature=0.0, max_tokens=1024)
+        agenerate = getattr(client, "agenerate", None)
+        if agenerate is not None:
+            resp = await agenerate(intent.request, system=_PLAN_SYSTEM, temperature=0.0, max_tokens=1024)
+        else:
+            resp = await asyncio.to_thread(
+                client.generate, intent.request, system=_PLAN_SYSTEM, temperature=0.0, max_tokens=1024
+            )
         data = _extract_json(resp.text)
         if data is not None:
             parsed = _parse_tasks(data)
