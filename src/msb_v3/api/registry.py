@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from msb_v3.api.agent import router as agent_router
 from msb_v3.api.chat import router as chat_router
 from msb_v3.api.health import router as health_router
 from msb_v3.api.memory import router as memory_router
@@ -16,4 +17,5 @@ REGISTRY = [
     {"router": metrics_router, "prefix": "/metrics", "tags": ["metrics"]},
     {"router": studio_router, "prefix": None, "tags": ["studio"]},
     {"router": system_router, "prefix": "/system", "tags": ["system"]},
+    {"router": agent_router, "prefix": "/agent", "tags": ["agent"]},
 ]

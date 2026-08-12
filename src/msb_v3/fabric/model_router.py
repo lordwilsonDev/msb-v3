@@ -30,14 +30,12 @@ from typing import Any, Dict, Optional
 import httpx
 
 from msb_v3.core.config import settings
-from msb_v3.observability.metrics import Counter
+from msb_v3.observability.metrics import ROUTER_DECISIONS
 
 # --- Observability (Phase 2: router decisions are visible) ---
-ROUTER_DECISIONS = Counter(
-    "msb_v3_router_decisions_total",
-    "Model-router decisions",
-    ["task_kind", "tier", "cause"],
-)
+# The counter is defined in observability/metrics.py so it registers in the
+# default Prometheus registry at app startup (the server lists the metric
+# family before any decision).
 
 # task_kind -> default tier. Frontier is reserved for the long-horizon brain
 # (A5 fix: local is first-class for routine work, not for planning).

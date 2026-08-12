@@ -67,6 +67,28 @@ RATE_LIMIT_REJECTIONS = Counter(
     "Requests refused by the rate/batch guards, by limiter and reason",
     ["limiter", "reason"],
 )
+# Hybrid model router decisions (Phase 2). Defined here so the metric family
+# is registered in the default Prometheus registry as soon as the app imports
+# observability — the server's /metrics/prometheus lists it before the first
+# router decision. Incremented by fabric.model_router.ModelRouter.decide().
+# Explicit registration: prometheus_client counters are lazy (they only enter
+# the default REGISTRY on first increment), so without this the family would
+# stay invisible on /metrics/prometheus until the first decision.
+ROUTER_DECISIONS = Counter(
+    "msb_v3_router_decisions_total",
+    "Model-router decisions",
+    ["task_kind", "tier", "cause"],
+)
+from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
+
+# Explicit registration: prometheus_client counters are lazy (they only enter
+# the default REGISTRY on first increment), so without this the family stays
+# invisible on /metrics/prometheus until the first decision. Idempotent:
+# re-imports (reload, fresh app factories) are a no-op once registered.
+try:
+    _REGISTRY.register(ROUTER_DECISIONS)
+except ValueError:
+    pass  # already registered
 
 # Ensure all Triumvirate metrics are registered in the default registry at import time.
 for _metric in (
