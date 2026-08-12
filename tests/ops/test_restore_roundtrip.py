@@ -59,3 +59,33 @@ def test_failed_restore_leaves_existing_data_intact(tmp_path: Path):
     # original data must be untouched
     rows = sqlite3.connect(data / "msb_v3.db").execute("SELECT k FROM t").fetchall()
     assert rows == [("primary",)]
+
+
+def test_verify_backup_false_on_malformed_manifest(tmp_path: Path):
+    b = tmp_path / "b"
+    b.mkdir()
+    # missing manifest
+    assert verify_backup(b) is False
+    for bad in ("not json {{{", "[1, 2, 3]", '{"checksums": "nope"}'):
+        (b / "manifest.json").write_text(bad)
+        assert verify_backup(b) is False
+
+
+def test_restore_midcopy_failure_leaves_original_intact(tmp_path: Path, monkeypatch):
+    import msb_v3.ops.backup as backup_mod
+    data = tmp_path / "data"
+    storage = tmp_path / "storage"
+    _make_db(data / "msb_v3.db", "primary")
+    storage.mkdir()
+    (storage / "seg.bin").write_bytes(b"orig")
+    m = create_backup(data, storage, tmp_path / "backups", timestamp="20260811T120000Z")
+    # valid backup, but copytree blows up mid-restore
+    def boom(src, dst, *a, **k):
+        raise OSError("simulated disk failure mid-copy")
+    monkeypatch.setattr(backup_mod.shutil, "copytree", boom)
+    with pytest.raises(OSError):
+        restore_backup(m.path, data, storage)
+    # original data + storage must be untouched (copytree never reached the real target)
+    rows = sqlite3.connect(data / "msb_v3.db").execute("SELECT k FROM t").fetchall()
+    assert rows == [("primary",)]
+    assert (storage / "seg.bin").read_bytes() == b"orig"

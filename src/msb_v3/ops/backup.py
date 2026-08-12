@@ -85,7 +85,9 @@ def verify_backup(backup_dir: Path) -> bool:
     try:
         manifest = json.loads((backup_dir / "manifest.json").read_text())
         checksums = manifest["checksums"]
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+    except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError):
+        return False
+    if not isinstance(checksums, dict):
         return False
     for rel, expected in checksums.items():
         f = backup_dir / rel
