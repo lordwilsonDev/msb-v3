@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+import msb_v3.api.cockpit as cockpit_api
 from msb_v3.api.app import create_app
 
 
@@ -57,3 +58,34 @@ def test_cockpit_page_not_registered_at_root(client: TestClient) -> None:
     r = client.get("/")
     assert r.status_code == 200
     assert "MSB COCKPIT" not in r.text
+
+
+def test_cockpit_api_containment_with_all_probes_down(client: TestClient, monkeypatch) -> None:
+    """Exercises the containment path for real: point the self-probe base at a
+    closed port so every HTTP probe fails — the endpoint must still return 200
+    with error panels, never a 500 (one dead service costs a panel, not the
+    page). In-process panels (governance/hygiene/audit/vault/mission/errors)
+    must still succeed."""
+    monkeypatch.setattr(cockpit_api, "_MSB_BASE", "http://127.0.0.1:9")  # closed port
+    r = client.get("/cockpit/api")
+    assert r.status_code == 200
+    body = r.json()
+    # Probe-level containment: each HTTP probe reports its own error, the
+    # panel still renders.
+    assert "error" in body["services"]["status"]
+    assert "error" in body["services"]["models"]
+    for key in ("governance", "hygiene", "audit", "vault", "mission", "errors"):
+        assert "error" not in body[key], f"in-process panel {key} must not fail"
+
+
+def test_cockpit_find_contained_when_research_dir_unreadable(client: TestClient, monkeypatch, tmp_path) -> None:
+    """The find-box must not 500 when the research dir cannot be listed."""
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("x")
+    monkeypatch.setattr(cockpit_api, "_RESEARCH_DIR", blocker)
+    monkeypatch.setattr(cockpit_api, "_MSB_BASE", "http://127.0.0.1:9")
+    r = client.get("/cockpit/find", params={"q": "sovereign"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["research"] == []
+    assert body["vault"] == []  # probe down -> contained empty

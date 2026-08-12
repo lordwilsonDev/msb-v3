@@ -57,7 +57,7 @@ def _safe(fn):
 
 async def _probe_json(
     client: httpx.AsyncClient, path: str, *, method: str = "GET", json_body: Optional[dict] = None
-) -> Dict[str, Any]:
+) -> Any:
     """One bounded self-probe. Failures and non-JSON responses become error
     dicts — never exceptions that kill the gather."""
     try:
@@ -219,18 +219,14 @@ async def cockpit_api() -> dict:
     error-contained; the whole aggregation never takes longer than the
     slowest single probe."""
     async with httpx.AsyncClient() as client:
-        status, ready, models, active, latest, safety, knowledge, mem_summary, mem_latest = (
-            await asyncio.gather(
-                _probe_json(client, "/status"),
-                _probe_json(client, "/ready"),
-                _probe_json(client, "/models/"),
-                _probe_json(client, "/research/assistant/runs/_active"),
-                _probe_json(client, "/research/assistant/latest"),
-                _probe_json(client, "/safety/health"),
-                _probe_json(client, "/knowledge/active-cluster"),
-                _probe_json(client, "/evolution/memory/summary"),
-                _probe_json(client, "/evolution/memory/latest"),
-            )
+        status, ready, models, active, latest, mem_summary, mem_latest = await asyncio.gather(
+            _probe_json(client, "/status"),
+            _probe_json(client, "/ready"),
+            _probe_json(client, "/models/"),
+            _probe_json(client, "/research/assistant/runs/_active"),
+            _probe_json(client, "/research/assistant/latest"),
+            _probe_json(client, "/evolution/memory/summary"),
+            _probe_json(client, "/evolution/memory/latest"),
         )
     return {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -240,8 +236,6 @@ async def cockpit_api() -> dict:
             **_safe(_research_runs),
         },
         "memory": {"summary": mem_summary, "latest": mem_latest},
-        "knowledge": knowledge,
-        "safety": safety,
         "mission": _safe(_mission_state),
         "governance": _safe(_governance_state),
         "hygiene": _safe(_hygiene_state),
@@ -270,10 +264,13 @@ def _audit_search(query: str) -> List[Dict[str, Any]]:
 def _research_search(query: str) -> List[Dict[str, Any]]:
     q = query.lower()
     hits = []
-    if _RESEARCH_DIR.exists():
-        for p in sorted(_RESEARCH_DIR.iterdir()):
-            if p.is_dir() and q in p.name.lower():
-                hits.append({"slug": p.name})
+    try:
+        if _RESEARCH_DIR.exists():
+            for p in sorted(_RESEARCH_DIR.iterdir()):
+                if p.is_dir() and q in p.name.lower():
+                    hits.append({"slug": p.name})
+    except Exception:  # noqa: BLE001 — containment boundary
+        return []
     return hits[:10]
 
 
