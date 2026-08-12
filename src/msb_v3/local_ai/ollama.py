@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
@@ -10,6 +11,19 @@ import httpx
 
 from msb_v3.core.config import settings
 from msb_v3.guardrails.fold import StepEnforcer
+
+
+def _strip_think(text: str) -> str:
+    """Remove qwen3 <think>...</think> reasoning blocks from model output.
+
+    The qwen3 template can emit these blocks (including empty ones) even when
+    thinking is disabled; they are reasoning scratch-space and must never reach
+    the caller as if they were the answer (chaos-test finding: the model once
+    echoed its own /think control token as text).
+    """
+    if not text:
+        return text
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 
 @dataclass
@@ -58,6 +72,12 @@ class LocalAIClient:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
+            # Pin thinking OFF explicitly. Ollama's qwen3 template appends the
+            # "/think" control token to the last user message when think-mode
+            # is left at its default, so the token leaks into the prompt the
+            # model reads as text (chaos-test: "Say A" -> model confused by
+            # "/think"). Explicit false => template sends /no_think instead.
+            "think": False,
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
         if system:
@@ -81,7 +101,7 @@ class LocalAIClient:
             raise ConnectionError(f"ollama unreachable: {self.base_url} ({last_exc})")
         latency = round(time.perf_counter() - t0, 4)
 
-        text = data.get("response", "")
+        text = _strip_think(data.get("response", ""))
         tool_calls = data.get("tool_calls") or []
         return LocalAIResponse(text=text, model=self.model, latency_s=latency, tool_calls=tool_calls)
 
@@ -167,6 +187,7 @@ class LocalAIClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "think": False,
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
         if tools:
@@ -183,6 +204,6 @@ class LocalAIClient:
         latency = round(time.perf_counter() - t0, 4)
 
         msg = data.get("message", {}) or {}
-        text = msg.get("content", "") or ""
+        text = _strip_think(msg.get("content", "") or "")
         tool_calls = msg.get("tool_calls") or []
         return LocalAIResponse(text=text, model=self.model, latency_s=latency, tool_calls=tool_calls)
