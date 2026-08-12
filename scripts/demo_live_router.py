@@ -48,10 +48,12 @@ def _router_samples() -> list[str]:
     return [l for l in _metrics().splitlines() if l.startswith("msb_v3_router_decisions_total")]
 
 
-def _handle(request: str, privacy: bool | None, token: str) -> dict:
+def _handle(request: str, privacy: bool | None, token: str, *, approve: bool = False) -> dict:
     body: dict = {"request": request}
     if privacy is not None:
         body["privacy"] = privacy
+    if approve:
+        body["approve"] = True
     out = _sh(
         "curl", "-s", "-m", "240",
         "-H", f"Authorization: Bearer {token}",
@@ -59,7 +61,11 @@ def _handle(request: str, privacy: bool | None, token: str) -> dict:
         "-d", json.dumps(body),
         f"{BASE}/agent/handle",
     )
-    return json.loads(out)
+    d = json.loads(out)
+    # A FAIL/ERROR run returns HTTP 500 with the payload under "detail".
+    if "detail" in d and isinstance(d.get("detail"), dict):
+        d = d["detail"]
+    return d
 
 
 def _token_from_env() -> str:
@@ -86,7 +92,10 @@ def main() -> int:
     print("\n".join(base) or "(none yet — clean server)")
 
     print("\n=== RUN 1: PUBLIC plan (privacy=false -> frontier) ===")
-    r1 = _handle("public: summarize the sovereign agentic runtime", False, token)
+    # Explicit write request + operator approval: the cloud plan (DeepSeek)
+    # may invent a write task, and the A8 taint gate must then allow it
+    # because it was pre-approved — proving the full loop completes.
+    r1 = _handle("public: write a summary file about the sovereign agentic runtime", False, token, approve=True)
     print(f"verdict={r1.get('verdict')} run_id={r1.get('run_id')} hash={str(r1.get('deterministic_hash'))[:12]} error={r1.get('error')}")
 
     print("\n=== RUN 2: PRIVATE plan (default -> privacy floor forces local) ===")
@@ -107,6 +116,18 @@ def main() -> int:
     print(f"\nRESULT: {'PASS' if ok else 'FAIL'}")
     print("  public plan  -> frontier decision in Prometheus:", frontier_plan)
     print("  private plan -> local (privacy floor) decision in Prometheus:", privacy_local)
+    # Show the public run's task outcomes so a GateReview (safety gate
+    # blocking an unapproved write) is visible evidence, not a mystery.
+    trace = r1.get("trace") or {}
+    if trace:
+        print("  public run graph_source:", trace.get("graph_source"))
+        for e in (trace.get("execution") or []):
+            v = e.get("verification") or {}
+            print(
+                "   ", e.get("task_id"), "|", "ok" if e.get("ok") else "blocked",
+                "|", v.get("check") or "", v.get("verdict") or "",
+                "|", str(v.get("detail") or e.get("error") or "")[:50],
+            )
 
     OUT.mkdir(parents=True, exist_ok=True)
     stamp = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y%m%dT%H%M%SZ")
