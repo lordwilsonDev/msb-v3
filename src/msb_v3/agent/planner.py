@@ -166,6 +166,13 @@ def _parse_tasks(data: Dict[str, Any]) -> List[Task]:
         parent_id = item.get("parent_id")
         if parent_id is not None and not isinstance(parent_id, str):
             parent_id = None
+        # Input wiring: the executor passes parent outputs downstream keyed by
+        # the parent's task_id (executor reads task.inputs -> {"from": pid}).
+        # The model is asked for parent_id only; inputs are derived here so
+        # an LLM DAG feeds downstream tasks exactly like the template DAG
+        # does (found live: LLM DAGs had parent_id but empty inputs, so the
+        # synthesize/write tasks received no parent output).
+        inputs = ({"from": parent_id, "kind": "output"},) if parent_id else ()
         timeout_raw = item.get("timeout_s", 60.0)
         try:
             timeout_s = float(timeout_raw)
@@ -173,12 +180,19 @@ def _parse_tasks(data: Dict[str, Any]) -> List[Task]:
             timeout_s = 60.0
         if timeout_s <= 0:
             timeout_s = 60.0
+        # Timeout floors per capability, matching the template DAG (found
+        # live: the LLM planner picked 30s for a real synthesis over actual
+        # vault sources and the executor timed out mid-generation — 120s is
+        # the proven-safe floor for model generation; tool calls are fast).
+        if "chat" in tools and timeout_s < 120.0:
+            timeout_s = 120.0
         retry = item.get("retry_policy")
         parsed.append(
             Task(
                 task_id=task_id.strip(),
                 goal=goal.strip(),
                 parent_id=parent_id,
+                inputs=inputs,
                 required_capabilities=caps,
                 tools=tools,
                 expected_output=str(item.get("expected_output", "") or ""),

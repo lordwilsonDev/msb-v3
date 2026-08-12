@@ -116,7 +116,10 @@ async def execute_graph(
     except ValueError as exc:
         return ExecReport(ok=False, goal=graph.goal, error=f"graph not executable: {exc}")
 
-    for task in ordered:
+    for pos, task in enumerate(ordered):
+        # Parked-followup fix: tasks are frozen dataclasses — ordered.index()
+        # compares by equality, so two structurally-identical tasks could
+        # resolve to the wrong slot. Positional enumeration is exact.
         inputs = {pid: outputs[pid] for pid in (task.inputs and [i.get("from") for i in task.inputs] or []) if pid in outputs}
         task_started = time.perf_counter()
         attempts = 0
@@ -167,9 +170,9 @@ async def execute_graph(
         results.append(task_result)
         _persist(task, task_result, "ok" if task_ok else "failed")
         if not task_ok:
-            skipped = tuple(t.task_id for t in ordered[ordered.index(task) + 1 :])
+            skipped = tuple(t.task_id for t in ordered[pos + 1 :])
             if store is not None:
-                for skipped_task in ordered[ordered.index(task) + 1 :]:
+                for skipped_task in ordered[pos + 1 :]:
                     try:
                         store.save_task(
                             run_id, skipped_task, TaskResult(task_id=skipped_task.task_id, ok=False), "skipped"

@@ -143,6 +143,53 @@ def test_intent_metrics_move_on_fallback() -> None:
     assert after == before + 1
 
 
+def test_llm_path_completes_write_permission_for_write_request() -> None:
+    """Regression: a request that plainly asks to write must carry
+    write_file even when the model under-declares it (found live — the
+    intent model emitted only read_vault for "...write a client brief", so
+    the taint-gate REVIEW-blocked the operator-approved write)."""
+    client = _FakeClient(
+        '{"goals": ["research the vault and write a brief"], "constraints": [], '
+        '"permissions": ["read_vault"], "privacy": true}'
+    )
+    intent = interpret_intent("Research the vault and write a client brief", client=client)
+    assert intent.source == "llm"
+    assert "write_file" in intent.permissions
+
+
+def test_llm_path_respects_model_permissions_for_read_only_requests() -> None:
+    # No write verb in the request — permissions stay exactly as the model
+    # declared; no write_file is invented.
+    client = _FakeClient(
+        '{"goals": ["answer the question"], "constraints": [], '
+        '"permissions": ["read_vault"], "privacy": true}'
+    )
+    intent = interpret_intent("What does the vault say about x", client=client)
+    assert intent.source == "llm"
+    assert intent.permissions == ("read_vault",)
+
+
+def test_research_phrased_write_verb_does_not_declare_write() -> None:
+    # "how to …" is a research request, not a write request — no write_file
+    # may be invented (otherwise the template DAG gains an unrequested write
+    # task the operator never approved).
+    client = _FakeClient(
+        '{"goals": ["research cold email tactics"], "constraints": [], '
+        '"permissions": ["read_vault"], "privacy": true}'
+    )
+    intent = interpret_intent("research how to write a cold email", client=client)
+    assert intent.source == "llm"
+    assert "write_file" not in intent.permissions
+
+
+def test_fallback_completes_write_permission_for_write_request() -> None:
+    # Even on fallback (model unreachable), a write request declares
+    # write_file so the template DAG can legally include the write task.
+    intent = interpret_intent("research and write a brief", client=_BrokenClient())
+    assert intent.source == "fallback"
+    assert intent.permissions == ("write_file",)
+
+
 def test_as_dict_round_trip() -> None:
     intent = Intent(request="r", goals=("g",), permissions=("write_file",), source="llm")
     d = intent.as_dict()

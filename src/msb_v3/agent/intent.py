@@ -26,6 +26,30 @@ from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
 
+# Requests that plainly ask to write an artifact must carry write_file even
+# if the model under-declares it (found live: the intent model emitted only
+# read_vault for "research the vault and write a client brief", so the A8
+# taint-gate REVIEW-blocked the write the operator had pre-approved — the
+# loop could never have completed its stated task). Deterministic completion:
+# models propose, deterministic code governs.
+#
+# Narrow on purpose: the verb must NOT be part of a "how to …" research
+# phrasing ("research how to write a cold email" is a research task, not a
+# write request) so we don't invent a write task the operator never asked for.
+_WRITE_REQUEST = re.compile(r"\b(write|create|save|produce|draft|compose)\b", re.IGNORECASE)
+_HOW_TO = re.compile(r"\bhow to\b", re.IGNORECASE)
+
+
+def _requests_write(request: str) -> bool:
+    """True when the request asks to produce an artifact, not merely to
+    research one ("write a brief" yes; "how to write a cold email" no)."""
+    if not request:
+        return False
+    if _HOW_TO.search(request):
+        return False
+    return _WRITE_REQUEST.search(request) is not None
+
+
 _INTENT_SYSTEM = (
     "You are an intent interpreter. Extract the user's intent into a strict JSON "
     'object with exactly these keys: "goals" (array of 1-3 concrete goal strings), '
@@ -140,6 +164,11 @@ def interpret_intent(
         if data and goals:
             constraints = _clean_str_list(data.get("constraints"))
             permissions = _clean_str_list(data.get("permissions"))
+            # Deterministic write completion (models propose, code governs):
+            # a request that clearly asks to write an artifact declares
+            # write_file even if the model dropped it.
+            if "write_file" not in permissions and _requests_write(request):
+                permissions = permissions + ("write_file",)
             # Privacy defaults true unless the model emitted a real bool — a
             # string "false" must not flip the local-vs-cloud routing.
             privacy_raw = data.get("privacy", True)
@@ -160,5 +189,6 @@ def interpret_intent(
     except Exception:
         pass
 
+    permissions = ("write_file",) if _requests_write(request) else ()
     Metrics.inc("agentic", "intent:fallback")
-    return Intent(request=request, goals=(request,), source="fallback")
+    return Intent(request=request, goals=(request,), permissions=permissions, source="fallback")
