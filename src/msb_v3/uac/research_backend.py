@@ -9,9 +9,12 @@ explicit choice to prioritize evidence-backed accuracy over pure local-first
 operation for this specific stage.
 
 TavilyResearchBackend requires a real TAVILY_API_KEY (see msb_v3.core.config) —
-not currently configured anywhere in this environment. Without a key, it
-fails loudly (raises) rather than silently returning empty/fake results,
-so a misconfigured Stage 0 run is obviously broken, not silently wrong.
+configured in .env, consumed by Stage 0 and the flywheel's TavilyScanner
+(Phase 2b). Without a key, it fails loudly (raises) rather than silently
+returning empty/fake results, so a misconfigured Stage 0 run is obviously
+broken, not silently wrong. (The flywheel scanner degrades that raise into
+an honest 0-papers note instead — the scan is advisory there, not
+load-bearing.)
 NullResearchBackend is for tests only, returns fixed canned results, never
 used as a production default.
 """
@@ -36,7 +39,9 @@ class SearchResult:
 
 
 class ResearchBackend(Protocol):
-    def search(self, query: str, max_results: int = 5) -> List[SearchResult]:
+    def search(
+        self, query: str, max_results: int = 5, include_domains: Optional[List[str]] = None
+    ) -> List[SearchResult]:
         ...
 
 
@@ -57,18 +62,22 @@ class TavilyResearchBackend:
                 "Stage 0 will not fabricate research results without it."
             )
 
-    def search(self, query: str, max_results: int = 5) -> List[SearchResult]:
+    def search(
+        self,
+        query: str,
+        max_results: int = 5,
+        include_domains: Optional[List[str]] = None,
+    ) -> List[SearchResult]:
+        payload: dict = {
+            "api_key": self.api_key,
+            "query": query,
+            "max_results": max_results,
+            "search_depth": "basic",
+        }
+        if include_domains:
+            payload["include_domains"] = include_domains
         try:
-            resp = httpx.post(
-                _TAVILY_URL,
-                json={
-                    "api_key": self.api_key,
-                    "query": query,
-                    "max_results": max_results,
-                    "search_depth": "basic",
-                },
-                timeout=self.timeout_s,
-            )
+            resp = httpx.post(_TAVILY_URL, json=payload, timeout=self.timeout_s)
             resp.raise_for_status()
             data = resp.json()
         except httpx.HTTPError as exc:
@@ -95,6 +104,11 @@ class NullResearchBackend:
         self.canned_results = canned_results or []
         self.queries_received: List[str] = []
 
-    def search(self, query: str, max_results: int = 5) -> List[SearchResult]:
+    def search(
+        self,
+        query: str,
+        max_results: int = 5,
+        include_domains: Optional[List[str]] = None,
+    ) -> List[SearchResult]:
         self.queries_received.append(query)
         return self.canned_results[:max_results]
