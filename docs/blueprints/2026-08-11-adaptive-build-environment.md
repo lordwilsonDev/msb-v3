@@ -122,7 +122,7 @@ Each phase is independently usable — you are never stuck in a half-built state
 
 *Never lose two years to a disk hiccup or the Qdrant "data-loss trap."*
 
-- **Automated backup + tested restore** for all data stores above. Restore must be *verified*, not assumed.
+- ✅ **Automated backup + tested restore** for all data stores above. Restore must be *verified*, not assumed.
 - **`.gitignore`** the churning hygiene artifacts (`artifacts/hygiene/*.json`, `webcheck-*`); stop noise commits.
 - **Finish path/config portability** (`MSB_HOME`/`MSB_REPO`/`MSB_VAULT_PATH` — mostly done today).
 - **Provisioning script** — pull `qwen3:8b` + `nomic-embed-text` on a fresh box.
