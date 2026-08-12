@@ -60,7 +60,13 @@ def _extract_brief(inputs: Dict[str, Any]) -> str:
 
 
 class BridgeProvider:
-    """ToolProvider over the live msb-v3 surfaces."""
+    """ToolProvider over the live msb-v3 surfaces.
+
+    Phase 2: search goes through the fabric retrieval domains router
+    (semantic/episodic/knowledge) and synthesis through the hybrid model
+    router (frontier seam when configured, local otherwise). Both are
+    injectable so tests stay hermetic and deterministic.
+    """
 
     def __init__(
         self,
@@ -68,10 +74,14 @@ class BridgeProvider:
         tenant: str = "wilson-vault",
         output_dir: str | Path | None = None,
         client: LocalAIClient | LlamaCPPClient | None = None,
+        router: Any | None = None,
+        retrieval: Any | None = None,
     ) -> None:
         self._tenant = tenant
         self._output_dir = Path(output_dir) if output_dir else Path.home() / "Desktop" / "out"
         self._client = client
+        self._router = router  # ModelRouter (None -> default hybrid)
+        self._retrieval = retrieval  # FabricRetrievalRouter (None -> built lazily)
 
     async def run_tool(self, name: str, *, task: Task, inputs: Dict[str, Any], session: str) -> Any:
         if name == "search_query":
@@ -83,27 +93,44 @@ class BridgeProvider:
         raise ValueError(f"unknown tool for the slice: {name}")
 
     async def _search(self, query: str) -> list[dict]:
-        from msb_v3.retrieval.engine import RetrievalRouter
+        if self._retrieval is None:
+            from msb_v3.fabric.retrieval_router import FabricRetrievalRouter
 
-        router = RetrievalRouter(self._tenant)
-        result = await router.run(query, top_k=5)
-        return result.get("matches", [])
+            self._retrieval = FabricRetrievalRouter(self._tenant)
+        result = await self._retrieval.run(query, top_k=5)
+        return result.matches
 
     def _synthesize(self, task: Task, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Synthesize via the chat harness; return text + token usage so the
+        """Synthesize via the routed client; return text + token usage so the
         executor's output carries the cost data (Phase 1: cost logged per run)."""
         sources = _format_sources(inputs)
         prompt = (
             f"{task.goal}\n\nSources from the vault:\n{sources}\n\n"
             "Write the brief now. Be concise, factual, and grounded only in the sources."
         )
-        harness = ChatHarness(client=self._client)
-        result = harness.execute(prompt, context={"system": "You are a research brief writer."})
-        telemetry = result.telemetry or {}
+        from msb_v3.fabric.model_router import resolve_client
+
+        client, _ = resolve_client("verify_synth", client=self._client, router=self._router)
+        if getattr(client, "generate", None) is None:
+            # A harness-shaped client (e.g. injected test client) — keep the
+            # original ChatHarness path.
+            harness = ChatHarness(client=self._client)
+            result = harness.execute(prompt, context={"system": "You are a research brief writer."})
+            telemetry = result.telemetry or {}
+            return {
+                "text": result.payload.get("text", ""),
+                "prompt_tokens": int(telemetry.get("prompt_tokens", 0) or 0),
+                "completion_tokens": int(telemetry.get("completion_tokens", 0) or 0),
+            }
+        resp = client.generate(
+            prompt,
+            system="You are a research brief writer.",
+            temperature=0.2,
+        )
         return {
-            "text": result.payload.get("text", ""),
-            "prompt_tokens": int(telemetry.get("prompt_tokens", 0) or 0),
-            "completion_tokens": int(telemetry.get("completion_tokens", 0) or 0),
+            "text": resp.text,
+            "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
+            "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
         }
 
     def _write(self, task: Task, inputs: Dict[str, Any]) -> Dict[str, Any]:

@@ -45,6 +45,11 @@ class Settings:
     # Bearer key for the OpenAI-compatible /v1 adapter (Open WebUI etc.).
     # Empty = adapter closed (503) until configured — fail-closed.
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
+    # Frontier seam for the hybrid model router (Phase 2): the /v1 adapter
+    # URL + the model id used for long-horizon plan/verify-synth work. The
+    # seam is "closed" (router degrades to local) until OPENAI_API_KEY is set.
+    openai_frontier_url: str = field(default_factory=lambda: os.getenv("OPENAI_FRONTIER_URL", "http://127.0.0.1:8766/v1"))
+    openai_frontier_model: str = field(default_factory=lambda: os.getenv("OPENAI_FRONTIER_MODEL", "frontier"))
     # /v1/embeddings guards: per-request batch cap (413 when exceeded) and a
     # per-client sliding-window cap on total embedded items (429). A batch of
     # N items consumes N units toward the window cap.

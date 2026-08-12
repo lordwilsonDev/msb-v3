@@ -217,12 +217,20 @@ def _is_acyclic_graph(tasks: List[Task]) -> bool:
 def plan(
     intent: Intent,
     client: LocalAIClient | LlamaCPPClient | None = None,
+    *,
+    router: Any | None = None,
 ) -> TaskGraph:
-    """Build a task DAG for an Intent. LLM-first, template fallback."""
-    if client is None:
-        from msb_v3.local_ai.client_factory import get_client
+    """Build a task DAG for an Intent. LLM-first, template fallback.
 
-        client = get_client()
+    Phase 2: planning is a frontier-default task (A5 fix) — the hybrid model
+    router decides which client plans (frontier via /v1 when configured,
+    local otherwise). An injected `client` wins over the router, so existing
+    tests and callers keep full control.
+    """
+    if client is None:
+        from msb_v3.fabric.model_router import resolve_client
+
+        client, _ = resolve_client("plan", privacy_scoped=intent.privacy, router=router)
 
     try:
         resp = client.generate(intent.request, system=_PLAN_SYSTEM, temperature=0.0, max_tokens=1024)
