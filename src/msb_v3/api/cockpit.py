@@ -196,7 +196,10 @@ def _rate_limits_state() -> Dict[str, Any]:
     — the /v1 handlers and this cockpit run in the same server process, so
     the registry is exact in the current single-worker deployment (same
     caveat rate_limit.py documents). Zero-state is honest: no samples ->
-    total 0, no counters."""
+    total 0, no counters. The configured caps come from guard_config() —
+    the same builder /system/config and the CLIs serve, so this panel
+    cannot drift from the other three surfaces."""
+    from msb_v3.core.guard_config import guard_config
     from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
 
     counters: List[Dict[str, Any]] = []
@@ -218,12 +221,13 @@ def _rate_limits_state() -> Dict[str, Any]:
                 }
             )
     counters.sort(key=lambda c: (c["limiter"], c["reason"]))
+    rl = guard_config()["rate_limits"]
     return {
         "total": total,
         "counters": counters,
         "caps": {
-            "chat_per_window": settings.openai_chat_rate_max,
-            "embeddings_per_window": settings.openai_embed_rate_max,
+            "chat_per_window": rl["OPENAI_CHAT_RATE_MAX"],
+            "embeddings_per_window": rl["OPENAI_EMBED_RATE_MAX"],
         },
     }
 
