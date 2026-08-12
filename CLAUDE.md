@@ -121,6 +121,28 @@ service costs one panel, never the page) and the find-box at `/cockpit/find`
 Read-only by design; control actions stay on the API/CLI. `/` dashboard is
 untouched — the cockpit is a separate surface.
 
+## Flywheel (Phase 2)
+
+The Research→Build loop (blueprint §0.5), one turn end-to-end **behind the
+brakes**. Package `msb_v3/flywheel/`, CLI `python -m msb_v3.flywheel`
+(`turn "PROBLEM"` / `status` / `show <id>` / `approve <id>` / `resume <id>`),
+HTTP `/flywheel/*` (turn/turns/approve/resume).
+
+Every stage transition is gated by the Phase 0B brakes: kill switch +
+iterations budget on every stage, research_calls on charge/scan, owner
+approval at **build/combine/record** (the turn parks at WAITING_APPROVAL
+until `make flywheel-approve ID=...` or the CLI/API approve — that is the
+approval brake, not a bug), and the Ouroboros governor fed the charge
+signal. Turn state persists in `data/flywheel/turns.db` and survives
+restarts; every transition is audited (component `flywheel`).
+
+The generative brain is pluggable: `--charger stub` (deterministic,
+offline, UIM-format-compatible — the default and the only one that runs
+without burning tokens) or `--charger sovereign` (real
+`SovereignResearchAssistant`, local LLM). The paper scanner is a stub that
+says so; the real feed (Tavily/NotebookLM) wires in Phase 2b. The cockpit
+has a read-only FLYWHEEL panel.
+
 ## Git
 
 Dual-push: `origin` and `sovereign_intelligence_core` both point to `https://github.com/lordwilsonDev/msb-v3.git`.

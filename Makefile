@@ -1,4 +1,4 @@
-.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject provision-models setup
+.PHONY: test portability server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject provision-models setup flywheel-turn flywheel-status flywheel-approve
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -152,6 +152,18 @@ governance-approve:
 
 governance-reject:
 	$(PY) -m msb_v3.governance reject "$(ID)" "$(REASON)"
+
+# Flywheel (Phase 2): drive a turn, view turns, approve a parked turn. The
+# turn parks at build/combine/record until you approve it — that is the
+# owner-approval brake, not a bug.
+flywheel-turn:
+	$(PY) -m msb_v3.flywheel turn "$(PROBLEM)" --charger "$(CHARGER)"
+
+flywheel-status:
+	$(PY) -m msb_v3.flywheel status
+
+flywheel-approve:
+	$(PY) -m msb_v3.flywheel approve "$(ID)"
 
 # Fresh-box provisioning: pull the two models the stack uses (idempotent).
 provision-models:
