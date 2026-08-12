@@ -121,7 +121,8 @@ the gates; the loop wires `check_run` + `record_action` when it lands.
 ## Cockpit
 
 `/cockpit` — one read-only screen over the whole system (services, mission,
-governance brakes, hygiene gate, audit chain, vault/RAG freshness, research
+guards overview (kill switch, budgets, caps, approval policy), hygiene gate,
+audit chain, vault/RAG freshness, research
 runs, memory, rate-limit rejections, recent errors). Self-contained page (no CDN/build), data via
 `/cockpit/api` (parallel bounded probes, per-panel error containment — a dead
 service costs one panel, never the page) and the find-box at `/cockpit/find`
