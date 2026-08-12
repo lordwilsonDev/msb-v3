@@ -38,14 +38,29 @@ def _collection(tenant_id: str) -> str:
     return f"tenant_{safe}"
 
 
-def delete_tenant_collection(tenant_id: str) -> None:
+_TEST_TENANT_PREFIXES = ("live_test_", "r02_eval_")
+
+
+def delete_tenant_collection(tenant_id: str, *, force: bool = False) -> None:
     """Best-effort deletion of the Qdrant collection backing a tenant.
 
     Normalizes the tenant id exactly like the engine does (the same
     `_collection` used by /rag/index and the retrieval adapters) and swallows
     failures — callers use this as a cleanup guard (test fixtures, experiment
     runners), never as a gate.
+
+    Safety: a mis-typed tenant id must never wipe a real collection, so the
+    guard refuses (raises) any tenant id that does not look like a test/eval
+    tenant (`live_test_*` / `r02_eval_*`) — an unguarded cleanup once deleted
+    the real wilson-vault collection mid-session. Real cleanup requires
+    force=True (maintenance tooling with explicit operator intent).
     """
+    if not force and not tenant_id.startswith(_TEST_TENANT_PREFIXES):
+        raise ValueError(
+            f"refusing to delete non-test tenant {tenant_id!r} "
+            f"(expected a {_TEST_TENANT_PREFIXES!r} prefix); "
+            "pass force=True for explicit real cleanup"
+        )
     if not _HAS_QDRANT:
         return
     try:

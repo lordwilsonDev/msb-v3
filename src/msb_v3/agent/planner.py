@@ -52,6 +52,18 @@ _KNOWN_VERIFY = {
 }
 _KNOWN_CAPABILITIES = {"read_vault", "llm_synthesis", "write_file"}
 
+# Canonical capability -> real tool map (the BridgeProvider's vocabulary).
+# The LLM planner is told to put capability names in "tools" (same vocabulary
+# as "capabilities"); the template does the same. This map normalizes them to
+# the actual executor tool names so a model-produced DAG calls the same tools
+# the template does (found live: qwen3 emitted "read_vault" as a tool and the
+# executor had no such tool).
+CAPABILITY_TOOL: Dict[str, str] = {
+    "read_vault": "search_query",
+    "llm_synthesis": "chat",
+    "write_file": "vault_write",
+}
+
 
 # ---------------------------------------------------------------------------
 # Deterministic template DAGs (the always-available fallback)
@@ -143,7 +155,11 @@ def _parse_tasks(data: Dict[str, Any]) -> List[Task]:
             continue
         caps = _clean_str_list(item.get("capabilities"))
         caps = tuple(c for c in caps if c in _KNOWN_CAPABILITIES)
-        tools = _clean_str_list(item.get("tools"))
+        raw_tools = _clean_str_list(item.get("tools")) or caps
+        # Normalize capability names to real executor tools (dedup, preserve
+        # order). Unknown names pass through: a loud failure at execution is
+        # diagnosable (bad_tool -> substitute), a silent drop is not.
+        tools = tuple(dict.fromkeys(CAPABILITY_TOOL.get(t, t) for t in raw_tools))
         verify = item.get("verification_method")
         if verify not in _KNOWN_VERIFY:
             verify = "none"

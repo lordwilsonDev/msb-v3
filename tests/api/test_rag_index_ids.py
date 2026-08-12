@@ -179,8 +179,8 @@ def test_delete_tenant_collection_passes_normalized_name(monkeypatch):
     monkeypatch.setattr(rag, "_qdrant_client", lambda: FakeClient())
 
     rag.delete_tenant_collection("live_test_123")
-    rag.delete_tenant_collection("a/b:c d")  # sanitization matches _collection
-    assert calls == ["tenant_live_test_123", "tenant_a_b_c_d"]
+    rag.delete_tenant_collection("live_test_a/b:c d")  # sanitization matches _collection
+    assert calls == ["tenant_live_test_123", "tenant_live_test_a_b_c_d"]
 
 
 def test_delete_tenant_collection_swallows_failures(monkeypatch):
@@ -194,3 +194,38 @@ def test_delete_tenant_collection_swallows_failures(monkeypatch):
     monkeypatch.setattr(rag, "_HAS_QDRANT", True)
     monkeypatch.setattr(rag, "_qdrant_client", lambda: FakeClient())
     assert rag.delete_tenant_collection("live_test_123") is None
+
+
+def test_delete_tenant_collection_refuses_real_tenants(monkeypatch):
+    """The incident guard: a non-test tenant id (e.g. wilson-vault) must raise
+    before any Qdrant call — a real collection can never be auto-deleted by a
+    cleanup block that merely typo'd the tenant id."""
+    called = False
+
+    class FakeClient:
+        def delete_collection(self, collection_name: str):
+            nonlocal called
+            called = True
+
+    monkeypatch.setattr(rag, "_HAS_QDRANT", True)
+    monkeypatch.setattr(rag, "_qdrant_client", lambda: FakeClient())
+
+    with pytest.raises(ValueError, match="non-test tenant"):
+        rag.delete_tenant_collection("wilson-vault")
+    assert called is False  # raised before touching Qdrant
+
+
+def test_delete_tenant_collection_force_bypasses_guard(monkeypatch):
+    """Maintenance tooling with explicit operator intent can force a real
+    deletion (make qdrant-sweep style), but it must be opt-in."""
+    calls: list[str] = []
+
+    class FakeClient:
+        def delete_collection(self, collection_name: str):
+            calls.append(collection_name)
+
+    monkeypatch.setattr(rag, "_HAS_QDRANT", True)
+    monkeypatch.setattr(rag, "_qdrant_client", lambda: FakeClient())
+
+    rag.delete_tenant_collection("wilson-vault", force=True)
+    assert calls == ["tenant_wilson-vault"]

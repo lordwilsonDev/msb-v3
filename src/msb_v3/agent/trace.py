@@ -5,10 +5,14 @@ Every significant stage becomes an auditable event in the UAC chain
 (per-task grounded verification results), and the outcome. Enough to answer
 "why did the system do that?" — the trace, not the verdict, is the evidence.
 
-Replay determinism: `deterministic_hash` covers everything that must be
-identical for an identical run (request, intent, plan, per-task outputs,
-verdict) — timestamps and latency are excluded by construction, so the T1.7
-slice gate can assert same-input -> same-hash.
+Replay determinism: `deterministic_hash` is content-addressed — it covers
+everything that must be identical for an identical run (request, intent,
+plan, per-task outputs, verdict) and excludes timestamps/latency by
+construction. Same evidence -> same hash; evidence that differs (a live model
+producing different output) legitimately yields a different hash. The hash is
+a pure function of the evidence, so it can always be recomputed from the
+recorded trace to prove it was not tampered with (see
+`compute_deterministic_hash`).
 """
 
 from __future__ import annotations
@@ -120,21 +124,31 @@ def build_trace(
     return trace
 
 
-def _deterministic_hash(trace: AgentTrace) -> str:
-    """Hash the replay-deterministic content only (no timestamps/latency)."""
+def compute_deterministic_hash(fields: Dict[str, Any]) -> str:
+    """Hash the replay-deterministic content of a run (no timestamps/latency).
+
+    Public and dict-based so consumers (the acceptance gate, CI) can recompute
+    the hash from a recorded trace and verify the evidence was not altered —
+    the content-addressing property that makes the chain replayable.
+    """
     payload = json.dumps(
         {
-            "request": trace.request,
-            "intent": trace.intent,
-            "graph_source": trace.graph_source,
-            "tasks": trace.tasks,
-            "execution": trace.execution,
-            "verdict": trace.verdict,
+            "request": fields.get("request"),
+            "intent": fields.get("intent"),
+            "graph_source": fields.get("graph_source"),
+            "tasks": fields.get("tasks"),
+            "execution": fields.get("execution"),
+            "verdict": fields.get("verdict"),
         },
         sort_keys=True,
         default=str,
     )
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+def _deterministic_hash(trace: AgentTrace) -> str:
+    """Hash the replay-deterministic content of a built trace."""
+    return compute_deterministic_hash(trace.as_dict())
 
 
 def record_trace(
