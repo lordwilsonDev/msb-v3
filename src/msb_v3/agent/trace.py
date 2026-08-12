@@ -80,14 +80,21 @@ def build_trace(
 
     execution: List[Dict[str, Any]] = []
     for result in report.results:
-        execution.append(
-            {
-                "task_id": result.task_id,
-                "ok": result.ok,
-                "verification": result.verification,
-                "error": result.error,
-            }
-        )
+        entry: Dict[str, Any] = {
+            "task_id": result.task_id,
+            "ok": result.ok,
+            "verification": result.verification,
+            "error": result.error,
+        }
+        # Phase 2: the context builder's eviction ledger is evidence — carry
+        # it (when the chat tool produced one) so the trace answers "why does
+        # the context look like this". It participates in the replay hash
+        # (execution is hashed), so it is tamper-evident like the rest.
+        for value in result.output.values():
+            if isinstance(value, dict) and isinstance(value.get("context_ledger"), dict):
+                entry["context_ledger"] = value["context_ledger"]
+                break
+        execution.append(entry)
 
     # Phase 1: cost logged per run. Token counts ride the task outputs (the
     # chat tool returns {"text", "prompt_tokens", "completion_tokens"}); sum

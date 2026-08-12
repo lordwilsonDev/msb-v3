@@ -101,6 +101,63 @@ def test_record_trace_writes_four_evidence_events() -> None:
     assert audit.events[3][2]["verdict"] == "PASS"
 
 
+def test_trace_execution_surfaces_context_ledger() -> None:
+    """Phase 2: the context builder's eviction ledger rides the chat task's
+    output into the trace — evidence for "why does the context look like
+    this" (inversion omission #5)."""
+    ledger = {
+        "budget_tokens": 120,
+        "system_tokens": 3,
+        "query_tokens": 2,
+        "included_matches": 1,
+        "evicted_matches": 1,
+        "truncated": False,
+        "total_tokens": 60,
+        "items": [{"source": "a.md", "score": 0.9}],
+    }
+    results = (
+        TaskResult(
+            task_id="synthesize",
+            ok=True,
+            output={"chat": {"text": "brief", "context_ledger": ledger}},
+            verification={"ok": True, "detail": "5 chars"},
+        ),
+    )
+    report = ExecReport(ok=True, goal="g", results=results)
+    trace = build_trace("run-c", "x", _intent(), _graph(), report)
+
+    synth = next(e for e in trace.execution if e["task_id"] == "synthesize")
+    assert synth["context_ledger"] == ledger
+    assert synth["context_ledger"]["evicted_matches"] == 1
+
+
+def test_context_ledger_participates_in_replay_hash() -> None:
+    """The ledger is evidence: two runs identical except for the ledger must
+    hash differently, and the recomputed hash from the trace must match."""
+    from msb_v3.agent.trace import compute_deterministic_hash
+
+    def _report_with(ledger: dict) -> ExecReport:
+        return ExecReport(
+            ok=True,
+            goal="g",
+            results=(
+                TaskResult(
+                    task_id="synthesize",
+                    ok=True,
+                    output={"chat": {"text": "brief", "context_ledger": ledger}},
+                    verification={"ok": True, "detail": "5 chars"},
+                ),
+            ),
+        )
+
+    a = build_trace("r1", "x", _intent(), _graph(), _report_with({"included_matches": 1, "evicted_matches": 0}))
+    b = build_trace("r2", "x", _intent(), _graph(), _report_with({"included_matches": 0, "evicted_matches": 2}))
+    assert a.deterministic_hash != b.deterministic_hash
+
+    # Content-addressed: recomputing from the recorded trace reproduces it.
+    assert compute_deterministic_hash(a.as_dict()) == a.deterministic_hash
+
+
 def test_trace_logs_cost_per_run() -> None:
     """Phase 1 acceptance: cost logged per run — token counts summed from task
     outputs, estimated cost at $0.001/1K completion tokens (ralph pattern)."""

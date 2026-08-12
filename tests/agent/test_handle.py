@@ -191,6 +191,79 @@ def test_bridge_provider_write_creates_file_with_heading(tmp_path: Path) -> None
     assert path.name.startswith(_slug(task.goal))
 
 
+def test_bridge_provider_synthesize_builds_budgeted_context_with_ledger(tmp_path: Path) -> None:
+    """Phase 2: synthesis assembles retrieval hits under a hard token budget
+    and returns the eviction ledger so the trace can show what fit and what
+    was evicted (inversion omission #5)."""
+    # Budget sized so ONE 300-char hit fits comfortably but two never do:
+    # each hit is ~83 tokens (300 chars + label), system+query ~40, headers
+    # ~4 — so 200 fits one hit and forces the second out.
+    provider = BridgeProvider(output_dir=tmp_path, context_budget_tokens=200)
+    task = type("T", (), {"goal": "write a brief about sovereign architecture"})()
+    inputs = {
+        "research": {
+            "search_query": [
+                {"id": "a", "score": 0.9, "text": "hit one " + "x" * 300, "source": "a.md"},
+                {"id": "b", "score": 0.5, "text": "hit two " + "y" * 300, "source": "b.md"},
+            ]
+        }
+    }
+
+    # The bridge's client is a real local client unless injected — inject a
+    # stub so no model is contacted. The local tier goes through ChatHarness,
+    # so the stub must satisfy the harness's execute_tool_loop interface.
+    class _StubClient:
+        def execute_tool_loop(self, query, *, system=None, tools=None, max_steps=4, max_tokens=2048):
+            from msb_v3.local_ai.ollama import LocalAIResponse
+
+            return LocalAIResponse(
+                text="the brief", model="stub", latency_s=0.0,
+                prompt_tokens=10, completion_tokens=5,
+            )
+
+    provider._client = _StubClient()
+
+    async def run() -> dict:
+        return await provider.run_tool("chat", task=task, inputs=inputs, session="s")
+
+    result = asyncio_run(run())
+    assert result["text"] == "the brief"
+    assert result["prompt_tokens"] == 10
+    assert result["completion_tokens"] == 5
+    ledger = result.get("context_ledger")
+    assert ledger is not None
+    assert ledger["budget_tokens"] == 200
+    # Two 300-char hits cannot both fit — the highest-score one survives,
+    # the other is evicted. The hard invariant always holds.
+    assert ledger["included_matches"] == 1
+    assert ledger["evicted_matches"] == 1
+    assert ledger["total_tokens"] <= ledger["budget_tokens"]
+
+
+def test_bridge_provider_synthesize_ledger_records_small_context(tmp_path: Path) -> None:
+    """A small context fits fully: no eviction, ledger still present."""
+    provider = BridgeProvider(output_dir=tmp_path, context_budget_tokens=1000)
+    task = type("T", (), {"goal": "write a short brief"})()
+    inputs = {"research": {"search_query": [{"id": "a", "score": 0.9, "text": "small hit", "source": "a.md"}]}}
+
+    class _StubClient:
+        def execute_tool_loop(self, query, *, system=None, tools=None, max_steps=4, max_tokens=2048):
+            from msb_v3.local_ai.ollama import LocalAIResponse
+
+            return LocalAIResponse(text="ok", model="stub", latency_s=0.0)
+
+    provider._client = _StubClient()
+
+    async def run() -> dict:
+        return await provider.run_tool("chat", task=task, inputs=inputs, session="s")
+
+    result = asyncio_run(run())
+    ledger = result["context_ledger"]
+    assert ledger["included_matches"] == 1
+    assert ledger["evicted_matches"] == 0
+    assert ledger["total_tokens"] <= ledger["budget_tokens"]
+
+
 def test_bridge_provider_format_sources_and_extract_brief() -> None:
     inputs = {"research": {"search_query": [{"text": "hit one", "source": "a.md"}, {"text": "hit two", "source": "b.md"}]}}
     formatted = _format_sources(inputs)
