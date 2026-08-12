@@ -1,4 +1,4 @@
-"""CLI: python -m msb_v3.flywheel turn|status|approve|resume|show
+"""CLI: python -m msb_v3.flywheel turn|status|approve|resume|show|config
 
 The terminal surface for the flywheel (the cockpit build-mode is a later
 plan). Mirrors the governance/ops CLI style.
@@ -7,6 +7,7 @@ plan). Mirrors the governance/ops CLI style.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from typing import Optional
 
@@ -82,6 +83,21 @@ def cmd_approve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_config(args: argparse.Namespace) -> int:
+    """Print the guard/brake/approval/flywheel config — the same blocks as
+    /system/config and make governance-config, from the shared builder.
+    --json emits the verbatim blocks; the default is the shared
+    human-readable rendering (identical to the governance console)."""
+    from msb_v3.core.guard_config import guard_config, render_human
+
+    cfg = guard_config()
+    if args.json:
+        print(json.dumps(cfg, indent=2))
+        return 0
+    sys.stdout.write(render_human(cfg))
+    return 0
+
+
 def cmd_resume(args: argparse.Namespace) -> int:
     engine = _engine()
     try:
@@ -115,6 +131,9 @@ def main(argv: Optional[list] = None) -> int:
     r = sub.add_parser("resume", help="resume a parked/halted turn")
     r.add_argument("turn_id")
 
+    cfgp = sub.add_parser("config", help="guard/brake/approval/flywheel config (same blocks as /system/config)")
+    cfgp.add_argument("--json", action="store_true", help="print the verbatim config blocks as JSON")
+
     args = ap.parse_args(argv)
     return {
         "turn": cmd_turn,
@@ -122,6 +141,7 @@ def main(argv: Optional[list] = None) -> int:
         "show": cmd_show,
         "approve": cmd_approve,
         "resume": cmd_resume,
+        "config": cmd_config,
     }[args.cmd](args)
 
 

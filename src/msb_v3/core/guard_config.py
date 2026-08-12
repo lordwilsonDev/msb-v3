@@ -1,4 +1,5 @@
-"""Shared guard-config surface — one builder for /system/config and the CLI.
+"""Shared guard-config surface — one builder for /system/config and the
+operator CLIs (governance + flywheel).
 
 Single source of truth for the operator-visible guard configuration:
 the /v1 rate-limit guards, the Phase 0B brakes (budget caps + governor
@@ -69,3 +70,41 @@ def guard_config() -> Dict[str, Any]:
             "research_stages": list(RESEARCH_STAGES),
         },
     }
+
+
+def render_human(cfg: Dict[str, Any]) -> str:
+    """Human-readable rendering of the guard-config blocks.
+
+    Shared by the governance and flywheel CLIs so both operator consoles
+    print the same lines — no presentation drift between the two surfaces.
+    """
+    gov = cfg["governance"]
+    window_min = gov["GOV_BUDGET_WINDOW_MIN"]
+    kinds = ", ".join(cfg["approvals"]["kinds_requiring_approval"])
+    stages = ", ".join(
+        f"{s}->{k}" for s, k in cfg["approvals"]["stages_requiring_approval"].items()
+    )
+    fw = cfg["flywheel"]
+    rl = cfg["rate_limits"]
+    lines = [
+        "[governance] budget caps per rolling window:",
+        f"  research_calls: {gov['GOV_BUDGET_RESEARCH_CALLS']}  (window {window_min}m)",
+        f"  tokens: {gov['GOV_BUDGET_TOKENS']}  (window {window_min}m)",
+        f"  iterations: {gov['GOV_BUDGET_ITERATIONS']}  (window {window_min}m)",
+        "[governance] governor thresholds: "
+        f"stall_limit={gov['GOV_GOVERNOR_STALL_LIMIT']} "
+        f"novelty_min={gov['GOV_GOVERNOR_NOVELTY_MIN']} "
+        f"dup_ratio_halt={gov['GOV_GOVERNOR_DUP_RATIO_HALT']} "
+        f"history={gov['GOV_GOVERNOR_HISTORY']}",
+        f"[governance] approval kinds: {kinds}",
+        f"[governance] approval stages: {stages}",
+        f"[flywheel] stages ({len(fw['stages'])}): {', '.join(fw['stages'])}",
+        f"[flywheel] iterations per stage: {fw['iterations_per_stage']}",
+        f"[flywheel] research-call spenders: {', '.join(fw['research_stages'])}",
+        "[rate] chat: "
+        f"{rl['OPENAI_CHAT_RATE_MAX']} req / {rl['OPENAI_CHAT_RATE_WINDOW_S']}s; "
+        "embed: "
+        f"{rl['OPENAI_EMBED_RATE_MAX']} items / {rl['OPENAI_EMBED_RATE_WINDOW_S']}s, "
+        f"max batch {rl['OPENAI_EMBED_MAX_BATCH']}",
+    ]
+    return "\n".join(lines) + "\n"
