@@ -119,7 +119,8 @@ def test_order_detects_cycle() -> None:
 # LLM planner path
 # ---------------------------------------------------------------------------
 
-def test_plan_llm_path_parses_valid_tasks() -> None:
+@pytest.mark.asyncio
+async def test_plan_llm_path_parses_valid_tasks() -> None:
     client = _FakeClient(
         '{"tasks": ['
         '{"task_id": "research", "goal": "search the vault", "parent_id": null, '
@@ -131,7 +132,7 @@ def test_plan_llm_path_parses_valid_tasks() -> None:
         '"expected_output": "file", "verification_method": "file_written", '
         '"timeout_s": 30, "retry_policy": "retry:1"}]}'
     )
-    graph = plan(_read_intent(), client=client)
+    graph = await plan(_read_intent(), client=client)
     assert graph.source == "llm"
     assert [t.task_id for t in graph.tasks] == ["research", "write"]
     assert graph.by_id("research").timeout_s == 90.0
@@ -139,7 +140,8 @@ def test_plan_llm_path_parses_valid_tasks() -> None:
     assert graph.order()[0].task_id == "research"
 
 
-def test_llm_path_derives_inputs_from_parent_id() -> None:
+@pytest.mark.asyncio
+async def test_llm_path_derives_inputs_from_parent_id() -> None:
     """Regression: an LLM DAG with parent_id must wire inputs so the
     executor passes parent outputs downstream (found live — the demo run
     wrote an empty brief because downstream tasks received no inputs)."""
@@ -158,7 +160,7 @@ def test_llm_path_derives_inputs_from_parent_id() -> None:
         '"expected_output": "file", "verification_method": "file_written", '
         '"timeout_s": 30, "retry_policy": "retry:1"}]}'
     )
-    graph = plan(_write_intent(), client=client)
+    graph = await plan(_write_intent(), client=client)
     assert graph.source == "llm"
     # roots declare no inputs; every child derives (from: parent) wiring
     assert graph.by_id("research").inputs == ()
@@ -166,7 +168,8 @@ def test_llm_path_derives_inputs_from_parent_id() -> None:
     assert graph.by_id("write").inputs == ({"from": "synthesize", "kind": "output"},)
 
 
-def test_llm_path_floors_synthesis_timeout_at_120s() -> None:
+@pytest.mark.asyncio
+async def test_llm_path_floors_synthesis_timeout_at_120s() -> None:
     """Regression: the LLM planner must not hand the executor a sub-120s
     timeout for model generation (found live — qwen3 chose 30s for a real
     synthesis over actual vault sources and the executor timed out
@@ -182,25 +185,28 @@ def test_llm_path_floors_synthesis_timeout_at_120s() -> None:
         '"verification_method": "synthesis_nonempty", '
         '"timeout_s": 30, "retry_policy": "retry:1"}]}'
     )
-    graph = plan(_read_intent(), client=client)
+    graph = await plan(_read_intent(), client=client)
     assert graph.source == "llm"
     assert graph.by_id("research").timeout_s == 20.0  # untouched (no chat tool)
     assert graph.by_id("synthesize").timeout_s == 120.0  # floored
 
 
-def test_plan_falls_back_on_garbage() -> None:
-    graph = plan(_read_intent(), client=_FakeClient("sorry, no plan for you"))
+@pytest.mark.asyncio
+async def test_plan_falls_back_on_garbage() -> None:
+    graph = await plan(_read_intent(), client=_FakeClient("sorry, no plan for you"))
     assert graph.source == "template"
     assert graph.tasks[0].task_id == "research"
 
 
-def test_plan_falls_back_on_unreachable_model() -> None:
-    graph = plan(_write_intent(), client=_BrokenClient())
+@pytest.mark.asyncio
+async def test_plan_falls_back_on_unreachable_model() -> None:
+    graph = await plan(_write_intent(), client=_BrokenClient())
     assert graph.source == "template"
     assert graph.tasks[-1].task_id == "write"  # permissions still honored
 
 
-def test_plan_falls_back_on_cycle() -> None:
+@pytest.mark.asyncio
+async def test_plan_falls_back_on_cycle() -> None:
     client = _FakeClient(
         '{"tasks": ['
         '{"task_id": "a", "goal": "ga", "parent_id": "b", "capabilities": [], "tools": [], '
@@ -208,11 +214,12 @@ def test_plan_falls_back_on_cycle() -> None:
         '{"task_id": "b", "goal": "gb", "parent_id": "a", "capabilities": [], "tools": [], '
         '"verification_method": "none", "timeout_s": 60, "retry_policy": "retry:2"}]}'
     )
-    graph = plan(_read_intent(), client=client)
+    graph = await plan(_read_intent(), client=client)
     assert graph.source == "template"  # cycle is rejected, not executed
 
 
-def test_plan_falls_back_on_duplicate_ids() -> None:
+@pytest.mark.asyncio
+async def test_plan_falls_back_on_duplicate_ids() -> None:
     client = _FakeClient(
         '{"tasks": ['
         '{"task_id": "a", "goal": "ga", "parent_id": null, "capabilities": [], "tools": [], '
@@ -220,22 +227,24 @@ def test_plan_falls_back_on_duplicate_ids() -> None:
         '{"task_id": "a", "goal": "gb", "parent_id": null, "capabilities": [], "tools": [], '
         '"verification_method": "none", "timeout_s": 60, "retry_policy": "retry:2"}]}'
     )
-    graph = plan(_read_intent(), client=client)
+    graph = await plan(_read_intent(), client=client)
     assert graph.source == "template"
 
 
-def test_unknown_verification_method_coerced_to_none() -> None:
+@pytest.mark.asyncio
+async def test_unknown_verification_method_coerced_to_none() -> None:
     client = _FakeClient(
         '{"tasks": [{"task_id": "t", "goal": "g", "parent_id": null, '
         '"capabilities": ["read_vault"], "tools": [], '
         '"verification_method": "llm-judge-thinks-yes", "timeout_s": 60, "retry_policy": "retry:2"}]}'
     )
-    graph = plan(_read_intent(), client=client)
+    graph = await plan(_read_intent(), client=client)
     assert graph.source == "llm"
     assert graph.by_id("t").verification_method == "none"
 
 
-def test_plan_metrics_move() -> None:
+@pytest.mark.asyncio
+async def test_plan_metrics_move() -> None:
     from prometheus_client.registry import REGISTRY
 
     def count(event: str) -> float:
@@ -246,7 +255,7 @@ def test_plan_metrics_move() -> None:
 
     before_t = count("plan:template")
     before_l = count("plan:llm")
-    plan(_read_intent(), client=_BrokenClient())
-    plan(_read_intent(), client=_FakeClient('{"tasks": [{"task_id": "t", "goal": "g", "parent_id": null}]}'))
+    await plan(_read_intent(), client=_BrokenClient())
+    await plan(_read_intent(), client=_FakeClient('{"tasks": [{"task_id": "t", "goal": "g", "parent_id": null}]}'))
     assert count("plan:template") == before_t + 1
     assert count("plan:llm") == before_l + 1

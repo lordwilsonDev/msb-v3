@@ -235,7 +235,15 @@ class FrontierClient:
     """Minimal OpenAI-compatible client over the /v1 seam (same interface as
     the local clients: generate() -> LocalAIResponse). Lazy: only touches the
     network when called. On failure it raises so the caller can degrade to
-    local and record the reason (Phase 2 acceptance: never fake the tier)."""
+    local and record the reason (Phase 2 acceptance: never fake the tier).
+
+    Async-first: the /v1 seam is used from the server's event loop
+    (/agent/handle), where a synchronous httpx call would block the whole
+    server. `agenerate()` uses httpx.AsyncClient; `generate()` (sync) is kept
+    for thread-offloaded call sites (the bridge's synthesis runs under
+    asyncio.to_thread) and standalone scripts. Both share the same payload
+    builder + response parser, so the two paths cannot drift. `transport`
+    is injectable for tests (httpx.MockTransport)."""
 
     def __init__(
         self,
@@ -244,49 +252,36 @@ class FrontierClient:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
         timeout_s: float = 120.0,
+        transport: Optional[Any] = None,
     ) -> None:
         self.base_url = (base_url or settings.openai_frontier_url).rstrip("/")
         self.api_key = api_key if api_key is not None else settings.openai_api_key
         self.model = model or settings.openai_frontier_model
         self.timeout_s = timeout_s
+        self._transport = transport
 
-    def generate(
+    def _build_payload(
         self,
         prompt: str,
         *,
-        system: Optional[str] = None,
-        tools: Optional[list[Dict[str, Any]]] = None,
-        temperature: float = 0.2,
-        max_tokens: int = 2048,
-    ) -> Any:
-        from msb_v3.local_ai.ollama import LocalAIResponse  # shared shape
-
-        if not self.api_key:
-            raise RuntimeError("frontier /v1 seam closed: OPENAI_API_KEY not set")
-
+        system: Optional[str],
+        tools: Optional[list[Dict[str, Any]]],
+        temperature: float,
+        max_tokens: int,
+    ) -> Dict[str, Any]:
         messages: list[Dict[str, Any]] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-
         payload: Dict[str, Any] = {"model": self.model, "messages": messages, "temperature": temperature}
         if max_tokens:
             payload["max_tokens"] = max_tokens
         if tools:
             payload["tools"] = tools
+        return payload
 
-        t0 = time.perf_counter()
-        try:
-            with httpx.Client(timeout=self.timeout_s) as client:
-                resp = client.post(
-                    f"{self.base_url}/chat/completions",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except httpx.HTTPError as exc:
-            raise ConnectionError(f"frontier unreachable: {self.base_url} ({exc})") from exc
+    def _parse_response(self, data: Dict[str, Any], t0: float) -> Any:
+        from msb_v3.local_ai.ollama import LocalAIResponse  # shared shape
 
         latency = round(time.perf_counter() - t0, 4)
         msg = (data.get("choices") or [{}])[0].get("message", {}) or {}
@@ -300,6 +295,61 @@ class FrontierClient:
             prompt_tokens=int(usage.get("prompt_tokens", 0) or 0),
             completion_tokens=int(usage.get("completion_tokens", 0) or 0),
         )
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: Optional[str] = None,
+        tools: Optional[list[Dict[str, Any]]] = None,
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+    ) -> Any:
+        if not self.api_key:
+            raise RuntimeError("frontier /v1 seam closed: OPENAI_API_KEY not set")
+        payload = self._build_payload(prompt, system=system, tools=tools, temperature=temperature, max_tokens=max_tokens)
+        t0 = time.perf_counter()
+        try:
+            with httpx.Client(timeout=self.timeout_s, transport=self._transport) as client:
+                resp = client.post(
+                    f"{self.base_url}/chat/completions",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except httpx.HTTPError as exc:
+            raise ConnectionError(f"frontier unreachable: {self.base_url} ({exc})") from exc
+        return self._parse_response(data, t0)
+
+    async def agenerate(
+        self,
+        prompt: str,
+        *,
+        system: Optional[str] = None,
+        tools: Optional[list[Dict[str, Any]]] = None,
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+    ) -> Any:
+        """Async generate over the /v1 seam — never blocks the event loop.
+        Same contract as generate(); a failed call raises ConnectionError so
+        the caller degrades to local and records the reason."""
+        if not self.api_key:
+            raise RuntimeError("frontier /v1 seam closed: OPENAI_API_KEY not set")
+        payload = self._build_payload(prompt, system=system, tools=tools, temperature=temperature, max_tokens=max_tokens)
+        t0 = time.perf_counter()
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_s, transport=self._transport) as client:
+                resp = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except httpx.HTTPError as exc:
+            raise ConnectionError(f"frontier unreachable: {self.base_url} ({exc})") from exc
+        return self._parse_response(data, t0)
 
 
 def resolve_client(

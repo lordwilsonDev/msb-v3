@@ -15,6 +15,7 @@ gate). No LLM judge anywhere in the verification path.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -66,7 +67,10 @@ async def handle(
     run_id = _run_id(request)
 
     try:
-        intent: Intent = interpret_intent(request, client=client)
+        # interpret_intent and plan both generate via the client; offload the
+        # sync local-model call to a worker thread so the server's event loop
+        # stays responsive while a request is in flight (/agent/handle).
+        intent: Intent = await asyncio.to_thread(interpret_intent, request, client=client)
         # Explicit privacy override (Phase 2 live test): the caller may force
         # the intent's privacy flag, which drives the router's privacy floor.
         # privacy=None (the default) lets the interpreted intent decide; the
@@ -75,7 +79,7 @@ async def handle(
             from dataclasses import replace
 
             intent = replace(intent, privacy=privacy)
-        graph = plan(intent, client=client)
+        graph = await plan(intent, client=client)
 
         # Approved capabilities: the operator pre-authorizes the declared
         # permissions (default: none — tainted writes then require review).
