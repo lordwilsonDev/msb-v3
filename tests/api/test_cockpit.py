@@ -29,7 +29,7 @@ def test_cockpit_api_shape_with_error_containment(client: TestClient) -> None:
     r = client.get("/cockpit/api")
     assert r.status_code == 200
     body = r.json()
-    for key in ("services", "mission", "flywheel", "governance", "hygiene", "audit", "vault", "research", "memory", "errors"):
+    for key in ("services", "mission", "flywheel", "governance", "limits", "hygiene", "audit", "vault", "research", "memory", "errors"):
         assert key in body, f"missing panel {key}"
         assert isinstance(body[key], dict), f"panel {key} is not a dict"
     assert "ts" in body
@@ -74,7 +74,7 @@ def test_cockpit_api_containment_with_all_probes_down(client: TestClient, monkey
     # panel still renders.
     assert "error" in body["services"]["status"]
     assert "error" in body["services"]["models"]
-    for key in ("governance", "hygiene", "audit", "vault", "mission", "flywheel", "errors"):
+    for key in ("governance", "limits", "hygiene", "audit", "vault", "mission", "flywheel", "errors"):
         assert "error" not in body[key], f"in-process panel {key} must not fail"
 
 
@@ -89,3 +89,35 @@ def test_cockpit_find_contained_when_research_dir_unreadable(client: TestClient,
     body = r.json()
     assert body["research"] == []
     assert body["vault"] == []  # probe down -> contained empty
+
+
+def test_cockpit_api_rate_limit_panel_reflects_rejections(client: TestClient) -> None:
+    """The RATE LIMIT REJECTIONS panel reads the live shared counter — an
+    increment from the /v1 guard is visible on the cockpit, then restored
+    so the global counter is not left polluted."""
+    from msb_v3.core.config import settings
+    from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+
+    label = RATE_LIMIT_REJECTIONS.labels(limiter="chat", reason="rate")
+    before = label._value.get()
+    try:
+        label.inc()
+        r = client.get("/cockpit/api")
+        assert r.status_code == 200
+        limits = r.json()["limits"]
+        assert "error" not in limits
+        assert limits["total"] >= before + 1
+        entry = next(
+            c for c in limits["counters"] if c["limiter"] == "chat" and c["reason"] == "rate"
+        )
+        assert entry["count"] == before + 1
+        # one entry per (limiter, reason) combo and counts only — the
+        # prometheus _created timestamp samples must never leak in
+        combos = [(c["limiter"], c["reason"]) for c in limits["counters"]]
+        assert len(combos) == len(set(combos))
+        assert all(isinstance(c["count"], int) and c["count"] < 1_000_000 for c in limits["counters"])
+        # configured caps ride along for context
+        assert limits["caps"]["chat_per_window"] == settings.openai_chat_rate_max
+        assert limits["caps"]["embeddings_per_window"] == settings.openai_embed_rate_max
+    finally:
+        label._value.set(before)  # restore — the counter is global state
