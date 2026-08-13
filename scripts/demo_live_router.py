@@ -45,7 +45,7 @@ def _metrics() -> str:
 
 
 def _router_samples() -> list[str]:
-    return [l for l in _metrics().splitlines() if l.startswith("msb_v3_router_decisions_total")]
+    return [ln for ln in _metrics().splitlines() if ln.startswith("msb_v3_router_decisions_total")]
 
 
 def _handle(request: str, privacy: bool | None, token: str, *, approve: bool = False) -> dict:

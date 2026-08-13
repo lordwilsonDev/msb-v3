@@ -20,6 +20,15 @@ dev = [
   "ruff==0.9.4",
 ]
 
+# Ruff gates MUST agree across every invocation: the CI lint job runs plain
+# `ruff check src/ tests/` (default selection) while factory-gate pins
+# `--select E9,F,I`. In 2026-08 the silent-except sweep landed 138 E402s
+# (imports below a logger assignment) that E9/F/I cannot see — only the
+# default selection caught them. Pin one selection here so `ruff check`
+# (no flags) is identical everywhere: ruff's default E4/E7/E9/F + I.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

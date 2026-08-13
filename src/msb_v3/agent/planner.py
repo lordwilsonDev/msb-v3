@@ -23,17 +23,15 @@ which source produced the graph.
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import asyncio
+import logging
 from typing import Any, Dict, List
 
 from msb_v3.agent.dag import Task, TaskGraph
 from msb_v3.agent.intent import Intent, _clean_str_list, _extract_json
 from msb_v3.observability.metrics import Metrics
 
+logger = logging.getLogger(__name__)
 _PLAN_SYSTEM = (
     "You are an agentic task planner. Decompose the user's goal into a small "
     "task DAG and return ONLY a JSON object with a single key \"tasks\": an "

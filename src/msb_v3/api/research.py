@@ -1,12 +1,9 @@
 """Research assistant router."""
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import datetime
 import json
+import logging
 import os
 import re
 import urllib.error
@@ -19,6 +16,7 @@ from pydantic import BaseModel
 
 from msb_v3.harnesses.research_assistant import SovereignResearchAssistant
 
+logger = logging.getLogger(__name__)
 NOTIFY_URL = "https://api.telegram.org/bot{token}/sendMessage"
 
 router = APIRouter(tags=["research"])

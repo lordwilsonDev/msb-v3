@@ -17,13 +17,12 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger(__name__)
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from msb_v3.api.auth import require_operator
 from msb_v3.flywheel.engine import FlywheelEngine
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["flywheel"])
 
 _engine = FlywheelEngine()

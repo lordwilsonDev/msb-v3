@@ -1,12 +1,9 @@
 """Meta-Cognitive Planner engine for Triumvirate Phase 1."""
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -16,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from msb_v3.core.config import settings
 from msb_v3.memory.store import MemoryStore, Message
 
+logger = logging.getLogger(__name__)
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _PLANNER_STATE_FILE = _RUNTIME_ROOT / "plan_state.json"
 _MEMORY = MemoryStore()

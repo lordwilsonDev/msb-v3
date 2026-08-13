@@ -77,8 +77,12 @@ jobs:
       - name: Typed enforcement (mypy)
         run: mypy src --ignore-missing-imports
 
-      - name: Lint gate (ruff E9/F/I)
-        run: ruff check --select E9,F,I .
+      # Uses the pinned selection in pyproject.toml ([tool.ruff.lint] =
+      # E4/E7/E9/F/I) so this gate can never diverge from the CI lint job's
+      # default-selection run again (138 E402s slipped through E9/F/I-only
+      # in 2026-08).
+      - name: Lint gate (ruff, pyproject selection)
+        run: ruff check .
 
       - name: Hygiene suite (offline experiments)
         env:

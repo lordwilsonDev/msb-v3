@@ -17,11 +17,8 @@ Design (Dream Big Blue, T1.1):
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -30,6 +27,7 @@ from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
 
+logger = logging.getLogger(__name__)
 # Requests that plainly ask to write an artifact must carry write_file even
 # if the model under-declares it (found live: the intent model emitted only
 # read_vault for "research the vault and write a client brief", so the A8

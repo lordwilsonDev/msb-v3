@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import hashlib
 import json
+import logging
 import os
 import tempfile
 from dataclasses import asdict, dataclass, field
@@ -16,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from msb_v3.harnesses.base import BaseHarness, HarnessResult
 
+logger = logging.getLogger(__name__)
 # =============================================================================
 # STATE SCHEMA
 # =============================================================================

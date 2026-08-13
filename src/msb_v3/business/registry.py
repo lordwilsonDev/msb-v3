@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Max serialized payload size for truth entities, in bytes. Enforced on write

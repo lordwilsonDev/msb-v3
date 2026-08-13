@@ -13,12 +13,9 @@ msb_v3.conversation.envelope only. Nothing here calls a model.
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import hashlib
 import json
+import logging
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -31,6 +28,7 @@ from msb_v3.conversation.envelope import (
     claim_id_for_query,
 )
 
+logger = logging.getLogger(__name__)
 TOOLCHAIN = "msb-v3/conversation-ledger"
 TOOL_VERSION = "1.0"
 TIER = "T3"  # real execution produced the exchange — EXECUTED-level evidence

@@ -10,11 +10,8 @@ counter so a black-box probe can assert zero model spend on BLOCK.
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import asyncio
+import logging
 import time
 from typing import Any, Optional
 
@@ -39,6 +36,7 @@ from msb_v3.conversation.envelope import (
     validate_request,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["conversation"])
 
 # One shared stub instance for the whole app process: the endpoint increments

@@ -12,13 +12,10 @@ conversation-ledger-producer-v1.md — never change one without the other.
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import datetime
 import hashlib
 import json
+import logging
 import os
 import re
 import uuid
@@ -27,6 +24,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+logger = logging.getLogger(__name__)
 SCHEMA_VERSION = "1.0"
 SCHEMA_MAJOR = SCHEMA_VERSION.split(".")[0]
 

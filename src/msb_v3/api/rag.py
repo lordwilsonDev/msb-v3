@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 import os
 import uuid
 from typing import Any
@@ -16,6 +13,7 @@ from pydantic import BaseModel
 
 from msb_v3.observability.metrics import TRIUMVIRATE_HIPPOCAMPUS
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 try:
