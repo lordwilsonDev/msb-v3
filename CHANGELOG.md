@@ -3,6 +3,32 @@
 All notable changes to msb-v3 are recorded here. Format follows [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [0.2.3] - 2026-08-13
+
+### Added
+- **Research-runtime seeding** (`scripts/seed-research-runtime.sh`): the
+  harness suite now runs from a fresh checkout everywhere. Committed
+  per-slug fixtures under `tests/fixtures/research_runtime/` (evidence
+  ledgers + ralph-loop `STATUS.json`) are seeded before the server boots in
+  CI, the factory gate, and the portability staging copy —
+  `claims_review` and the new ralph run-listing harness test no longer skip
+  on unseeded environments (this was the 801-vs-802 portability delta).
+  Adding a future seeded slug is a data-only change (drop a fixture dir).
+- **Seeding wiring guard** (`tests/test_evidence_ledger_seed_wiring.py`, 11
+  tests): pins the seeder into ci.yml / factory-gate.yml / portability
+  ordering, the multi-slug loop, per-file no-clobber (real machine state is
+  never overwritten), and the loud no-op guard.
+
+### Fixed
+- **Portability suite-leg redirect** (`portability-check.sh`): the harness
+  gate exports `MSB_REPO` (the runner checkout), which silently redirected
+  `scripts/test.sh`'s repo derivation — the full suite ran from the
+  checkout instead of the staged foreign copy, defeating the portability
+  guarantee. The suite invocation now pins `MSB_REPO="$DEST"`.
+- **Skip reasons in suite output** (`scripts/test.sh`): pytest now defaults
+  to `-rs`, so intentional skips (MSB_LIVE acceptance, seeded-run-ledger)
+  are auditable in every local and CI run instead of hiding in a count.
+
 ## [0.2.2] - 2026-08-13
 
 ### Added
@@ -91,6 +117,7 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ### Added
 - SMI-017 release artifacts milestone (pre-semver). See tag `SMI-017-v1.0`.
 
+[0.2.3]: https://github.com/lordwilsonDev/msb-v3/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/lordwilsonDev/msb-v3/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/lordwilsonDev/msb-v3/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/lordwilsonDev/msb-v3/compare/SMI-017-v1.0...v0.2.0
