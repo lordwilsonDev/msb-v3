@@ -102,6 +102,7 @@ SUMMARY="$(grep -E '^[0-9]+ (passed|failed)' "$LOG" | tail -1 || true)"
 echo "[verify-release] suite summary: ${SUMMARY:-<no summary found>}"
 
 [ "$SUITE_RC" -eq 0 ] || { echo "[verify-release] FAIL: suite exited non-zero ($SUITE_RC) — see $LOG" >&2; exit 1; }
+[ -n "$SUMMARY" ] || { echo "[verify-release] FAIL: no suite summary line found — see $LOG" >&2; exit 1; }
 case "$SUMMARY" in
   *failed*) echo "[verify-release] FAIL: test failures in the virgin-clone run — see $LOG" >&2; exit 1 ;;
 esac
@@ -122,3 +123,4 @@ if [ -n "${EXPECTED_PASS:-}" ]; then
 fi
 
 echo "[verify-release] PASS: $TAG verified from a virgin checkout"
+rm -f "$LOG"
