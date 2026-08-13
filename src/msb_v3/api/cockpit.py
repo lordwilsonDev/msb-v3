@@ -275,8 +275,14 @@ def _vault_state() -> Dict[str, Any]:
         except Exception as exc:
             logger.debug("vault point count failed: %s", exc)
         return {"collections": collections, "vault_points": points}
-    except Exception as exc:  # noqa: BLE001 — containment boundary
-        return {"error": f"{type(exc).__name__}: {exc}"}
+    except Exception as exc:
+        # Qdrant down is a degraded panel, not a hard error: the card renders
+        # "NO VAULT COLLECTION" and the page survives. One dead service costs
+        # a panel, never the page — the containment contract the cockpit
+        # probes assert (in-process panels must never carry an "error" key
+        # when a backing service is unreachable).
+        logger.debug("vault state unavailable (qdrant down?): %s", exc)
+        return {"collections": [], "vault_points": 0, "status": "unavailable"}
 
 
 # --- routes ---------------------------------------------------------------
