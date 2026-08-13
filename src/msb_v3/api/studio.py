@@ -7,6 +7,7 @@ from typing import Any, Dict
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
+from msb_v3 import __version__
 from msb_v3.core.config import settings
 from msb_v3.observability.metrics import Metrics
 
@@ -57,7 +58,7 @@ async def dashboard() -> str:
 async def status() -> Dict[str, Any]:
     return {
         "service": "msb-v3",
-        "version": "0.1.0",
+        "version": __version__,
         "ready": Metrics._ready,
         "model": settings.ollama_model,
         "host": settings.host,
