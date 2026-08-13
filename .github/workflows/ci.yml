@@ -98,6 +98,12 @@ jobs:
           PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
 
       - name: Upload coverage
+        # Tokenless upload: works for PUBLIC repos only while the Codecov
+        # GitHub App is installed on this repo (installed 2026-08-13). No
+        # token input is intentional — adding one is only needed if the repo
+        # goes private (tokenless uploads are then rejected with "Token
+        # required"), in which case set a CODECOV_TOKEN repo secret and add
+        # `token: ${{ secrets.CODECOV_TOKEN }}` here.
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml,./coverage.json
