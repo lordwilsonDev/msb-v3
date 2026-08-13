@@ -34,10 +34,15 @@ def _job_steps(wf_path: Path, job: str) -> list[dict]:
     return wf["jobs"][job]["steps"]
 
 
-def _seed_run_of_server_boot_step(steps: list[dict]) -> str:
+def _seed_run_of_server_boot_step(steps: list[dict]) -> None:
     """The step that boots the test server — seeding must precede it in the
     same run block (the server resolves the ledger at request time, so a
-    seed in a later step or a different job would still 404)."""
+    seed in a later step or a different job would still 404).
+
+    Note: `next()` pins only the FIRST matching boot step. factory-gate.yml
+    has three server-boot sites (coverage pytest / e2e / webcheck) — a new
+    boot step added before the pinned one without seeding would escape this
+    test, so treat it as coverage of the primary path, not a full audit."""
     step = next(
         s for s in steps
         if "python -m msb_v3" in s.get("run", "")
@@ -48,7 +53,6 @@ def _seed_run_of_server_boot_step(steps: list[dict]) -> str:
     assert run.index("seed-evidence-ledger.sh") < run.index("python -m msb_v3"), (
         "seeder must run BEFORE the server boot (server reads runtime/ at request time)"
     )
-    return run
 
 
 def test_fixture_exists_and_matches_live_shape() -> None:
@@ -76,15 +80,27 @@ def test_seeder_materializes_ledger_into_target_root(tmp_path: Path) -> None:
     assert ledger.is_file(), "seeder did not write the ledger to ROOT/runtime/research/…"
 
 
+def test_seeder_never_clobbers_an_existing_ledger(tmp_path: Path) -> None:
+    """A bare invocation (ROOT default = repo root) must not overwrite real
+    machine state — the reviewer-flagged clobber risk."""
+    existing = tmp_path / "runtime" / "research" / SLUG / f"{SLUG}_evidence_ledger.json"
+    existing.parent.mkdir(parents=True)
+    existing.write_text('{"evidence": [], "claims": ["real run data"], "meta": {}}')
+    r = subprocess.run(
+        ["bash", str(SEEDER), str(tmp_path)],
+        capture_output=True, text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "real run data" in existing.read_text(), "seeder clobbered an existing ledger"
+    assert "not clobbering" in r.stdout
+
+
 def test_ci_seeds_before_server_boot() -> None:
-    run = _seed_run_of_server_boot_step(_job_steps(ROOT / ".github" / "workflows" / "ci.yml", "test"))
-    assert "seed-evidence-ledger.sh" in run
+    _seed_run_of_server_boot_step(_job_steps(ROOT / ".github" / "workflows" / "ci.yml", "test"))
 
 
 def test_factory_gate_seeds_before_server_boot() -> None:
-    run = _seed_run_of_server_boot_step(_job_steps(ROOT / ".github" / "workflows" / "factory-gate.yml", "gate"))
-    assert "seed-evidence-ledger.sh" in run
-
+    _seed_run_of_server_boot_step(_job_steps(ROOT / ".github" / "workflows" / "factory-gate.yml", "gate"))
 
 def test_portability_gate_seeds_the_staged_copy() -> None:
     """The portability gate runs the suite from a foreign copy that excludes
