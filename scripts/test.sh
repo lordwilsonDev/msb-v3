@@ -11,4 +11,6 @@ export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen3:latest}"
 export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"
 
 cd "$REPO"
-exec "$PY" -m pytest -q "$@"
+# -rs: report skip reasons so intentional skips (MSB_LIVE acceptance,
+# seeded-run-ledger) are auditable in every suite run, not just the count.
+exec "$PY" -m pytest -q -rs "$@"

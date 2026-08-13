@@ -134,8 +134,9 @@ echo "  settings.msb_home -> $HOME_CHECK"
 [ "$HOME_CHECK" = "$DEST" ] || { echo "[portability] FAIL: msb_home did not resolve to the copy"; exit 1; }
 
 echo
-echo "[portability] running the full suite from the copy (MSB_HOME=$DEST, skip reasons reported via -rs)..."
-if ! (cd "$DEST" && MSB_HOME="$DEST" bash scripts/test.sh -rs); then
+echo "[portability] running the full suite from the copy (MSB_HOME=$DEST)..."
+# test.sh defaults to pytest -rs, so skip reasons show here too.
+if ! (cd "$DEST" && MSB_HOME="$DEST" bash scripts/test.sh); then
   echo "[portability] FAIL: suite exited non-zero from the foreign path"
   exit 1
 fi
