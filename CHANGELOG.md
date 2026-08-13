@@ -3,6 +3,15 @@
 All notable changes to msb-v3 are recorded here. Format follows [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [0.2.2] - 2026-08-13
+
+### Added
+- **Release-checklist guard test** (`tests/test_release_versions.py`):
+  asserts `pyproject.toml` / `msb_v3.__version__` / `sovereign_runtime`
+  identity version agree — version drift now fails the suite at the source.
+  (The v0.2.1 cut was blocked when `identity.py` lagged at 0.2.0; this test
+  makes that impossible to ship.)
+
 ## [0.2.1] - 2026-08-13
 
 ### Added
@@ -82,6 +91,7 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ### Added
 - SMI-017 release artifacts milestone (pre-semver). See tag `SMI-017-v1.0`.
 
+[0.2.2]: https://github.com/lordwilsonDev/msb-v3/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/lordwilsonDev/msb-v3/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/lordwilsonDev/msb-v3/compare/SMI-017-v1.0...v0.2.0
 [SMI-017-v1.0]: https://github.com/lordwilsonDev/msb-v3/releases/tag/SMI-017-v1.0
