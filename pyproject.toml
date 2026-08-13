@@ -16,7 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest==9.0.3",  # PYSEC-2026-1845: 8.3.5 vulnerable (pip-audit gate)
-  "pytest-asyncio==0.24.0",
+  "pytest-asyncio==1.4.0",  # 0.24.0 requires pytest<9 — clashes with the 9.0.3 CVE pin
   "ruff==0.9.4",
 ]
 
