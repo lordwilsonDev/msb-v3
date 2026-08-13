@@ -19,12 +19,9 @@ paths derive from settings.msb_home (portability gate stays green).
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import asyncio
 import json
+import logging
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +33,7 @@ from fastapi.responses import HTMLResponse
 
 from msb_v3.core.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["cockpit"])
 
 # Loopback-pinned self-fetches (same rule home.py learned through the Open

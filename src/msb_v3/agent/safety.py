@@ -22,9 +22,6 @@ unsafe signal) handles refusals without any special casing.
 from __future__ import annotations
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -33,6 +30,7 @@ from msb_v3.agent.executor import ToolProvider
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.uac.audit_chain import AuditChain
 
+logger = logging.getLogger(__name__)
 # capability -> risk tier (blueprint §7 tier table, trimmed to the slice +
 # the dangerous actions that must never run unapproved).
 RISK_TIERS: Dict[str, int] = {

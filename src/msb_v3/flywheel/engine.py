@@ -11,11 +11,8 @@ audited to the UAC audit chain — the loop is never a black box.
 
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import json
+import logging
 import re
 import sqlite3
 import uuid
@@ -47,6 +44,7 @@ from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.uac.audit_chain import AuditChain
 from msb_v3.uac.axiom_library import ArtifactRecord, AxiomLibrary
 
+logger = logging.getLogger(__name__)
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()

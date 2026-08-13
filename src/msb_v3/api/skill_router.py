@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 import os
 import re
 from pathlib import Path
@@ -13,6 +10,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["skills"])
 
 # Machine skills live in ~/.hermes/skills; MSB_SKILLS_DIR overrides (CI uses

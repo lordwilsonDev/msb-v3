@@ -1,11 +1,8 @@
 """Notify router with Telegram delivery."""
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import json
+import logging
 import os
 import urllib.error
 import urllib.request
@@ -13,6 +10,7 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["notify"])
 
 

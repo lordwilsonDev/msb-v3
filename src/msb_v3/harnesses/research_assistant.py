@@ -1,18 +1,16 @@
 """Long-horizon research harness — Phase 1 core."""
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import datetime
 import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from msb_v3.harnesses.base import BaseHarness, HarnessResult
 
+logger = logging.getLogger(__name__)
 
 class SovereignResearchAssistant(BaseHarness):
     def __init__(
