@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Response
 
+from msb_v3 import __version__
 from msb_v3.core.config import settings
 
 router = APIRouter(tags=["health"])
@@ -57,7 +58,7 @@ async def health() -> Dict[str, Any]:
     return {
         "ok": True,
         "service": "msb-v3",
-        "version": "0.1.0",
+        "version": __version__,
         "ts": datetime.now(timezone.utc).isoformat(),
     }
 

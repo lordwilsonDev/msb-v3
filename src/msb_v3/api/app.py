@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
+from msb_v3 import __version__
 from msb_v3.api.agent import router as agent_router
 from msb_v3.api.chat import router as chat_router
 from msb_v3.api.cockpit import router as cockpit_router
@@ -60,7 +61,7 @@ _RUN_LIMITER = RateLimiter(
 def create_app() -> FastAPI:
     app = FastAPI(
         title="MSB v3",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
     )
 
