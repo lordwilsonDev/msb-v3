@@ -5,7 +5,12 @@ from __future__ import annotations
 
 from typing import List
 
-from msb_v3.flywheel.chargers import StubCharger, StubScanner, TavilyScanner, _merge_candidates
+from msb_v3.flywheel.chargers import (
+    StubCharger,
+    StubScanner,
+    TavilyScanner,
+    _merge_candidates,
+)
 from msb_v3.uac.research_backend import ResearchBackendError, SearchResult
 
 

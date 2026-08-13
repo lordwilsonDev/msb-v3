@@ -1,7 +1,9 @@
-import sqlite3
 import shutil
-import pytest
+import sqlite3
 from pathlib import Path
+
+import pytest
+
 from msb_v3.ops.backup import create_backup, restore_backup, verify_backup
 
 

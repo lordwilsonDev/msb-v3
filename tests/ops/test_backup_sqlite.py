@@ -1,6 +1,8 @@
 import sqlite3
 from pathlib import Path
+
 from msb_v3.ops.backup import _backup_sqlite
+
 
 def test_backup_sqlite_copies_rows(tmp_path: Path):
     src = tmp_path / "src.db"

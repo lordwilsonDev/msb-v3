@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from msb_v3.ops.backup import prune_backups, list_backups
+from msb_v3.ops.backup import list_backups, prune_backups
 
 
 def test_prune_keeps_newest_n(tmp_path: Path):
