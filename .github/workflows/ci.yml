@@ -15,7 +15,7 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.changes.outputs.any_changed }}
+      changed: ${{ steps.flag.outputs.changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,12 +31,27 @@ jobs:
               - 'pyproject.toml'
               - 'requirements*.txt'
 
-  # dorny/paths-filter@v3 emits BOOLEAN outputs (its v3.0.0 breaking change),
-  # so `outputs.changed == 'true'` evaluates `true == 'true'` = false and every
-  # gated job skipped on every push. Truthy check is correct for v3 booleans.
+      # paths-filter@v3's ONLY output is `changes` (a JSON array of matched
+      # filter names) — the v2 per-filter/any_changed boolean outputs are
+      # gone, and referencing them yields an empty string that silently
+      # skipped every gated job on every push. Resolve to an explicit
+      # "true"/"false" string so downstream `== 'true'` is unambiguous.
+      - name: Resolve changed flag
+        id: flag
+        env:
+          # Passed via env (not shell interpolation) so the JSON array
+          # value (e.g. ["src"]) can't break shell quoting.
+          CHANGES: ${{ steps.changes.outputs.changes }}
+        run: |
+          if [ "$CHANGES" != "[]" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
     needs: preflight
-    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -102,7 +117,7 @@ jobs:
 
   lint:
     needs: preflight
-    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -140,7 +155,7 @@ jobs:
 
   security:
     needs: preflight
-    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -200,7 +215,7 @@ jobs:
 
   docker:
     needs: preflight
-    if: needs.preflight.outputs.changed || github.event_name == 'workflow_dispatch'
+    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
