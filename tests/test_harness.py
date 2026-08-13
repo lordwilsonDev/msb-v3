@@ -127,6 +127,7 @@ def test_research_assistant_ralph_run_served_from_seed():
     assert r.status_code == 200, f"GET /research/assistant/runs/ralph_test -> {r.status_code}"
     files = r.json().get("files", [])
     assert "STATUS.json" in files, f"seeded ralph STATUS.json not served: {files}"
+    assert "STATUS.json.bak" in files, f"seeded ralph STATUS.json.bak not served: {files}"
     with httpx.Client(timeout=10.0) as client:
         runs = client.get(BASE + "/research/assistant/runs").json().get("runs", [])
     assert "ralph_test" in runs, f"seeded ralph run not listed by /research/assistant/runs: {runs}"
