@@ -88,10 +88,12 @@ def test_research_assistant_claims_list():
 
 
 def test_research_assistant_claims_review():
-    # Asserts against a seeded research run's claims ledger. The ledger is
+    # Asserts against a research run's claims ledger. The ledger is normally
     # machine state (produced by real research runs over ollama) and is
-    # gitignored, so a fresh checkout/CI cannot reproduce it — skip rather
-    # than fail on missing seed data.
+    # gitignored — CI and the portability gate seed it from the committed
+    # fixture via scripts/seed-evidence-ledger.sh (run BEFORE the server
+    # boots, so the CI server serves /claims/review as 200). The skip remains
+    # a fallback for environments that never ran the seeder.
     ledger = (
         Path(__file__).resolve().parents[1]
         / "runtime"
