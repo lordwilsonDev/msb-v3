@@ -25,5 +25,13 @@ LEDGER="sovereign-ai-orchestration_evidence_ledger.json"
 
 [ -f "$FIXTURE" ] || { echo "[seed-ledger] FAIL: fixture missing: $FIXTURE" >&2; exit 1; }
 mkdir -p "$DEST_DIR"
+# Never clobber: an existing ledger is REAL machine state (produced by actual
+# research runs) — a bare invocation with ROOT defaulting to the repo root
+# must not wipe it. Every wired path seeds into a fresh checkout or an empty
+# staging copy, so this guard breaks nothing.
+if [ -f "$DEST_DIR/$LEDGER" ]; then
+  echo "[seed-ledger] present, not clobbering: $DEST_DIR/$LEDGER"
+  exit 0
+fi
 cp "$FIXTURE" "$DEST_DIR/$LEDGER"
 echo "[seed-ledger] seeded $DEST_DIR/$LEDGER"
