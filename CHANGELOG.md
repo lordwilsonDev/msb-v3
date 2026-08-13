@@ -50,5 +50,5 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ### Added
 - SMI-017 release artifacts milestone (pre-semver). See tag `SMI-017-v1.0`.
 
-<!-- Release links pending a configured remote; tags are local (v0.2.0,
-     SMI-017-v1.0). -->
+[0.2.0]: https://github.com/lordwilsonDev/msb-v3/compare/SMI-017-v1.0...v0.2.0
+[SMI-017-v1.0]: https://github.com/lordwilsonDev/msb-v3/releases/tag/SMI-017-v1.0
