@@ -22,6 +22,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
@@ -74,3 +76,40 @@ def test_release_verify_script_wired() -> None:
     assert "verify-release.sh" in target.group(1), (
         "verify-release target does not call the script"
     )
+
+
+def test_release_verify_ci_workflow_wired() -> None:
+    """The auto-verification workflow must exist, trigger on tag pushes, run
+    on the self-hosted runner (the suite's live tests need the :8766 dev
+    server), ensure that server, and call the verifier with the
+    token-authenticated remote. If any of that regresses (workflow renamed,
+    trigger dropped, step removed), every release silently skips its
+    verification — the dead-wiring failure mode this test exists to catch."""
+    wf = ROOT / ".github" / "workflows" / "release-verify.yml"
+    assert wf.is_file(), f"release-verify.yml missing: {wf}"
+    data = yaml.safe_load(wf.read_text(encoding="utf-8"))
+    # PyYAML (YAML 1.1) parses the bare `on:` key as boolean True; GitHub
+    # uses YAML 1.2 where it stays a string. Accept both so the test runs
+    # under either loader.
+    triggers = data.get("on") or data.get(True) or {}
+    assert triggers, "workflow has no trigger section"
+    assert "push" in triggers, "workflow must trigger on tag pushes"
+    assert triggers["push"]["tags"], "workflow must filter to tag pushes"
+    assert "workflow_dispatch" in triggers, "workflow must be dispatchable for manual verification"
+    job = data["jobs"]["verify"]
+    assert job["runs-on"] == ["self-hosted", "macOS"], (
+        "verification must run on the sovereign box (live :8766 dev server)"
+    )
+    steps = job["steps"]
+    assert any("make server-start" in s.get("run", "") for s in steps), (
+        "workflow must ensure the :8766 dev server (suite live tests)"
+    )
+    verifier = next(
+        (s for s in steps if "verify-release.sh" in s.get("run", "")), None
+    )
+    assert verifier is not None, "no step calls verify-release.sh"
+    env = verifier.get("env", {})
+    assert env.get("VERIFY_REMOTE", "").startswith("https://x-access-token:"), (
+        "verifier must clone via the token-authenticated remote (private repo)"
+    )
+    assert "VERIFY_TAG" in env, "verifier must receive the tag (push ref or dispatch input)"

@@ -1,0 +1,63 @@
+name: release-verify
+
+# Auto-verify every semver release tag from a VIRGIN CLONE of the tag — as
+# others would fetch it: confirm the checkout is virgin (no tracked .env /
+# runtime/), seed the research-runtime fixtures, and run the FULL suite from
+# the clone, failing on any test failure or seeded-artifact skip. This is
+# the v0.2.3 manual flow, automated (scripts/verify-release.sh). Also
+# dispatchable manually on any tag (input; blank = v<pyproject version>).
+#
+# WHY SELF-HOSTED: the full suite's live integration tests hit the dev
+# server on :8766, which only exists on the sovereign box (same rationale as
+# harness-gate). The script clones the tag from the remote using the
+# token-authenticated URL so even a private repo is fetchable inside CI.
+#
+# Pre-push local check: make verify-release (uses origin + local env).
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to verify (blank = v<pyproject version>)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: virgin-clone verification
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # The full suite's live endpoint tests need the dev server (:8766) —
+      # same best-effort, never-stop policy as harness-gate.
+      - name: Ensure msb-v3 server is up (best-effort, idempotent)
+        run: |
+          make server-start || true
+          i=0
+          until curl -fsS -m 2 http://127.0.0.1:8766/health >/dev/null; do
+            i=$((i + 1))
+            [ "$i" -ge 30 ] && { echo "msb-v3 not healthy on :8766 after 30s" >&2; exit 1; }
+            sleep 1
+          done
+          echo "msb-v3 healthy on :8766"
+
+      - name: Verify release from a virgin clone
+        run: bash scripts/verify-release.sh
+        env:
+          # On a tag push the ref IS the tag; on dispatch use the input (or
+          # the script's v<pyproject> default when blank).
+          VERIFY_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          # The script clones the tag from the remote — authenticate with the
+          # workflow token so a private repo is fetchable inside CI.
+          VERIFY_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
