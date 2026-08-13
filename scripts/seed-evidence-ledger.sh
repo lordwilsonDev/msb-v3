@@ -34,6 +34,7 @@ FIXTURE_COUNT=$(find "$FIXTURES_DIR" -maxdepth 1 -name '*_evidence_ledger.json' 
 for fixture in "$FIXTURES_DIR"/*_evidence_ledger.json; do
   [ -e "$fixture" ] || continue
   slug="$(basename "$fixture" _evidence_ledger.json)"
+  [ -n "$slug" ] || continue   # guard a pathological bare `_evidence_ledger.json`
   dest_dir="$ROOT/runtime/research/$slug"
   dest="$dest_dir/${slug}_evidence_ledger.json"
   mkdir -p "$dest_dir"

@@ -104,16 +104,18 @@ def test_seeder_loops_over_all_fixtures(tmp_path: Path) -> None:
 
 def test_seeder_fails_loudly_without_fixtures(tmp_path: Path) -> None:
     """No-op guard: a seeder that silently seeds nothing would let the
-    claims-review test skip again without a trace — it must fail loudly."""
+    claims-review test skip again without a trace — it must fail loudly
+    (both guard branches: empty fixtures dir, and missing fixtures dir)."""
     empty = tmp_path / "empty"
     empty.mkdir()
-    env = {**os.environ, "MSB_LEDGER_FIXTURES": str(empty)}
-    r = subprocess.run(
-        ["bash", str(SEEDER), str(tmp_path / "root")],
-        capture_output=True, text=True, env=env,
-    )
-    assert r.returncode != 0
-    assert "FAIL" in r.stderr
+    for fixtures_dir in (empty, tmp_path / "does-not-exist"):
+        env = {**os.environ, "MSB_LEDGER_FIXTURES": str(fixtures_dir)}
+        r = subprocess.run(
+            ["bash", str(SEEDER), str(tmp_path / "root")],
+            capture_output=True, text=True, env=env,
+        )
+        assert r.returncode != 0, f"guard did not fail for {fixtures_dir}"
+        assert "FAIL" in r.stderr
 
 
 def test_seeder_never_clobbers_an_existing_ledger(tmp_path: Path) -> None:
