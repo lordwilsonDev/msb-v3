@@ -13,6 +13,10 @@ msb_v3.conversation.envelope only. Nothing here calls a model.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import hashlib
 import json
 import os
@@ -644,6 +648,6 @@ def default_git_head(repo_root: Optional[Path] = None) -> str:
         )
         if out.returncode == 0:
             return out.stdout.strip()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("git rev-parse failed, recording HEAD as unknown: %s", exc)
     return "unknown"

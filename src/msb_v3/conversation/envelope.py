@@ -12,6 +12,10 @@ conversation-ledger-producer-v1.md — never change one without the other.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import datetime
 import hashlib
 import json
@@ -107,8 +111,8 @@ def source_ts_from_file(source: Optional[str]) -> Optional[str]:
         p = Path(source)
         if p.exists() and p.is_file():
             return _iso_utc(datetime.datetime.fromtimestamp(p.stat().st_mtime, tz=datetime.timezone.utc))
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.debug("mtime lookup failed for %s: %s", source, exc)
     return None
 
 

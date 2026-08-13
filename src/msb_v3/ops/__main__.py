@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 from msb_v3.ops.backup import (
     create_backup,
-    restore_backup,
+    default_paths,
     list_backups,
     prune_backups,
-    default_paths,
+    restore_backup,
 )
 
 

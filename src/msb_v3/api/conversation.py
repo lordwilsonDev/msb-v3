@@ -10,6 +10,10 @@ counter so a black-box probe can assert zero model spend on BLOCK.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import asyncio
 import time
 from typing import Any, Optional
@@ -99,8 +103,8 @@ async def _compose(query: str, sources: list[dict[str, Any]], stub: bool) -> tup
         text = (getattr(resp, "text", "") or "").strip()
         if text:
             return text, citations
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("compose failed, using fallback text: %s", exc)
     return f"[fallback] Based on the retrieved sources: {excerpt}", citations
 
 

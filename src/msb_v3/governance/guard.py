@@ -58,7 +58,7 @@ class Guard:
         kind: Optional[str] = None,
         budget_units: Optional[Dict[str, int]] = None,
         approval_id: Optional[str] = None,
-        signal: Optional[Dict[str, float]] = None,
+        signal: Optional[Dict[str, Any]] = None,
     ) -> GuardVerdict:
         """Gate one autonomous action. Caller must honor the verdict."""
         # 1. Kill switch — cheapest, most absolute, fail-closed.

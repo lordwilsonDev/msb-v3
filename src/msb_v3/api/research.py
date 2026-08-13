@@ -1,6 +1,10 @@
 """Research assistant router."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import datetime
 import json
 import os
@@ -62,8 +66,8 @@ def _telegram_token() -> str:
             for line in txt.splitlines():
                 if "token:" in line and "bot" not in line.lower():
                     return line.split("token:", 1)[1].strip().strip("\"'[] ") or ""
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("failed to read telegram token config: %s", exc)
     return ""
 
 
@@ -88,8 +92,8 @@ async def _send_telegram_async(text: str) -> None:
     loop = asyncio.get_running_loop()
     try:
         await loop.run_in_executor(None, _send_telegram, text)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("telegram notify failed: %s", exc)
 
 
 def _safety_check(topic: str) -> dict:
@@ -139,8 +143,8 @@ def _complete_run_background(slug: str, topic: str, assistant: SovereignResearch
             f"Status: {result.get('status')}",
         ]
         _send_telegram("\n".join(deliver))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("research delivery/notify failed: %s", exc)
 
 
 @router.post("/assistant/run")
@@ -258,8 +262,8 @@ async def latest(response: Response) -> dict:
     if state.exists():
         try:
             status = json.loads(state.read_text()).get("status", status)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("failed to read active run state: %s", exc)
     response.headers["cache-control"] = "max-age=5"
     return {"status": status, "slug": latest, "files": files}
 
@@ -307,8 +311,8 @@ async def get_run(slug: str) -> dict:
     if state.exists():
         try:
             status = json.loads(state.read_text()).get("status", status)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("failed to read run state for %s: %s", slug, exc)
     return {"slug": slug, "status": status, "files": files}
 
 
@@ -362,8 +366,8 @@ async def review_claims(slug: str, body: dict) -> dict:
             state_data = json.loads(state.read_text())
             state_data["status"] = "reviewed"
             state.write_text(json.dumps(state_data, indent=2) + "\n")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("failed to mark run reviewed: %s", exc)
     return {"slug": slug, "updated": updated, "decision": decision}
 
 
@@ -390,8 +394,8 @@ async def review_run(slug: str, body: dict) -> dict:
             data["review_notes"] = notes
             data["reviewed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             state_path.write_text(json.dumps(data, indent=2) + "\n")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("failed to persist review decision: %s", exc)
     return {"slug": slug, "decision": decision, "status": status}
 
 

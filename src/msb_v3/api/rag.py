@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 import uuid
 from typing import Any
@@ -65,8 +69,8 @@ def delete_tenant_collection(tenant_id: str, *, force: bool = False) -> None:
         return
     try:
         _qdrant_client().delete_collection(collection_name=_collection(tenant_id))
-    except Exception:  # noqa: BLE001 — cleanup is best-effort
-        pass
+    except Exception as exc:
+        logger.debug("collection cleanup failed for %s: %s", tenant_id, exc)
 
 
 _ID_NS = uuid.UUID("9c5c7c3e-6f1a-4b0e-9a2d-3d3e3f4f5f6f")
@@ -156,8 +160,8 @@ async def rag_index(payload: IndexRequest) -> dict[str, Any]:
             collection_name=collection,
             vectors_config={"size": _EMBED_DIM, "distance": "Cosine"},
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("failed to create collection %s: %s", collection, exc)
 
     points: list[dict[str, Any]] = []
     for idx, doc in enumerate(payload.documents):

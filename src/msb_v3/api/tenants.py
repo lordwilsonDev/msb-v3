@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import os
 from pathlib import Path
@@ -32,7 +36,8 @@ async def list_tenants() -> dict[str, Any]:
         try:
             data = json.loads(p.read_text())
             tenants.append({"id": data.get("id", p.stem), "name": data.get("name", p.stem)})
-        except Exception:
+        except Exception as exc:
+            logger.debug("skipping unreadable tenant file %s: %s", p, exc)
             continue
     return {"ok": True, "tenants": tenants, "count": len(tenants)}
 

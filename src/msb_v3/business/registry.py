@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import hashlib
 import json
 import os
@@ -82,7 +86,8 @@ async def list_truth() -> dict[str, Any]:
         try:
             data = json.loads(p.read_text())
             entities.append({"id": data.get("id", p.stem), "path": str(p)})
-        except Exception:
+        except Exception as exc:
+            logger.debug("skipping unreadable entity file %s: %s", p, exc)
             continue
     return {"ok": True, "entities": entities, "count": len(entities)}
 

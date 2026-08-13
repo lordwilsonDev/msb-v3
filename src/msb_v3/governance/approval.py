@@ -131,6 +131,8 @@ class ApprovalQueue:
                  json.dumps(refs, ensure_ascii=False), "PENDING", created),
             )
         item = self.get(iid)
+        if item is None:  # fail-closed: row was just inserted, must be readable
+            raise ApprovalError(f"approval item {iid} not readable after create")
         item.audit_failed = self._audit_append(
             "submitted", {"item_id": iid, "kind": kind, "title": title}
         )
@@ -157,6 +159,8 @@ class ApprovalQueue:
                     raise ApprovalError(f"unknown approval item {item_id}")
                 raise IdempotencyError(f"approval {item_id} already {row[0]}")
         item = self.get(item_id)
+        if item is None:  # fail-closed: row was just updated, must be readable
+            raise ApprovalError(f"approval item {item_id} not readable after decide")
         item.audit_failed = self._audit_append(
             status.lower(), {"item_id": item_id, "operator": operator, "reason": reason}
         )

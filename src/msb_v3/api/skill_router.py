@@ -1,6 +1,10 @@
 """Skill router — discover and execute Hermes skills via FastAPI."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 import re
 from pathlib import Path
@@ -37,8 +41,8 @@ def _list_skills() -> List[Dict[str, str]]:
                 m = re.search(r"^description:\s*(.+)", text, re.MULTILINE)
                 if m:
                     desc = m.group(1).strip().strip('"').strip("'")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("failed to parse description for skill %s: %s", name, exc)
             skills.append({"name": name, "category": category_dir.name, "description": desc[:120]})
     return skills
 

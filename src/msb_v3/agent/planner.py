@@ -23,11 +23,15 @@ which source produced the graph.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import asyncio
 from typing import Any, Dict, List
 
 from msb_v3.agent.dag import Task, TaskGraph
-from msb_v3.agent.intent import Intent, _extract_json, _clean_str_list
+from msb_v3.agent.intent import Intent, _clean_str_list, _extract_json
 from msb_v3.observability.metrics import Metrics
 
 _PLAN_SYSTEM = (
@@ -261,8 +265,8 @@ async def plan(
             if parsed and _is_acyclic_graph(parsed):
                 Metrics.inc("agentic", "plan:llm")
                 return TaskGraph(goal=intent.request, tasks=tuple(parsed), source="llm")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("LLM planning failed, falling back to template DAG: %s", exc)
 
     Metrics.inc("agentic", "plan:template")
     return template_dag(intent)

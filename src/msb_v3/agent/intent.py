@@ -17,6 +17,10 @@ Design (Dream Big Blue, T1.1):
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import re
 from dataclasses import dataclass
@@ -186,8 +190,8 @@ def interpret_intent(
                 domain=domain,
                 source="llm",
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("LLM intent extraction failed, using heuristic: %s", exc)
 
     permissions = ("write_file",) if _requests_write(request) else ()
     Metrics.inc("agentic", "intent:fallback")

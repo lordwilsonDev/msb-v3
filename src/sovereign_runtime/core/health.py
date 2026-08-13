@@ -6,7 +6,7 @@ Returns component health status in a stable JSON shape.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Dict, List
+from typing import Any, Callable, Dict, List
 
 
 @dataclass(frozen=True)
@@ -31,9 +31,9 @@ class HealthReport:
 class HealthSystem:
     def __init__(self, agent_id: str = "sovereign-agent-001") -> None:
         self.agent_id = agent_id
-        self._checks: Dict[str, callable] = {}
+        self._checks: Dict[str, Callable[..., Any]] = {}
 
-    def register(self, name: str, check: callable) -> None:
+    def register(self, name: str, check: Callable[..., Any]) -> None:
         self._checks[name] = check
 
     def check(self) -> HealthReport:

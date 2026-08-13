@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import hashlib
 import json
 import os
@@ -144,8 +148,8 @@ class RalphLoopHarness(BaseHarness):
         try:
             with open(tmp, "rb") as f:
                 os.fsync(f.fileno())
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.warning("fsync failed on status file %s: %s", tmp, exc)
         tmp.replace(self._status_path)
         # Backup after successful primary write
         self._status_path.replace(self._backup_path)
@@ -154,8 +158,8 @@ class RalphLoopHarness(BaseHarness):
         try:
             with open(tmp, "rb") as f:
                 os.fsync(f.fileno())
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.warning("fsync failed on status file %s: %s", tmp, exc)
         tmp.replace(self._status_path)
 
     def _journal(self, event: str) -> None:
@@ -168,10 +172,10 @@ class RalphLoopHarness(BaseHarness):
                 f.write(line + "\n")
                 try:
                     os.fsync(f.fileno())
-                except OSError:
-                    pass
-        except Exception:
-            pass
+                except OSError as exc:
+                    logger.warning("fsync failed on journal %s: %s", self._journal_path, exc)
+        except Exception as exc:
+            logger.warning("journal write failed: %s", exc)
 
     # ------------------------------------------------------------------
     # Hashing utilities
@@ -327,8 +331,8 @@ class RalphLoopHarness(BaseHarness):
     def _release_lock(self) -> None:
         try:
             self._lock_path.unlink()
-        except FileNotFoundError:
-            pass
+        except FileNotFoundError as exc:
+            logger.debug("lock %s already gone (benign race): %s", self._lock_path, exc)
 
     # ------------------------------------------------------------------
     # Self-annealing

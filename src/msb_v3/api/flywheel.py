@@ -15,6 +15,10 @@ pattern) so the whole router runs against tmp-backed state.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from msb_v3.api.auth import require_operator
@@ -45,8 +49,8 @@ def _turn_payload(turn) -> dict:
 def _run_turn_background(turn_id: str) -> None:
     try:
         _engine.run(turn_id)
-    except Exception:  # noqa: BLE001 — background task must not crash the worker
-        pass
+    except Exception as exc:
+        logger.warning("background flywheel turn %s failed: %s", turn_id, exc)
 
 
 @router.post("/flywheel/turn", status_code=202, dependencies=[Depends(require_operator)])

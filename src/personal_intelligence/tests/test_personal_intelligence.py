@@ -33,7 +33,9 @@ def test_context_engine_ingest_and_search() -> None:
     engine = ContextEngine()
     idx = engine.ingest(ContextChunk(source="notes.md", content="Buy milk and bread"))
     assert idx == 0
-    assert engine.retrieve("notes.md").content == "Buy milk and bread"
+    chunk = engine.retrieve("notes.md")
+    assert chunk is not None
+    assert chunk.content == "Buy milk and bread"
     assert engine.search("milk") == [engine.chunks[0]]
     assert engine.search("coffee") == []
 
