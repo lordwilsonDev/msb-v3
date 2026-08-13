@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.blackswanlabz.harness-evidence.plist — launchd LaunchAgent (user domain).
+
+  Freshens the video-harness evidence daily at 06:30 so harness-gate (msb-v3
+  CI, self-hosted runner) never blocks on stale evidence. The job is
+  idempotent: it skips when every experiment's newest evidence is PASS and
+  under FRESH_THRESHOLD_H (12h), else re-runs make run/run-p1/run-p2 in
+  ~/video-harness and proves the repo's harness-evidence.sh gate passes.
+  Alerts via a notification banner on failure (see
+  scripts/freshen-harness-evidence.sh).
+
+  Install (versioned template lives at scripts/ in the msb-v3 repo):
+
+      cp scripts/com.blackswanlabz.harness-evidence.plist ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.blackswanlabz.harness-evidence.plist
+
+  Remove:  launchctl bootout gui/$(id -u)/com.blackswanlabz.harness-evidence
+           rm ~/Library/LaunchAgents/com.blackswanlabz.harness-evidence.plist
+
+  Manual run:  bash scripts/freshen-harness-evidence.sh
+  Log:         ~/Library/Logs/msb-harness-evidence.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.blackswanlabz.harness-evidence</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lordwilson/msb-v3/scripts/freshen-harness-evidence.sh</string>
+    </array>
+
+    <!-- launchd's default PATH lacks Homebrew; the script needs make/ffmpeg/osascript. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <!-- No RunAtLoad: daily schedule only, like the factory gate. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>600</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/msb-harness-evidence-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/msb-harness-evidence-launchd.log</string>
+</dict>
+</plist>
