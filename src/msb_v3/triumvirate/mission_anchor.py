@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from msb_v3.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _STATUS_FILE = _RUNTIME_ROOT / "STATUS.json"
@@ -42,6 +45,10 @@ def _load() -> Dict[str, Any]:
     try:
         return json.loads(_STATUS_FILE.read_text())
     except Exception:
+        logger.debug(
+            "STATUS.json unreadable (corrupt or partial write); falling back to default status",
+            exc_info=True,
+        )
         return _default_status()
 
 
