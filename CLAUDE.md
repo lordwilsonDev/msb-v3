@@ -52,6 +52,34 @@ reloads it (symmetric). Verify with
 `launchctl print gui/$(id -u)/com.lordwilson.msb-v3`. Standby pidfile
 `.artifacts/msb-v3.pid` tracks the run.sh supervisor.
 
+## GitHub Actions CI / self-hosted runner
+
+Three gates run on push to main:
+- `msb-v3 CI` (hosted) — tests 3.11/3.12, lint (ruff + mypy), security
+  (pip-audit), docker build, claims verify
+- `factory-gate` (hosted) — full suite + coverage floor + hygiene + auth + E2E
+- `harness-gate` (**self-hosted**) — browser + video-harness evidence gate
+
+**Self-hosted runner:** `~/actions-runner`, name `msb-v3-mac-arm64`, labels
+`macOS, self-hosted`. Runs the harness-gate job because it exercises
+machine-local state (~/bin/webcheck.py, ~/video-harness/evidence, live
+:8766/:6333, system Chrome). Supervised by user-domain LaunchAgent
+`com.blackswanlabz.msb-v3.runner` (source:
+`scripts/com.blackswanlabz.msb-v3.runner.plist`, installed copy
+`~/Library/LaunchAgents/`, no sudo — `launchctl bootstrap gui/$(id -u)`).
+Full fresh-machine registration runbook: `Self-Hosted-CI-Runner-macOS`
+(30-012) in the vault, `~/Documents/Vault/30_Architecture/decisions/`.
+
+**Keeping harness-gate green:** automatic via daily LaunchAgent
+`com.blackswanlabz.harness-evidence` (06:30; template
+`scripts/com.blackswanlabz.harness-evidence.plist` →
+`scripts/freshen-harness-evidence.sh`) — skips when evidence is fresh, else
+re-runs `make run/run-p1/run-p2` in `~/video-harness` and proves the gate
+(log `~/Library/Logs/msb-harness-evidence.log`). harness-gate.yml also runs
+the freshener as a pre-flight step, so a stale-evidence push self-heals
+before the gate. Manual freshen: `bash scripts/freshen-harness-evidence.sh`.
+Local dry-run: `make harness-gate-dryrun`.
+
 ## Ports
 
 - msb-v3: `:8766`
