@@ -14,7 +14,7 @@ class AgentIdentity:
     id: str = "sovereign-agent-001"
     # Must track msb_v3.__version__ (test_runtime_boot pins the equality) —
     # bump both together on release.
-    version: str = "0.2.2"
+    version: str = "0.2.3"
     runtime: str = "msb-v3"
     host: str = field(default_factory=lambda: os.getenv("SOVEREIGN_HOST", "127.0.0.1"))
     environment: str = field(default_factory=lambda: os.getenv("SOVEREIGN_ENV", "development"))
