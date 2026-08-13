@@ -19,6 +19,7 @@ dev = [
   "pytest-asyncio==1.4.0",  # 0.24.0 requires pytest<9 — clashes with the 9.0.3 CVE pin
   "ruff==0.9.4",
   "mypy==2.3.0",  # CI lint job runs `mypy src` — was only an ad-hoc factory-gate arg
+  "PyYAML==6.0.3",  # workflow-structure guard tests (tests/test_harness_gate_wiring.py)
 ]
 
 # Ruff gates MUST agree across every invocation: the CI lint job runs plain
