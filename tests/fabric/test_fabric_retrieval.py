@@ -11,7 +11,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from msb_v3.fabric.retrieval_router import FabricRetrievalRouter, detect_domain  # noqa: E402
+from msb_v3.fabric.retrieval_router import (  # noqa: E402
+    FabricRetrievalRouter,
+    detect_domain,
+)
 
 
 def test_detect_domain_defaults_to_knowledge() -> None:

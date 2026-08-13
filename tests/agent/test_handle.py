@@ -12,7 +12,12 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from msb_v3.agent.bridge_provider import BridgeProvider, _extract_brief, _format_sources, _slug  # noqa: E402
+from msb_v3.agent.bridge_provider import (  # noqa: E402
+    BridgeProvider,
+    _extract_brief,
+    _format_sources,
+    _slug,
+)
 from msb_v3.agent.handle import handle  # noqa: E402
 from msb_v3.agent.safety import ActionGate  # noqa: E402
 
