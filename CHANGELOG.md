@@ -3,6 +3,38 @@
 All notable changes to msb-v3 are recorded here. Format follows [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [0.2.1] - 2026-08-13
+
+### Added
+- **Self-hosted harness-gate runner** (`msb-v3-mac-arm64`, labels
+  `macOS, self-hosted`) supervised by a user-domain LaunchAgent — the
+  browser + video-harness evidence gate now runs on the sovereign box
+  instead of queueing forever on hosted runners. Fresh-machine
+  registration runbook: vault 30-012.
+- **Daily evidence freshener** (`com.blackswanlabz.harness-evidence`, 06:30):
+  re-runs the three video-harness baseline experiments when evidence ages
+  past 12h, so harness-gate's 24h freshness window never blocks on stale
+  evidence; notification banner on failure.
+- **CI pre-flight self-heal**: harness-gate runs the freshener before the
+  evidence gate, so a stale-evidence push refreshes itself instead of red.
+- **CI wiring guard test** (`tests/test_harness_gate_wiring.py`) — asserts
+  the pre-flight step exists, runs before the gate, and calls the freshener
+  with `MSB_REPO` bound to the checkout (`PyYAML` added to the dev extra).
+- **Codecov coverage upload**: `CODECOV_TOKEN` repo secret wired into
+  `codecov-action@v4` with `fail_ci_if_error: true` — coverage (~80%) now
+  lands on Codecov, and a revoked token turns the test job red instead of
+  silently dropping.
+
+### Fixed
+- **Coverage upload never landed**: `codecov-action@v4` dropped tokenless
+  uploads for main-repo pushes, so every upload failed with
+  "Token required" while `fail_ci_if_error: false` hid it. Now
+  token-authenticated and loud.
+
+### Changed
+- Docs: CLAUDE.md covers the runner, evidence freshener, and CODECOV_TOKEN
+  rotation; vault 30-012 runbook.
+
 ## [0.2.0] - 2026-08-12
 
 ### Added
@@ -50,5 +82,6 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ### Added
 - SMI-017 release artifacts milestone (pre-semver). See tag `SMI-017-v1.0`.
 
+[0.2.1]: https://github.com/lordwilsonDev/msb-v3/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/lordwilsonDev/msb-v3/compare/SMI-017-v1.0...v0.2.0
 [SMI-017-v1.0]: https://github.com/lordwilsonDev/msb-v3/releases/tag/SMI-017-v1.0
