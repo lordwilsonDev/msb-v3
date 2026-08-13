@@ -1,21 +1,24 @@
-"""Guard the evidence-ledger seeding wiring — the claims-review test must keep
+"""Guard the evidence-ledger seeding wiring — the harness suite must keep
 running (not skipping) wherever a server is booted from a checkout.
 
 test_harness.py::test_research_assistant_claims_review skips unless the
 sovereign-ai-orchestration evidence ledger exists in the checkout's
-runtime/. The ledger is gitignored machine state (produced by real research
-runs), so fresh checkouts and portability staging copies lack it — this was
-the 801-vs-802 suite delta. scripts/seed-evidence-ledger.sh materializes the
-committed fixture, and CI / the factory gate / the portability gate must call
-it BEFORE booting a server (the server reads the same repo-relative path).
-If that wiring ever regresses, the test silently skips again instead of
-failing — same failure mode as the 2026-08 paths-filter@v3 dead-output bug
-that let CI gates skip for weeks unseen.
+runtime/. Ledgers are gitignored machine state (produced by real research
+runs), so fresh checkouts and portability staging copies lack them — this
+was the 801-vs-802 suite delta. scripts/seed-evidence-ledger.sh is now
+slug-agnostic: it seeds EVERY `<slug>_evidence_ledger.json` fixture from
+tests/fixtures/evidence_ledgers/ into runtime/research/<slug>/, so a future
+seeded slug is a data-only change. CI / the factory gate / the portability
+gate must call it BEFORE booting a server (the server reads the same
+repo-relative path). If that wiring ever regresses, the test silently skips
+again instead of failing — same failure mode as the 2026-08 paths-filter@v3
+dead-output bug that let CI gates skip for weeks unseen.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -78,6 +81,39 @@ def test_seeder_materializes_ledger_into_target_root(tmp_path: Path) -> None:
         tmp_path / "runtime" / "research" / SLUG / f"{SLUG}_evidence_ledger.json"
     )
     assert ledger.is_file(), "seeder did not write the ledger to ROOT/runtime/research/…"
+
+
+def test_seeder_loops_over_all_fixtures(tmp_path: Path) -> None:
+    """Slug-agnostic: every fixture in the fixtures dir is seeded — adding a
+    new slug is a data-only change, no script edit."""
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    (fixtures / "alpha_evidence_ledger.json").write_text('{"evidence": [], "claims": [], "meta": {}}')
+    (fixtures / "beta_evidence_ledger.json").write_text('{"evidence": [], "claims": [], "meta": {}}')
+    root = tmp_path / "root"
+    env = {**os.environ, "MSB_LEDGER_FIXTURES": str(fixtures)}
+    r = subprocess.run(
+        ["bash", str(SEEDER), str(root)],
+        capture_output=True, text=True, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+    for slug in ("alpha", "beta"):
+        ledger = root / "runtime" / "research" / slug / f"{slug}_evidence_ledger.json"
+        assert ledger.is_file(), f"seeder skipped {slug}: {ledger}"
+
+
+def test_seeder_fails_loudly_without_fixtures(tmp_path: Path) -> None:
+    """No-op guard: a seeder that silently seeds nothing would let the
+    claims-review test skip again without a trace — it must fail loudly."""
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    env = {**os.environ, "MSB_LEDGER_FIXTURES": str(empty)}
+    r = subprocess.run(
+        ["bash", str(SEEDER), str(tmp_path / "root")],
+        capture_output=True, text=True, env=env,
+    )
+    assert r.returncode != 0
+    assert "FAIL" in r.stderr
 
 
 def test_seeder_never_clobbers_an_existing_ledger(tmp_path: Path) -> None:
