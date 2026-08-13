@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.blackswanlabz.msb-v3.runner.plist — GitHub Actions self-hosted runner
+  (user-domain LaunchAgent, no root needed).
+
+  Runs the msb-v3 harness-gate runner as the lordwilson user so $HOME-based
+  paths resolve (~/bin/webcheck.py, ~/video-harness/evidence, miniforge,
+  system Chrome). Registers with labels: macOS, self-hosted.
+
+  Install:
+      cp this file ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.runner.plist
+
+  Remove:
+      launchctl bootout gui/$(id -u)/com.blackswanlabz.msb-v3.runner
+      rm ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.runner.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.blackswanlabz.msb-v3.runner</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/lordwilson/actions-runner/run.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lordwilson/actions-runner</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lordwilson/actions-runner/launchd.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/lordwilson/actions-runner/launchd.stderr.log</string>
+</dict>
+</plist>
