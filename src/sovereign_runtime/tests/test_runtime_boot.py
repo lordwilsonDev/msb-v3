@@ -14,6 +14,7 @@ import time
 
 import pytest
 
+from msb_v3 import __version__
 from sovereign_runtime import Event, EventBus, get, identity, load_config
 from sovereign_runtime.core.health import HealthSystem
 
@@ -66,7 +67,7 @@ def test_event_has_required_fields():
 
 def test_identity_deterministic():
     assert identity.id == "sovereign-agent-001"
-    assert identity.version == "0.1.0"
+    assert identity.version == __version__
     assert identity.runtime == "msb-v3"
 
 

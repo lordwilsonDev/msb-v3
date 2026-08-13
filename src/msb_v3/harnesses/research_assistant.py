@@ -1,6 +1,10 @@
 """Long-horizon research harness — Phase 1 core."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import datetime
 import hashlib
 import json
@@ -59,8 +63,8 @@ class SovereignResearchAssistant(BaseHarness):
             resp = client.execute_tool_loop(prompt)
             if resp and getattr(resp, "text", None):
                 return resp.text.strip()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("LLM execute failed: %s", exc)
         return ""
 
     def run_inversion(self) -> Dict[str, Any]:
@@ -231,6 +235,6 @@ class SovereignResearchAssistant(BaseHarness):
         if state.exists():
             try:
                 status = json.loads(state.read_text()).get("status", status)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("failed to read assistant state: %s", exc)
         return {"status": status, "slug": self.slug, "files": files}

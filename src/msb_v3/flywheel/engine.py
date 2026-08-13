@@ -11,6 +11,10 @@ audited to the UAC audit chain — the loop is never a black box.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import re
 import sqlite3
@@ -173,8 +177,8 @@ class FlywheelEngine:
                     if turn is not None:
                         turn.notes.append(f"audit failed: {type(exc).__name__}: {exc}")
                         self._save(turn)
-                except Exception:  # noqa: BLE001 — containment
-                    pass
+                except Exception as exc:
+                    logger.debug("failed to append audit-failed note: %s", exc)
 
     # --- guards ------------------------------------------------------------
 
@@ -315,8 +319,8 @@ class FlywheelEngine:
             try:
                 self._queue.approve(item_id, operator)
                 turn.notes.append(f"{stage} approved by {operator}")
-            except (IdempotencyError, ApprovalError):
-                pass
+            except (IdempotencyError, ApprovalError) as exc:
+                logger.debug("approval %s already decided for stage %s: %s", item_id, stage, exc)
         self._save(turn)
         return self.resume(turn_id)
 
@@ -387,8 +391,8 @@ class FlywheelEngine:
         if turn.uim_path:
             try:
                 uim = json.loads(Path(turn.uim_path).read_text())
-            except Exception:  # noqa: BLE001 — containment
-                pass
+            except Exception as exc:
+                logger.warning("failed to load UIM %s: %s", turn.uim_path, exc)
         scanned = self._scanner.scan(turn.problem, uim)
         # Persist the full scan (matches + candidates) beside the other stage
         # artifacts — evidence the real feed ran, and input for the surface
@@ -407,15 +411,15 @@ class FlywheelEngine:
             try:
                 scan = json.loads(scan_path.read_text())
                 candidates = [str(c) for c in (scan.get("candidates") or [])]
-            except Exception:  # noqa: BLE001 — containment
-                pass
+            except Exception as exc:
+                logger.warning("failed to load scan artifact: %s", exc)
         if not candidates:
             uim: Dict[str, Any] = {}
             if turn.uim_path:
                 try:
                     uim = json.loads(Path(turn.uim_path).read_text())
-                except Exception:  # noqa: BLE001 — containment
-                    pass
+                except Exception as exc:
+                    logger.warning("failed to load UIM %s: %s", turn.uim_path, exc)
             candidates = list((uim.get("phase1") or {}).get("predictions", []))[:3]
         turn.notes.append(f"next problems: {len(candidates)} candidate(s) surfaced")
 
@@ -499,8 +503,8 @@ class FlywheelEngine:
                     results = r.json().get("results", [])
                     if results:
                         return float(results[0].get("score", 0.0))
-        except Exception:  # noqa: BLE001 — containment
-            pass
+        except Exception as exc:
+            logger.warning("rag relevance probe failed: %s", exc)
         return 0.0
 
     def _execute_skill(self, skill: str) -> str:

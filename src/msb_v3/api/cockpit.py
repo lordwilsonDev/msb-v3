@@ -19,6 +19,10 @@ paths derive from settings.msb_home (portability gate stays green).
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import asyncio
 import json
 import sqlite3
@@ -196,8 +200,8 @@ def _mission_state() -> Dict[str, Any]:
             }
             for r in rows
         ]
-    except Exception:  # noqa: BLE001 — containment boundary
-        pass
+    except Exception as exc:
+        logger.debug("argus state unavailable: %s", exc)
     return {"mission": mission, "argus": argus}
 
 
@@ -268,8 +272,8 @@ def _vault_state() -> Dict[str, Any]:
         points = 0
         try:
             points = client.count(collection).count
-        except Exception:  # noqa: BLE001 — collection may not exist
-            pass
+        except Exception as exc:
+            logger.debug("vault point count failed: %s", exc)
         return {"collections": collections, "vault_points": points}
     except Exception as exc:  # noqa: BLE001 — containment boundary
         return {"error": f"{type(exc).__name__}: {exc}"}

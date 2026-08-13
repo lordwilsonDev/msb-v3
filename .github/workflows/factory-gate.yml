@@ -7,8 +7,8 @@ name: factory-gate
 # (the ask->retrieve->guardrail->answer->log contract) against freshly booted
 # servers. Any non-PASS leg fails the job, which blocks the push/merge.
 #
-# Coverage baseline: 68% measured on 2026-08-09 (253 tests). The gate
-# prevents regression below 65% — raise it as coverage grows.
+# Coverage baseline: 72% measured (2026-08-12). The gate prevents
+# regression below 70% — raise it as coverage grows.
 #
 # Requires one repo secret:
 #   MSB_MCP_SECRET  ->  the MCP_BRIDGE_SECRET the server must accept.
@@ -69,10 +69,13 @@ jobs:
             cat /tmp/msb-test-server.log
             exit 1
           fi
-          pytest --cov=msb_v3 --cov-report=term --cov-fail-under=65 -q
+          pytest --cov=msb_v3 --cov-report=term --cov-fail-under=70 -q
 
+      # Full scope: types ALL three packages, not just src/msb_v3 — the
+      # sovereign_runtime/personal_intelligence blind spot cost 5 real errors
+      # (now fixed).
       - name: Typed enforcement (mypy)
-        run: mypy src/msb_v3 --ignore-missing-imports
+        run: mypy src --ignore-missing-imports
 
       - name: Lint gate (ruff E9/F/I)
         run: ruff check --select E9,F,I .

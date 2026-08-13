@@ -80,7 +80,7 @@ jobs:
             cat /tmp/msb-ci-test-server.log
             exit 1
           fi
-          PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json
+          PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -122,9 +122,11 @@ jobs:
       - name: Run Ruff
         run: ruff check src/ tests/
 
+      # Full scope: types ALL three packages (msb_v3, sovereign_runtime,
+      # personal_intelligence), not just src/msb_v3. Blocking — the old
+      # continue-on-error made this step a no-op that never gated.
       - name: Run mypy
-        run: mypy src/msb_v3 --ignore-missing-imports
-        continue-on-error: true
+        run: mypy src --ignore-missing-imports
 
       - name: Upload lint reports
         if: always()
@@ -155,9 +157,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]" pip-audit
 
-      - name: Run pip-audit
-        run: pip-audit --strict
-        continue-on-error: true
+      # Blocking CVE gate. Editable/private packages (the repo itself) are
+      # excluded via pip freeze --exclude-editable — pip-audit's own
+      # --skip-editable errors on them in 2.10.x. `--strict` fails on any
+      # known vulnerability (the pytest 8.3.5 CVE was why this was a no-op).
+      - name: Run pip-audit (blocking)
+        run: |
+          pip freeze --exclude-editable > /tmp/msb-audit-requirements.txt
+          pip-audit -r /tmp/msb-audit-requirements.txt --strict
 
       - name: Check for secrets
         run: |

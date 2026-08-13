@@ -15,9 +15,9 @@ from msb_v3.fabric.context import BuiltContext, ContextBuilder, ContextLedger
 from msb_v3.fabric.model_router import (
     DEFAULT_TIER,
     FRONTIER_THRESHOLD,
+    WEIGHTS,
     ModelRouter,
     RouterDecision,
-    WEIGHTS,
 )
 from msb_v3.fabric.retrieval_router import (
     DomainResult,

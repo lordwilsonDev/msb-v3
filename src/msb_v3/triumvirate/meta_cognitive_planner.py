@@ -1,6 +1,10 @@
 """Meta-Cognitive Planner engine for Triumvirate Phase 1."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import hashlib
 import json
 import re
@@ -41,8 +45,8 @@ def _ensure_artifact_dirs(slug: str) -> Dict[str, Path]:
 def _append_memory(role: str, content: str, session: str = "triumvirate") -> None:
     try:
         _MEMORY.append(session, Message(role=role, content=content, ts=datetime.now(timezone.utc).timestamp()))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("triumvirate memory append failed: %s", exc)
 
 
 def _write_json(path: Path, payload: Any) -> None:

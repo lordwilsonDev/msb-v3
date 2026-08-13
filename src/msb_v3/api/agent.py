@@ -24,8 +24,8 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from msb_v3.api.auth import require_operator
 from msb_v3.agent.handle import handle
+from msb_v3.api.auth import require_operator
 
 router = APIRouter(tags=["agent"])
 

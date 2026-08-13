@@ -13,8 +13,11 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from msb_v3 import __version__
 from msb_v3.core.config import settings
 from msb_v3.observability.metrics import Metrics
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -40,8 +43,8 @@ class _AuditEvent(BaseModel):
 def _log_audit(event: _AuditEvent) -> None:
     try:
         _AUDIT_LOGGER.info(json.dumps(event.model_dump(), ensure_ascii=False))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("audit log write failed: %s", exc)
 
 
 def _client_identity(request: Request) -> str:
@@ -473,7 +476,7 @@ async def mcp_status(request: Request) -> dict[str, Any]:
     _check_auth(request)
     return {
         "service": "msb-v3",
-        "version": "0.1.0",
+        "version": __version__,
         "ready": bool(Metrics._ready),
         "tools": len(_MCP_TOOLS),
     }

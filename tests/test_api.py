@@ -52,6 +52,7 @@ def test_system_routes():
 
 
 def test_system_config():
+    from msb_v3 import __version__
     from msb_v3.api.app import create_app
 
     app = create_app()
@@ -60,7 +61,7 @@ def test_system_config():
     assert r.status_code == 200
     body = r.json()
     assert body["service"] == "msb-v3"
-    assert body["version"] == "0.1.0"
+    assert body["version"] == __version__
     assert "ready" in body
     assert "ollama_url" in body
     assert "ollama_model" in body

@@ -21,6 +21,10 @@ unsafe signal) handles refusals without any special casing.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -135,8 +139,8 @@ class ActionGate:
         verdict = GateVerdict(False, action, reason, tier=tier, tainted=tainted)
         try:
             self._audit.append("agentic", "blocked", {"action": action, "reason": reason, "capability": capability})
-        except Exception:  # noqa: BLE001 — a failed audit must not crash the gate
-            pass
+        except Exception as exc:
+            logger.warning("gate audit append failed: %s", exc)
         return verdict
 
 

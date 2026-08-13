@@ -249,21 +249,30 @@ async def hippocampus_search(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.post("/multimodal/vision/capture")
 async def vision_capture() -> Dict[str, Any]:
-    TRIUMVIRATE_MULTIMODAL.labels(interface="vision").inc()
-    return VisionClaw().capture_screen()
+    result = VisionClaw().capture_screen()
+    # Stub calls are not real work: don't let the metrics count a stub
+    # payload as a delivered multimodal operation (audit: stub subsystems
+    # must not inflate the dashboards). Counts resume automatically when a
+    # real implementation stops returning status="stub".
+    if result.get("status") != "stub":
+        TRIUMVIRATE_MULTIMODAL.labels(interface="vision").inc()
+    return result
 
 
 @router.post("/multimodal/haptic/heartbeat")
 async def haptic_heartbeat() -> Dict[str, Any]:
-    TRIUMVIRATE_MULTIMODAL.labels(interface="haptic").inc()
-    hh = HapticHeartbeat()
-    return hh.poll_sac()
+    result = HapticHeartbeat().poll_sac()
+    if result.get("status") != "stub":  # stub calls are not real work
+        TRIUMVIRATE_MULTIMODAL.labels(interface="haptic").inc()
+    return result
 
 
 @router.post("/multimodal/speech/command")
 async def speech_command(body: Dict[str, Any]) -> Dict[str, Any]:
     transcript = body.get("transcript") or ""
-    TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
-    return SpeechFunctions().map_command(transcript)
+    result = SpeechFunctions().map_command(transcript)
+    if result.get("status") != "stub":  # stub calls are not real work
+        TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
+    return result
 
 

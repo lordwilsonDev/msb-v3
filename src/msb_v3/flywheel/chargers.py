@@ -168,7 +168,7 @@ class TavilyScanner:
         return {
             "papers_scanned": len(matches),
             "matches": matches,
-            "candidates": _merge_candidates([m["title"] for m in matches], uim),
+            "candidates": _merge_candidates([str(m["title"]) for m in matches], uim),
             "notes": f"tavily: {len(matches)} paper(s) on '{query}'",
         }
 

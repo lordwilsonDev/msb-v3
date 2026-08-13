@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
+from msb_v3 import __version__
 from msb_v3.core.config import settings
 
 router = APIRouter(tags=["system"])
@@ -13,7 +14,7 @@ router = APIRouter(tags=["system"])
 
 @router.get("/info")
 def system_info() -> Dict[str, Any]:
-    return {"service": "msb-v3", "version": "0.1.0"}
+    return {"service": "msb-v3", "version": __version__}
 
 
 @router.get("/health")
@@ -58,7 +59,7 @@ def system_config() -> Dict[str, Any]:
 
     return {
         "service": "msb-v3",
-        "version": "0.1.0",
+        "version": __version__,
         "host": settings.host,
         "port": settings.port,
         "ollama_url": settings.ollama_url.replace("http://", "").replace("https://", "").split("@")[-1] if settings.ollama_url else "hidden",

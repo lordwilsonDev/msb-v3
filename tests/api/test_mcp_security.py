@@ -2,6 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from msb_v3 import __version__
 from msb_v3.api import mcp_bridge
 from msb_v3.api.app import create_app
 
@@ -44,7 +45,7 @@ def test_mcp_status_returns_service_shape(client):
     assert response.status_code == 200
     data = response.json()
     assert data["service"] == "msb-v3"
-    assert data["version"] == "0.1.0"
+    assert data["version"] == __version__
     assert isinstance(data["ready"], bool)
     # Tool count must track the manifest — a stale hardcoded number would
     # silently drift from what /mcp/tools actually serves.

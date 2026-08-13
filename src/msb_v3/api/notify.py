@@ -1,6 +1,10 @@
 """Notify router with Telegram delivery."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import os
 import urllib.error
@@ -23,8 +27,8 @@ def _telegram_token() -> str:
             for line in txt.splitlines():
                 if "token:" in line and "bot" not in line.lower():
                     return line.split("token:", 1)[1].strip().strip("\"'[] ") or ""
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("failed to read notify token config: %s", exc)
     return ""
 
 
