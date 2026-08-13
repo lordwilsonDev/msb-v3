@@ -208,6 +208,31 @@ push`). It gates the working tree, so unrelated local edits can block a push.
 Git hooks aren't versioned, so install once per fresh clone with
 `make hooks-install` (remove: `make hooks-uninstall`).
 
+### Tag immutability ruleset (`release-tag-immutability`)
+
+Repo ruleset, target **tag**, active, `refs/tags/v*` — rules: `deletion`
+(tags cannot be deleted) + `update` (tags cannot be force-moved). Verified
+live 2026-08-13: `v*` tag creation succeeds, force-update and deletion are
+rejected (owner is NOT auto-bypassed; the rules bind everyone).
+
+**Why there is no required-status-check on tag creation:** GitHub evaluates
+tag rulesets' required status checks against the **tag ref**, not the
+underlying commit — a check suite only exists on a tag ref after a workflow
+ran on that tag, which requires the tag to already exist. So a status check
+cannot gate a tag's first creation (chicken-and-egg; the
+`do_not_enforce_on_create` parameter exists precisely because of it, and
+makes creation un-gated). Verification is therefore enforced where it CAN
+be: `scripts/verify-release.sh` runs locally pre-tag, `release-verify.yml`
+runs post-tag in CI, and every commit on `main` passes the full gates before
+`scripts/release.sh` is allowed to tag it. The tag ruleset locks that
+verified state: once a release tag exists it is immutable.
+
+**Emergency path (e.g. cut a bad release tag):**
+1. Disable the ruleset: `gh api repos/lordwilsonDev/msb-v3/rulesets/20801997 -X PUT --input <(echo '{"enforcement": "disabled"}')`
+2. Delete the tag (API ref deletion is more reliable than `git push origin :tag`):
+   `gh api repos/lordwilsonDev/msb-v3/git/refs/tags/<tag> -X DELETE`
+3. Re-enable: `gh api repos/lordwilsonDev/msb-v3/rulesets/20801997 -X PUT --input <(echo '{"enforcement": "active"}')`
+
 ## MCP
 
 `msb-mcp-server` at `/Users/lordwilson/msb-mcp-server` provides `msb-v3.chat/memory_*`, `status`, `metrics_*` tools.
