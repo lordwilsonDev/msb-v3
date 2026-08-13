@@ -7,9 +7,11 @@ logs/
 .rouff_cache/
 .pytest_cache/
 
-# Per-run hygiene experiment artifacts (ephemeral); keep aggregate + gate
+# Per-run hygiene experiment artifacts (ephemeral); keep the gate verdict
+# tracked, aggregate is now regenerated evidence too (untracked 2026-08-13)
 artifacts/hygiene/*.db
 artifacts/hygiene/h0*_*.json
+artifacts/hygiene/hygiene_aggregate.json
 artifacts/hygiene/h01_*.json
 artifacts/hygiene/h02_*.json
 artifacts/hygiene/h03_*.json
