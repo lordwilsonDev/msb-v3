@@ -143,7 +143,13 @@ echo "  settings.msb_home -> $HOME_CHECK"
 echo
 echo "[portability] running the full suite from the copy (MSB_HOME=$DEST)..."
 # test.sh defaults to pytest -rs, so skip reasons show here too.
-if ! (cd "$DEST" && MSB_HOME="$DEST" bash scripts/test.sh); then
+# MSB_REPO must be pinned to the COPY: callers that export MSB_REPO (the
+# harness-gate sets it to ${{ github.workspace }}, the runner checkout) would
+# otherwise redirect test.sh's REPO derivation and run the suite from the
+# CHECKOUT instead of the staged copy — silently defeating the foreign-path
+# guarantee (found 2026-08-13: the seeded evidence ledger was bypassed, the
+# claims-review test skipped again in the copy's place).
+if ! (cd "$DEST" && MSB_HOME="$DEST" MSB_REPO="$DEST" bash scripts/test.sh); then
   echo "[portability] FAIL: suite exited non-zero from the foreign path"
   exit 1
 fi
