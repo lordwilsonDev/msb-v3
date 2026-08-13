@@ -5,12 +5,15 @@ import ast
 import hashlib
 import hmac
 import json
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from msb_v3.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _SBOM_FILE = _RUNTIME_ROOT / "sbom_registry.json"
@@ -267,6 +270,10 @@ def _load_sbom() -> Dict[str, Any]:
     try:
         return json.loads(_SBOM_FILE.read_text())
     except Exception:
+        logger.debug(
+            "sbom registry unreadable (corrupt or partial write); treating as empty",
+            exc_info=True,
+        )
         return {}
 
 
@@ -295,6 +302,10 @@ def _is_locked_down() -> bool:
     try:
         data = json.loads(_POISON_PILL_FILE.read_text())
     except Exception:
+        logger.debug(
+            "poison-pill state unreadable; treating as not locked down",
+            exc_info=True,
+        )
         return False
     return bool(data.get("locked_down"))
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from msb_v3.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _MESH_STATE_FILE = _RUNTIME_ROOT / "mesh_state.json"
@@ -24,6 +27,10 @@ def _load_mesh_state() -> Dict[str, Any]:
     try:
         return json.loads(_MESH_STATE_FILE.read_text())
     except Exception:
+        logger.debug(
+            "mesh state unreadable (corrupt or partial write); treating as empty",
+            exc_info=True,
+        )
         return {"peers": {}, "cluster": {}}
 
 
@@ -106,6 +113,10 @@ class VectorHippocampus:
         try:
             return json.loads(data)
         except Exception:
+            logger.debug(
+                "embedding payload unreadable; treating as empty vector",
+                exc_info=True,
+            )
             return []
 
     def upsert(self, chunk: DocumentChunk) -> None:
