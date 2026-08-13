@@ -21,6 +21,14 @@ test:
 portability:
 	bash scripts/portability-check.sh
 
+# Release verification: fresh-clone the tag (default v<pyproject version>)
+# from the remote, confirm the checkout is virgin, seed the research-runtime
+# fixtures, and run the full suite from the clone — fails on any test failure
+# or seeded-artifact skip. Run right after tagging; keep the clone with
+# VERIFY_KEEP=1, pin the pass count with EXPECTED_PASS=814.
+verify-release:
+	bash scripts/verify-release.sh
+
 # Warn when the live .env drifts from the locked .env.example (non-secret
 # contract vars only; secrets are never compared or printed). --fail makes
 # mismatches exit non-zero for scripting. The portability gate runs this
