@@ -113,3 +113,15 @@ def test_portability_gate_seeds_the_staged_copy() -> None:
     # the before-assertion on the suite-run invocation itself.
     assert script.index("seed-evidence-ledger.sh") > script.index("rsync -a")
     assert script.index("seed-evidence-ledger.sh") < script.index("bash scripts/test.sh")
+
+
+def test_portability_suite_run_is_pinned_to_the_copy() -> None:
+    """Callers that export MSB_REPO (harness-gate sets it to the runner
+    checkout) would redirect test.sh's REPO derivation away from the staged
+    copy — the seeded ledger gets bypassed and the foreign-path suite leg
+    silently runs the checkout instead. The invocation must pin MSB_REPO to
+    $DEST (found 2026-08-13: harness-gate still showed the seeded-run-ledger
+    skip because the suite ran the checkout, not the seeded copy)."""
+    script = (ROOT / "scripts" / "portability-check.sh").read_text(encoding="utf-8")
+    invocation = script[script.index("bash scripts/test.sh") - 120:script.index("bash scripts/test.sh")]
+    assert 'MSB_REPO="$DEST"' in invocation, "suite invocation must pin MSB_REPO to the copy"
