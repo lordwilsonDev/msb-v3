@@ -57,3 +57,15 @@ def test_version_sources_agree() -> None:
         f"sovereign_runtime identity version ({identity_version}) != "
         f"msb_v3.__version__ ({__version__})"
     )
+
+
+def test_release_verify_script_wired() -> None:
+    """The release-verification script must exist and be reachable via the
+    Makefile — the v0.2.3 flow (fresh-clone + seed + full suite from a virgin
+    checkout) is the only thing that proves a tag as others fetch it. If the
+    script or its entry point ever disappears, this fails at the source."""
+    script = ROOT / "scripts" / "verify-release.sh"
+    assert script.is_file(), f"verify-release.sh missing: {script}"
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "verify-release:" in makefile, "Makefile has no verify-release target"
+    assert "verify-release.sh" in makefile, "verify-release target does not call the script"
