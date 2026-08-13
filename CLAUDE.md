@@ -80,6 +80,18 @@ the freshener as a pre-flight step, so a stale-evidence push self-heals
 before the gate. Manual freshen: `bash scripts/freshen-harness-evidence.sh`.
 Local dry-run: `make harness-gate-dryrun`.
 
+**Codecov coverage upload:** the `msb-v3 CI` test job uploads coverage via
+`codecov/codecov-action@v4` with `token: ${{ secrets.CODECOV_TOKEN }}` and
+`fail_ci_if_error: true` — a revoked/expired token turns the test job red
+instead of silently dropping coverage. The token is REQUIRED: v4 has no
+tokenless upload for main-repo pushes. Rotate it when needed:
+1. Regenerate the Repository Upload Token at
+   `app.codecov.io/gh/lordwilsonDev/msb-v3` → Settings → Config.
+2. `printf '%s' '<NEW_TOKEN>' | gh secret set CODECOV_TOKEN -R lordwilsonDev/msb-v3`
+3. Verify: the next CI test job's `Upload coverage` step is green and the
+   commit page on Codecov shows the %. (If the repo ever goes private,
+   nothing changes — the same token secret covers it.)
+
 ## Ports
 
 - msb-v3: `:8766`
