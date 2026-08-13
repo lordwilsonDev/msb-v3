@@ -67,5 +67,10 @@ def test_release_verify_script_wired() -> None:
     script = ROOT / "scripts" / "verify-release.sh"
     assert script.is_file(), f"verify-release.sh missing: {script}"
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    assert "verify-release:" in makefile, "Makefile has no verify-release target"
-    assert "verify-release.sh" in makefile, "verify-release target does not call the script"
+    # The target BLOCK (not just the filename anywhere) must invoke the script
+    # — `verify-release: echo verify-release.sh` would otherwise pass.
+    target = re.search(r"^verify-release:\s*\n((?:\t[^\n]*\n?)+)", makefile, re.MULTILINE)
+    assert target is not None, "Makefile has no verify-release target"
+    assert "verify-release.sh" in target.group(1), (
+        "verify-release target does not call the script"
+    )
