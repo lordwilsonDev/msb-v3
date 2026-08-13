@@ -94,11 +94,11 @@ rsync -a "${RSYNC_DELETE[@]}" "${EXCLUDES[@]}" "$REPO/" "$DEST/"
 [ -f "$DEST/pyproject.toml" ] || { echo "[portability] FAIL: copy incomplete (pyproject.toml missing)"; exit 1; }
 
 # /runtime/ is excluded from staging as machine state, so the copy has no
-# evidence ledger and test_harness.py::claims_review would skip. Seed the
-# committed fixture so that test RUNS from the foreign copy (this is the
-# 801-vs-802 delta: the seeded-run-ledger skip).
-echo "[portability] seeding evidence-ledger fixture into the copy..."
-bash "$REPO/scripts/seed-evidence-ledger.sh" "$DEST"
+# research-runtime artifacts and the harness tests (claims_review, ralph
+# STATUS) would skip. Seed the committed fixtures so they RUN from the
+# foreign copy (this was the 801-vs-802 delta: the seeded-run-ledger skip).
+echo "[portability] seeding research-runtime fixtures into the copy..."
+bash "$REPO/scripts/seed-research-runtime.sh" "$DEST"
 
 echo
 echo "[portability] scanning the copy for /Users/... literals in live code..."

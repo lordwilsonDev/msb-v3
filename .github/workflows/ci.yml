@@ -82,10 +82,11 @@ jobs:
           # The triumvirate/harness/skill-router suites are LIVE integration
           # tests hitting a real server on 127.0.0.1:8766 — boot it exactly
           # like the factory gate does, or they fail on every run.
-          # Seed the evidence-ledger fixture FIRST so the booted server
-          # serves claims/review (test_harness.py) as 200 instead of 404 —
-          # runtime/ is gitignored machine state on a fresh checkout.
-          bash scripts/seed-evidence-ledger.sh
+          # Seed the research-runtime fixtures FIRST so the booted server
+          # serves the harness artifacts (claims/review ledger, ralph
+          # STATUS.json) instead of 404 — runtime/ is gitignored machine
+          # state on a fresh checkout.
+          bash scripts/seed-research-runtime.sh
           lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
           python -m msb_v3 > /tmp/msb-ci-test-server.log 2>&1 &
           SRV=$!

@@ -91,7 +91,7 @@ def test_research_assistant_claims_review():
     # Asserts against a research run's claims ledger. The ledger is normally
     # machine state (produced by real research runs over ollama) and is
     # gitignored — CI and the portability gate seed it from the committed
-    # fixture via scripts/seed-evidence-ledger.sh (run BEFORE the server
+    # fixture via scripts/seed-research-runtime.sh (run BEFORE the server
     # boots, so the CI server serves /claims/review as 200). The skip remains
     # a fallback for environments that never ran the seeder.
     ledger = (
@@ -104,6 +104,32 @@ def test_research_assistant_claims_review():
     if not ledger.exists():
         pytest.skip("requires seeded run ledger (sovereign-ai-orchestration) — not reproducible in CI")
     _post("/research/assistant/runs/sovereign-ai-orchestration/claims/review")
+
+
+def test_research_assistant_ralph_run_served_from_seed():
+    # Ralph-loop workdirs (runtime/research/ralph_*) hold STATUS.json +
+    # .bak, gitignored machine state produced by real loops. CI and the
+    # portability gate seed the ralph_test fixture via
+    # scripts/seed-research-runtime.sh BEFORE the server boots, so the CI
+    # server serves the run listing and the STATUS artifact. The skip
+    # remains a fallback for environments that never ran the seeder.
+    status = (
+        Path(__file__).resolve().parents[1]
+        / "runtime"
+        / "research"
+        / "ralph_test"
+        / "STATUS.json"
+    )
+    if not status.exists():
+        pytest.skip("requires seeded ralph-loop fixture (ralph_test) — not reproducible in CI")
+    with httpx.Client(timeout=10.0) as client:
+        r = client.get(BASE + "/research/assistant/runs/ralph_test")
+    assert r.status_code == 200, f"GET /research/assistant/runs/ralph_test -> {r.status_code}"
+    files = r.json().get("files", [])
+    assert "STATUS.json" in files, f"seeded ralph STATUS.json not served: {files}"
+    with httpx.Client(timeout=10.0) as client:
+        runs = client.get(BASE + "/research/assistant/runs").json().get("runs", [])
+    assert "ralph_test" in runs, f"seeded ralph run not listed by /research/assistant/runs: {runs}"
 
 
 def test_research_assistant_report():
