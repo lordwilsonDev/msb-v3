@@ -51,11 +51,13 @@ jobs:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
           # Skills come from the committed fixture (not ~/.hermes on the
           # runner); research state is repo-relative via MSB_RESEARCH_ROOT
-          # default. test_ready + claims_review skip when the env can't
-          # satisfy them (no ollama/db, no seeded ledger).
+          # default. test_ready skips without ollama/db; claims_review is
+          # seeded from the committed evidence-ledger fixture below so it
+          # RUNS (the ledger is gitignored machine state on a fresh checkout).
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
         run: |
           set -euo pipefail
+          bash scripts/seed-evidence-ledger.sh
           lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
           python -m msb_v3 > /tmp/msb-test-server.log 2>&1 &
           SRV=$!
