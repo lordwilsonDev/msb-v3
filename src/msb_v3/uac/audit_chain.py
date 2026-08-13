@@ -93,7 +93,13 @@ class AuditChain:
         _init_db(self.db_path)
 
     def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        # timeout=10.0: under a saturated shared box a concurrent writer can
+        # hold the RESERVED lock past Python's default 5s busy wait, so
+        # BEGIN IMMEDIATE raises "database is locked" and the append is lost
+        # from the caller's perspective (the phase-2 chaos suite observed
+        # 300/400 concurrent appends landing under load). A longer busy wait
+        # keeps the documented "sqlite serializes writes" contract intact.
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
         conn.row_factory = sqlite3.Row
         return conn
 
