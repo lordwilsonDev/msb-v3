@@ -3,6 +3,50 @@
 All notable changes to msb-v3 are recorded here. Format follows [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Release verification from a virgin checkout** (`scripts/verify-release.sh`,
+  `make verify-release`): proves a tag the way others will fetch it — resolves
+  the tag (argv → `VERIFY_TAG` → `v<pyproject>`), fails fast if it was never
+  pushed (`git ls-remote`), fresh-clones it, confirms the clone is virgin (no
+  tracked `.env` / `runtime/` — a leak guard), runs the release-checklist
+  version test, seeds the research-runtime fixtures, then runs the FULL suite
+  with `MSB_HOME`/`MSB_REPO` pinned exactly like the portability gate — fails
+  on any test failure or seeded-artifact skip, so the seeding workstream can't
+  silently regress. Optional `EXPECTED_PASS` strict count; `VERIFY_KEEP` /
+  `VERIFY_CLONE_DIR` for debugging. Validated against v0.2.3: 814 passed,
+  3 skipped.
+- **Auto-verify every release tag in CI**
+  (`.github/workflows/release-verify.yml`): each `vX.Y.Z` tag push (and manual
+  `workflow_dispatch`) runs the verifier on the self-hosted macOS runner with
+  a token-authenticated remote (private-repo safe), failing the tag if the
+  suite doesn't pass. Wiring guard test pins trigger → runner →
+  server-ensure → verifier → token remote, so auto-verification can't
+  silently drop off.
+- **Release-tag immutability ruleset** (`release-tag-immutability`):
+  `deletion` + `update` rules on `refs/tags/v*` — once a release tag is cut
+  it can be neither deleted nor force-moved (live-verified: creation allowed,
+  force-update and deletion rejected). Documented empirical finding in
+  CLAUDE.md: GitHub cannot gate a tag's first creation on a required status
+  check (checks exist on a tag ref only after a workflow ran on the tag —
+  chicken-and-egg), so verification gates at the branch/CI level and the
+  ruleset locks the verified state. Emergency path: disable → delete →
+  re-enable.
+
+### Fixed
+- **Flaky chaos tests under load** (`src/sovereign_runtime/tests/test_chaos_phase2.py`):
+  the concurrent-append test dropped records (300/400) when sqlite's default
+  5s busy timeout expired under a saturated shared runner — `BEGIN IMMEDIATE`
+  raised "database is locked" in a worker thread, and thread exceptions are
+  swallowed by `t.join()`. Appends now retry lock contention with bounded
+  backoff, worker failures are collected for the main thread to assert, and
+  `AuditChain`'s busy timeout is 10s. The perf probe asserted a 10s wall-clock
+  budget (observed 34s under load) — now a warm-up plus two load-cancelling
+  halves with a 120s regression floor and a chain-rescan shape check.
+  Stress-verified: 30×/10× runs under 4 CPU burners + fsync hammer all pass;
+  factory-gate green on the first run with all gates concurrent.
+
 ## [0.2.3] - 2026-08-13
 
 ### Added
