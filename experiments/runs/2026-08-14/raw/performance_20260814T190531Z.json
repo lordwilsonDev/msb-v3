@@ -1,0 +1,81 @@
+{
+  "experiment_id": "MSB-GOV-EVAL-001",
+  "subexperiment": "performance",
+  "hypothesis": "H5: governance introduces measurable but operationally bounded overhead",
+  "git_commit": "53d520cc1eafd0dd648d68c285c9d58db0cf7c15",
+  "timestamp": "20260814T190531Z",
+  "configuration": {
+    "A_baseline": "direct-passthrough Path.write_bytes (no governance gates)",
+    "B_governed": "FileWriter.write + AuditChain.append (full enforcement path)",
+    "fairness": "same filesystem API, same task shape, same environment; baseline not crippled"
+  },
+  "trials_per_group": 1000,
+  "statistics": {
+    "write_baseline": {
+      "n": 1000,
+      "mean_ms": 0.0549757477856474,
+      "median_ms": 0.053750001825392246,
+      "p95_ms": 0.06516701250802726,
+      "p99_ms": 0.07204199209809303,
+      "min_ms": 0.045917011448182166,
+      "max_ms": 0.2695419971132651
+    },
+    "write_governed": {
+      "n": 1000,
+      "mean_ms": 0.20521791007195134,
+      "median_ms": 0.1902290023281239,
+      "p95_ms": 0.23350000265054405,
+      "p99_ms": 0.2525409945519641,
+      "min_ms": 0.17704199126455933,
+      "max_ms": 4.9146669916808605
+    },
+    "audit_append": {
+      "n": 1000,
+      "mean_ms": 0.2571519718912896,
+      "median_ms": 0.2414794944343157,
+      "p95_ms": 0.33570799860171974,
+      "p99_ms": 0.6512499967357144,
+      "min_ms": 0.20791699353139848,
+      "max_ms": 0.9766250004759058
+    },
+    "policy_eval": {
+      "n": 1000,
+      "mean_ms": 0.0006242867675609887,
+      "median_ms": 0.0006249902071431279,
+      "p95_ms": 0.000667001586407423,
+      "p99_ms": 0.0007080088835209608,
+      "min_ms": 0.0005420006345957518,
+      "max_ms": 0.010541989468038082
+    },
+    "full_governed": {
+      "n": 1000,
+      "mean_ms": 0.5493770430475706,
+      "median_ms": 0.4819370078621432,
+      "p95_ms": 0.792292004916817,
+      "p99_ms": 1.428249990567565,
+      "min_ms": 0.41045800026040524,
+      "max_ms": 14.005374992848374
+    },
+    "overhead": {
+      "definition": "(governed_median - baseline_median) / baseline_median",
+      "median_overhead_pct": 796.63,
+      "absolute_overhead_ms_per_action": 0.428,
+      "per_gate_absolute_ms": {
+        "audit_append_median_ms": 0.2414794944343157,
+        "policy_eval_median_ms": 0.0006249902071431279,
+        "evidence_in_write_ms": 0.136
+      }
+    }
+  },
+  "state_verification": {
+    "sample_files_match": true,
+    "audit_chain_valid": true,
+    "audit_records": 2000
+  },
+  "resource_usage": {
+    "rss_before_kib": 72089600,
+    "rss_after_kib": 96829440,
+    "rss_delta_kib": 24739840
+  },
+  "note": "fsync + atomic replace + double-hash are FileWriter integrity gates (governance properties)"
+}

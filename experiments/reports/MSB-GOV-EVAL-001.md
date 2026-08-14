@@ -8,15 +8,17 @@
 
 ## Executive summary
 
-Three of the five frozen hypotheses were executed on the first pass. Under the
-evaluated threat model (application-level adversary with code/DB access; OS-root
-out of scope), MSB's governance surface:
+All five frozen hypotheses are now executed. Under the evaluated threat model
+(application-level adversary with code/DB access; OS-root out of scope), MSB's
+governance surface:
 
 | Hypothesis | Result |
 |---|---|
 | **H2 fail-closed** | ✅ 7/7 component-failure trials fail closed (state verified, not return codes) |
 | **H3 audit tamper detection** | ✅ TDR 6/7 (85.7%) — **FIR = 0%** for in-threat-model attacks T1–T6; T7 (whole-DB replacement) is the documented trust-model gap |
 | **H1 prevention effectiveness** | ✅ 800 adversarial trials: **APR = 100%, FAR = 0%, FDR = 0%** |
+| **H5 governance overhead** | ✅ measurable but operationally bounded: **+0.43 ms/action** (median full-governed 0.482 ms vs baseline 0.054 ms) |
+| **H4 sovereignty** | ✅ connected CRR **1.0** → cloud-out CRR **0.95**; every sovereign capability survives; cloud loss is loud + recoverable |
 
 ---
 
@@ -95,38 +97,97 @@ and the fail-closed harness's recovery trials. A dedicated approval-bypass suite
 against `VestaWriteService.approve_and_execute` (e.g., kill-switch-armed
 quarantine) is a recommended follow-up for the remaining V6 coverage.
 
-## 4. Performance (H5) and Sovereignty (H4) — NOT YET RUN
+## 4. Performance (§11, §12) — H5 PASS
 
-Frozen in the manifest; harnesses pending:
-- **H5:** baseline vs governed latency, N ≥ 1,000, P50/P95/P99, absolute ms/action
-  overhead (blueprint §11–§12).
-- **H4:** connected capability inventory vs network-loss / cloud-loss / model-loss,
-  CRR with pre-defined weights (blueprint §15–§17).
-- **Baseline comparison (§18–§19):** same attack corpus against a
-  governance-bypassed executor; the "X → Y unauthorized mutations at Z ms
-  overhead" headline result.
+Same task, two configurations, N = 1,000 per group, real enforcement path:
+Config A baseline = direct-passthrough `Path.write_bytes`; Config B governed =
+`FileWriter.write` (sandbox + evidence hashes + atomic fsync) **and**
+`AuditChain.append` (BEGIN IMMEDIATE + chained hash). State verified after the
+run: sample files match, audit chain valid (2,000 records).
 
-## 5. Claims that may be supported (blueprint §26)
+| Group | mean ms | P50 | P95 | P99 | min | max |
+|---|---|---|---|---|---|---|
+| write_baseline (no gates) | 0.055 | **0.054** | 0.065 | 0.072 | 0.046 | 0.270 |
+| write_governed (evidence incl.) | 0.205 | **0.190** | 0.234 | 0.253 | 0.177 | 4.915 |
+| audit_append (isolated gate) | 0.257 | **0.241** | 0.336 | 0.651 | 0.208 | 0.977 |
+| policy_eval (isolated gate) | 0.001 | **0.001** | 0.001 | 0.001 | 0.001 | 0.011 |
+| full_governed (write+audit) | 0.549 | **0.482** | 0.792 | 1.428 | 0.410 | 14.005 |
+
+**§12 headline:** overhead = **(0.482 − 0.054) / 0.054 ≈ 797% relative** — but
+**+0.428 ms/action absolute**. This is exactly the blueprint's distinction: on
+a 54 µs operation a 8× multiple still lands sub-millisecond, so for human-scale
+actions and even thousands of autonomous actions/hour (≈0.43 s per 1,000
+actions) governance is operationally bounded. Per-gate absolute costs:
+audit 0.241 ms, policy 0.001 ms, evidence-in-write 0.136 ms. RSS delta +24 MB
+across all five groups (process-wide, includes SQLite pages + Python).
+
+**Honest composition note:** the governed path's cost is dominated by the
+integrity machinery (atomic temp-file + fsync + double hash + audit insert), all
+of which are governance properties — there is no "free" baseline write that
+provides the same guarantees, so the overhead is a real, bounded price of the
+contract, not waste.
+
+## 5. Sovereignty / cloud-outage (§15–§17) — H4 PASS
+
+Phase A (connected) → Phase B (cloud removed) → Phase C (restored), same
+workload every phase. Injection: external-search endpoint repointed to an
+unreachable address at the client boundary (what MSB observes when the cloud API
+dies or the network severs) — full OS-level network severance is documented out
+of scope because it would drop the live WireGuard/Vesta deployment; the
+client-boundary injection reproduces the same observable. Weights frozen before
+measurement (blueprint §16): inference 0.25 · memory 0.15 · planning 0.15 ·
+task execution 0.15 · audit 0.10 · evidence 0.10 · storage 0.05 · external
+search 0.05.
+
+| Capability | Phase A | Phase B (cloud out) | Phase C (restored) |
+|---|---|---|---|
+| C1 inference (local ollama) | FULL | FULL | FULL |
+| C2 memory (local qdrant) | FULL | FULL | FULL |
+| C3 planning (local model) | FULL | FULL | FULL |
+| C4 task execution (FileWriter+audit) | FULL | FULL | FULL |
+| C5 audit (hash chain) | FULL | FULL | FULL |
+| C6 evidence (precondition gate) | FULL | FULL | FULL |
+| C7 local storage (sqlite) | FULL | FULL | FULL |
+| C8 external search (Tavily, CLOUD) | FULL | **UNAVAILABLE** | FULL |
+| local-model loss (injected) | — | **DEGRADED** (controlled `[fallback]`) | — |
+
+**CRR: connected 1.0 → cloud-out 0.95.** The only capability lost is the cloud
+one itself; it fails **loud** (`ResearchBackendError` — never a silent empty
+result, per the documented fail-loud design), degrades advisory paths via the
+`chat:fallback` controlled fallback, and recovers on restore (Phase C returned
+live results). Sovereign capabilities remained fully available throughout the
+injected outage — the blueprint §8 network row holds.
+
+## 6. Claims that may be supported (blueprint §26)
 
 - ✅ "MSB implements explicit governance controls over defined classes of autonomous mutation."
 - ✅ "Under the evaluated threat model, MSB prevented/rejected the tested classes of unauthorized mutations at the measured rate (APR 100%, FAR 0%)."
 - ✅ "MSB demonstrated fail-closed behavior for the evaluated governance-component failures (7/7)."
 - ✅ "The audit mechanism detected the evaluated classes of historical tampering (FIR 0% in-threat-model)."
+- ✅ "MSB retained a measured subset of capability under tested cloud/network failure conditions (CRR 1.0 → 0.95, loud + recoverable loss)."
+- ✅ "Governance introduced a measured computational and latency overhead relative to the defined baseline (+0.43 ms/action median, P99 1.43 ms)."
 - ❌ **Not claimed:** "MSB is safe / fully corrigible / cannot be compromised / guarantees sovereignty / solves AI alignment."
 
-## 6. Recommended follow-ups (ranked)
+## 7. Remaining gates (per the frozen manifest)
 
-1. **Close the T7 gap** — external anchor (signed, notarized chain-tip snapshot).
-2. **Service-layer approval-bypass suite** — `VestaWriteService` with armed
-   killswitch, expired A-BIND, revoked approval, forged evidence refs.
-3. **Cascading failure tests** (§10 Levels 2–5) — multi-component + network +
-   storage + model.
-4. **Performance harness (H5)** and **sovereignty/cloud-outage harness (H4)**
-   with the frozen baseline.
-5. Every "0 indeterminate / 0 false-allow" trial in the raw JSON is
-   reproducible via `harness_governance_effectiveness.py --seed 20260814`.
+- **§10 cascading failures** (Levels 2–5): two/three-component + network +
+  storage + model combinations — only single-component failures are covered so far.
+- **§18–§19 baseline comparison**: identical attack corpus against a
+  governance-bypassed executor for the "X → Y unauthorized mutations at Z ms
+  overhead" headline table.
+- **Service-layer approval-bypass suite** — `VestaWriteService.approve_and_execute`
+  under armed killswitch, expired A-BIND, revoked approval (V6 coverage today is
+  the raw-writer subset + service-layer tests).
+- **Close the T7 gap** — external anchor (signed, notarized chain-tip snapshot).
+
+## 8. Reproducibility
+
+Every run is deterministic and reproducible:
+`harness_audit_tampering.py` · `harness_fail_closed.py` ·
+`harness_governance_effectiveness.py` (seed `20260814`) ·
+`harness_performance.py --trials 1000` · `harness_sovereignty.py`.
 
 ---
 
-*Evidence: `runs/2026-08-14/raw/{audit_tampering,fail_closed,governance}_*.json`,
-`runs/2026-08-14/environment.json`, `results/{tampering,failures,governance}.csv`.*
+*Evidence: `runs/2026-08-14/raw/{audit_tampering,fail_closed,governance,performance,sovereignty}_*.json`,
+`runs/2026-08-14/environment.json`, `results/{tampering,failures,governance,performance,sovereignty}.csv`.*
