@@ -16,6 +16,7 @@ from msb_v3.node.identity import IdentityStore, NodeAuthError, ReplayError
 from msb_v3.node.models import EngageRequest
 from msb_v3.observability.metrics import Metrics
 from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.vesta.adapter import VestaMSBAdapter
 from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore
 from msb_v3.vesta.evidence import EvidenceError, EvidenceStore
@@ -41,7 +42,10 @@ from msb_v3.vesta.write import VestaWriteService
 # reachable only from the allowed private peer CIDRs. Loopback is in the
 # default allowed set, so local operations keep working.
 router = APIRouter(tags=["vesta"], dependencies=[Depends(require_vesta_transport)])
-_audit = AuditChain()
+# Anchored when MSB_CHAIN_ANCHOR_KEY is configured (T7 fix: the write-path
+# chain re-anchors an external signed tip snapshot after every append, so a
+# whole-audit-DB replacement is detectable); plain AuditChain otherwise.
+_audit = anchored_chain_from_env()
 _tasks = VestaTaskStore()
 _evidence = EvidenceStore()
 _adapter = VestaMSBAdapter(_audit, _tasks, _evidence)
@@ -149,7 +153,11 @@ def routes(request: Request) -> dict[str, Any]:
 
 @router.get("/ledger/verify")
 def ledger_verify() -> dict[str, Any]:
-    return _audit.verify_chain()
+    result = _audit.verify_chain()
+    anchored = getattr(_audit, "verify_anchored", None)
+    if anchored is not None:
+        result["anchored"] = anchored()
+    return result
 
 
 @router.get("/tasks/{task_id}", dependencies=[Depends(require_operator)])

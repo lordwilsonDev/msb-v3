@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path.home() / ".local/lib/msb-v3"))
 
 from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
+from msb_v3.uac.chain_anchor import AnchoredAuditChain, ChainAnchor, generate_seed  # noqa: E402
 
 RUN_ROOT = Path(__file__).resolve().parent
 DEFAULT_RUN = RUN_ROOT / "runs" / datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -171,9 +172,38 @@ def main() -> int:
         os.remove(db_path)
         audit = AuditChain(str(db_path))
 
+    # ── T7 with the external chain-tip anchor: the fix in action ──────────────
+    print("\n  T7_anchored (external chain-tip anchor deployed):")
+    work_a = Path(tempfile.mkdtemp(prefix="gov-audit-anch-"))
+    db_a = work_a / "audit_chain.db"
+    anchored = AnchoredAuditChain(AuditChain(str(db_a)), ChainAnchor(seed=generate_seed()))
+    build_clean_chain(anchored, 5)
+    # attacker builds an EARLIER internally-valid chain and swaps the whole DB
+    early = AuditChain(str(work_a / "early.db"))
+    for i in range(1, 4):
+        early.append("exp", "action.perform", {"seq": i, "action": "read", "file": f"/tmp/gov/{i}.txt"})
+    import shutil
+    shutil.copyfile(work_a / "early.db", db_a)
+    internal_after = anchored.verify_chain()
+    anchored_after = anchored.verify_anchored()
+    t7a = {
+        "attack": "T7_anchored_replace_database",
+        "expected": "DETECTED (external anchor)",
+        "detected": not anchored_after.get("valid"),
+        "internal_chain_valid_after_swap": internal_after.get("valid"),
+        "anchored_valid": anchored_after.get("valid"),
+        "anchored_reason": anchored_after.get("reason"),
+    }
+    results.append(t7a)
+    status = "DETECTED ✓" if t7a["detected"] else "NOT DETECTED ✗"
+    print(f"  T7_anchored_replace_database  {status}  (internal chain blind: {internal_after.get('valid')}, "
+          f"anchor: {anchored_after.get('reason')})")
+
     # ── Metrics (frozen formulas) ──────────────────────────────────────────
     detected = sum(1 for r in results if r["detected"])
-    # T7 is trust-model-dependent: FIR counts only in-threat-model attacks.
+    # T7 (no anchor) is an operator-deployment gap, not an attack: with the
+    # anchor deployed, every attack in the threat model — T1-T6 AND the
+    # anchored whole-DB swap — is detected.
     in_threat = [r for r in results if r["attack"] != "T7_replace_database"]
     in_threat_detected = sum(1 for r in in_threat if r["detected"])
     tdr = detected / len(results)
@@ -203,11 +233,14 @@ def main() -> int:
         if write_header:
             w.writerow(["timestamp", "attack", "detected", "post_valid", "broken_at_seq", "reason"])
         for r in results:
-            w.writerow([ts, r["attack"], r["detected"], r["post_valid"], r["broken_at_seq"], r["reason"]])
+            w.writerow([ts, r["attack"], r["detected"],
+                        r.get("post_valid", r.get("internal_chain_valid_after_swap", "")),
+                        r.get("broken_at_seq", ""),
+                        r.get("reason", r.get("anchored_reason", ""))])
 
     print(f"\n  TDR = {tdr:.2%}  ({detected}/{len(results)})")
-    print(f"  FIR (in-threat-model, T1-T6) = {fir_in_threat:.2%}")
-    print(f"  FIR (all incl T7 replace) = {fir_all:.2%}")
+    print(f"  FIR (in-threat-model WITH anchor deployed, T1-T6+T7-anchored) = {fir_in_threat:.2%}")
+    print(f"  FIR (all rows incl unanchored T7 = documented deployment gap) = {fir_all:.2%}")
     print(f"\n  evidence: {raw_path}")
     return 0 if fir_in_threat == 0 else 1
 
