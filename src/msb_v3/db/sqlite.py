@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
 from msb_v3.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _ensure_db_path() -> Path:
@@ -32,6 +35,10 @@ def transaction() -> Generator[sqlite3.Connection, None, None]:
         yield conn
         conn.commit()
     except Exception:
+        # Log at this site so the original cause is preserved next to the
+        # rollback call; the re-raise below carries the exception to callers,
+        # but a bare without-context spot here would lose the trace.
+        logger.debug("sqlite transaction failed; rolling back", exc_info=True)
         conn.rollback()
         raise
     finally:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Request
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 from msb_v3.harnesses.base import ChatHarness, HarnessResult
 from msb_v3.memory.store import MemoryStore
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 
@@ -50,6 +52,11 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
         ctx["system"] = req.system
     if req.tools:
         ctx["tools"] = [t.model_dump() for t in req.tools]
+    vesta_bind = getattr(request.state, "vesta_bind", None)
+    if vesta_bind is not None:
+        # Propagate the immutable trust context without treating it as model
+        # authority or adding it to the user-visible prompt.
+        ctx["vesta_bind"] = vesta_bind
 
     from msb_v3.harnesses.base import ChatHarness
 
@@ -67,6 +74,7 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
             ctx["history"] = hist
         used = len(recent)
     except Exception:
+        logger.debug("history fetch failed; treating as zero used", exc_info=True)
         used = 0
 
     result: HarnessResult = harness.execute(req.query, ctx, session=session)
