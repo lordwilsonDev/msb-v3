@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -11,6 +12,7 @@ from fastapi import APIRouter, Response
 from msb_v3 import __version__
 from msb_v3.core.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 _COMPONENTS: Dict[str, str] = {
@@ -43,6 +45,7 @@ async def _check_ollama() -> str:
         await writer.wait_closed()
         return "ok"
     except Exception:
+        logger.debug("ollama liveness probe failed; reporting error", exc_info=True)
         return "error"
 
 
@@ -50,6 +53,7 @@ async def _check_db() -> str:
     try:
         return "ok"
     except Exception:
+        logger.debug("db liveness probe skipped", exc_info=True)
         return "skipped"
 
 

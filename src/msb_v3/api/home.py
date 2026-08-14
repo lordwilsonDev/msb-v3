@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sqlite3
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 from msb_v3.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ui"])
 
@@ -37,6 +40,7 @@ def _list_research_runs() -> list[str]:
     try:
         return sorted([p.name for p in _RESEARCH_DIR.iterdir() if p.is_dir()]) if _RESEARCH_DIR.exists() else []
     except Exception:
+        logger.debug("research runs listing unreadable; treating as empty", exc_info=True)
         return []
 
 
@@ -54,6 +58,7 @@ def _get_triumvirate_dashboard() -> dict:
             "iteration_count": status.get("iteration_count", 0),
         }
     except Exception:
+        logger.debug("triumvirate dashboard unreadable; treating as empty", exc_info=True)
         return {}
 
 
@@ -78,6 +83,7 @@ def _get_argus_mulch() -> dict:
             ]
         }
     except Exception:
+        logger.debug("argus mulch learnings unreadable; treating as empty", exc_info=True)
         return {"rows": []}
 
 

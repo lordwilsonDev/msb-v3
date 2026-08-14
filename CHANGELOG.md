@@ -6,6 +6,23 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ## [Unreleased]
 
 ### Added
+- **`MSB_MULTIMODAL_ENABLED` feature flag for `/multimodal/*`**:
+  VisionClaw / HapticHeartbeat / SpeechFunctions routes now return 503 +
+  detail message when `MSB_MULTIMODAL_ENABLED` is unset (default off,
+  fail-closed like `OPENAI_API_KEY`). A real implementation that stops
+  returning `status="stub"` implies the gate should be opened; tests in
+  `tests/triumvirate/test_multimodal_feature_flag.py` pin both sides
+  (default-disabled, enabled-returns-payload, truthy-falsy edge cases).
+  The original "stub calls must not inflate multimodal metrics" guard
+  at the call site is preserved. ([`28d32a3`](#))
+- **Subsystem decoder** (`docs/glossary.md`): the mythology
+  (Triumvirate / Argus / Hippocampus / Hermes / Vesta / Ralph /
+  Cockpit / VisionClaw / HapticHeartbeat / SpeechFunctions / Sacred
+  Lock / Mulch) is a real architectural contract, not ceremony — but
+  newcomers can't read any file without decoding the names. The
+  glossary maps each name to its module path, intent, and "is it
+  safe to rename?" verdict, and is cross-linked from `CLAUDE.md`
+  under "Defaults". ([`9752932`](#))
 - **Release verification from a virgin checkout** (`scripts/verify-release.sh`,
   `make verify-release`): proves a tag the way others will fetch it — resolves
   the tag (argv → `VERIFY_TAG` → `v<pyproject>`), fails fast if it was never
@@ -46,6 +63,46 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   halves with a 120s regression floor and a chain-rescan shape check.
   Stress-verified: 30×/10× runs under 4 CPU burners + fsync hammer all pass;
   factory-gate green on the first run with all gates concurrent.
+
+### Changed
+- **`src/sovereign_runtime/` package folded into `src/msb_v3/core/`**:
+  `core/{health,identity}.py`, `events/event_bus.py`, `config/__init__.py`
+  → `runtime_config.py`, `config/runtime.yaml` all promoted to
+  `msb_v3/core/`. The full `brain/` subtree (RecursivePlanner, MoIE
+  Swarm, AIL pipeline, plan models, planner memory) was deleted — the
+  package-level disposition plan
+  (`docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md`)
+  had already documented these as stub/"non-implementation" months
+  ago; deleting the package lets `pyproject.toml` testpaths shed
+  `src/sovereign_runtime/tests` and lets `master` pytest invocation
+  stop walking the dead-code path. The pre-existing
+  `src/personal_intelligence/` is similarly dormant and awaits the
+  same disposition pass. Test files moved: `test_runtime_boot.py` to
+  `tests/`; `test_chaos_phase{1,2}.py` to `tests/chaos/`. CI workflow
+  scope comments (`ci.yml`, `factory-gate.yml`) and docker-compose
+  healthcheck probes (`import sovereign_runtime` →
+  `from msb_v3.core.event_bus import EventBus`) updated. ([`08c2a3e`](#))
+- **Ceremony trim — 3 of 10 named subsystems**: `Cockpit`
+  (`api/cockpit.py` → `api/dashboard.py`), `Argus`
+  (`triumvirate/argus_auditor.py` → `observability/audit.py`,
+  auditing *is* observability), `Ralph` (`agent/ralph_loop.py` →
+  `agent/execution_loop.py`). Class/factory names (`ArgusAuditor`,
+  `RalphLoopHarness`, `create_ralph_loop`) and API paths
+  (`/assistant/ralph-loop`, `/cockpit/api`) kept verbatim — they
+  appear in metric labels (`TRIUMVIRATE_*`), ledger event names
+  (`event=ralph_loop:{completed,exhausted,…}`), and frozen docs
+  (`docs/task-contract-v1.md`); renaming them is a wire-contract
+  change that needs a separate, intentional pass with back-compat
+  aliases. ([`08c2a3e`](#))
+- **Bare `except Exception:` block log discipline extended** to
+  `api/home.py` (3 sites), `api/health.py` (2 sites), `api/chat.py` (1
+  site), `db/sqlite.py` (1 site, before re-raise), and
+  `harnesses/base.py` (1 site). Each was the "graceful degrade" pattern
+  — return empty on failure — but the original exception was lost.
+  `logger.debug("...", exc_info=True)` now fires before the early
+  return so the specific failure mode is visible at debug level while
+  the higher-level semantics (panel X unreadable, chat:fallback
+  metric, transaction rolled back) are preserved.
 
 ## [0.2.3] - 2026-08-13
 

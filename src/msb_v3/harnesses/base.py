@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -11,6 +12,8 @@ from msb_v3.local_ai.client_factory import active_backend, get_client
 from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,12 @@ class ChatHarness(BaseHarness):
                 telemetry=telemetry,
             )
         except Exception:
+            # Fallback path: it's tracked in metrics via chat:fallback, but
+            # we also log here so the specific exception that triggered the
+            # fallback (transient ollama outage, broken connection, etc.)
+            # is visible in the normal log stream — the metric alone doesn't
+            # tell you which failure mode it was.
+            logger.debug("chat harness fallback path triggered", exc_info=True)
             elapsed = time.perf_counter() - started
             dispatcher = "fallback"
             Metrics.inc_dispatcher(dispatcher)
