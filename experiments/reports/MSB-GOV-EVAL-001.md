@@ -189,9 +189,18 @@ approval record is left **APPROVED** with the task stuck in `WAITING_APPROVAL`
 and no terminal audit event (for audit failure the void itself could not be
 recorded — the channel is down). No mutation occurred (state-verified), so this
 is not a fail-open — but the approval ledger dangles. Caught-path failures
-(evidence/budget/killswitch) correctly VOID the approval. **Recommendation:**
-move `approvals.approve()` and the first audit append inside the guard, or add
-a watchdog that voids APPROVED approvals lacking a terminal task transition.
+(evidence/budget/killswitch) correctly VOID the approval.
+
+**Resolved:** `ApprovalWatchdog` (`src/msb_v3/vesta/approval_watchdog.py`)
+scans for APPROVED approvals whose task never reached a terminal state and
+voids them + quarantines the task + appends an auditable `approval.voided`
+event (source=watchdog). Recoverable in-flight tasks are reported, not
+auto-voided; APPROVED+COMPLETED history is left alone; `--dry-run` for
+read-only inspection. Runs daily at 06:45 via
+`com.lordwilson.vesta-approval-watchdog`. Verified: 6 unit tests; live
+end-to-end reproduction of the cascade scenario (APPROVED+WAITING_APPROVAL →
+VOID+QUARANTINED, audited); live-deployment scan clean (0 approvals,
+`data/vesta/tasks.db`).
 
 ## 7. Claims that may be supported (blueprint §26)
 
@@ -212,8 +221,6 @@ a watchdog that voids APPROVED approvals lacking a terminal task transition.
   under expired A-BIND, revoked approval, forged evidence refs (armed-killswitch
   and multi-fault variants are now covered by the cascade harness).
 - **Close the T7 gap** — external anchor (signed, notarized chain-tip snapshot).
-- **Approval-ledger watchdog** (from the cascade hygiene finding): void APPROVED
-  approvals that never reach a terminal task transition.
 
 ## 9. Reproducibility
 

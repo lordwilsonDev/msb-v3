@@ -136,6 +136,22 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   re-enable.
 
 ### Fixed
+- **Approval-ledger watchdog closes the dangling-approval gap**
+  (`src/msb_v3/vesta/approval_watchdog.py`, `scripts/approval_watchdog.sh`,
+  `tests/vesta/test_approval_watchdog.py`): the MSB-GOV-EVAL-001 §10 cascade
+  harness found that when `VestaWriteService.approve_and_execute` crashes
+  *before* its try/except (audit-engine, persistence, or storage failures),
+  the approval record is left APPROVED with the task stuck pre-execution and
+  no terminal audit event. `ApprovalWatchdog` scans for APPROVED approvals
+  whose task never reached a terminal state (COMPLETED/DENIED/QUARANTINED),
+  voids them (terminal — can never be re-decided), quarantines the task, and
+  appends an auditable `approval.voided` event (source=watchdog). Recoverable
+  in-flight tasks (EXECUTING/VERIFYING/RECOVERING) are reported for operator
+  review, never auto-voided; legitimate APPROVED+COMPLETED history is left
+  alone. `--dry-run` for read-only inspection. Runs daily at 06:45 via
+  `com.lordwilson.vesta-approval-watchdog` (launchd). Tests: 6 cases
+  (dangling void+quarantine+audit, completed untouched, in-flight passthrough,
+  dry-run no-op, idempotency, orphan approval).
 - **Vesta/Node hardening — security-review findings F1–F3**
   (review: `docs/operations/vesta-security-review.md`):
   - **F1 replay/challenge table growth** — `IdentityStore.prune()` now
