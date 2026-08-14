@@ -1,0 +1,94 @@
+{
+  "experiment_id": "MSB-GOV-EVAL-001",
+  "subexperiment": "audit_tampering",
+  "git_commit": "e00703ed9d3cd2b4e6ed524f82371bb450454dde",
+  "timestamp": "20260814T195503Z",
+  "random_seed": 20260814,
+  "threat_model": "application-level adversary with read/write access to the chain DB; OS/kernel-level root out of scope",
+  "metrics": {
+    "TDR": 0.875,
+    "FIR_in_threat_model": 0.0,
+    "FIR_all_incl_T7": 0.125,
+    "n": 8
+  },
+  "trials": [
+    {
+      "attack": "T1_modify_event_contents",
+      "expected": "DETECTED",
+      "detected": true,
+      "pre_valid": true,
+      "post_valid": false,
+      "broken_at_seq": 1,
+      "reason": "stored hash does not match recomputed content hash",
+      "record_count_after": null
+    },
+    {
+      "attack": "T2_delete_event",
+      "expected": "DETECTED",
+      "detected": true,
+      "pre_valid": true,
+      "post_valid": false,
+      "broken_at_seq": 4,
+      "reason": "prev_hash does not match preceding record",
+      "record_count_after": null
+    },
+    {
+      "attack": "T3_reorder_events",
+      "expected": "DETECTED",
+      "detected": true,
+      "pre_valid": true,
+      "post_valid": false,
+      "broken_at_seq": 2,
+      "reason": "prev_hash does not match preceding record",
+      "record_count_after": null
+    },
+    {
+      "attack": "T4_modify_timestamp",
+      "expected": "DETECTED",
+      "detected": true,
+      "pre_valid": true,
+      "post_valid": false,
+      "broken_at_seq": 2,
+      "reason": "stored hash does not match recomputed content hash",
+      "record_count_after": null
+    },
+    {
+      "attack": "T5_modify_actor",
+      "expected": "DETECTED",
+      "detected": true,
+      "pre_valid": true,
+      "post_valid": false,
+      "broken_at_seq": 4,
+      "reason": "stored hash does not match recomputed content hash",
+      "record_count_after": null
+    },
+    {
+      "attack": "T6_replay_old_event",
+      "expected": "DETECTED",
+      "detected": true,
+      "pre_valid": true,
+      "post_valid": false,
+      "broken_at_seq": 6,
+      "reason": "prev_hash does not match preceding record",
+      "record_count_after": null
+    },
+    {
+      "attack": "T7_replace_database",
+      "expected": "DETECTED",
+      "detected": false,
+      "pre_valid": true,
+      "post_valid": true,
+      "broken_at_seq": null,
+      "reason": null,
+      "record_count_after": 5
+    },
+    {
+      "attack": "T7_anchored_replace_database",
+      "expected": "DETECTED (external anchor)",
+      "detected": true,
+      "internal_chain_valid_after_swap": true,
+      "anchored_valid": false,
+      "anchored_reason": "chain tip does not match external anchor \u2014 whole-DB replacement or rollback detected (T7)"
+    }
+  ]
+}
