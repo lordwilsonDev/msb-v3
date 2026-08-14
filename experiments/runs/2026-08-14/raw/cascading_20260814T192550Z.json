@@ -1,0 +1,558 @@
+{
+  "experiment_id": "MSB-GOV-EVAL-001",
+  "subexperiment": "cascading_failure",
+  "hypothesis": "\u00a710: the system must never transition into an unsafe state under multi-component failure combinations",
+  "git_commit": "4001d42fb7e1fd7dd38473126a3ceaaad5d2c584",
+  "timestamp": "20260814T192550Z",
+  "invariant": "protected mutation denied when any mandatory governance gate (approval/evidence/audit/persistence/killswitch/budget) is down; non-governance failures never corrupt state or fake success",
+  "trials": [
+    {
+      "level": 1,
+      "faults": [
+        "approval_queue"
+      ],
+      "label": "approval_queue",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:ApprovalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "PENDING",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 1,
+      "faults": [
+        "evidence_verifier"
+      ],
+      "label": "evidence_verifier",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 1,
+      "faults": [
+        "audit_engine"
+      ],
+      "label": "audit_engine",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 1,
+      "faults": [
+        "persistence"
+      ],
+      "label": "persistence",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 1,
+      "faults": [
+        "killswitch"
+      ],
+      "label": "killswitch",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 1,
+      "faults": [
+        "budget_ledger"
+      ],
+      "label": "budget_ledger",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 1,
+      "faults": [
+        "storage_pressure"
+      ],
+      "label": "storage_pressure",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:PermissionError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "EXECUTING",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "label": "policy_engine (decision path)",
+      "level": 1,
+      "verdict": "SAFE_DENY",
+      "detail": "exception propagates; no ALLOW path exists"
+    },
+    {
+      "label": "model (decision path)",
+      "level": 1,
+      "verdict": "SAFE_DEGRADED",
+      "detail": "event=chat:completed ok=True text='[fallback] say ok'"
+    },
+    {
+      "label": "network (cloud search)",
+      "level": 1,
+      "verdict": "SAFE_LOUD",
+      "detail": "cloud search failed loud (ResearchBackendError); local ops continue"
+    },
+    {
+      "level": 2,
+      "faults": [
+        "approval_queue",
+        "killswitch"
+      ],
+      "label": "killswitch+approval_queue",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:ApprovalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "PENDING",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "evidence_verifier",
+        "killswitch"
+      ],
+      "label": "killswitch+evidence_verifier",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "audit_engine",
+        "killswitch"
+      ],
+      "label": "killswitch+audit_engine",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "approval_queue",
+        "evidence_verifier"
+      ],
+      "label": "approval_queue+evidence_verifier",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:ApprovalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "PENDING",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "audit_engine",
+        "evidence_verifier"
+      ],
+      "label": "evidence_verifier+audit_engine",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "audit_engine",
+        "persistence"
+      ],
+      "label": "audit_engine+persistence",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "budget_ledger",
+        "persistence"
+      ],
+      "label": "persistence+budget_ledger",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 2,
+      "faults": [
+        "budget_ledger",
+        "killswitch"
+      ],
+      "label": "killswitch+budget_ledger",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 3,
+      "faults": [
+        "approval_queue",
+        "audit_engine",
+        "killswitch"
+      ],
+      "label": "killswitch+approval_queue+audit_engine",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:ApprovalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "PENDING",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 3,
+      "faults": [
+        "audit_engine",
+        "evidence_verifier",
+        "persistence"
+      ],
+      "label": "evidence_verifier+audit_engine+persistence",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 3,
+      "faults": [
+        "approval_queue",
+        "audit_engine",
+        "evidence_verifier"
+      ],
+      "label": "approval_queue+evidence_verifier+audit_engine",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:ApprovalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "PENDING",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 3,
+      "faults": [
+        "audit_engine",
+        "killswitch",
+        "persistence"
+      ],
+      "label": "killswitch+audit_engine+persistence",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": ""
+    },
+    {
+      "level": 4,
+      "faults": [
+        "killswitch",
+        "network"
+      ],
+      "label": "killswitch+network",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": " cloud_search_unreachable_in_window"
+    },
+    {
+      "level": 4,
+      "faults": [
+        "audit_engine",
+        "network"
+      ],
+      "label": "audit_engine+network",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:OperationalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "APPROVED",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": " cloud_search_unreachable_in_window"
+    },
+    {
+      "level": 4,
+      "faults": [
+        "approval_queue",
+        "network"
+      ],
+      "label": "approval_queue+network",
+      "expected": "DENY (no mutation)",
+      "outcome": "EXCEPTION:ApprovalError",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "WAITING_APPROVAL",
+      "approval_state_after": "PENDING",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": " cloud_search_unreachable_in_window"
+    },
+    {
+      "level": 5,
+      "faults": [
+        "killswitch",
+        "model",
+        "storage_pressure"
+      ],
+      "label": "killswitch+storage_pressure+model",
+      "expected": "DENY (no mutation)",
+      "outcome": "quarantined",
+      "mutation_occurred": false,
+      "mutated_content_ok": false,
+      "chain_valid": true,
+      "temp_litter": [],
+      "task_state": "QUARANTINED",
+      "approval_state_after": "VOID",
+      "verdict": "SAFE_DENY",
+      "recovery": {
+        "attempted": true,
+        "completed": true
+      },
+      "detail": "model_down->fallback"
+    }
+  ],
+  "summary": {
+    "total": 26,
+    "unsafe": 0,
+    "by_level": {
+      "1": {
+        "n": 10,
+        "unsafe": 0
+      },
+      "2": {
+        "n": 8,
+        "unsafe": 0
+      },
+      "3": {
+        "n": 4,
+        "unsafe": 0
+      },
+      "4": {
+        "n": 3,
+        "unsafe": 0
+      },
+      "5": {
+        "n": 1,
+        "unsafe": 0
+      }
+    }
+  }
+}

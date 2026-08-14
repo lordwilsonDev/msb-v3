@@ -19,6 +19,7 @@ governance surface:
 | **H1 prevention effectiveness** | ✅ 800 adversarial trials: **APR = 100%, FAR = 0%, FDR = 0%** |
 | **H5 governance overhead** | ✅ measurable but operationally bounded: **+0.43 ms/action** (median full-governed 0.482 ms vs baseline 0.054 ms) |
 | **H4 sovereignty** | ✅ connected CRR **1.0** → cloud-out CRR **0.95**; every sovereign capability survives; cloud loss is loud + recoverable |
+| **§10 cascading failures** | ✅ **26/26 trials SAFE, 0 unsafe** across Levels 1–5; recovery 23/23; one non-safety approval-hygiene gap found |
 
 ---
 
@@ -45,9 +46,10 @@ Every trial verifies **actual state** (file contents / chain validity), not retu
   explicit, auditable `chain.repaired` event in the same transaction — recovery
   is never silent.
 
-**Remaining gates (§23):** approval-queue failure, evidence-store failure,
-persistence-layer failure, two/three-component cascades (blueprint §10
-Levels 2–5), policy-engine exception, local-model loss.
+**Now superseded by §10 cascading coverage (see §6 below):** approval-queue,
+evidence-store, persistence-layer, policy-engine exception, local-model loss,
+and multi-component cascades are all exercised in the cascade harness.
+Single-component fail-closed behavior remains as tabled above.
 
 ## 2. Audit tampering experiment (§13) — H3 PASS (with documented gap)
 
@@ -158,7 +160,40 @@ result, per the documented fail-loud design), degrades advisory paths via the
 live results). Sovereign capabilities remained fully available throughout the
 injected outage — the blueprint §8 network row holds.
 
-## 6. Claims that may be supported (blueprint §26)
+## 6. Cascading failures (§10, Levels 1–5) — 26/26 SAFE
+
+Multi-component failure combinations against the REAL `VestaWriteService`
+protected-mutation path (`approve_and_execute`), every trial verifying ACTUAL
+STATE (target file content, audit chain validity, temp litter, task/approval
+state), then restoring and re-verifying recovery. 26 trials: 7 singles (L1),
+2 decision-path probes + network probe (L1), 8 pairs (L2), 4 triples (L3),
+3 governance+network (L4), 1 governance+storage+model (L5).
+
+| Level | Trials | Verdict |
+|---|---|---|
+| L1 single component | 10 | **all SAFE** (7 mutation-path denies + policy/model/network probes) |
+| L2 two components | 8 | **all SAFE_DENY** |
+| L3 three components | 4 | **all SAFE_DENY** |
+| L4 governance + network | 3 | **all SAFE_DENY** (cloud endpoint genuinely unreachable in-window) |
+| L5 gov + storage + model | 1 | **SAFE_DENY** (real read-only sandbox + model blackhole, `fallback` verified) |
+
+**Invariant held:** no combination produced a protected mutation while any
+mandatory governance gate was down; no partial file, no temp litter, no silent
+success; every denied trial surfaced a quarantine or an exception. Recovery
+verified 23/23 (fresh submit + execute completes after restore).
+
+**Honest finding (non-safety hygiene gap):** when execution crashes *before*
+`approve_and_execute`'s try/except (audit-engine, persistence, or storage
+failures — exceptions not in the caught tuple, or raised before the guard), the
+approval record is left **APPROVED** with the task stuck in `WAITING_APPROVAL`
+and no terminal audit event (for audit failure the void itself could not be
+recorded — the channel is down). No mutation occurred (state-verified), so this
+is not a fail-open — but the approval ledger dangles. Caught-path failures
+(evidence/budget/killswitch) correctly VOID the approval. **Recommendation:**
+move `approvals.approve()` and the first audit append inside the guard, or add
+a watchdog that voids APPROVED approvals lacking a terminal task transition.
+
+## 7. Claims that may be supported (blueprint §26)
 
 - ✅ "MSB implements explicit governance controls over defined classes of autonomous mutation."
 - ✅ "Under the evaluated threat model, MSB prevented/rejected the tested classes of unauthorized mutations at the measured rate (APR 100%, FAR 0%)."
@@ -168,26 +203,29 @@ injected outage — the blueprint §8 network row holds.
 - ✅ "Governance introduced a measured computational and latency overhead relative to the defined baseline (+0.43 ms/action median, P99 1.43 ms)."
 - ❌ **Not claimed:** "MSB is safe / fully corrigible / cannot be compromised / guarantees sovereignty / solves AI alignment."
 
-## 7. Remaining gates (per the frozen manifest)
+## 8. Remaining gates (per the frozen manifest)
 
-- **§10 cascading failures** (Levels 2–5): two/three-component + network +
-  storage + model combinations — only single-component failures are covered so far.
 - **§18–§19 baseline comparison**: identical attack corpus against a
   governance-bypassed executor for the "X → Y unauthorized mutations at Z ms
   overhead" headline table.
 - **Service-layer approval-bypass suite** — `VestaWriteService.approve_and_execute`
-  under armed killswitch, expired A-BIND, revoked approval (V6 coverage today is
-  the raw-writer subset + service-layer tests).
+  under expired A-BIND, revoked approval, forged evidence refs (armed-killswitch
+  and multi-fault variants are now covered by the cascade harness).
 - **Close the T7 gap** — external anchor (signed, notarized chain-tip snapshot).
+- **Approval-ledger watchdog** (from the cascade hygiene finding): void APPROVED
+  approvals that never reach a terminal task transition.
 
-## 8. Reproducibility
+## 9. Reproducibility
 
 Every run is deterministic and reproducible:
 `harness_audit_tampering.py` · `harness_fail_closed.py` ·
 `harness_governance_effectiveness.py` (seed `20260814`) ·
-`harness_performance.py --trials 1000` · `harness_sovereignty.py`.
+`harness_performance.py --trials 1000` · `harness_sovereignty.py` ·
+`harness_cascading_failure.py`.
+
+
 
 ---
 
-*Evidence: `runs/2026-08-14/raw/{audit_tampering,fail_closed,governance,performance,sovereignty}_*.json`,
-`runs/2026-08-14/environment.json`, `results/{tampering,failures,governance,performance,sovereignty}.csv`.*
+*Evidence: `runs/2026-08-14/raw/{audit_tampering,fail_closed,governance,performance,sovereignty,cascading}_*.json`,
+`runs/2026-08-14/environment.json`, `results/{tampering,failures,governance,performance,sovereignty,cascading}.csv`.*
