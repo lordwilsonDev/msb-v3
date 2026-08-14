@@ -3,3 +3,4 @@
 {"ts": "2026-08-14T13:53:18Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
 {"ts": "2026-08-14T13:53:18Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
 {"ts": "2026-08-14T14:29:57Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
+{"ts": "2026-08-14T14:29:57Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}

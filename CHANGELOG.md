@@ -6,6 +6,57 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ## [Unreleased]
 
 ### Added
+- **Sovereign Node — signed device gateway** (`src/msb_v3/node/`,
+  `tests/node/`, `apps/iphone/`): the first vertical slice of the
+  M1 governance-node blueprint
+  (`docs/blueprints/plans/2026-08-13-sovereign-node-build-plan.md`).
+  The Mac gateway mounts `/node/v1` with durable one-time device
+  enrollment (short-lived pairing code, closed when empty), P-256
+  signed sessions (versioned canonical envelope, nonce + request-ID
+  replay state, clock-skew tolerance), and a policy-governed
+  `engage` path whose first actuator is a scoped `FILE_READ` rooted
+  at `MSB_NODE_SANDBOX_ROOT`. The model never has authority:
+  risk/approval fields are policy-derived, every execution records a
+  hash-chained audit receipt, and revoked/quarantined devices cannot
+  start mutations. Signing uses the declared `cryptography` provider
+  while preserving the raw CryptoKit-compatible wire format; the
+  Swift protocol package adds Keychain-backed key persistence with
+  an explicit `hardware_assurance` lower-assurance fallback rather
+  than claiming attestation the hardware doesn't provide. Tests: 14
+  cases in `tests/node/` (identity transitions, replay/expiry/
+  revocation, scope escape, write-denial, approval binding).
+- **Vesta trust/evidence boundary** (`src/msb_v3/vesta/`,
+  `tests/vesta/`): the authority perimeter around the MSB runtime
+  per `docs/blueprints/plans/2026-08-13-vesta-msb-integration-spec.md`
+  and `2026-08-13-vesta-node-full-build-plan.md`. Phase 0–2 allows
+  only `model.inference` + `memory.read`, wraps every controlled call
+  in an immutable A-BIND, and records request/policy/response events
+  through the shared `uac/audit_chain.py`. Includes: a deterministic
+  policy kernel (`ALLOW | REQUIRE_APPROVAL | DENY | QUARANTINE`, no
+  model-supplied authority), a durable SQLite task lifecycle
+  (`RECEIVED → AUTHENTICATED → PLANNED → AUTHORIZED → EXECUTING →
+  VERIFYING → COMPLETED`, plus `DENIED` and quarantine-after-restart
+  for in-flight tasks), a content-addressed evidence store with
+  hash-verified lookup that reports corruption instead of silently
+  repairing it, signed-device admission at `/vesta/signed-chat`, a
+  sandbox-rooted read gate (`/vesta/read`, `/vesta/signed-read`)
+  with traversal/symlink/size rejection, an approval-only
+  `FILE_WRITE` slice (`/vesta/execute` + signed owner ACK bound to
+  target path / payload hash / precondition hash / policy version),
+  and an approval-only `SHELL_EXEC` slice (`/vesta/shell/*`) whose
+  initial allowlist is exactly `echo` and `pwd` — named executables
+  only, no shell strings, no `shell=True`, bounded runtime/output,
+  and a signed-device ACK bound to the exact command SHA-256.
+  Transport admission is optional and off by default
+  (`MSB_VESTA_REQUIRE_TUNNEL` / `MSB_VESTA_ALLOWED_CIDRS`; WireGuard
+  runbook at `docs/operations/vesta-wireguard.md`). For
+  hardware-independent development, `make vesta-loopback`
+  (`scripts/vesta-loopback.py`) drives a real enrollment → challenge
+  → session → signed-chat round-trip over loopback with an ephemeral
+  key, and the SwiftUI surface exposes status, signed chat receipts,
+  task state, evidence IDs, and the read probe. Tests: 36 cases in
+  `tests/vesta/` (policy determinism, evidence integrity, read/write
+  gates, shell allowlist, runtime transitions, loopback harness).
 - **Capability Gateway** (`src/msb_v3/gateway/`): the single
   dispatcher between runtime and (local|frontier) compute, mapped
   to the *Capability Gateway* plane in
@@ -85,6 +136,34 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   re-enable.
 
 ### Fixed
+- **Vesta/Node hardening — security-review findings F1–F3**
+  (review: `docs/operations/vesta-security-review.md`):
+  - **F1 replay/challenge table growth** — `IdentityStore.prune()` now
+    deletes replay rows whose session is gone/expired, consumed or stale
+    challenges, and expired/revoked sessions, at the start of every
+    challenge/session/request path, so the durable anti-replay state stays
+    bounded without a background job.
+  - **F2 transport gating of read-only views** — `require_vesta_transport`
+    is now a router-level dependency on both `/vesta` and `/node/v1`, so
+    when `MSB_VESTA_REQUIRE_TUNNEL=1` the status/discovery views and the
+    raw signed-executor surface are reachable only from allowed peer CIDRs
+    (loopback stays in the default set).
+  - **F3 approval status reconciliation** — `VestaShellApprovalStore` and
+    `VestaApprovalStore` gained a terminal `void()` (APPROVED → VOID); both
+    services void the approval with an `approval.voided` audit event on the
+    kill-switch and failure/quarantine paths, so the approvals table no
+    longer shows APPROVED next to a quarantined task. VOID is terminal and
+    can never be re-decided into an execution.
+  Tests: `tests/node/test_replay_pruning.py`, router-gating cases in
+  `tests/vesta/test_vesta.py` + `tests/node/test_node_api.py`, and VOID
+  assertions in `tests/vesta/test_shell.py` + `tests/vesta/test_write.py`.
+  Full suite at verification: 872 passed, 3 skipped.
+- **Live metrics test tolerant of the fail-closed multimodal gate**
+  (`tests/triumvirate/test_metrics.py`): the `/multimodal/*` POSTs now
+  accept 200 or 503 — a live server returns 503 unless the operator started
+  it with `MSB_MULTIMODAL_ENABLED=1`, which a client-side test cannot
+  change. The metric family is explicitly registered, so the emission
+  assertion still guards the metrics surface.
 - **Flaky chaos tests under load** (`src/sovereign_runtime/tests/test_chaos_phase2.py`):
   the concurrent-append test dropped records (300/400) when sqlite's default
   5s busy timeout expired under a saturated shared runner — `BEGIN IMMEDIATE`
@@ -137,6 +216,22 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   the higher-level semantics (panel X unreadable, chat:fallback
   metric, transaction rolled back) are preserved.
   ([`00e1bbf`](https://github.com/lordwilsonDev/msb-v3/commit/00e1bbf))
+
+### Removed
+- **Dormant-satellite disposition executed for
+  `src/personal_intelligence/`** per
+  `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md`:
+  the non-persistent capability duplicates (`ContextEngine`,
+  `MemoryGraph`, `MemoryLedger`, and the dependent `AgentFactory`
+  glue) are archived under
+  `docs/audits/archived-satellites/2026-08-13/` with a mapping to
+  their live replacements (the `sovereign_runtime/brain` stubs were
+  already handled by the package fold). `event_bus` and
+  `SkillEngine` are retained but deferred; no speculative
+  replacement (durable entity/relationship memory, fuzzy skill
+  matching) was built. `pyproject.toml` testpaths now includes
+  `src/personal_intelligence/tests` so the surviving suite runs in
+  the default gate instead of being silently excluded.
 
 ## [0.2.3] - 2026-08-13
 
