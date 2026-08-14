@@ -28,7 +28,8 @@ from msb_v3.agent.dag import TaskGraph
 from msb_v3.agent.executor import ExecReport
 from msb_v3.agent.intent import Intent
 from msb_v3.observability.metrics import Metrics
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,7 @@ def _deterministic_hash(trace: AgentTrace) -> str:
 
 def record_trace(
     trace: AgentTrace,
-    audit_chain: Optional[AuditChain] = None,
+    audit_chain: Optional[AuditChainLike] = None,
     store: Optional[RuntimeStore] = None,
 ) -> None:
     """Record a run: append evidence events to the UAC audit chain (authoritative)
@@ -170,7 +171,7 @@ def record_trace(
     persistence is best-effort — a store failure must never break the run
     (phase0-substrate-hardening.md, I7 note).
     """
-    chain = audit_chain if audit_chain is not None else AuditChain()
+    chain = audit_chain if audit_chain is not None else anchored_chain_from_env()
     chain.append(
         "agentic",
         "trace:run_start",

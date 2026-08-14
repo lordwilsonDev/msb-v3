@@ -41,7 +41,8 @@ from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import OuroborosGovernor
 from msb_v3.governance.guard import Guard
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.uac.axiom_library import ArtifactRecord, AxiomLibrary
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class FlywheelEngine:
         ledger: Optional[BudgetLedger] = None,
         switch: Optional[KillSwitch] = None,
         governor: Optional[OuroborosGovernor] = None,
-        audit_chain: Optional[AuditChain] = None,
+        audit_chain: Optional[AuditChainLike] = None,
         axiom_library: Optional[AxiomLibrary] = None,
         scanner: Optional[PaperScanner] = None,
         vault_root: Optional[Path] = None,
@@ -81,7 +82,7 @@ class FlywheelEngine:
         self._switch = switch or KillSwitch()
         self._governor = governor or OuroborosGovernor.from_settings()
         self._guard = Guard(self._switch, self._ledger, self._queue, self._governor)
-        self._chain = audit_chain or AuditChain()
+        self._chain = audit_chain or anchored_chain_from_env()
         self._axiom = axiom_library or AxiomLibrary()
         # Default is the real feed (Tavily, arxiv-restricted); it degrades
         # to an honest 0-papers note when the key is absent or the feed is

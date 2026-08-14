@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from msb_v3.ops.backup import (
     create_backup,
+    default_notary_log,
     default_paths,
     list_backups,
     prune_backups,
@@ -25,15 +26,17 @@ def main() -> None:
 
     if args.cmd == "backup":
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        m = create_backup(data_dir, storage_dir, dest_root, timestamp=ts)
+        notary = default_notary_log()
+        m = create_backup(data_dir, storage_dir, dest_root, timestamp=ts, notary_log=notary)
         pruned = prune_backups(dest_root, keep=args.keep)
-        print(f"[backup] {m.path}  dbs={m.db_count}  pruned={len(pruned)}")
+        notary_in = (m.path / "notary" / notary.name).exists()
+        print(f"[backup] {m.path}  dbs={m.db_count}  pruned={len(pruned)}  notary={notary_in}")
     elif args.cmd == "restore":
         backups = list_backups(dest_root)
         if not backups:
             raise SystemExit("no backups found")
         target = backups[-1] if args.which == "latest" else dest_root / args.which
-        restore_backup(target, data_dir, storage_dir)
+        restore_backup(target, data_dir, storage_dir, notary_dest=default_notary_log())
         print(f"[restore] restored from {target}")
 
 

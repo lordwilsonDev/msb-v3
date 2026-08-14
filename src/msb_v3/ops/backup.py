@@ -58,7 +58,14 @@ def _copy_tree(src: Path, dst: Path, *, skip_db: bool) -> None:
         shutil.copy2(item, out)
 
 
-def create_backup(data_dir: Path, storage_dir: Path, dest_root: Path, *, timestamp: str) -> BackupManifest:
+def create_backup(
+    data_dir: Path,
+    storage_dir: Path,
+    dest_root: Path,
+    *,
+    timestamp: str,
+    notary_log: Path | None = None,
+) -> BackupManifest:
     out = dest_root / timestamp
     out.mkdir(parents=True, exist_ok=True)
 
@@ -71,6 +78,14 @@ def create_backup(data_dir: Path, storage_dir: Path, dest_root: Path, *, timesta
     _copy_tree(data_dir, out / "data", skip_db=True)
     if storage_dir.exists():
         _copy_tree(storage_dir, out / "storage", skip_db=False)
+
+    # The out-of-band chain-anchor notary log lives outside the repo; snapshot
+    # it into each backup so it is preserved by the rotation and restorable
+    # together with the audit chain it protects.
+    if notary_log is not None and notary_log.exists():
+        nout = out / "notary"
+        nout.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(notary_log, nout / notary_log.name)
 
     checksums: dict[str, str] = {}
     for f in sorted(out.rglob("*")):
@@ -99,7 +114,7 @@ def verify_backup(backup_dir: Path) -> bool:
     return True
 
 
-def restore_backup(backup_dir: Path, data_dir: Path, storage_dir: Path) -> None:
+def restore_backup(backup_dir: Path, data_dir: Path, storage_dir: Path, *, notary_dest: Path | None = None) -> None:
     if not verify_backup(backup_dir):
         raise ValueError(f"backup failed checksum verification: {backup_dir}")
     for name, target in (("data", data_dir), ("storage", storage_dir)):
@@ -118,7 +133,19 @@ def restore_backup(backup_dir: Path, data_dir: Path, storage_dir: Path) -> None:
         tmp.rename(target)                 # swap in new copy (atomic rename)
         if old.exists():
             shutil.rmtree(old)             # drop old only after success
+    # Restore the notary log snapshot so the out-of-band anchor copy is
+    # consistent with the restored chain (a post-restore --verify-notary
+    # against an older tip would otherwise fail).
+    if notary_dest is not None:
+        notary_src = backup_dir / "notary"
+        if notary_src.exists():
+            notary_dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(notary_src / notary_log_name(notary_src), notary_dest)
 
+
+def notary_log_name(notary_src: Path) -> str:
+    files = [f for f in notary_src.iterdir() if f.is_file()]
+    return files[0].name if files else "chain-anchor-notary.jsonl"
 
 def list_backups(dest_root: Path) -> list[Path]:
     if not dest_root.exists():
@@ -138,3 +165,9 @@ def default_paths() -> tuple[Path, Path, Path]:
     home = Path(settings.msb_home)
     dest = Path(os.getenv("MSB_BACKUP_DIR", str(Path.home() / "msb-backups" / "msb-v3")))
     return home / "data", home / "storage", dest
+
+
+def default_notary_log() -> Path:
+    """Out-of-band chain-anchor notary log, kept in sync with
+    scripts/notarize_chain_anchor.sh (MSB_NOTARY_LOG)."""
+    return Path(os.getenv("MSB_NOTARY_LOG", str(Path.home() / "msb-backups" / "chain-anchor-notary.jsonl")))

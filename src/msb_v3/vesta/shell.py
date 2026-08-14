@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from msb_v3.core.config import settings
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.vesta.evidence import EvidenceError, EvidenceStore
 from msb_v3.vesta.models import ABind, VestaShellRequest
 from msb_v3.vesta.policy import authorize_shell
@@ -306,7 +306,7 @@ class VestaShellService:
 
     def __init__(
         self,
-        audit: AuditChain,
+        audit: AuditChainLike,
         tasks: VestaTaskStore,
         evidence: EvidenceStore,
         approvals: VestaShellApprovalStore,

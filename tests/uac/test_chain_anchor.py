@@ -51,6 +51,7 @@ def test_t7_whole_db_replacement_is_detected(tmp_path: Path) -> None:
     assert internal["valid"] is True  # hash chain alone cannot see the swap
     assert anchored["valid"] is False
     assert "whole-DB replacement" in anchored["reason"]
+    assert anchored.get("stale", False) is False  # replacement, not staleness
     assert anchored["anchored_seq"] == 5
     assert anchored["live_seq"] == 3
 
@@ -94,6 +95,28 @@ def test_stale_anchor_after_legitimate_append(tmp_path: Path) -> None:
     assert anchor.verify(chain)["valid"] is True
 
 
+def test_verify_reports_staleness_but_stays_valid(tmp_path: Path) -> None:
+    """A valid-for-its-tip anchor that is older than newer chain records must
+    be flagged stale (re-anchoring stopped) while remaining valid."""
+    chain = make_chain(tmp_path / "audit.db", 3)
+    anchor = ChainAnchor(seed=generate_seed())
+    anchored = AnchoredAuditChain(chain, anchor)  # re-anchors on every append
+    for i in range(3, 6):
+        anchored.append("test", "normal", {"i": i})
+    healthy = anchor.verify(chain)
+    assert healthy["valid"] is True
+    assert healthy["stale"] is False
+
+    # simulate re-anchoring stopping: append directly to the chain (bypassing
+    # the wrapper) so a newer record exists than the signed anchor covers
+    chain.append("test", "normal", {"i": 99})
+    result = anchor.verify(chain)
+    assert result["valid"] is False  # the chain is no longer covered
+    assert result["stale"] is True
+    assert "STALE" in result["reason"]
+    assert result["stale_seconds"] > 0
+
+
 def test_wrapper_reanchors_after_every_append(tmp_path: Path) -> None:
     chain = make_chain(tmp_path / "audit.db", 0)
     anchored = AnchoredAuditChain(chain, ChainAnchor(seed=generate_seed()))
@@ -128,6 +151,73 @@ def test_notarized_export_verifies_with_public_key_only(tmp_path: Path) -> None:
     assert verifier.verify(chain)["valid"] is False
 
 
+def test_notary_log_verifies_latest_entry(tmp_path: Path) -> None:
+    """An append-only notary log of signed snapshots must verify against the
+    live chain, with the tip present in the chain."""
+    chain = make_chain(tmp_path / "audit.db", 4)
+    signer = ChainAnchor(seed=generate_seed())
+    signer.anchor(chain)
+    log = tmp_path / "notary.jsonl"
+    signer.notarize(chain, log)  # first entry
+    chain.append("test", "normal", {"i": 99})
+    signer.anchor(chain)
+    signer.notarize(chain, log)  # second (latest) entry
+
+    result = signer.verify_notary(chain, log)
+    assert result["valid"] is True
+    assert result["entry_count"] == 2
+    assert result["record_count"] == 5
+
+
+def test_notary_log_detects_whole_db_rollback(tmp_path: Path) -> None:
+    """The out-of-band story: even if the local anchor file is replaced along
+    with the DB, the notary's last signed tip is absent from the rolled-back
+    chain — the notary catches what the anchor file alone cannot."""
+    chain = make_chain(tmp_path / "audit.db", 4)
+    signer = ChainAnchor(seed=generate_seed())
+    signer.anchor(chain)
+    log = tmp_path / "notary.jsonl"
+    signer.notarize(chain, log)
+
+    # attacker replaces the DB (and would also replace the local anchor file)
+    fresh = make_chain(tmp_path / "fresh.db", 2)
+    os.replace(tmp_path / "fresh.db", tmp_path / "audit.db")
+
+    result = signer.verify_notary(chain, log)
+    assert result["valid"] is False
+    assert "notarized tip is not in the live chain" in result["reason"]
+
+
+def test_notary_log_detects_tamper_and_wrong_key(tmp_path: Path) -> None:
+    chain = make_chain(tmp_path / "audit.db", 3)
+    signer = ChainAnchor(seed=generate_seed())
+    signer.anchor(chain)
+    log = tmp_path / "notary.jsonl"
+    signer.notarize(chain, log)
+
+    # tamper: flip the signature in the last entry
+    lines = log.read_text().splitlines()
+    entry = json.loads(lines[-1])
+    entry["anchor"]["signature"] = "f" * 128
+    lines[-1] = json.dumps(entry, sort_keys=True, separators=(",", ":"))
+    log.write_text("\n".join(lines))
+    assert signer.verify_notary(chain, log)["valid"] is False
+
+    # wrong key: another signer cannot validate the log
+    log.write_text("\n".join(lines[:-1]) + "\n")
+    other = ChainAnchor(seed=generate_seed())
+    assert other.verify_notary(chain, log)["valid"] is False
+
+
+def test_notary_missing_or_empty_log(tmp_path: Path) -> None:
+    chain = make_chain(tmp_path / "audit.db", 2)
+    signer = ChainAnchor(seed=generate_seed())
+    assert signer.verify_notary(chain, tmp_path / "missing.jsonl")["valid"] is False
+    empty = tmp_path / "empty.jsonl"
+    empty.write_text("\n")
+    assert signer.verify_notary(chain, empty)["valid"] is False
+
+
 def test_factory_plain_without_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import msb_v3.uac.chain_anchor as mod
 
@@ -137,10 +227,38 @@ def test_factory_plain_without_key(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 
 def test_factory_anchored_with_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import msb_v3.uac.audit_chain as audit_mod
     import msb_v3.uac.chain_anchor as mod
 
+    # isolate the DEFAULT chain so the wrapper anchors in tmp, never the live DB
+    monkeypatch.setattr(audit_mod, "_AUDIT_DB", tmp_path / "audit.db")
     monkeypatch.setenv(KEY_ENV, generate_seed().hex())
     monkeypatch.setattr(mod, "_default_key_path", lambda: tmp_path / "none.key")
     result = anchored_chain_from_env()
     assert isinstance(result, AnchoredAuditChain)
     assert result.verify_anchored()["valid"] is True
+
+
+def test_wrapper_refuses_to_clobber_foreign_key_anchor(tmp_path: Path) -> None:
+    """The live-incident regression: an init path with a DIFFERENT key must
+    raise, never silently rotate the anchored key (found in production when a
+    test process re-anchored the live chain with a random key)."""
+    chain = make_chain(tmp_path / "audit.db", 2)
+    original = ChainAnchor(seed=generate_seed())
+    original.anchor(chain)
+
+    intruder = ChainAnchor(seed=generate_seed())  # different key
+    with pytest.raises(ValueError, match="refusing to clobber"):
+        AnchoredAuditChain(chain, intruder)
+
+    # the anchored key was NOT rotated
+    assert original.verify(chain)["valid"] is True
+
+
+def test_wrapper_init_with_same_key_is_fine(tmp_path: Path) -> None:
+    chain = make_chain(tmp_path / "audit.db", 2)
+    anchor = ChainAnchor(seed=generate_seed())
+    anchor.anchor(chain)
+    # same key -> construction succeeds and verification stays valid
+    wrapped = AnchoredAuditChain(chain, anchor)
+    assert wrapped.verify_anchored()["valid"] is True

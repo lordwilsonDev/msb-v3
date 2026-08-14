@@ -28,7 +28,8 @@ from typing import Any, Dict, Optional
 from msb_v3.agent.dag import Task
 from msb_v3.agent.executor import ToolProvider
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 # capability -> risk tier (blueprint §7 tier table, trimmed to the slice +
@@ -88,10 +89,10 @@ class ActionGate:
     def __init__(
         self,
         killswitch: Optional[KillSwitch] = None,
-        audit_chain: Optional[AuditChain] = None,
+        audit_chain: Optional[AuditChainLike] = None,
     ) -> None:
         self._switch = killswitch  # None = not armed (tests inject fakes)
-        self._audit = audit_chain if audit_chain is not None else AuditChain()
+        self._audit = audit_chain if audit_chain is not None else anchored_chain_from_env()
 
     def tier_of(self, capability: str) -> int:
         return RISK_TIERS.get(capability, 1)

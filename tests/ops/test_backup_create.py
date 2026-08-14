@@ -14,6 +14,36 @@ def _make_db(p: Path, val: str):
     c.close()
 
 
+def test_create_backup_snapshots_notary_log(tmp_path: Path):
+    data = tmp_path / "data"
+    storage = tmp_path / "storage"
+    _make_db(data / "msb_v3.db", "primary")
+    storage.mkdir()
+    notary = tmp_path / "chain-anchor-notary.jsonl"
+    notary.write_text('{"notarized": "tip"}\n')
+
+    m = create_backup(
+        data, storage, tmp_path / "backups", timestamp="20260811T120000Z", notary_log=notary
+    )
+
+    assert (m.path / "notary" / notary.name).exists()
+    assert (m.path / "notary" / notary.name).read_text() == '{"notarized": "tip"}\n'
+    # the notary copy is covered by manifest checksums like everything else
+    manifest = json.loads((m.path / "manifest.json").read_text())
+    assert f"notary/{notary.name}" in manifest["checksums"]
+
+
+def test_create_backup_skips_missing_notary_log(tmp_path: Path):
+    data = tmp_path / "data"
+    storage = tmp_path / "storage"
+    data.mkdir()
+    storage.mkdir()
+    m = create_backup(
+        data, storage, tmp_path / "backups", timestamp="20260811T120000Z", notary_log=tmp_path / "nope.jsonl"
+    )
+    assert not (m.path / "notary").exists()
+
+
 def test_create_backup_captures_db_files_and_storage(tmp_path: Path):
     data = tmp_path / "data"
     storage = tmp_path / "storage"

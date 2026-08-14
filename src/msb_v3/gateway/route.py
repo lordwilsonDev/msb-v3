@@ -31,7 +31,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, FrozenSet, Optional
 
 from msb_v3.local_ai.client_factory import active_backend
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def route(call: GatewayCall, ctx: Optional[GatewayContext] = None) -> GatewayDec
     call X refused at 14:32 on Tuesday?" after the fact.
     """
     ctx = ctx or GatewayContext()
-    chain = AuditChain()
+    chain = anchored_chain_from_env()
 
     # 1. Capability check.
     missing = call.capabilities - ctx.granted_capabilities
@@ -175,7 +176,7 @@ def route(call: GatewayCall, ctx: Optional[GatewayContext] = None) -> GatewayDec
 
 
 def _log_decision(
-    chain: AuditChain,
+    chain: AuditChainLike,
     call: GatewayCall,
     ctx: GatewayContext,
     *,

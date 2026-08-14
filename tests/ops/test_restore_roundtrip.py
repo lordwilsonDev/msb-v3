@@ -37,6 +37,46 @@ def test_backup_then_wipe_then_restore_recovers_everything(tmp_path: Path):
     assert (storage / "seg.bin").read_bytes() == b"index"
 
 
+def test_restore_recovers_notary_log(tmp_path: Path):
+    data = tmp_path / "data"
+    storage = tmp_path / "storage"
+    _make_db(data / "msb_v3.db", "primary")
+    storage.mkdir()
+    notary = tmp_path / "chain-anchor-notary.jsonl"
+    notary.write_text('{"notarized": "tip"}\n')
+
+    m = create_backup(
+        data, storage, tmp_path / "backups", timestamp="20260811T120000Z", notary_log=notary
+    )
+    # disaster: notary log destroyed along with everything else
+    notary.unlink()
+    shutil.rmtree(data)
+    shutil.rmtree(storage)
+
+    restore_backup(m.path, data, storage, notary_dest=notary)
+
+    assert notary.read_text() == '{"notarized": "tip"}\n'
+    rows = sqlite3.connect(data / "msb_v3.db").execute("SELECT k FROM t").fetchall()
+    assert rows == [("primary",)]
+
+
+def test_restore_without_notary_dest_skips_notary(tmp_path: Path):
+    data = tmp_path / "data"
+    storage = tmp_path / "storage"
+    _make_db(data / "msb_v3.db", "primary")
+    storage.mkdir()
+    notary = tmp_path / "chain-anchor-notary.jsonl"
+    notary.write_text('{"notarized": "tip"}\n')
+    m = create_backup(
+        data, storage, tmp_path / "backups", timestamp="20260811T120000Z", notary_log=notary
+    )
+    notary.unlink()
+
+    restore_backup(m.path, data, storage)  # no notary_dest -> untouched
+
+    assert not notary.exists()
+
+
 def test_restore_refuses_corrupted_backup(tmp_path: Path):
     data = tmp_path / "data"
     storage = tmp_path / "storage"
