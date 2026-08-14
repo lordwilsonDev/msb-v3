@@ -11,6 +11,7 @@ dependencies = [
   "httpx==0.28.1",
   "prometheus-client==0.21.1",
   "qdrant-client==1.18.0",
+  "cryptography==44.0.3",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,7 @@ dev = [
   "ruff==0.9.4",
   "mypy==2.3.0",  # CI lint job runs `mypy src` — was only an ad-hoc factory-gate arg
   "PyYAML==6.0.3",  # workflow-structure guard tests (tests/test_harness_gate_wiring.py)
+  "types-PyYAML==6.0.12.20260724",  # mypy stubs for the PyYAML import
 ]
 
 # Ruff gates MUST agree across every invocation: the CI lint job runs plain
@@ -36,7 +38,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
-testpaths = ["tests", "src/sovereign_runtime/tests"]
+testpaths = ["tests", "src/personal_intelligence/tests"]
 
 [project.scripts]
 msb-v3 = "msb_v3.__main__:run"

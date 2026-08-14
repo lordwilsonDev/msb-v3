@@ -1,6 +1,6 @@
 """Sovereign Runtime — Configuration.
 
-Loads runtime configuration from sovereign_runtime/config/runtime.yaml
+Loads runtime configuration from msb_v3/core/runtime.yaml
 plus environment overrides.
 """
 
@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 import yaml
 
-_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "runtime.yaml"
+_CONFIG_PATH = Path(__file__).resolve().parent / "runtime.yaml"
 _config_cache: Dict[str, Any] = {}
 
 
@@ -61,7 +61,7 @@ def _env_overrides() -> Dict[str, Any]:
     for name, value in os.environ.items():
         if not name.startswith("SOVEREIGN_"):
             continue
-        raw = name[len("SOVEREIGN_"):].lower()
+        raw = name[len("SOVEREIGN_") :].lower()
         if "_" not in raw:
             result[raw] = _coerce_env_value(value)
             continue

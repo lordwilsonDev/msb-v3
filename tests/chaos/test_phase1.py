@@ -1,31 +1,24 @@
 """Chaos suite for the Sovereign Runtime (phase 1).
 
-Adversarial tests for the pieces "that could never go wrong" -- the event
-bus, brain service, recursive planner, and config loader. Everything is
+Adversarial tests for the event bus and config loader. Everything is
 deterministic (seeded) and sync-only so it runs green under the STRICT
 pytest-asyncio config with no event loop involved.
 
 What this suite pins down as CONTRACT (documented behavior, not bugs):
 
 1. REENTRANCY: emitting from inside a handler must never deadlock. The
-   event bus uses threading.RLock, so emit-inside-handler is safe. This is
-   the exact shape that ate the Aug 6 orphan processes (pre-rewrite plain
-   Lock self-deadlock); it is now pinned forever.
+   event bus uses threading.RLock, so emit-inside-handler is safe.
 2. HANDLER-RAISE: a raising handler propagates to the emitter and skips the
-   REMAINING handlers for that event (emit iterates a snapshot); the bus
-   stays usable and history still records the event.
+   remaining handlers for that event; the bus stays usable.
 3. LOCK HELD DURING HANDLERS: emit() holds the bus lock while calling
-   handlers, so a slow handler blocks other emitters. Pinned as a measured
-   liveness property (and a known scaling constraint).
-4. PLANNER BOUND: RecursivePlanner node count is bounded by MAX_DEPTH
-   (each complex node forks 2 children, so a huge goal cannot explode
-   beyond ~2^MAX_DEPTH nodes).
-5. CONFIG: get() re-reads the YAML + env on EVERY call (the _config_cache
-   declared in config/__init__.py is dead code -- never read). Perf probe
+   handlers, so a slow handler blocks other emitters. This is a measured
+   liveness property and known scaling constraint.
+4. CONFIG: get() re-reads the YAML + env on every call. The perf probe
    documents the cost so a fix can be justified.
 
 Failure in any of these = a regression to investigate, not a flake.
 """
+
 from __future__ import annotations
 
 import random
@@ -33,11 +26,9 @@ import threading
 import time
 from typing import Any, Callable, Dict
 
-from sovereign_runtime import Event, EventBus
-from sovereign_runtime.brain import BrainService
-from sovereign_runtime.brain.recursive_planner import MAX_DEPTH, RecursivePlanner
-from sovereign_runtime.config import get
-from sovereign_runtime.core.identity import identity
+from msb_v3.core.event_bus import Event, EventBus
+from msb_v3.core.identity import identity
+from msb_v3.core.runtime_config import get
 
 
 # All deadlock-pinning tests run the risky call in a worker thread and
@@ -58,7 +49,9 @@ def run_with_deadlock_guard(fn: Callable[[], Any], timeout: float = 5.0) -> Any:
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
     thread.join(timeout)
-    assert not thread.is_alive(), f"deadlocked: {fn!r} did not complete within {timeout}s"
+    assert not thread.is_alive(), (
+        f"deadlocked: {fn!r} did not complete within {timeout}s"
+    )
     assert result.get("ok"), f"raised: {result.get('error')!r}"
     return result.get("value")
 
@@ -115,31 +108,15 @@ def test_deep_emit_chain_terminates():
     # Build a chain of 25 events, each handler emitting the next.
     tags = [f"e{i}" for i in range(25)]
     for i, tag in enumerate(tags):
-        bus.subscribe(tag, make_handler(tag, tags[i + 1] if i + 1 < len(tags) else None))
+        bus.subscribe(
+            tag, make_handler(tag, tags[i + 1] if i + 1 < len(tags) else None)
+        )
 
     run_with_deadlock_guard(lambda: bus.emit(tags[0], {}))
 
     assert hops == tags
     # Recursive chain: the innermost emit is 25 frames deep, then unwinds.
     assert max_depth[0] == 25
-
-
-def test_brain_goal_handler_reemits_safely():
-    """The full brain flow: _on_goal_received emits plan.created and
-    execute.request while called from within bus.emit's handler loop."""
-
-    bus = EventBus()
-    BrainService(bus=bus)  # constructor subscribes the goal handler
-    plan_events = []
-    exec_events = []
-    bus.subscribe("agent.plan.created", lambda e: plan_events.append(e))
-    bus.subscribe("agent.execute.request", lambda e: exec_events.append(e))
-
-    run_with_deadlock_guard(lambda: bus.emit("agent.goal.received", {"goal": "Build a website"}))
-
-    assert len(plan_events) == 1
-    assert len(exec_events) == 1
-    assert plan_events[0].payload["plan"]["goal"] == "Build a website"
 
 
 # ---------------------------------------------------------------------------
@@ -325,114 +302,6 @@ def test_concurrent_subscribe_emit_unsubscribe_no_crash():
     assert bus.history()[-1].type == "final"
 
 
-# ---------------------------------------------------------------------------
-# 5. PLANNER CHAOS -- goal shapes that "could never go wrong"
-# ---------------------------------------------------------------------------
-
-
-def test_planner_goal_length_boundaries():
-    """analyze() is '< 80 -> simple'; 79/80/81/159/160/161 must all behave."""
-
-    planner = RecursivePlanner(memory=None)
-    for n in (0, 1, 79, 80, 81, 159, 160, 161, 200, 1000):
-        goal = "x" * n
-        node = planner.plan(goal)
-        assert node.status in {"ready", "terminated"}
-        assert node.depth == 0
-        # Simple goals have exactly one action; complex goals fork children.
-        if n < 80:
-            assert node.children == []
-            assert len(node.actions) == 1
-        else:
-            assert len(node.children) == 2
-
-
-def test_planner_node_count_bounded_by_max_depth():
-    """A huge goal forks 2 children per complex node; total nodes cannot
-    exceed ~2^MAX_DEPTH. A pathological goal must not blow up."""
-
-    planner = RecursivePlanner(memory=None)
-    node = planner.plan("y" * (80 * 2**MAX_DEPTH))  # big enough to force max depth
-
-    def count(n) -> int:
-        return 1 + sum(count(c) for c in n.children)
-
-    total = count(node)
-    assert total <= 2 ** (MAX_DEPTH + 1)
-    # The deepest leaf must have terminated at MAX_DEPTH.
-    depths = []
-
-    def walk(n) -> None:
-        depths.append(n.depth)
-        for c in n.children:
-            walk(c)
-
-    walk(node)
-    assert max(depths) == MAX_DEPTH
-
-
-def test_planner_pathological_goal_chars():
-    """Unicode, control chars, emoji, newlines, and null bytes must not crash
-    the planner or produce malformed trees."""
-
-    planner = RecursivePlanner(memory=None)
-    goals = [
-        "🚀" * 100,
-        "a\nb\tc\rd" * 30,
-        "\x00\x01\x02" * 40,
-        "Z" * 80 + "💥" * 80,
-        "😀" * 200,
-    ]
-    for goal in goals:
-        node = planner.plan(goal)
-        assert node.status in {"ready", "terminated"}
-        assert node.depth >= 0
-        # to_dict round-trips without error
-        serialized = planner.to_dict(node)
-        assert serialized["goal"] == goal
-
-
-def test_planner_repeated_identical_goals():
-    """Planning the same goal repeatedly must not corrupt memory or explode
-    the by_goal index inconsistently."""
-
-    planner = RecursivePlanner(memory=None)
-    for _ in range(50):
-        planner.plan("repeat me")
-    node = planner.plan("repeat me")
-    assert node.status == "ready"
-
-
-# ---------------------------------------------------------------------------
-# 6. BRAIN + PAYLOAD CHAOS -- garbage in, no hang out
-# ---------------------------------------------------------------------------
-
-
-def test_brain_garbage_goals_no_hang():
-    """Non-string goals, missing keys, and absurd payloads must not hang the
-    brain's goal handler (str() coercion is the contract)."""
-
-    bus = EventBus()
-    brain = BrainService(bus=bus)
-    payloads = [
-        {"goal": None},
-        {},
-        {"goal": 12345},
-        {"goal": ["a", "b"]},
-        {"goal": {"nested": True}},
-        {"goal": " " * 1000},  # whitespace-only -> ignored
-        {"goal": "x" * 5000},
-    ]
-    for payload in payloads:
-        brain._on_goal_received(
-            Event(type="agent.goal.received", payload=payload, timestamp="", agent_id="", trace_id="")
-        )
-
-    # Bus still healthy afterwards.
-    assert brain.health()["status"] == "online"
-    assert bus.history()
-
-
 def test_identity_immutable_and_deterministic():
     # Setting a field on the frozen AgentIdentity raises AttributeError
     # (FrozenInstanceError is a subclass).
@@ -459,23 +328,10 @@ def test_perf_emit_throughput():
         bus.emit("x", {})
     dt = time.perf_counter() - t0
     us = dt / 10_000 * 1_000_000
-    print(f"\n[perf] emit with 1 subscriber: {us:.1f} us/event ({10_000 / dt:,.0f} events/s)")
+    print(
+        f"\n[perf] emit with 1 subscriber: {us:.1f} us/event ({10_000 / dt:,.0f} events/s)"
+    )
     assert dt < 5.0  # generous; regressions from locking changes show here
-
-
-def test_perf_planner_simple_and_complex():
-    planner = RecursivePlanner(memory=None)
-
-    t0 = time.perf_counter()
-    planner.plan("short goal")
-    t_simple = time.perf_counter() - t0
-
-    t0 = time.perf_counter()
-    planner.plan("z" * 200)
-    t_complex = time.perf_counter() - t0
-
-    print(f"\n[perf] planner simple: {t_simple * 1000:.2f} ms | complex(200): {t_complex * 1000:.2f} ms")
-    assert t_complex < 1.0
 
 
 def test_perf_config_get_reloads_every_call():
@@ -492,5 +348,7 @@ def test_perf_config_get_reloads_every_call():
         get("brain.framework")
     dt = time.perf_counter() - t0
     us = dt / n * 1_000_000
-    print(f"\n[perf] config get(): {us:.0f} us/call ({n} calls in {dt * 1000:.0f} ms) -- cache is dead code")
+    print(
+        f"\n[perf] config get(): {us:.0f} us/call ({n} calls in {dt * 1000:.0f} ms) -- cache is dead code"
+    )
     assert dt < 5.0

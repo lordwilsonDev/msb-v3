@@ -6,7 +6,7 @@ import tempfile
 
 import pytest
 
-from msb_v3.agent.ralph_loop import (
+from msb_v3.agent.execution_loop import (
     CircuitBreakerTripped,
     Constraints,
     IntegrityLocks,
@@ -306,7 +306,7 @@ class TestRalphLoopExecution:
         with tempfile.TemporaryDirectory() as td:
             loop = create_ralph_loop(workdir=td)
             # Pre-seed status with max_loops=2 via disk write
-            from msb_v3.agent.ralph_loop import Constraints as C
+            from msb_v3.agent.execution_loop import Constraints as C
             loop._write_status(Status(loop_id="exhaust", constraints=C(max_loops=2)))
 
             def action_fn(goal, status, context):
@@ -321,7 +321,7 @@ class TestRalphLoopExecution:
         with tempfile.TemporaryDirectory() as td:
             loop = create_ralph_loop(workdir=td)
             # Pre-seed status with budget already over cap
-            from msb_v3.agent.ralph_loop import Constraints as C2
+            from msb_v3.agent.execution_loop import Constraints as C2
             loop._write_status(Status(loop_id="bb", constraints=C2(budget_cap_usd=0.0, max_loops=5, budget_spent_usd=1.0)))
 
             def action_fn(goal, status, context):

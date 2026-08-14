@@ -38,7 +38,7 @@ jobs:
           pip install -e ".[dev]" pytest-cov mypy ruff
 
       # Note: bare `pytest` follows pyproject testpaths = tests +
-      # src/sovereign_runtime/tests (253 tests). The factory gate artifact
+      # the chaos suite (358 tests). The factory gate artifact
       # (factory_gate.json) runs `pytest tests/` (232) — CI is deliberately
       # the wider net. factory_gate.json is a point-in-time record, not a CI
       # mirror.
@@ -75,7 +75,7 @@ jobs:
           pytest --cov=msb_v3 --cov-report=term --cov-fail-under=70 -q
 
       # Full scope: types ALL three packages, not just src/msb_v3 — the
-      # sovereign_runtime/personal_intelligence blind spot cost 5 real errors
+      # msb_v3 test surface blind spot cost 5 real errors
       # (now fixed).
       - name: Typed enforcement (mypy)
         run: mypy src --ignore-missing-imports

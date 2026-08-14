@@ -148,7 +148,7 @@ jobs:
       - name: Run Ruff
         run: ruff check src/ tests/
 
-      # Full scope: types ALL three packages (msb_v3, sovereign_runtime,
+      # Full scope: types ALL three packages (msb_v3,
       # personal_intelligence), not just src/msb_v3. Blocking — the old
       # continue-on-error made this step a no-op that never gated.
       - name: Run mypy

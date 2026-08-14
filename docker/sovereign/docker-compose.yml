@@ -11,7 +11,7 @@ services:
       memory:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import sovereign_runtime"]
+      test: ["CMD", "python", "-c", "from msb_v3.core.event_bus import EventBus"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -28,7 +28,7 @@ services:
       memory:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import sovereign_runtime"]
+      test: ["CMD", "python", "-c", "from msb_v3.core.event_bus import EventBus"]
       interval: 10s
       timeout: 5s
       retries: 3

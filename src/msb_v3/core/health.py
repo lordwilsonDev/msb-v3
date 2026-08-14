@@ -45,6 +45,12 @@ class HealthSystem:
                     ComponentHealth(name=name, status="online" if ok else "offline")
                 )
             except Exception as exc:  # pragma: no cover
-                components.append(ComponentHealth(name=name, status="error", detail=str(exc)))
-        overall = "online" if all(c.status == "online" for c in components) else "degraded"
-        return HealthReport(agent_id=self.agent_id, overall=overall, components=components)
+                components.append(
+                    ComponentHealth(name=name, status="error", detail=str(exc))
+                )
+        overall = (
+            "online" if all(c.status == "online" for c in components) else "degraded"
+        )
+        return HealthReport(
+            agent_id=self.agent_id, overall=overall, components=components
+        )

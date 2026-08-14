@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-import msb_v3.api.cockpit as cockpit_api
+import msb_v3.api.dashboard as cockpit_api
 from msb_v3.api.app import create_app
 
 

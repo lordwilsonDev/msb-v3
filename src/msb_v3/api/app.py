@@ -12,8 +12,8 @@ from starlette.middleware.gzip import GZipMiddleware
 from msb_v3 import __version__
 from msb_v3.api.agent import router as agent_router
 from msb_v3.api.chat import router as chat_router
-from msb_v3.api.cockpit import router as cockpit_router
 from msb_v3.api.conversation import router as conversation_router
+from msb_v3.api.dashboard import router as dashboard_router
 from msb_v3.api.evolution import router as evolution_router
 from msb_v3.api.flywheel import router as flywheel_router
 from msb_v3.api.governance import router as governance_router
@@ -40,7 +40,9 @@ from msb_v3.api.workflow import router as workflow_router
 from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
 from msb_v3.core.rate_limit import RateLimiter
+from msb_v3.node.api import router as node_router
 from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+from msb_v3.vesta.api import router as vesta_router
 
 
 @asynccontextmanager
@@ -97,7 +99,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router, tags=["health"])
     app.include_router(home_router, tags=["ui"])
-    app.include_router(cockpit_router, tags=["cockpit"])
+    app.include_router(dashboard_router, tags=["cockpit"])
     app.include_router(memory_router, prefix="/memory", tags=["memory"])
     app.include_router(chat_router, tags=["chat"])
     app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
@@ -123,5 +125,7 @@ def create_app() -> FastAPI:
     app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
     app.include_router(openai_compat_router, prefix="/v1", tags=["openai"])
     app.include_router(agent_router, prefix="/agent", tags=["agent"])
+    app.include_router(node_router, prefix="/node/v1", tags=["sovereign-node"])
+    app.include_router(vesta_router, prefix="/vesta", tags=["vesta"])
 
     return app

@@ -1,7 +1,7 @@
 """Phase 0 test suite.
 
 Completion criteria:
-- `pytest sovereign_runtime/tests/` passes
+- `pytest tests/` passes
 - Event bus emits and delivers events
 - Identity is deterministic
 - Config loads with env overrides
@@ -15,8 +15,10 @@ import time
 import pytest
 
 from msb_v3 import __version__
-from sovereign_runtime import Event, EventBus, get, identity, load_config
-from sovereign_runtime.core.health import HealthSystem
+from msb_v3.core.event_bus import Event, EventBus
+from msb_v3.core.health import HealthSystem
+from msb_v3.core.identity import identity
+from msb_v3.core.runtime_config import get, load_config
 
 
 def test_event_bus_emit_and_deliver():
