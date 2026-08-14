@@ -42,6 +42,23 @@ class Settings:
     )
     tavily_api_key: str = field(default_factory=lambda: os.getenv("TAVILY_API_KEY", ""))
     operator_token: str = field(default_factory=lambda: os.getenv("MSB_OPERATOR_TOKEN", ""))
+    # Sovereign Node: dedicated state, sandbox, pairing, and replay controls.
+    node_db_path: str = field(default_factory=lambda: os.getenv("MSB_NODE_DB_PATH", "data/node/node.db"))
+    node_audit_db_path: str = field(default_factory=lambda: os.getenv("MSB_NODE_AUDIT_DB_PATH", "data/node/audit_chain.db"))
+    node_sandbox_root: str = field(default_factory=lambda: os.getenv("MSB_NODE_SANDBOX_ROOT", "runtime/node-sandbox"))
+    node_pairing_code: str = field(default_factory=lambda: os.getenv("MSB_NODE_PAIRING_CODE", ""))
+    node_session_ttl_s: int = field(default_factory=lambda: int(os.getenv("MSB_NODE_SESSION_TTL_S", "900")))
+    node_clock_skew_s: int = field(default_factory=lambda: int(os.getenv("MSB_NODE_CLOCK_SKEW_S", "60")))
+    node_max_read_bytes: int = field(default_factory=lambda: int(os.getenv("MSB_NODE_MAX_READ_BYTES", "1048576")))
+    # Vesta transport admission. Disabled for local development; production
+    # enables it after the WireGuard interface and firewall are verified.
+    vesta_require_tunnel: bool = field(default_factory=lambda: os.getenv("MSB_VESTA_REQUIRE_TUNNEL", "0") == "1")
+    vesta_allowed_cidrs: str = field(default_factory=lambda: os.getenv("MSB_VESTA_ALLOWED_CIDRS", "127.0.0.1/32,::1/128"))
+    vesta_task_db_path: str = field(default_factory=lambda: os.getenv("MSB_VESTA_TASK_DB_PATH", "data/vesta/tasks.db"))
+    vesta_evidence_root: str = field(default_factory=lambda: os.getenv("MSB_VESTA_EVIDENCE_ROOT", "runtime/vesta-evidence"))
+    vesta_evidence_db_path: str = field(default_factory=lambda: os.getenv("MSB_VESTA_EVIDENCE_DB_PATH", "data/vesta/evidence.db"))
+    vesta_shell_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_VESTA_SHELL_TIMEOUT_S", "10.0")))
+    vesta_shell_max_output_bytes: int = field(default_factory=lambda: int(os.getenv("MSB_VESTA_SHELL_MAX_OUTPUT_BYTES", "65536")))
     # Bearer key for the OpenAI-compatible /v1 adapter (Open WebUI etc.).
     # Empty = adapter closed (503) until configured — fail-closed.
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))

@@ -64,4 +64,7 @@ artifacts/harness-evidence-report.json
 # Research run outputs are regenerated on every run — never versioned
 /runtime/research/*/
 /runtime/flywheel/
+# Vesta evidence blobs are local forensic artifacts, referenced by hashes but
+# never committed to the source repository.
+/runtime/vesta-evidence/
 .superpowers/
