@@ -201,7 +201,7 @@ class RalphLoopRunRequest(BaseModel):
 @router.post("/assistant/ralph-loop")
 async def run_ralph_loop(body: RalphLoopRunRequest) -> dict:
     """Execute a Ralph Loop research run with deterministic state guards."""
-    from msb_v3.agent.ralph_loop import (
+    from msb_v3.agent.execution_loop import (
         Constraints,
         Status,
         create_ralph_loop,

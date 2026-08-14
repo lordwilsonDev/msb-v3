@@ -41,7 +41,7 @@ async def get_ralph_loop_brief() -> RalphLoopBrief:
 @router.get("/ralph-loop/dashboard/{loop_id}", tags=["knowledge"])
 async def ralph_loop_dashboard(loop_id: str) -> dict:
     """Return the Ralph Loop dashboard: iterations, budget, integrity, governance."""
-    from msb_v3.agent.ralph_loop import create_ralph_loop
+    from msb_v3.agent.execution_loop import create_ralph_loop
     workdir = _RESEARCH_ROOT / f"ralph_{loop_id}"
     loop = create_ralph_loop(workdir=workdir)
     status = loop._read_status()
@@ -76,7 +76,7 @@ async def ralph_loop_dashboard(loop_id: str) -> dict:
 @router.post("/ralph-loop/demo", tags=["knowledge"])
 async def run_ralph_loop_demo() -> dict:
     """Run a 3-iteration Ralph Loop demo to verify harness behavior."""
-    from msb_v3.agent.ralph_loop import create_ralph_loop
+    from msb_v3.agent.execution_loop import create_ralph_loop
 
     loop = create_ralph_loop()
 

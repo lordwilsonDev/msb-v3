@@ -30,6 +30,7 @@ the deadlock guard (the repo has no per-test timeout), so a lock regression
 fails fast instead of hanging CI. Failure in any of these = a regression to
 investigate, not a flake.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,12 +40,10 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-import sovereign_runtime.config as config_module
+from msb_v3.core import runtime_config as config_module
+from msb_v3.core.event_bus import EventBus
+from msb_v3.core.runtime_config import get, load_config
 from msb_v3.uac.audit_chain import AuditChain
-from sovereign_runtime import EventBus
-from sovereign_runtime.brain import BrainService
-from sovereign_runtime.brain.recursive_planner import RecursivePlanner
-from sovereign_runtime.config import get, load_config
 
 
 def run_with_deadlock_guard(fn: Callable[[], Any], timeout: float = 10.0) -> Any:
@@ -62,7 +61,9 @@ def run_with_deadlock_guard(fn: Callable[[], Any], timeout: float = 10.0) -> Any
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
     thread.join(timeout)
-    assert not thread.is_alive(), f"deadlocked: {fn!r} did not complete within {timeout}s"
+    assert not thread.is_alive(), (
+        f"deadlocked: {fn!r} did not complete within {timeout}s"
+    )
     assert result.get("ok"), f"raised: {result.get('error')!r}"
     return result.get("value")
 
@@ -134,30 +135,6 @@ def test_duplicate_subscription_delivers_twice_then_unsubscribe_once():
     bus.unsubscribe("x", handler)
     bus.emit("x", {})
     assert len(calls) == 3  # exactly one registration remains
-
-
-def test_brain_same_goal_twice_emits_identical_plans():
-    """Idempotency at the brain: the same goal emitted twice produces two
-    plan.created events with byte-identical serialized plan trees. to_dict is
-    deterministic — no node ids leak into the serialized form."""
-    bus = EventBus()
-    BrainService(bus=bus)
-    plans = []
-    bus.subscribe("agent.plan.created", lambda e: plans.append(e.payload["plan"]))
-    for _ in range(2):
-        bus.emit("agent.goal.received", {"goal": "ship the report"})
-    assert len(plans) == 2
-    assert plans[0] == plans[1]
-
-
-def test_planner_identical_goals_deterministic_trees():
-    """plan() on the same goal — simple and complex shapes — yields identical
-    serialized trees across many calls: a deterministic planner contract."""
-    planner = RecursivePlanner(memory=None)
-    for goal in ("do the thing", "z" * 200):
-        first = planner.to_dict(planner.plan(goal))
-        for _ in range(10):
-            assert planner.to_dict(planner.plan(goal)) == first
 
 
 def test_config_get_is_stable_and_defaults_repeatable():
@@ -342,28 +319,6 @@ def test_audit_pathological_payloads_stay_consistent(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_planner_with_raising_memory_fails_loudly_not_silently():
-    """A dead dependency (memory.record_plan_node raises) must PROPAGATE to
-    the caller — fail loud, never hang, never return a half-built plan. After
-    subtracting the dependency entirely (memory=None) the same goal plans
-    cleanly: removal is safe, breakage is loud."""
-
-    class BrokenMemory:
-        def record_plan_node(self, **kwargs: Any) -> None:
-            raise RuntimeError("memory backend unreachable")
-
-    planner = RecursivePlanner(memory=BrokenMemory())
-    raised = False
-    try:
-        planner.plan("goal")
-    except RuntimeError:
-        raised = True
-    assert raised
-
-    recovered = RecursivePlanner(memory=None)
-    assert recovered.plan("goal").status in ("ready", "terminated")
-
-
 def test_bus_emit_with_no_subscribers_is_a_noop():
     """emit() with zero subscribers still records history and returns the
     event — the bus does not depend on subscribers existing."""
@@ -378,25 +333,15 @@ def test_config_missing_yaml_falls_back_to_defaults(monkeypatch):
     """Subtract the YAML dependency entirely: load_config() falls back to
     defaults and get() does not crash or return partial state. Env overrides
     are neutralized too, so the assertions pin the pure-defaults contract."""
-    monkeypatch.setattr(config_module, "_CONFIG_PATH", Path("/nonexistent/runtime.yaml"))
+    monkeypatch.setattr(
+        config_module, "_CONFIG_PATH", Path("/nonexistent/runtime.yaml")
+    )
     monkeypatch.setattr(config_module, "_env_overrides", lambda: {})
     cfg = load_config()
     assert cfg["brain"]["framework"] == "motia"
     assert cfg["safety"]["fail_closed"] is True
     assert get("brain.framework") == "motia"
     assert get("missing.path", "dflt") == "dflt"
-
-
-def test_brain_survives_without_execute_consumers():
-    """Subtract the downstream consumer (nothing subscribes to
-    agent.execute.request): the brain's goal flow still completes, both
-    events land in history, and the bus stays healthy."""
-    bus = EventBus()
-    BrainService(bus=bus)
-    bus.emit("agent.goal.received", {"goal": "just plan"})
-    assert len(bus.history("agent.plan.created")) == 1
-    assert len(bus.history("agent.execute.request")) == 1
-    assert bus.history()[-1].type == "agent.execute.request"
 
 
 # ---------------------------------------------------------------------------

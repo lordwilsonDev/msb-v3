@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from msb_v3.triumvirate.argus_auditor import ArgusAuditor, MulchFinding
+from msb_v3.observability.audit import ArgusAuditor, MulchFinding
 
 
 def _write_temp(root, name, content):
@@ -13,7 +13,7 @@ def _write_temp(root, name, content):
 
 
 def test_record_mulch_writes_sqlite(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.argus_auditor as arg_mod
+    import msb_v3.observability.audit as arg_mod
     monkeypatch.setattr(arg_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
     monkeypatch.setattr(arg_mod, "_MULCH_DB", tmp_path / "triumvirate" / "mulch_learnings.db")
     auditor = ArgusAuditor()
@@ -26,7 +26,7 @@ def test_record_mulch_writes_sqlite(tmp_path, monkeypatch):
 
 
 def test_audit_directives_detects_fixme(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.argus_auditor as arg_mod
+    import msb_v3.observability.audit as arg_mod
     monkeypatch.setattr(arg_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
     monkeypatch.setattr(arg_mod, "_MULCH_DB", tmp_path / "triumvirate" / "mulch_learnings.db")
     root = tmp_path / "directives"
@@ -39,7 +39,7 @@ def test_audit_directives_detects_fixme(tmp_path, monkeypatch):
 
 
 def test_audit_memory_detects_orphan(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.argus_auditor as arg_mod
+    import msb_v3.observability.audit as arg_mod
     monkeypatch.setattr(arg_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
     monkeypatch.setattr(arg_mod, "_MULCH_DB", tmp_path / "triumvirate" / "mulch_learnings.db")
     root = tmp_path
@@ -51,7 +51,7 @@ def test_audit_memory_detects_orphan(tmp_path, monkeypatch):
 
 
 def test_audit_soul_detects_drift(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.argus_auditor as arg_mod
+    import msb_v3.observability.audit as arg_mod
     monkeypatch.setattr(arg_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
     monkeypatch.setattr(arg_mod, "_MULCH_DB", tmp_path / "triumvirate" / "mulch_learnings.db")
     root = tmp_path
@@ -63,7 +63,7 @@ def test_audit_soul_detects_drift(tmp_path, monkeypatch):
 
 
 def test_audit_run_logs_detects_error(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.argus_auditor as arg_mod
+    import msb_v3.observability.audit as arg_mod
     monkeypatch.setattr(arg_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
     monkeypatch.setattr(arg_mod, "_MULCH_DB", tmp_path / "triumvirate" / "mulch_learnings.db")
     log_root = tmp_path / "logs"
@@ -76,7 +76,7 @@ def test_audit_run_logs_detects_error(tmp_path, monkeypatch):
 
 
 def test_full_run_returns_counts(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.argus_auditor as arg_mod
+    import msb_v3.observability.audit as arg_mod
     monkeypatch.setattr(arg_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
     monkeypatch.setattr(arg_mod, "_MULCH_DB", tmp_path / "triumvirate" / "mulch_learnings.db")
     root = tmp_path

@@ -2,7 +2,7 @@
 
 The release version lives in three places: `pyproject.toml` (`project.version`),
 `msb_v3.__version__` (single source of truth for /system/info, /system/config,
-/mcp/status), and the `sovereign_runtime` identity default. The 2026-08-13
+/mcp/status), and the `msb_v3.core.identity` default. The 2026-08-13
 v0.2.1 cut proved drift is real: `identity.py` stayed at 0.2.0 while the
 release bumped the other two, and only the portability gate's
 `test_identity_deterministic` caught it (it asserts identity.version ==
@@ -29,7 +29,7 @@ SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
 PYPROJECT = ROOT / "pyproject.toml"
-IDENTITY = SRC / "sovereign_runtime" / "core" / "identity.py"
+IDENTITY = SRC / "msb_v3" / "core" / "identity.py"
 # Dataclass field, 4-space indented: `    version: str = "0.2.1"`.
 _IDENTITY_VERSION_RE = re.compile(r'^    version: str = "([^"]+)"', re.MULTILINE)
 
@@ -56,7 +56,7 @@ def test_version_sources_agree() -> None:
         f"msb_v3.__version__ ({__version__}) != pyproject version ({pyproject_version})"
     )
     assert identity_version == __version__, (
-        f"sovereign_runtime identity version ({identity_version}) != "
+        f"msb_v3.core.identity version ({identity_version}) != "
         f"msb_v3.__version__ ({__version__})"
     )
 
