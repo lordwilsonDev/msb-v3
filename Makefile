@@ -1,4 +1,4 @@
-.PHONY: test portability env-drift server server-start server-stop server-status smoke hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -69,6 +69,11 @@ server-stop:
 # scripts/start.sh (same as `bash scripts/start.sh status`).
 server-status:
 	bash scripts/start.sh status
+
+# Hardware-independent signed-device development probe. Requires a running
+# server and a non-empty MSB_NODE_PAIRING_CODE; private key is ephemeral.
+vesta-loopback:
+	$(PY) scripts/vesta-loopback.py
 
 smoke:
 	MSB_PORT=8767 MSB_DB_PATH=/tmp/msb-v3-smoke.db $(PY) -m msb_v3 & echo $$! > /tmp/msb-v3-smoke.pid; \
