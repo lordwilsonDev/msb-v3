@@ -6,6 +6,23 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ## [Unreleased]
 
 ### Added
+- **Capability Gateway** (`src/msb_v3/gateway/`): the single
+  dispatcher between runtime and (local|frontier) compute, mapped
+  to the *Capability Gateway* plane in
+  `docs/blueprints/plans/m1-governance-node-architecture.md` §3
+  (Compute Plane) and the §5 (Experimental Plane) "no autonomous
+  biological intervention" rule. Every call goes through `route()`
+  which: (1) denies if any required capability token is missing,
+  (2) denies if `requires_authorization=True` and the slug-keyed
+  grant isn't held in the context (codified — not a moral principle),
+  (3) routes to the active local backend (Ollama/llama.cpp via
+  `local_ai.client_factory`) if `estimated_bytes` fits the
+  configurable local budget (default 6 GB on M1), else to the
+  frontier seam (`OPENAI_FRONTIER_URL`). Denials are recorded into
+  `uac/audit_chain.py` alongside grants, so the runtime can answer
+  "why was call X refused at 14:32 on Tuesday" after the fact. Tests:
+  10 cases pinning allow/deny/local-vs-frontier/auth-required +
+  audit-chain integration.
 - **`MSB_MULTIMODAL_ENABLED` feature flag for `/multimodal/*`**:
   VisionClaw / HapticHeartbeat / SpeechFunctions routes now return 503 +
   detail message when `MSB_MULTIMODAL_ENABLED` is unset (default off,
