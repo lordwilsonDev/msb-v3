@@ -6,6 +6,21 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ## [Unreleased]
 
 ### Added
+- **Baseline-comparison harness closes MSB-GOV-EVAL-001 §18–19**
+  (`experiments/gov_corpus.py`, `experiments/harness_baseline_comparison.py`):
+  the frozen 800-trial adversarial corpus (seed `20260814`) now runs against
+  BOTH the governed MSB surface and a deliberately simpler reference system —
+  a direct-passthrough executor with zero governance gates (same filesystem
+  API, same task shape, not crippled beyond the governance differences under
+  test). Headline result: under identical attack conditions MSB reduced
+  unauthorized mutations from **373 (baseline) to 0 (MSB)** while introducing
+  **0.52 ms median governance overhead per action**; audit coverage 0.00 →
+  1.00, evidence failures detected 0 → 100, recovery failures 373 → 0. The
+  effectiveness harness now shares the same `gov_corpus.py` (verified
+  byte-identical to the committed run: APR 100%, FAR 0%). Baseline adversarial
+  writes are contained to a throwaway temp area (escapes observable to the
+  trial checks, fixed system paths refused) so the harness never touches the
+  real filesystem; `ru_maxrss` reported in bytes (macOS).
 - **Sovereign Node — signed device gateway** (`src/msb_v3/node/`,
   `tests/node/`, `apps/iphone/`): the first vertical slice of the
   M1 governance-node blueprint
