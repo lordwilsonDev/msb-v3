@@ -23,6 +23,22 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   "why was call X refused at 14:32 on Tuesday" after the fact. Tests:
   10 cases pinning allow/deny/local-vs-frontier/auth-required +
   audit-chain integration.
+- **Capability Gateway wired into `ChatHarness.execute`**
+  (the highest-volume LLM call site — every `/chat`,
+  `/v1/chat/completions`, `conversation/ask`, and agent-tool "chat"
+  call routes through it). Default path is unchanged (local backend,
+  same routing as before) but every dispatch now records
+  `decision_id` (audit-chain record hash) + `gateway_reason` into
+  telemetry so the dispatch is replayable. Opt-in gate fields
+  (`requires_authorization`, `required_capabilities`) turn on the
+  full authorization + capability check; a denial returns
+  `ok=False, event="chat:denied"` and NEVER contacts the model client
+  nor falls back to `[fallback]` — a denied call is an event, not a
+  degraded outcome. Tests: 4 cases in
+  `tests/test_gateway_harness_wiring.py` (default path reaches model
+  + records decision, opt-in denial is loud and model-agnostic,
+  denial lands in audit chain as `call.denied`, matching grant
+  allows the call through).
 - **`MSB_MULTIMODAL_ENABLED` feature flag for `/multimodal/*`**:
   VisionClaw / HapticHeartbeat / SpeechFunctions routes now return 503 +
   detail message when `MSB_MULTIMODAL_ENABLED` is unset (default off,
