@@ -78,20 +78,34 @@ def now() -> str:
 
 
 def run_experiment(name: str, runner: Path) -> dict[str, Any]:
-    """Run one standalone runner, parse its final JSON summary line."""
-    try:
-        proc = subprocess.run(
-            [PY, str(runner)],
-            capture_output=True, text=True, timeout=300, check=False,
-        )
-    except subprocess.TimeoutExpired:
-        return {"experiment": name, "verdict": "fail", "artifact": None,
-                "error": "runner timed out after 300s"}
-    summary: dict[str, Any] = {"experiment": name, "verdict": "unknown",
-                               "artifact": None, "returncode": proc.returncode}
-    parsed = _extract_json_object(proc.stdout)
-    if isinstance(parsed, dict) and "verdict" in parsed:
-        summary.update({k: parsed.get(k) for k in ("experiment", "verdict", "artifact")})
+    """Run one standalone runner, parse its final JSON summary line.
+
+    Retries once on the infra-flake signature: the runner exited non-zero
+    WITHOUT emitting a verdict JSON (died before reporting, e.g. startup
+    crash under suite load — the same class as r01's pytest crash). A runner
+    that reports any verdict (pass/fail/blocked/partial) is never retried,
+    so real failures are recorded as-is. Timeouts are not retried (two 300s
+    attempts would double suite time).
+    """
+    for attempt in (1, 2):
+        try:
+            proc = subprocess.run(
+                [PY, str(runner)],
+                capture_output=True, text=True, timeout=300, check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return {"experiment": name, "verdict": "fail", "artifact": None,
+                    "error": "runner timed out after 300s"}
+        summary: dict[str, Any] = {"experiment": name, "verdict": "unknown",
+                                   "artifact": None, "returncode": proc.returncode}
+        parsed = _extract_json_object(proc.stdout)
+        if isinstance(parsed, dict) and "verdict" in parsed:
+            summary.update({k: parsed.get(k) for k in ("experiment", "verdict", "artifact")})
+        if summary.get("verdict") != "unknown" or proc.returncode == 0:
+            break
+        # Infra-flake signature: non-zero exit, no verdict emitted. Retry once.
+        if attempt == 1:
+            continue
     if summary.get("verdict") == "unknown" and proc.returncode != 0:
         summary["verdict"] = "fail"
         summary["error"] = (proc.stderr or proc.stdout or "").strip()[-300:]

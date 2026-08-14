@@ -74,11 +74,14 @@ def main() -> int:
                          "stderr_tail": (proc.stderr or "")[-300:]})
         if proc.returncode == 0:
             break
-        # Infra-flake signature: pytest died before it could emit anything
-        # (exit 2 with empty stderr, e.g. startup crash under launchd). A real
-        # test failure prints an error report, so empty stderr + non-zero exit
-        # is safe to retry once; both attempts are recorded in the artifact.
-        if proc.returncode != 0 and (proc.stdout or "").strip() == "" and (proc.stderr or "").strip() == "":
+        # Infra-flake signature: pytest died before reporting any result
+        # (exit 2 with no outcome line, e.g. startup crash under suite load —
+        # seen 2026-08-14: banner printed, then exit 2 with no "N passed").
+        # A real failure always prints an outcome line ("N passed/failed/
+        # error"), so retrying once when none exists is safe; both attempts
+        # are recorded in the artifact.
+        outcome = re.search(r"\d+ (passed|failed|error|skipped)", combined)
+        if proc.returncode != 0 and not outcome:
             continue
         break
     latency_ms = int((time.perf_counter() - started) * 1000)
