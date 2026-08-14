@@ -61,11 +61,11 @@ Single failures (real components, state-verified): **7/7 fail closed**. Multi-co
 
 ## Figure 5 — Audit Tamper Detection
 
-| Attack | T1 edit | T2 delete | T3 reorder | T4 timestamp | T5 actor | T6 replay | T7 DB replace |
-|---|---|---|---|---|---|---|---|
-| Detected | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ * |
+| Attack | T1 edit | T2 delete | T3 reorder | T4 timestamp | T5 actor | T6 replay | T7 DB replace (unanchored) | T7 anchored |
+|---|---|---|---|---|---|---|---|---|
+| Detected | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ (deployment gap) | ✅ |
 
-*T7 (whole-DB replacement) is the documented trust-model gap — a hash chain proves non-modification of retained records, not that the right records remain. **FIR = 0%** for in-threat-model attacks T1–T6; external anchor (signed chain-tip) is the open fix.
+*T7 (whole-DB replacement) was the documented trust-model gap — a hash chain proves non-modification of retained records, not that the right records remain. **Closed** by the external signed chain-tip anchor (`chain_anchor.py`): the live tip is recomputed and compared to the anchored tip, so a swap is detected unless the attacker holds the signing key (documented residual boundary). **FIR = 0%** with the anchor deployed; the live chain is anchored (`/vesta/ledger/verify` → `anchored: {valid: true}`, 8,276 records).
 
 ## Figure 6 — Capability Retention (connected vs cloud-out)
 
@@ -98,4 +98,4 @@ Weights frozen pre-measurement (inference .25, memory .15, planning .15, executi
 
 **Claims supported (§26):** explicit governance over defined mutation classes · tested unauthorized mutations prevented at measured rate · fail-closed for evaluated component failures · tampering detected for evaluated classes · measured capability retention · measured bounded overhead.
 **Not claimed:** MSB is safe / corrigible / un-compromisable / sovereign-guaranteed / aligned.
-**Open gate:** T7 external chain-tip anchor.
+**All gates closed.** Residual trust boundary: anchor-key compromise (out of threat model) — the same boundary every external anchor carries.

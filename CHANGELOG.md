@@ -6,6 +6,27 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ## [Unreleased]
 
 ### Added
+- **External chain-tip anchor closes the T7 gap**
+  (`src/msb_v3/uac/chain_anchor.py`, `tests/uac/test_chain_anchor.py`): a
+  hash chain proves non-modification of the records you still have, not that
+  you still have the right records — whole-audit-DB replacement was
+  undetectable. `ChainAnchor` signs an Ed25519 snapshot of the chain tip
+  (seq, tip hash, full-chain fingerprint) into a separate
+  `chain_anchor.json`; `AnchoredAuditChain` re-signs after every append;
+  `verify_anchored()` recomputes the live tip and compares — a DB swap is
+  DETECTED unless the attacker also holds the signing key
+  (`MSB_CHAIN_ANCHOR_KEY` / keyfile, fail-closed), the documented residual
+  boundary of any external anchor. `notarize()` exports the signed anchor
+  out-of-band for a deeper trust boundary; verify-only public-key mode for
+  machines without the key; CLI `python -m msb_v3.uac.chain_anchor
+  --verify/--anchor`. The vesta write-path chain (`vesta/api.py`) is wired
+  via `anchored_chain_from_env()` (plain AuditChain when no key is
+  configured) and `/vesta/ledger/verify` now reports `anchored`. The audit
+  tampering harness gained the anchored T7 trial: FIR = 0% with the anchor
+  deployed. **Deployed live:** the running service anchors the 8,276-record
+  chain (`data/uac/chain_anchor.json`, 0600). Tests: 9 cases (roundtrip,
+  T7 swap detection, anchor tamper, wrong key, stale anchor, wrapper
+  re-anchoring, notarized verify-only, factory plain/anchored).
 - **Baseline-comparison harness closes MSB-GOV-EVAL-001 §18–19**
   (`experiments/gov_corpus.py`, `experiments/harness_baseline_comparison.py`):
   the frozen 800-trial adversarial corpus (seed `20260814`) now runs against
