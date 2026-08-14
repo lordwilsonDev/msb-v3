@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from msb_v3.api.auth import check_auth
 from msb_v3.memory.store import MemoryStore, Message
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(check_auth)])
 store = MemoryStore()
 
 

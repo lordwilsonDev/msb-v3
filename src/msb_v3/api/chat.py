@@ -5,14 +5,15 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
+from msb_v3.api.auth import check_auth
 from msb_v3.harnesses.base import ChatHarness, HarnessResult
 from msb_v3.memory.store import MemoryStore
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["chat"])
+router = APIRouter(tags=["chat"], dependencies=[Depends(check_auth)])
 
 
 class ToolSpec(BaseModel):

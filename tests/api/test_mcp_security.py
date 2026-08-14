@@ -233,6 +233,95 @@ def test_vault_read_requires_path_traversal_protection(client, tmp_path, monkeyp
     assert response.status_code == 400
 
 
+def test_vault_rejects_sibling_directory_sharing_prefix(client, tmp_path, monkeypatch):
+    """Regression: a sibling dir that merely shares the vault's name prefix
+    (../vault2/...) used to pass the old string-prefix containment check.
+    relative_to containment must reject it."""
+    root = tmp_path / "vault"
+    root.mkdir()
+    sibling = tmp_path / "vault2"
+    sibling.mkdir()
+    (sibling / "secret.md").write_text("secret", encoding="utf-8")
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", root.resolve(), raising=False)
+
+    response = _post(client, {"tool": "vault_read", "args": {"path": "../vault2/secret.md"}})
+    assert response.status_code == 400
+
+    write_response = _post(client, {"tool": "vault_write", "args": {"path": "../vault2/evil.md", "content": "pwn"}})
+    assert write_response.status_code == 400
+    assert not (sibling / "evil.md").exists()
+
+
+def test_verify_build_rejects_path_traversal_in_build_id(client, tmp_path, monkeypatch):
+    """build_id is interpolated into the echo receipt filename; path
+    separators and '..' must be rejected before it touches the filesystem."""
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    real_file = tmp_path / "thing.py"
+    real_file.write_text("# real\n")
+
+    for evil_id in ["../../../../tmp/pwn", "a/b/c", "../pwn", "x\ny"]:
+        response = _post(client, {
+            "tool": "verify_build",
+            "args": {"id": evil_id, "files": [str(real_file)]},
+        })
+        assert response.status_code == 400, f"build_id {evil_id!r} should be rejected"
+
+    assert not (echo_dir / "pwn.txt").exists()
+    assert not (tmp_path / "pwn.txt").exists()
+
+
+def test_verify_build_strips_control_characters_from_echo_content(client, tmp_path, monkeypatch):
+    """File/test paths land verbatim in the echo receipt + vault note; newlines
+    and control characters must be collapsed so they cannot inject content."""
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", vault_root.resolve(), raising=False)
+    echo_dir = tmp_path / "echo"
+    monkeypatch.setattr(mcp_bridge, "_VERIFY_BUILD_ECHO_DIR", echo_dir, raising=False)
+
+    # macOS/Unix filenames may legally contain a newline; verify a file
+    # whose name embeds one cannot inject a fresh line into the receipt.
+    injected_file = tmp_path / "thing\nINJECTED_SECRET_LINE.py"
+    injected_file.write_text("# real\n")
+
+    response = _post(client, {
+        "tool": "verify_build",
+        "args": {"id": "inject-build", "files": [str(injected_file)]},
+    })
+    assert response.status_code == 200
+    assert response.json()["result"]["status"] == "VERIFIED"
+
+    echo_content = (echo_dir / "inject-build.txt").read_text()
+    # The raw newline must not survive into the file: the injected string
+    # appears only in its space-collapsed form.
+    assert "\nINJECTED_SECRET_LINE" not in echo_content
+    assert " INJECTED_SECRET_LINE.py" in echo_content
+
+
+def test_chat_and_memory_are_auth_gated_when_secret_set(monkeypatch):
+    """Native /chat and /memory/* must honor the same x-mcp-secret gate as
+    the MCP bridge once MCP_BRIDGE_SECRET is configured (opt-in: unset
+    secret = dev mode, matching api/auth.check_auth's contract)."""
+    monkeypatch.setenv("MCP_BRIDGE_SECRET", "live-secret")
+    app = create_app()
+    client = TestClient(app)
+
+    assert client.post("/chat", json={"query": "hi"}).status_code == 401
+    assert client.get("/memory/some-session").status_code == 401
+    assert client.post("/memory/some-session", json={"role": "user", "content": "x"}).status_code == 401
+    assert client.delete("/memory/some-session").status_code == 401
+
+    # With the header the memory surface opens (chat would hit Ollama, so
+    # only verify the gate itself lifts).
+    ok = client.get("/memory/some-session", headers={"x-mcp-secret": "live-secret"})
+    assert ok.status_code == 200
+
+
 def test_mcp_audit_log_is_emitted(client, caplog):
     caplog.set_level("INFO", logger="msb_v3.mcp_audit")
     response = _post(client, {"tool": "status", "args": {}})

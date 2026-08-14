@@ -77,3 +77,22 @@ def test_node_surface_requires_tunnel_when_enabled(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(settings, "vesta_allowed_cidrs", "127.0.0.1/32,::1/128")
     # Tunnel required: the raw /node/v1 surface is not public.
     assert client.get("/node/v1/status").status_code == 403
+
+
+def test_node_auth_endpoints_are_rate_limited() -> None:
+    """The enroll/challenge/session handshake is per-client capped so an
+    unauthenticated caller who knows a device_id cannot spam challenge
+    issuance. Exhaust the window, then verify the 429 fail-closed."""
+    client = TestClient(create_app())
+    node_api._AUTH_LIMITER.clear()
+
+    # 10 allowed, 11th must be refused.
+    for _ in range(10):
+        response = client.post("/node/v1/auth/challenge", json={"device_id": "spam-device"})
+        assert response.status_code == 401  # not a real device, but counted
+
+    response = client.post("/node/v1/auth/challenge", json={"device_id": "spam-device"})
+    assert response.status_code == 429
+
+    # Clean the shared limiter so other tests are unaffected.
+    node_api._AUTH_LIMITER.clear()
