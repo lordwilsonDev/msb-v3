@@ -1,11 +1,13 @@
 """Triumvirate router — Meta-Cognitive Planner + Mission Anchor surfaces."""
 from __future__ import annotations
 
+import os
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from msb_v3.observability.audit import _MULCH_DB, ArgusAuditor
 from msb_v3.observability.metrics import (
     TRIUMVIRATE_AUDIT,
     TRIUMVIRATE_HIPPOCAMPUS,
@@ -15,7 +17,6 @@ from msb_v3.observability.metrics import (
     TRIUMVIRATE_PLAN,
     TRIUMVIRATE_SCAN,
 )
-from msb_v3.triumvirate.argus_auditor import _MULCH_DB, ArgusAuditor
 from msb_v3.triumvirate.guardian_scanner import (
     GuardianScanner,
     PoisonPill,
@@ -36,6 +37,29 @@ from msb_v3.triumvirate.multimodal_interfaces import (
 )
 
 router = APIRouter(tags=["triumvirate"])
+
+# Multimodal feature flag (fail-closed, matches OPENAI_API_KEY pattern):
+# VisionClaw / HapticHeartbeat / SpeechFunctions currently return
+# status="stub", and the dashboard already excludes stub calls from
+# the TRIUMVIRATE_MULTIMODAL counter (audit discipline: stub calls
+# must not inflate multimodal metrics). The /multimodal/* routes
+# stay mounted — but until a real implementation ships they 503
+# unless MSB_MULTIMODAL_ENABLED=1 is set explicitly. A real impl
+# that stops returning status="stub" implies the gate should be
+# opened; tests assert both sides.
+_MULTIMODAL_DISABLED_DETAIL = (
+    "multimodal interfaces are stub-backed; set MSB_MULTIMODAL_ENABLED=1 "
+    "to mount VisionClaw / HapticHeartbeat / SpeechFunctions, or land a "
+    "real implementation in src/msb_v3/triumvirate/multimodal_interfaces.py "
+    "(stub -> real transitions should also flip this gate)."
+)
+
+
+def _multimodal_disabled() -> bool:
+    """Read MSB_MULTIMODAL_ENABLED per request — cheap, and tests can
+    monkeypatch os.environ."""
+    return os.getenv("MSB_MULTIMODAL_ENABLED", "0") != "1"
+
 planner = MetaCognitivePlanner()
 anchor = MissionAnchor()
 guardian = GuardianScanner()
@@ -249,6 +273,8 @@ async def hippocampus_search(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.post("/multimodal/vision/capture")
 async def vision_capture() -> Dict[str, Any]:
+    if _multimodal_disabled():
+        raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     result = VisionClaw().capture_screen()
     # Stub calls are not real work: don't let the metrics count a stub
     # payload as a delivered multimodal operation (audit: stub subsystems
@@ -261,6 +287,8 @@ async def vision_capture() -> Dict[str, Any]:
 
 @router.post("/multimodal/haptic/heartbeat")
 async def haptic_heartbeat() -> Dict[str, Any]:
+    if _multimodal_disabled():
+        raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     result = HapticHeartbeat().poll_sac()
     if result.get("status") != "stub":  # stub calls are not real work
         TRIUMVIRATE_MULTIMODAL.labels(interface="haptic").inc()
@@ -269,6 +297,8 @@ async def haptic_heartbeat() -> Dict[str, Any]:
 
 @router.post("/multimodal/speech/command")
 async def speech_command(body: Dict[str, Any]) -> Dict[str, Any]:
+    if _multimodal_disabled():
+        raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     transcript = body.get("transcript") or ""
     result = SpeechFunctions().map_command(transcript)
     if result.get("status") != "stub":  # stub calls are not real work
