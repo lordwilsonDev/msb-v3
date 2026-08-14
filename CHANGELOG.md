@@ -136,6 +136,18 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   re-enable.
 
 ### Fixed
+- **Service-layer approval-bypass suite**
+  (`tests/vesta/test_approval_bypass.py`, 9 attacks): closes the remaining
+  V6 (approval-bypass) coverage against the REAL
+  `VestaWriteService.approve_and_execute` — expired A-BIND (approval EXPIRED,
+  denied), rejected/voided/unknown approvals (cannot re-decide), forged
+  evidence blobs (hash verification fails → quarantined), forged evidence with
+  the evidence-DB sha256 also forged (the approval row's `payload_sha256` in a
+  separate ledger pins the original content → quarantined), forged target-path
+  escapes (FileWriter sandbox blocks them), double execution (one approval =
+  exactly one mutation), and forged PENDING re-open (the sandbox holds as the
+  last line; documented trust-model note). Every test verifies actual file /
+  task / approval state.
 - **Approval-ledger watchdog closes the dangling-approval gap**
   (`src/msb_v3/vesta/approval_watchdog.py`, `scripts/approval_watchdog.sh`,
   `tests/vesta/test_approval_watchdog.py`): the MSB-GOV-EVAL-001 §10 cascade

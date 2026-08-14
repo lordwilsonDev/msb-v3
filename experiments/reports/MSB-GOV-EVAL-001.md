@@ -93,11 +93,16 @@ FIR per the frozen exclusion rules (manifest §exclusions).
 **Honest caveat on V6 (approval bypass):** the raw `FileWriter` does not itself
 enforce the human-approval gate — that lives in `VestaWriteService` (the 48
 blocked V6 trials were path escapes through the raw writer; the 52 allowed were
-in-scope raw writes, which are legal by contract). The approval gate is enforced
-in the service layer and is exercised by the existing `tests/vesta/test_write.py`
-and the fail-closed harness's recovery trials. A dedicated approval-bypass suite
-against `VestaWriteService.approve_and_execute` (e.g., kill-switch-armed
-quarantine) is a recommended follow-up for the remaining V6 coverage.
+in-scope raw writes, which are legal by contract). **Resolved:** the dedicated
+service-layer approval-bypass suite (`tests/vesta/test_approval_bypass.py`, 9
+attacks, all denied) now covers `VestaWriteService.approve_and_execute` against
+expired A-BIND (approval EXPIRED), rejected/voided/unknown approvals (cannot
+re-decide), forged evidence blobs (hash verification fails), forged evidence
+with the evidence-DB sha256 also forged (the approval row's `payload_sha256` in
+a SEPARATE ledger pins the original content), forged target-path escapes (the
+filesystem sandbox blocks them), double execution (one approval = one
+mutation), and forged PENDING re-open (the sandbox remains the last line —
+noted as a documented trust-model property of any DB-backed ledger).
 
 ## 4. Performance (§11, §12) — H5 PASS
 
@@ -217,9 +222,6 @@ VOID+QUARANTINED, audited); live-deployment scan clean (0 approvals,
 - **§18–§19 baseline comparison**: identical attack corpus against a
   governance-bypassed executor for the "X → Y unauthorized mutations at Z ms
   overhead" headline table.
-- **Service-layer approval-bypass suite** — `VestaWriteService.approve_and_execute`
-  under expired A-BIND, revoked approval, forged evidence refs (armed-killswitch
-  and multi-fault variants are now covered by the cascade harness).
 - **Close the T7 gap** — external anchor (signed, notarized chain-tip snapshot).
 
 ## 9. Reproducibility
