@@ -246,3 +246,5 @@ verified state: once a release tag exists it is immutable.
 - Obsidian-first data; skills automate on top.
 - `runtime/research/` is regenerated on every run and never versioned
   (gitignored wholesale); keep hand-written research notes in `docs/`.
+- Subsystem naming decoder (Triumvirate, Argus, Hippocampus, Hermes,
+  Vesta, Ralph, Cockpit, etc.): `docs/glossary.md`.
