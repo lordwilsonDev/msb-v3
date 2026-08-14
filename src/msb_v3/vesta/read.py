@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.node.filesystem import CapabilityViolation, FileReader
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.vesta.evidence import EvidenceError, EvidenceStore
 from msb_v3.vesta.models import ABind, VestaFileReadRequest
 from msb_v3.vesta.policy import authorize_file_read
@@ -20,7 +20,7 @@ class VestaReadService:
 
     def __init__(
         self,
-        audit: AuditChain,
+        audit: AuditChainLike,
         tasks: VestaTaskStore,
         evidence: EvidenceStore,
         reader: FileReader,

@@ -29,7 +29,7 @@ from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import OuroborosGovernor
 from msb_v3.governance.guard import Guard, GuardVerdict
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 router = APIRouter(tags=["governance"])
 
@@ -38,7 +38,7 @@ _ledger = BudgetLedger.from_settings()
 _switch = KillSwitch()
 _queue = ApprovalQueue()
 _governor = OuroborosGovernor.from_settings()
-_audit = AuditChain()
+_audit = anchored_chain_from_env()
 _guard = Guard(_switch, _ledger, _queue, _governor, audit_chain=_audit)
 
 

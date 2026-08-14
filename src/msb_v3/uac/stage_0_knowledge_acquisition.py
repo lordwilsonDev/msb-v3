@@ -26,7 +26,8 @@ from datetime import datetime, timezone
 from typing import List
 
 from msb_v3.triumvirate.mission_anchor import MissionAnchor
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.uac.axiom_library import ArtifactRecord, AxiomLibrary
 from msb_v3.uac.models import (
     ConflictType,
@@ -76,13 +77,13 @@ class Stage0KnowledgeAcquisitionEngine:
         mission_anchor: "MissionAnchor | None" = None,
         observer_log: "ObserverLog | None" = None,
         axiom_library: "AxiomLibrary | None" = None,
-        audit_chain: "AuditChain | None" = None,
+        audit_chain: "AuditChainLike | None" = None,
     ) -> None:
         self.research_backend = research_backend
         self.mission_anchor = mission_anchor or MissionAnchor()
         self.observer_log = observer_log or ObserverLog()
         self.axiom_library = axiom_library or AxiomLibrary()
-        self.audit_chain = audit_chain or AuditChain()
+        self.audit_chain = audit_chain or anchored_chain_from_env()
 
     def compile(self, requirements: RequirementsSpecification) -> KnowledgeManifest:
         """Run the full Stage 0 pipeline. Raises if requirements are invalid —

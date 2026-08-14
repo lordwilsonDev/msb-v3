@@ -11,7 +11,7 @@ from fastapi import Request
 
 from msb_v3.api.chat import ChatRequest, ChatResponse
 from msb_v3.api.chat import chat as msb_chat
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.vesta.evidence import EvidenceStore
 from msb_v3.vesta.models import ABind, VestaChatRequest
 from msb_v3.vesta.policy import PolicyDecision, authorize_chat
@@ -38,7 +38,7 @@ class VestaMSBAdapter:
 
     def __init__(
         self,
-        audit: AuditChain,
+        audit: AuditChainLike,
         task_store: VestaTaskStore | None = None,
         evidence_store: EvidenceStore | None = None,
     ) -> None:

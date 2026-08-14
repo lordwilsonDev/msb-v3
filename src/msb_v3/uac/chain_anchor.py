@@ -35,6 +35,8 @@ never degrade silently to an unsigned chain.
 
 CLI:
     python -m msb_v3.uac.chain_anchor --verify <audit.db> [--anchor <audit.db>]
+    python -m msb_v3.uac.chain_anchor --notarize <audit.db> --notary <log>
+    python -m msb_v3.uac.chain_anchor --verify-notary <audit.db> --notary <log>
 """
 
 from __future__ import annotations
@@ -44,6 +46,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -64,6 +67,20 @@ _VERSION = 1
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _chain_newer_than_anchor(chain: AuditChain, anchored_at_iso: str) -> float:
+    """Seconds the chain's newest record is newer than the signed anchor.
+    Returns 0 when the anchor covers the whole chain (healthy)."""
+    records = chain.get_chain()
+    if not records:
+        return 0.0
+    try:
+        anchored_at = datetime.fromisoformat(anchored_at_iso.replace("Z", "+00:00"))
+        newest = datetime.fromisoformat(records[-1].timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return 0.0  # unparseable timestamps — treat as covered, not stale
+    return max(0.0, (newest - anchored_at).total_seconds())
 
 
 def _default_key_path() -> Path:
@@ -213,6 +230,26 @@ class ChainAnchor:
                     "anchored_tip": snapshot.get("tip_hash")}
         live = self._snapshot(chain)
         if live["tip_hash"] != snapshot["tip_hash"] or live["seq"] != snapshot["seq"]:
+            # Distinguish STALE from REPLACEMENT: if the anchored tip still
+            # exists inside the live chain, the chain is a superset — records
+            # were appended after the anchor (re-anchoring stopped). If the
+            # anchored tip is ABSENT, the history itself was swapped.
+            anchored_tip_in_live = any(
+                r.record_hash == snapshot["tip_hash"] for r in chain.get_chain()
+            )
+            if anchored_tip_in_live and live["seq"] > snapshot["seq"]:
+                stale_seconds = _chain_newer_than_anchor(chain, snapshot["anchored_at"])
+                return {
+                    "valid": False,
+                    "stale": True,
+                    "stale_seconds": stale_seconds,
+                    "reason": f"anchor is STALE — {live['seq'] - snapshot['seq']} newer records "
+                              f"not covered (re-anchoring stopped)",
+                    "anchored_tip": snapshot["tip_hash"],
+                    "anchored_seq": snapshot["seq"],
+                    "live_tip": live["tip_hash"],
+                    "live_seq": live["seq"],
+                }
             return {
                 "valid": False,
                 "reason": "chain tip does not match external anchor — "
@@ -226,11 +263,23 @@ class ChainAnchor:
             return {"valid": False, "reason": "chain fingerprint mismatch",
                     "anchored_chain_sha256": snapshot["chain_sha256"],
                     "live_chain_sha256": live["chain_sha256"]}
+        # Staleness of a VALID anchor: chain records newer than the signed
+        # anchor mean re-anchoring stopped after the anchor — reported, with
+        # the anchor itself still valid for the tip it covers.
+        stale_seconds = _chain_newer_than_anchor(chain, snapshot["anchored_at"])
         return {"valid": True, "record_count": live["record_count"],
-                "tip_hash": live["tip_hash"], "anchored_at": snapshot["anchored_at"]}
+                "tip_hash": live["tip_hash"], "anchored_at": snapshot["anchored_at"],
+                "stale": stale_seconds > 0, "stale_seconds": stale_seconds}
 
     def notarize(self, chain: AuditChain, dest: str | Path, *, append: bool = True) -> Path:
-        """Export the current signed anchor out-of-band (append-only log)."""
+        """Export the current signed anchor out-of-band.
+
+        ``append=True`` (default) writes one compact JSON line per call — an
+        append-only JSONL notary log, where each entry is independently
+        verifiable and the newest entry always covers the newest tip.
+        ``append=False`` writes a single pretty-printed bare anchor copy,
+        directly usable as an anchor store on a verify-only machine.
+        """
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         anchor = self._read_anchor(chain)
@@ -239,13 +288,60 @@ class ChainAnchor:
             anchor = self._read_anchor(chain)
         entry = {"notarized_at": _now_iso(), "anchor": anchor}
         line = json.dumps(entry, sort_keys=True, separators=(",", ":"))
-        if append and dest.exists():
+        if append:
             with dest.open("a") as handle:
                 handle.write(line + "\n")
         else:
             # bare anchor copy — directly usable as an anchor store
             dest.write_text(json.dumps(anchor, indent=2, sort_keys=True) + "\n")
         return dest
+
+    def verify_notary(self, chain: AuditChain, log: str | Path) -> Dict[str, Any]:
+        """Verify the most recent entry in an out-of-band notary log.
+
+        The notary log is an append-only JSONL of signed anchor snapshots
+        (``notarize()`` output). The LAST entry must: (1) be a valid signed
+        snapshot from the same signing key, and (2) have its tip present in
+        the live chain. Because the notary is out-of-band, a whole-DB rollback
+        that also replaces the local anchor file is still caught here — the
+        notary holds the signed tip the rolled-back chain no longer contains.
+        """
+        path = Path(log)
+        if not path.exists():
+            return {"valid": False, "reason": f"notary log not found: {path}"}
+        lines = [line for line in path.read_text().splitlines() if line.strip()]
+        if not lines:
+            return {"valid": False, "reason": "notary log is empty"}
+        try:
+            entry = json.loads(lines[-1])
+        except json.JSONDecodeError as exc:
+            return {"valid": False, "reason": f"last notary entry is not valid JSON: {exc}"}
+        anchor = entry.get("anchor")
+        if not isinstance(anchor, dict) or "snapshot" not in anchor:
+            return {"valid": False, "reason": "last notary entry has no anchor snapshot"}
+        snapshot = anchor["snapshot"]
+        signature = bytes.fromhex(anchor["signature"]) if isinstance(anchor.get("signature"), str) else b""
+        pub = bytes.fromhex(anchor["public_key"]) if isinstance(anchor.get("public_key"), str) else b""
+        if pub != self._pub:
+            return {"valid": False, "reason": "notary entry signed by a different key than the current anchor key"}
+        if not self._verify_signature(snapshot, signature):
+            return {"valid": False, "reason": "notary entry signature invalid — notary log tampered"}
+        tip = snapshot.get("tip_hash", "")
+        in_chain = any(r.record_hash == tip for r in chain.get_chain())
+        if not in_chain:
+            return {
+                "valid": False,
+                "reason": "notarized tip is not in the live chain — whole-DB rollback or replacement (T7)",
+                "notarized_tip": tip,
+                "notarized_at": entry.get("notarized_at"),
+            }
+        return {
+            "valid": True,
+            "notarized_at": entry.get("notarized_at"),
+            "record_count": snapshot.get("record_count"),
+            "tip_hash": tip,
+            "entry_count": len(lines),
+        }
 
 
 class AnchoredAuditChain:
@@ -256,8 +352,19 @@ class AnchoredAuditChain:
     def __init__(self, chain: AuditChain, anchor: ChainAnchor) -> None:
         self.chain = chain
         self.anchor = anchor
-        # establish the initial anchor so verification is meaningful from birth
-        self.anchor.anchor(chain)
+        # Establish the initial anchor so verification is meaningful from birth.
+        # NEVER clobber an existing anchor signed by a DIFFERENT key (found
+        # live: a test process re-anchored the production chain with a random
+        # key, silently rotating the anchor). Key changes are explicit operator
+        # actions (`--anchor`), not something an init path may do silently.
+        existing = self.anchor._read_anchor(chain)
+        if existing is not None and bytes.fromhex(existing["public_key"]) != anchor._pub:
+            raise ValueError(
+                "chain anchor exists with a different signing key — refusing to clobber; "
+                "re-anchor explicitly with --anchor to rotate the key"
+            )
+        if existing is None:
+            self.anchor.anchor(chain)
 
     @property
     def db_path(self) -> Path:
@@ -287,12 +394,63 @@ def anchored_chain_from_env() -> AuditChain | AnchoredAuditChain:
     return AnchoredAuditChain(AuditChain(), ChainAnchor.from_env())
 
 
+def _verify_daemon(db_path: str, *, notify: bool) -> int:
+    """One-shot health check for the launchd job: internal chain + anchored
+    state, a macOS notification when unhealthy, a state file for dashboards,
+    and a one-line status. Exit 0 = healthy, 2 = action needed."""
+    import subprocess
+
+    chain = AuditChain(db_path)
+    internal = chain.verify_chain()
+    anchored = ChainAnchor.from_env().verify(chain)
+    healthy = bool(internal.get("valid") and anchored.get("valid") and not anchored.get("stale", False))
+    state = {
+        "checked_at": _now_iso(),
+        "healthy": healthy,
+        "db": str(Path(db_path).resolve()),
+        "internal_valid": internal.get("valid"),
+        "internal_reason": internal.get("reason"),
+        "anchored_valid": anchored.get("valid"),
+        "stale": anchored.get("stale", False),
+        "stale_seconds": anchored.get("stale_seconds", 0),
+        "reason": anchored.get("reason"),
+        "record_count": anchored.get("record_count", internal.get("record_count")),
+    }
+    state_dir = Path(os.getenv("MSB_ANCHOR_STATE_DIR", str(Path.home() / ".trinity" / "state")))
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "chain_anchor.json").write_text(json.dumps(state, indent=2))
+
+    if healthy:
+        print(f"OK chain_anchor internal={internal.get('valid')} anchored={anchored.get('valid')} "
+              f"records={state['record_count']} anchor={anchored.get('anchored_at', '')}")
+        return 0
+    problem = state["reason"] or ("internal chain broken" if not internal.get("valid") else "unknown")
+    print(f"ALERT chain_anchor: {problem}")
+    if notify and sys.platform == "darwin":
+        try:
+            subprocess.run(
+                ["osascript", "-e",
+                 f'display notification "{problem[:120]}" with title "MSB chain anchor" '
+                 f'subtitle "ACTION NEEDED — audit chain {state["record_count"]} records"'],
+                check=False, capture_output=True, timeout=15,
+            )
+        except Exception as exc:  # noqa: BLE001 — notification must never mask the alert
+            print(f"  (notification failed: {exc})")
+    return 2
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(description="External chain-tip anchor (T7 fix)")
     parser.add_argument("--verify", metavar="AUDIT_DB", help="verify the chain against its external anchor")
     parser.add_argument("--anchor", metavar="AUDIT_DB", help="sign and persist a fresh anchor for the chain")
-    parser.add_argument("--notarize", metavar="DEST", help="export the signed anchor out-of-band")
+    parser.add_argument("--notarize", metavar="AUDIT_DB", help="append a signed anchor snapshot to an out-of-band notary log")
+    parser.add_argument("--verify-notary", metavar="AUDIT_DB", help="verify the last notary log entry against the chain")
+    parser.add_argument("--notary", metavar="LOG", help="notary log path (required with --notarize / --verify-notary)")
+    parser.add_argument("--verify-daemon", metavar="AUDIT_DB", help="one-shot health check for launchd (alert on problem)")
+    parser.add_argument("--no-notify", action="store_true", help="suppress the macOS notification (testing)")
     args = parser.parse_args()
+    if args.verify_daemon:
+        return _verify_daemon(args.verify_daemon, notify=not args.no_notify)
     if args.verify:
         chain = AuditChain(args.verify)
         anchor = ChainAnchor.from_env()
@@ -304,7 +462,21 @@ def _main() -> int:
         record = ChainAnchor.from_env().anchor(chain)
         print(json.dumps({"anchored": record["snapshot"]}, indent=2))
         return 0
-    parser.error("specify --verify or --anchor")
+    if args.notarize or args.verify_notary:
+        if not args.notary:
+            parser.error("--notarize and --verify-notary require --notary <log>")
+        chain = AuditChain(args.notarize or args.verify_notary)
+        anchor = ChainAnchor.from_env()
+        if args.notarize:
+            dest = anchor.notarize(chain, args.notary)
+            current = anchor._read_anchor(chain)
+            tip = current["snapshot"]["tip_hash"] if current else ""
+            print(json.dumps({"notarized": str(dest), "tip_hash": tip}, indent=2))
+            return 0
+        report = anchor.verify_notary(chain, args.notary)
+        print(json.dumps(report, indent=2))
+        return 0 if report["valid"] else 2
+    parser.error("specify --verify, --anchor, --notarize, --verify-notary, or --verify-daemon")
 
 
 if __name__ == "__main__":

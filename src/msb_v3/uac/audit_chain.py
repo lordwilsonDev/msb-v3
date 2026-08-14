@@ -22,7 +22,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol
 
 from msb_v3.core.config import settings
 
@@ -85,6 +85,24 @@ def _compute_hash(prev_hash: str, component: str, event_type: str, payload: Dict
         sort_keys=True,
     )
     return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+class AuditChainLike(Protocol):
+    """Structural type for the audit-chain surface (append/verify/get).
+
+    Both ``AuditChain`` and the ``AnchoredAuditChain`` wrapper from
+    ``uac.chain_anchor`` satisfy it, so services that consume an audit chain
+    can accept either without importing the wrapper (which would be a
+    circular import). Services should type their injected chain as this so
+    anchored chains can be wired in anywhere.
+    """
+
+    @property
+    def db_path(self) -> Path: ...
+
+    def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord: ...
+    def verify_chain(self) -> Dict[str, Any]: ...
+    def get_chain(self, component: Optional[str] = None) -> list: ...
 
 
 class AuditChain:
