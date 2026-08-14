@@ -74,6 +74,17 @@ MSB_VESTA_ALLOWED_CIDRS=<wireguard-peer-cidr>,127.0.0.1/32,::1/128
 
 ## Execution record (2026-08-14)
 
+**LIVE — Android enrolled, tunnel up, Vesta contract applied (2026-08-14):**
+- Android enrolled via `~/wireguard/qr-device.sh android` (scan-to-import, keypair at
+  `~/wireguard/qr/vesta-android.conf`, 0600). Android pubkey `R2gn2o7grT4stbWjHjpECqr5vW/TTVTsT80BysqNImI=`
+  filled into `vesta-mac.conf`.
+- `sudo ~/wireguard/activate-vesta.sh -a <key>` → `utun4` up (10.77.0.1:51820);
+  `ping 10.77.0.3` verified 3/3 (12-14ms); handshake + bidirectional traffic confirmed.
+- `msb-v3/.env` updated: `MSB_VESTA_REQUIRE_TUNNEL=1`, `MSB_VESTA_ALLOWED_CIDRS=10.77.0.0/29,127.0.0.1/32,::1/128`;
+  service restarted (launchd `com.lordwilson.msb-v3`); `/vesta/status` reports `transport_required: true`.
+- Admission matrix verified from settings: tunnel peers + loopback ALLOW; LAN/internet/None → DENY (403).
+- iPhone peer still pending (placeholder in `vesta-mac.conf`); remote/port-forward deferred (LAN-only).
+
 **Deployed (staged):**
 - `wireguard-tools` installed via Homebrew (`wg`, `wg-quick`, `wireguard-go`);
   WireGuard macOS app installed (App Store `id1451685025`, running).

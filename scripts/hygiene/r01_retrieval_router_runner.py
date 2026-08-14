@@ -100,7 +100,7 @@ def main() -> int:
         "expected_behavior": "all offline retrieval-router tests pass (planner, RRF, dispatch, provenance, endpoint)",
         "actual_behavior": f"exit={proc.returncode} {summary}",
         "latency_ms": latency_ms,
-        "errors": [] if passed else [(proc.stderr or "")[-300:]],
+        "errors": [] if passed else [(proc.stdout or "")[-600:] + (proc.stderr or "")[-600:]],
         "attempts": attempts,
         "state_before": {"zero_spend": True, "network": False, "llm": False},
         "state_after": {"exit": proc.returncode, "passed": passed, "summary": summary},
