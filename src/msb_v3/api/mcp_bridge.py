@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import time
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,9 @@ router = APIRouter()
 
 BASE_URL = os.getenv("MSB_MCP_BASE_URL", "http://127.0.0.1:8766")
 REQUEST_TIMEOUT = int(os.getenv("MSB_MCP_REQUEST_TIMEOUT", "120"))
+# Import-time default keeps the attribute patchable in tests; the live secret
+# is re-read from the environment on every auth check so a config change
+# applies without a restart (same live-read contract as api/auth.py).
 _MCP_BRIDGE_SECRET = os.getenv("MCP_BRIDGE_SECRET", "")
 # Vault root from config (MSB_VAULT_PATH env or ~/Documents/Vault default), not
 # a hardcoded machine home — the containment check in _normalize_vault_path
@@ -30,6 +34,26 @@ _MCP_BRIDGE_SECRET = os.getenv("MCP_BRIDGE_SECRET", "")
 _VAULT_BASE = Path(settings.vault_path).resolve()
 _VERIFY_BUILD_ECHO_DIR = Path(os.path.expanduser("~/.local/share/msb-v3/verify-build"))
 _AUDIT_LOGGER = logging.getLogger("msb_v3.mcp_audit")
+# verify_build ids are used directly as filenames; allow only safe characters
+# so a caller can never inject path separators or control characters.
+_SAFE_BUILD_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+# Strip control characters / newlines from values that get embedded verbatim
+# into files written by verify_build (echo receipt + vault note).
+_STRIP_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _bridge_secret() -> str:
+    """Live MCP bridge secret: environment wins, import-time attr as fallback.
+
+    The fallback keeps ``_MCP_BRIDGE_SECRET`` patchable in tests while the
+    production read follows the environment at request time."""
+    return os.getenv("MCP_BRIDGE_SECRET", "") or _MCP_BRIDGE_SECRET
+
+
+def _safe_text(value: str) -> str:
+    """Collapse control characters so untrusted strings written into files
+    cannot inject newlines or escape the intended single-line format."""
+    return _STRIP_CONTROL.sub(" ", value)
 
 
 class _AuditEvent(BaseModel):
@@ -48,17 +72,18 @@ def _log_audit(event: _AuditEvent) -> None:
 
 
 def _client_identity(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # Audit identity only — never trust X-Forwarded-For (any caller could
+    # spoof it); the socket peer is the only reliable actor signal.
     if request.client:
         return request.client.host
     return "unknown"
 
 
 def _check_auth(request: Request) -> None:
-    header = request.headers.get("x-mcp-secret")
-    if not header or header != _MCP_BRIDGE_SECRET:
+    # Constant-time comparison: the secret is a high-entropy shared token, but
+    # the gate should never leak timing information about a prefix match.
+    header = request.headers.get("x-mcp-secret", "")
+    if not header or not secrets.compare_digest(header.encode("utf-8"), _bridge_secret().encode("utf-8")):
         raise HTTPException(status_code=401, detail="unauthorized")
 
 
@@ -76,10 +101,19 @@ def _normalize_path_list(raw: Any) -> list[str]:
 
 
 def _normalize_vault_path(raw: str) -> Path:
+    """Resolve a vault-relative path and enforce real containment.
+
+    Uses ``relative_to`` instead of a string-prefix check: a prefix check
+    lets a sibling directory that merely shares the vault's name prefix
+    (e.g. ``../Vault2/x``) pass containment. ``relative_to`` fails for any
+    resolved path that is not actually inside the vault root.
+    """
     if raw is None:
         raw = ""
     path = (_VAULT_BASE / raw).resolve()
-    if not str(path).startswith(str(_VAULT_BASE)):
+    try:
+        path.relative_to(_VAULT_BASE)
+    except ValueError:
         raise HTTPException(status_code=400, detail="path traversal detected")
     return path
 
@@ -98,7 +132,17 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
     status = "success"
 
     try:
-        async with httpx.AsyncClient(base_url=BASE_URL, timeout=REQUEST_TIMEOUT) as client:
+        # Forward the bridge secret on upstream calls: /chat and /memory are
+        # auth-gated the same way /mcp is, so the proxy must present the
+        # credential itself instead of leaving the caller's secret unproxied.
+        upstream_headers = {}
+        if _bridge_secret():
+            upstream_headers["x-mcp-secret"] = _bridge_secret()
+        async with httpx.AsyncClient(
+            base_url=BASE_URL,
+            timeout=REQUEST_TIMEOUT,
+            headers=upstream_headers,
+        ) as client:
             try:
                 match call.tool:
                     case "chat":
@@ -354,6 +398,11 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                         tests = _normalize_path_list(call.args.get("tests"))
                         if not build_id:
                             raise HTTPException(status_code=400, detail="id required")
+                        if not _SAFE_BUILD_ID.fullmatch(build_id):
+                            raise HTTPException(
+                                status_code=400,
+                                detail="build id may only contain letters, digits, '.', '_', '-'",
+                            )
                         if not files and not tests:
                             raise HTTPException(status_code=400, detail="at least one of files or tests required")
 
@@ -371,8 +420,11 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                             }
 
                         timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started))
-                        files_str = ", ".join(files) if files else "(none)"
-                        tests_str = ", ".join(tests) if tests else "(none)"
+                        # file/test paths are caller-controlled and land verbatim
+                        # in the echo receipt + vault note — collapse control
+                        # characters so they cannot inject new content.
+                        files_str = ", ".join(_safe_text(f) for f in files) if files else "(none)"
+                        tests_str = ", ".join(_safe_text(t) for t in tests) if tests else "(none)"
                         echo_content = (
                             f"VERIFIED\nid: {build_id}\nfiles: {files_str}\n"
                             f"tests: {tests_str}\ntimestamp: {timestamp}\n"

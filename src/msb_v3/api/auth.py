@@ -29,11 +29,14 @@ from msb_v3.core.config import settings
 
 def check_auth(request: Request) -> None:
     """Live-auth gate, opt-in: enforced when MCP_BRIDGE_SECRET is set; a
-    missing/wrong x-mcp-secret is a 401. Unset secret = dev mode."""
+    missing/wrong x-mcp-secret is a 401. Unset secret = dev mode.
+    Constant-time comparison so the gate never leaks timing about how many
+    prefix bytes matched."""
     secret = os.getenv("MCP_BRIDGE_SECRET", "")
     if not secret:
         return
-    if request.headers.get("x-mcp-secret") != secret:
+    provided = request.headers.get("x-mcp-secret", "").encode("utf-8")
+    if not secrets.compare_digest(provided, secret.encode("utf-8")):
         raise HTTPException(status_code=401, detail="unauthorized")
 
 

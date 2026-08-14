@@ -47,7 +47,7 @@ if [ -z "$MCP_BRIDGE_SECRET" ] && [ -f "$REPO/.env" ]; then
   MCP_BRIDGE_SECRET=$(sed -nE 's/^MCP_BRIDGE_SECRET="?([^"]*)"?/\1/p' "$REPO/.env" | head -1)
 fi
 if [ -z "$MCP_BRIDGE_SECRET" ]; then
-  MCP_BRIDGE_SECRET="${MCP_BRIDGE_SECRET:-8e174eff4420062607ccb6cb1c98997680cbf82385e290bb4b3208d8f15df621}"
+  echo "[webcheck-all] WARNING: MCP_BRIDGE_SECRET not found in env or $REPO/.env; /mcp/status will 401 unless the server runs in dev mode" >&2
 fi
 
 fail=0

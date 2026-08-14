@@ -52,7 +52,7 @@ if [ -z "$SECRET" ] && [ -f "$REPO/.env" ]; then
   SECRET=$(sed -nE 's/^MCP_BRIDGE_SECRET="?([^"]*)"?/\1/p' "$REPO/.env" | head -1)
 fi
 if [ -z "$SECRET" ]; then
-  SECRET="${MCP_BRIDGE_SECRET:-8e174eff4420062607ccb6cb1c98997680cbf82385e290bb4b3208d8f15df621}"
+  echo "[webcheck] WARNING: MCP_BRIDGE_SECRET not found in env or $REPO/.env; /mcp/status will 401 unless the server runs in dev mode" >&2
 fi
 
 OUT="$REPO/artifacts/webcheck-$(date +%Y%m%dT%H%M%SZ)"

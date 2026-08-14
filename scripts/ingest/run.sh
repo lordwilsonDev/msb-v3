@@ -6,7 +6,11 @@ MSB="${MSB_URL:-http://localhost:8766}"
 CRAWL_PY="${CRAWL_PY:-$HOME/.local/venv/crawl/bin/python3}"
 BASE_PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python3}"
 CRAWL4AI_LIB="${CRAWL4AI_LIB:-$HOME/.local/lib/crawl4ai}"
-export MSB_RAG_API_KEY="${MSB_RAG_API_KEY:-07bd51761bde7dce3268473773cef30f6ded1062bd7351b33f50863d2d184277}"
+# Gitignored secret: load from .env when present so no credential is committed.
+set -a
+[ -f "$REPO/.env" ] && . "$REPO/.env"
+set +a
+export MSB_RAG_API_KEY="${MSB_RAG_API_KEY:-}"
 
 index_document() {
   local tenant_id="$1"
