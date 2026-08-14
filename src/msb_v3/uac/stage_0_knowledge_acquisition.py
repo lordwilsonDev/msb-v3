@@ -11,7 +11,7 @@ finalization notes for the full mapping):
   - Observer's Log -> uac.observer_log.ObserverLog (built 2026-08-02, was missing)
   - Axiom Library -> uac.axiom_library.AxiomLibrary (built 2026-08-02, was missing)
   - Audit Chain -> uac.audit_chain.AuditChain (built 2026-08-02, was missing —
-    triumvirate.argus_auditor exists but is a pattern-scanning linter, not a
+    observability.audit exists but is a pattern-scanning linter, not a
     hash chain, confirmed by reading its source before this was written)
 
 Internal pipeline, per the blueprint:
