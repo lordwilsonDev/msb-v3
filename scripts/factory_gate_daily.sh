@@ -16,6 +16,9 @@
 set -uo pipefail
 
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
+# launchd jobs have no WorkingDirectory (cwd=/) — the factory and the member
+# runners use repo-relative paths (e.g. the app's data/ dir), so anchor here.
+cd "$REPO" || exit 1
 FACTORY="${FACTORY_RUNNER:-$HOME/.hermes/skills/engineering/engineering-hygiene-factory/scripts/run_factory.py}"
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 LOG="$HOME/Library/Logs/msb-factory-gate.log"
@@ -114,8 +117,15 @@ if git -C "$REPO" status --porcelain -- artifacts/hygiene/ | grep -q .; then
     git -C "$REPO" commit -m "chore: daily gate evidence (PASS) $(date +%Y-%m-%d)"
     # launchd has no SSH agent/keychain: bound the push so a hang or auth
     # failure can never stall the job or leave stale committed evidence
-    # unobserved. Outcome is recorded in the events log either way.
-    if timeout 60 git -C "$REPO" push origin HEAD 2>/dev/null; then
+    # unobserved. macOS has no GNU `timeout`, so fall back to a perl alarm
+    # wrapper (same 60s bound) when it is absent. Outcome is recorded in
+    # the events log either way.
+    if command -v timeout >/dev/null 2>&1; then
+      PUSH_CMD=(timeout 60 git -C "$REPO" push origin HEAD)
+    else
+      PUSH_CMD=(perl -e 'alarm shift; exec @ARGV' 60 git -C "$REPO" push origin HEAD)
+    fi
+    if "${PUSH_CMD[@]}" >/dev/null 2>&1; then
       log "committed and pushed PASS evidence"
       printf '{"ts": "%s", "event": "evidence_push", "ok": true, "verdict": "%s"}\n' "$ts" "$VERDICT" >> "$EVENTS_LOG"
     else
