@@ -1,0 +1,153 @@
+{
+  "experiment_id": "MSB-GOV-EVAL-001",
+  "subexperiment": "sovereignty",
+  "hypothesis": "H4: MSB retains a measured subset of capability when cloud dependencies disappear",
+  "git_commit": "53d520cc1eafd0dd648d68c285c9d58db0cf7c15",
+  "timestamp": "20260814T190701Z",
+  "weights_frozen_before_measurement": {
+    "C1_inference": 0.25,
+    "C2_memory": 0.15,
+    "C3_planning": 0.15,
+    "C4_task_execution": 0.15,
+    "C5_audit": 0.1,
+    "C6_evidence": 0.1,
+    "C7_local_storage": 0.05,
+    "C8_external_search": 0.05
+  },
+  "classification_scores": {
+    "FULL": 1.0,
+    "DEGRADED": 0.5,
+    "UNAVAILABLE": 0.0,
+    "UNSAFE": 0.0
+  },
+  "injection": {
+    "method": "client-boundary repoint of external search endpoint to unreachable address",
+    "blackhole_url": "http://127.0.0.1:9/search",
+    "scope_note": "full OS-level network severance out of scope: would drop live WireGuard/Vesta; client-boundary injection reproduces the same observable (refused/timeout)"
+  },
+  "phases": {
+    "A_connected": {
+      "C1_inference": {
+        "classification": "FULL",
+        "detail": "reply_len=2"
+      },
+      "C2_memory": {
+        "classification": "FULL",
+        "detail": "qdrant_ok=True collections=1"
+      },
+      "C3_planning": {
+        "classification": "FULL",
+        "detail": "reply_len=2"
+      },
+      "C4_task_execution": {
+        "classification": "FULL",
+        "detail": "write+audit_ok=True"
+      },
+      "C5_audit": {
+        "classification": "FULL",
+        "detail": "chain_valid=True"
+      },
+      "C6_evidence": {
+        "classification": "FULL",
+        "detail": "precondition_mismatch_denied unmutated=True"
+      },
+      "C7_local_storage": {
+        "classification": "FULL",
+        "detail": "sqlite_roundtrip_ok"
+      },
+      "C8_external_search": {
+        "classification": "UNAVAILABLE",
+        "detail": "ResearchBackendError: TAVILY_API_KEY is not configured. Set it in the environment or msb-v3's .env before running Stage 0 against a real profe"
+      }
+    },
+    "B_cloud_removed": {
+      "C1_inference": {
+        "classification": "FULL",
+        "detail": "reply_len=2"
+      },
+      "C2_memory": {
+        "classification": "FULL",
+        "detail": "qdrant_ok=True collections=1"
+      },
+      "C3_planning": {
+        "classification": "FULL",
+        "detail": "reply_len=2"
+      },
+      "C4_task_execution": {
+        "classification": "FULL",
+        "detail": "write+audit_ok=True"
+      },
+      "C5_audit": {
+        "classification": "FULL",
+        "detail": "chain_valid=True"
+      },
+      "C6_evidence": {
+        "classification": "FULL",
+        "detail": "precondition_mismatch_denied unmutated=True"
+      },
+      "C7_local_storage": {
+        "classification": "FULL",
+        "detail": "sqlite_roundtrip_ok"
+      },
+      "C8_external_search": {
+        "classification": "UNAVAILABLE",
+        "detail": "ResearchBackendError: TAVILY_API_KEY is not configured. Set it in the environment or msb-v3's .env before running Stage 0 against a real profe"
+      }
+    },
+    "C_restored": {
+      "C1_inference": {
+        "classification": "FULL",
+        "detail": "reply_len=2"
+      },
+      "C2_memory": {
+        "classification": "FULL",
+        "detail": "qdrant_ok=True collections=1"
+      },
+      "C3_planning": {
+        "classification": "FULL",
+        "detail": "reply_len=2"
+      },
+      "C4_task_execution": {
+        "classification": "FULL",
+        "detail": "write+audit_ok=True"
+      },
+      "C5_audit": {
+        "classification": "FULL",
+        "detail": "chain_valid=True"
+      },
+      "C6_evidence": {
+        "classification": "FULL",
+        "detail": "precondition_mismatch_denied unmutated=True"
+      },
+      "C7_local_storage": {
+        "classification": "FULL",
+        "detail": "sqlite_roundtrip_ok"
+      },
+      "C8_external_search": {
+        "classification": "UNAVAILABLE",
+        "detail": "ResearchBackendError: TAVILY_API_KEY is not configured. Set it in the environment or msb-v3's .env before running Stage 0 against a real profe"
+      }
+    },
+    "B_local_model_degradation": {
+      "classification": "DEGRADED",
+      "detail": "event=chat:completed ok=True text='[fallback] say ok'"
+    }
+  },
+  "crr": {
+    "A_connected": {
+      "crr": 0.95,
+      "weighted_remaining": 0.95,
+      "weighted_available": 1.0
+    },
+    "B_cloud_removed": {
+      "crr": 0.95,
+      "weighted_remaining": 0.95,
+      "weighted_available": 1.0
+    }
+  },
+  "graceful_degradation": {
+    "external_search_fails_loud": true,
+    "local_model_controlled_fallback": true,
+    "sovereign_capabilities_during_outage": true
+  }
+}

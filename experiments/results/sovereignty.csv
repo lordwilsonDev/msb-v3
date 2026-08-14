@@ -1,0 +1,55 @@
+timestamp,phase,capability,weight,classification,detail
+20260814T190701Z,A,C1_inference,0.25,FULL,reply_len=2
+20260814T190701Z,A,C2_memory,0.15,FULL,qdrant_ok=True collections=1
+20260814T190701Z,A,C3_planning,0.15,FULL,reply_len=2
+20260814T190701Z,A,C4_task_execution,0.15,FULL,write+audit_ok=True
+20260814T190701Z,A,C5_audit,0.1,FULL,chain_valid=True
+20260814T190701Z,A,C6_evidence,0.1,FULL,precondition_mismatch_denied unmutated=True
+20260814T190701Z,A,C7_local_storage,0.05,FULL,sqlite_roundtrip_ok
+20260814T190701Z,A,C8_external_search,0.05,UNAVAILABLE,ResearchBackendError: TAVILY_API_KEY is not configured. Set it in the environment or msb-v3's .env before running Stage 0 against a real profe
+20260814T190701Z,B,C1_inference,0.25,FULL,reply_len=2
+20260814T190701Z,B,C2_memory,0.15,FULL,qdrant_ok=True collections=1
+20260814T190701Z,B,C3_planning,0.15,FULL,reply_len=2
+20260814T190701Z,B,C4_task_execution,0.15,FULL,write+audit_ok=True
+20260814T190701Z,B,C5_audit,0.1,FULL,chain_valid=True
+20260814T190701Z,B,C6_evidence,0.1,FULL,precondition_mismatch_denied unmutated=True
+20260814T190701Z,B,C7_local_storage,0.05,FULL,sqlite_roundtrip_ok
+20260814T190701Z,B,C8_external_search,0.05,UNAVAILABLE,ResearchBackendError: TAVILY_API_KEY is not configured. Set it in the environment or msb-v3's .env before running Stage 0 against a real profe
+20260814T190701Z,C,C1_inference,0.25,FULL,reply_len=2
+20260814T190701Z,C,C2_memory,0.15,FULL,qdrant_ok=True collections=1
+20260814T190701Z,C,C3_planning,0.15,FULL,reply_len=2
+20260814T190701Z,C,C4_task_execution,0.15,FULL,write+audit_ok=True
+20260814T190701Z,C,C5_audit,0.1,FULL,chain_valid=True
+20260814T190701Z,C,C6_evidence,0.1,FULL,precondition_mismatch_denied unmutated=True
+20260814T190701Z,C,C7_local_storage,0.05,FULL,sqlite_roundtrip_ok
+20260814T190701Z,C,C8_external_search,0.05,UNAVAILABLE,ResearchBackendError: TAVILY_API_KEY is not configured. Set it in the environment or msb-v3's .env before running Stage 0 against a real profe
+20260814T190701Z,B,local_model_degradation,,DEGRADED,event=chat:completed ok=True text='[fallback] say ok'
+20260814T190701Z,A,CRR,,,0.95
+20260814T190701Z,B,CRR,,,0.95
+20260814T190802Z,A,C1_inference,0.25,FULL,reply_len=2
+20260814T190802Z,A,C2_memory,0.15,FULL,qdrant_ok=True collections=1
+20260814T190802Z,A,C3_planning,0.15,FULL,reply_len=2
+20260814T190802Z,A,C4_task_execution,0.15,FULL,write+audit_ok=True
+20260814T190802Z,A,C5_audit,0.1,FULL,chain_valid=True
+20260814T190802Z,A,C6_evidence,0.1,FULL,precondition_mismatch_denied unmutated=True
+20260814T190802Z,A,C7_local_storage,0.05,FULL,sqlite_roundtrip_ok
+20260814T190802Z,A,C8_external_search,0.05,FULL,results=2
+20260814T190802Z,B,C1_inference,0.25,FULL,reply_len=2
+20260814T190802Z,B,C2_memory,0.15,FULL,qdrant_ok=True collections=1
+20260814T190802Z,B,C3_planning,0.15,FULL,reply_len=2
+20260814T190802Z,B,C4_task_execution,0.15,FULL,write+audit_ok=True
+20260814T190802Z,B,C5_audit,0.1,FULL,chain_valid=True
+20260814T190802Z,B,C6_evidence,0.1,FULL,precondition_mismatch_denied unmutated=True
+20260814T190802Z,B,C7_local_storage,0.05,FULL,sqlite_roundtrip_ok
+20260814T190802Z,B,C8_external_search,0.05,UNAVAILABLE,ResearchBackendError: Tavily search failed for query 'MSB governance evaluation': [Errno 61] Connection refused
+20260814T190802Z,C,C1_inference,0.25,FULL,reply_len=2
+20260814T190802Z,C,C2_memory,0.15,FULL,qdrant_ok=True collections=1
+20260814T190802Z,C,C3_planning,0.15,FULL,reply_len=2
+20260814T190802Z,C,C4_task_execution,0.15,FULL,write+audit_ok=True
+20260814T190802Z,C,C5_audit,0.1,FULL,chain_valid=True
+20260814T190802Z,C,C6_evidence,0.1,FULL,precondition_mismatch_denied unmutated=True
+20260814T190802Z,C,C7_local_storage,0.05,FULL,sqlite_roundtrip_ok
+20260814T190802Z,C,C8_external_search,0.05,FULL,results=2
+20260814T190802Z,B,local_model_degradation,,DEGRADED,event=chat:completed ok=True text='[fallback] say ok'
+20260814T190802Z,A,CRR,,,1.0
+20260814T190802Z,B,CRR,,,0.95
