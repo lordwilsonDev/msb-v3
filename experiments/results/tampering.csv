@@ -1,0 +1,8 @@
+timestamp,attack,detected,post_valid,broken_at_seq,reason
+20260814T175223Z,T1_modify_event_contents,True,False,1,stored hash does not match recomputed content hash
+20260814T175223Z,T2_delete_event,True,False,4,prev_hash does not match preceding record
+20260814T175223Z,T3_reorder_events,True,False,2,prev_hash does not match preceding record
+20260814T175223Z,T4_modify_timestamp,True,False,2,stored hash does not match recomputed content hash
+20260814T175223Z,T5_modify_actor,True,False,4,stored hash does not match recomputed content hash
+20260814T175223Z,T6_replay_old_event,True,False,6,prev_hash does not match preceding record
+20260814T175223Z,T7_replace_database,False,True,,

@@ -1,0 +1,8 @@
+timestamp,component,injection,expected,actual,mutation_occurred,fail_closed
+20260814T175301Z,killswitch,state_db_unreadable,DENY (fail-closed: unreadable => armed),DENY,False,True
+20260814T175301Z,filesystem,path_escape,DENY,DENY,False,True
+20260814T175301Z,filesystem,symlink_escape,DENY,DENY,False,True
+20260814T175301Z,filesystem,precondition_hash_mismatch,DENY,DENY,False,True
+20260814T175301Z,filesystem,budget_exceeded,DENY,DENY,False,True
+20260814T175301Z,audit_engine,history_tampered_then_append,DETECTED (chain broken; append does not silently heal),DETECTED,True,True
+20260814T175301Z,audit_engine,restore_via_repair,RECOVERED (repair re-anchors + audits the repair),RECOVERED,False,True

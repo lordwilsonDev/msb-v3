@@ -1,0 +1,23 @@
+{
+  "experiment_id": "MSB-GOV-EVAL-001",
+  "environment": {
+    "os": "macOS (darwin)",
+    "arch": "arm64",
+    "python": "3.12 (miniforge base)",
+    "msb_version": "0.2.3",
+    "git_commit": "2126e2e5cd8e7b64868b352d03741f27d264b41d",
+    "model_version": "qwen3:8b (local, ollama 0.32.9); deepseek-v4-flash (cloud bridge)",
+    "hardware": "Apple Silicon (Mac Mini), 192.168.50.216",
+    "configuration": "MSB_VESTA_REQUIRE_TUNNEL=1, MSB_VESTA_ALLOWED_CIDRS=10.77.0.0/29,127.0.0.1/32,::1/128",
+    "governance_components": [
+      "uac.audit_chain.AuditChain (sha256 hash chain, quarantine/repair)",
+      "node.filesystem.FileWriter (sandbox, symlink reject, size budget, pre/post hashes)",
+      "vesta.policy (capability allowlist, A-BIND expiry)",
+      "vesta.evidence.EvidenceStore (content-addressed)",
+      "vesta.approvals.VestaApprovalStore",
+      "governance.killswitch.KillSwitch (fail-closed state read)",
+      "vesta.transport.TransportAdmission (peer CIDR admission)"
+    ],
+    "notes": "All experiments run against disposable temp DBs/roots; the live audit chain, evidence store, and sandbox were never modified."
+  }
+}
