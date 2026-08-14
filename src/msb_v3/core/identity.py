@@ -11,6 +11,12 @@ from dataclasses import asdict, dataclass, field
 
 @dataclass(frozen=True)
 class AgentIdentity:
+    """Frozen identity card for this sovereign runtime.
+
+    `version` must track `msb_v3.__version__` exactly — `test_version_sources_agree`
+    pins the three-way equality and would catch a drift at suite time.
+    Bump both together on every release.
+    """
     id: str = "sovereign-agent-001"
     # Must track msb_v3.__version__ (test_runtime_boot pins the equality) —
     # bump both together on release.

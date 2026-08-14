@@ -41,6 +41,13 @@ def _save_mesh_state(state: Dict[str, Any]) -> None:
 
 @dataclass
 class PeerNode:
+    """One sovereign box in the cluster mesh — identity + capabilities.
+
+    Discovered via `ClusterAwareDiscovery`. Hippocampus sync topology
+    is derived from the cluster membership map persisted on disk.
+    """
+
+
     node_id: str
     host: str
     port: int
@@ -50,6 +57,15 @@ class PeerNode:
 
 
 class ClusterAwareDiscovery:
+    """Cluster-membership discovery — peer-node mesh loader/saver.
+
+    Reads/writes `runtime/mesh_state.json`. Used by Hippocampus to know
+    which peers can serve a given embedding shard before fanning out a
+    query. Graceful-degrades to "single-node" mode if the file is
+    corrupt or missing (treated as empty mesh, never as a hard error).
+    """
+
+
     def register_peer(self, node: PeerNode) -> Dict[str, Any]:
         state = _load_mesh_state()
         state["peers"][node.node_id] = {
@@ -69,6 +85,11 @@ class ClusterAwareDiscovery:
 
 @dataclass
 class DocumentChunk:
+    """One embedding-shaped chunk — text + vector + provenance metadata."""
+
+
+
+
     doc_id: str
     chunk_id: str
     text: str
@@ -77,6 +98,17 @@ class DocumentChunk:
 
 
 class VectorHippocampus:
+    """Hippocampus — sovereign memory half of Triumvirate.
+
+    Embeddings + local SQLite for semantic search over the agent's own
+    decisions and the user's prior context (`~/.msb/hippocampus.db`).
+    Falls back to a local numpy cosine search when Qdrant is
+    unreachable; never blocks on a remote store. Cluster-aware via
+    `ClusterAwareDiscovery` so a fleet of sovereign boxes can share
+    Hippocampus state.
+    """
+
+
     def __init__(self, db_path: Optional[str] = None) -> None:
         self.db_path = Path(db_path) if db_path else _RUNTIME_ROOT / "hippocampus.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

@@ -58,6 +58,7 @@ def _goal_signature(goal: str, parameters: Optional[Dict[str, Any]] = None) -> s
 
 @dataclass
 class PlanRequest:
+    """Goal + optional sources handed to `MetaCognitivePlanner`. Input shape for `/triumvirate/plan`."""
     goal: str
     parameters: Optional[Dict[str, Any]] = None
     sources: Optional[List[str]] = None
@@ -65,6 +66,7 @@ class PlanRequest:
 
 @dataclass
 class StageResult:
+    """Output of one of the 5 planner stages: status, payload, thought, timing."""
     stage: int
     name: str
     status: str
@@ -75,6 +77,7 @@ class StageResult:
 
 @dataclass
 class PlanArtifacts:
+    """On-disk plan output: slug, goal hash, signature, timestamps — written under `runtime/`."""
     slug: str
     goal: str
     signature: str

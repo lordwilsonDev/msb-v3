@@ -56,6 +56,13 @@ _REGEX_FALLBACK_PATTERNS = [
 
 @dataclass
 class ScanReport:
+    """One Guardian static-scan result: risk level + finding list + hard-block flag.
+
+    `blocked=True` means the scanner told the caller to refuse the script
+    before running it (e.g. dangerous `os.system` call, writes outside the
+    repo). Downstream code surfaces ScanReport to the user via the
+    /triumvirate/guardian/scan route.
+    """
     risk: str
     findings: List[str]
     blocked: bool = False
@@ -164,6 +171,16 @@ def _scan_regex(script: str) -> List[str]:
 
 
 class GuardianScanner:
+    """Guardian-side static analyzer — the scanner half of Triumvirate.
+
+    Walks a script's AST + textual fallback to find dangerous calls
+    (untrusted `exec`, `os.system` of unallowlisted binaries, writes
+    outside the repo root). Returns a ScanReport; the caller decides
+    whether `blocked=True` short-circuits the run. Stub-defeats simple
+    renames via `_ImportAliases` so `import os as o` doesn't sneak past.
+    """
+
+
     def scan_script(self, script: str) -> ScanReport:
         findings = _scan_ast(script)
         if findings is None:
@@ -195,6 +212,15 @@ class GuardianScanner:
 
 
 class SBOMRegistry:
+    """Software-bill-of-materials registry — what binaries this server is allowed to invoke.
+
+    Persistent on disk at `runtime/sbom_registry.json`. Populates from
+    server self-registration; queried by GuardianScanner to validate a
+    tool name before letting it call. Capability for each registered
+    server lives in the same record.
+    """
+
+
     def register(self, mcp_server_id: str, executable_path: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         path = Path(executable_path)
         if not path.exists():
@@ -213,6 +239,17 @@ class SBOMRegistry:
 
 
 class PoisonPill:
+    """Killswitch primitive — pause every running mission atomically.
+
+    Sacred Lock pattern: when armed, every long-running loop checks
+    the poison-pill file on its quiet tick and bails out. Reachable
+    from `/triumvirate/guardian/poison-pill/{arm,detonate}` and from
+    the operator's circuit-breaker toggle. Detonation also flips
+    `MissionAnchor`'s circuit-breaker so the planner refuses new
+    goals until the pill disarms.
+    """
+
+
     def arm(self) -> Dict[str, Any]:
         payload = {
             "armed": True,

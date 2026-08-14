@@ -1,3 +1,11 @@
+"""msb-v3 entrypoint — uvicorn launcher.
+
+`python -m msb_v3` (or the `msb-v3` console script wired in pyproject.toml)
+boots the FastAPI app built by `msb_v3.api.app.create_app` and binds
+to the host/port from `msb_v3.core.config.settings` (env: MSB_HOST,
+MSB_PORT, MSB_RELOAD). Tiny on purpose: anything that runs every
+boot should live in `core/config.py` or `api/app.py`, not here.
+"""
 
 import uvicorn
 
