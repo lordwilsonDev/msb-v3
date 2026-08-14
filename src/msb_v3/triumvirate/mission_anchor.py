@@ -63,6 +63,16 @@ def _goal_signature(goal: str, parameters: Optional[Dict[str, Any]] = None) -> s
 
 
 class MissionAnchor:
+    """Mission-state engine — the single writer of `STATUS.json`.
+
+    Every mission reads through here to know its current phase and
+    writes through here to commit transitions (scope_lock → RUNNING →
+    COMPLETED/FAILED). Backs the `/triumvirate/status*` routes and the
+    home-dashboard panel. Circuit-breaker flag is co-located so
+    PoisonPill detonation can flip the whole stack paused in one
+    atomic write. Graceful-degrades to a default status if the file is
+    unreadable — never crashes on a missing or corrupt STATE file.
+    """
     def scope_lock(self, goal: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         signature = _goal_signature(goal, parameters)
         status = _load()

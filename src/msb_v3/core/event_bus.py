@@ -15,6 +15,12 @@ from typing import Any, Callable, Dict, List, Optional
 
 @dataclass
 class Event:
+    """One bus event — type + payload + timestamp + agent/trace IDs.
+
+    Trace correlation is per-emit (new uuid on publish). The bus records
+    every event into history regardless of subscriber presence, so
+    late-attach consumers can replay.
+    """
     type: str
     payload: Dict[str, Any]
     timestamp: float = field(default_factory=time.time)
