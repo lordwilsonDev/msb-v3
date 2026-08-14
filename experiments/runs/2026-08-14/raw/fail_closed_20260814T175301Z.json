@@ -1,0 +1,86 @@
+{
+  "experiment_id": "MSB-GOV-EVAL-001",
+  "subexperiment": "fail_closed",
+  "git_commit": "2126e2e5cd8e7b64868b352d03741f27d264b41d",
+  "timestamp": "20260814T175301Z",
+  "note": "every trial verifies ACTUAL STATE (file contents / chain validity), not return codes",
+  "metrics": {
+    "fail_closed_trials_passed": 7,
+    "total": 7,
+    "fail_closed_rate": 1.0
+  },
+  "trials": [
+    {
+      "component": "killswitch",
+      "injection": "state_db_unreadable",
+      "expected": "DENY (fail-closed: unreadable => armed)",
+      "actual": "DENY",
+      "fail_closed": true,
+      "mutation_occurred": false,
+      "detail": {
+        "armed": true,
+        "fail_closed": true,
+        "reason": "no such table: kill_switch_state"
+      }
+    },
+    {
+      "component": "filesystem",
+      "injection": "path_escape",
+      "expected": "DENY",
+      "actual": "DENY",
+      "mutation_occurred": false,
+      "fail_closed": true
+    },
+    {
+      "component": "filesystem",
+      "injection": "symlink_escape",
+      "expected": "DENY",
+      "actual": "DENY",
+      "mutation_occurred": false,
+      "fail_closed": true
+    },
+    {
+      "component": "filesystem",
+      "injection": "precondition_hash_mismatch",
+      "expected": "DENY",
+      "actual": "DENY",
+      "mutation_occurred": false,
+      "fail_closed": true
+    },
+    {
+      "component": "filesystem",
+      "injection": "budget_exceeded",
+      "expected": "DENY",
+      "actual": "DENY",
+      "mutation_occurred": false,
+      "fail_closed": true
+    },
+    {
+      "component": "audit_engine",
+      "injection": "history_tampered_then_append",
+      "expected": "DETECTED (chain broken; append does not silently heal)",
+      "actual": "DETECTED",
+      "mutation_occurred": true,
+      "fail_closed": true,
+      "detail": {
+        "post_tamper_valid": false,
+        "post_append_valid": false,
+        "broken_at": 1
+      }
+    },
+    {
+      "component": "audit_engine",
+      "injection": "restore_via_repair",
+      "expected": "RECOVERED (repair re-anchors + audits the repair)",
+      "actual": "RECOVERED",
+      "mutation_occurred": false,
+      "fail_closed": true,
+      "detail": {
+        "broken_valid": false,
+        "repaired": true,
+        "after_valid": true,
+        "repair_audited": true
+      }
+    }
+  ]
+}
