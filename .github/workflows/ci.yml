@@ -236,10 +236,10 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        # No Dockerfile in the repo root yet — the build stays inert with a
-        # notice until one is added (hashFiles is the honest gate; a job that
-        # can never build is a job that should say why it is idle).
-        if: hashFiles('Dockerfile') != ''
+        # Active since close-out Phase 1 (2026-08-15): the root Dockerfile
+        # builds the real msb_v3 runtime. No secrets are baked — the image
+        # runs with MSB_HOST=0.0.0.0 and reaches ollama/qdrant over the
+        # network, so this bare smoke needs neither.
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -249,18 +249,12 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run container smoke test
-        if: hashFiles('Dockerfile') != ''
         run: |
           docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
           sleep 5
           # /status does not exist — /health is the app's liveness route.
           curl -f http://127.0.0.1:8766/health || (docker logs msb-v3-test && exit 1)
           docker rm -f msb-v3-test
-
-      - name: No Dockerfile — build inert
-        if: hashFiles('Dockerfile') == ''
-        run: |
-          echo "::notice::No Dockerfile in the repo root — the docker job stays inert until one is added"
 
   claims:
     runs-on: ubuntu-latest

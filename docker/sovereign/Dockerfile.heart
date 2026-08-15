@@ -1,6 +1,0 @@
-FROM python:3.12-slim
-WORKDIR /app
-COPY src/sovereign_runtime/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY src/sovereign_runtime/ sovereign_runtime/
-CMD ["python", "-c", "from sovereign_runtime import bus; bus.emit('heart.start', {}); import time; time.sleep(3600)"]

@@ -22,7 +22,24 @@ try:
 except Exception:  # pragma: no cover
     _HAS_QDRANT = False
 
-_OLLAMA = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+def _default_ollama_url() -> str:
+    """App-wide ollama URL without importing settings at module import time
+    (rag.py is imported before core.config in some test paths)."""
+    from msb_v3.core.config import settings
+
+    return settings.ollama_url
+
+
+def _ollama_base() -> str:
+    """Ollama base URL for embeddings: explicit OLLAMA_HOST override wins,
+    else the app-wide OLLAMA_URL (settings). Never a hardcoded localhost —
+    found live in the close-out Phase 1 container test: a container pointed at
+    the host ollama via OLLAMA_URL still sent embedding calls to itself and
+    500'd. Resolved per call so env changes are honored without a reload.
+    """
+    return os.getenv("OLLAMA_HOST") or _default_ollama_url()
+
+
 _EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 _EMBED_DIM = 768
 
@@ -96,7 +113,7 @@ async def _embed(text: str) -> list[float]:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
-                    f"{_OLLAMA}/api/embeddings",
+                    f"{_ollama_base()}/api/embeddings",
                     json={"model": _EMBED_MODEL, "prompt": text},
                 )
                 resp.raise_for_status()
@@ -118,7 +135,7 @@ async def _embed(text: str) -> list[float]:
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                f"{_OLLAMA}/api/embeddings",
+                f"{_ollama_base()}/api/embeddings",
                 json={"model": _EMBED_MODEL, "prompt": text},
             )
             resp.raise_for_status()

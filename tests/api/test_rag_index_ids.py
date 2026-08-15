@@ -17,6 +17,24 @@ import pytest
 from msb_v3.api import rag
 
 
+def test_ollama_base_follows_app_url_when_host_unset(monkeypatch):
+    """Close-out Phase 1 regression (found live in the container test):
+    embeddings must hit the SAME ollama as the rest of the app (OLLAMA_URL via
+    settings), not a hardcoded localhost — a container pointed at the host
+    ollama sent /chat to host.docker.internal but embedding calls to itself
+    and 500'd."""
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+    monkeypatch.setattr(rag, "_default_ollama_url", lambda: "http://app-ollama:11434")
+    assert rag._ollama_base() == "http://app-ollama:11434"
+
+
+def test_ollama_base_explicit_host_override_wins(monkeypatch):
+    """OLLAMA_HOST remains the back-compat override for existing configs."""
+    monkeypatch.setenv("OLLAMA_HOST", "http://override:9999")
+    monkeypatch.setattr(rag, "_default_ollama_url", lambda: "http://app-ollama:11434")
+    assert rag._ollama_base() == "http://override:9999"
+
+
 def test_stable_point_id_is_deterministic_and_distinct():
     a0 = rag._stable_point_id("notes/a.md", 0)
     assert a0 == rag._stable_point_id("notes/a.md", 0)  # idempotent reindex
