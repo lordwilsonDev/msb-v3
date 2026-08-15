@@ -27,6 +27,27 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
   chain (`data/uac/chain_anchor.json`, 0600). Tests: 9 cases (roundtrip,
   T7 swap detection, anchor tamper, wrong key, stale anchor, wrapper
   re-anchoring, notarized verify-only, factory plain/anchored).
+- **Daily chain-anchor verification daemon + two hardening fixes**
+  (`src/msb_v3/uac/chain_anchor.py`, `scripts/verify_chain_anchor.sh`,
+  `com.lordwilson.chain-anchor-verify.plist`):
+  - `ChainAnchor.verify()` now distinguishes **STALE** (anchored tip is
+    still a prefix of the live chain — re-anchoring stopped) from
+    **REPLACEMENT** (anchored tip absent — whole-DB swap), with
+    `stale_seconds`.
+  - `AnchoredAuditChain.__init__` **never clobbers an existing anchor
+    signed by a different key** — raises instead. Found live: a test
+    process re-anchored the production chain with a random key,
+    silently rotating the anchor (the first daemon run caught the
+    mismatch); key changes are now explicit operator actions
+    (`--anchor`). The clobbering test is isolated to a tmp chain.
+  - `--verify-daemon` one-shot mode for launchd: internal chain +
+  anchored state, macOS notification on problem, state file for
+  dashboards, exit 0/2. Wired to the daily 07:00 job
+  `com.lordwilson.chain-anchor-verify` (real DB path, alert on
+  stale/mismatch; 07:00 keeps it clear of the 06:15 factory gate
+  and 06:45 watchdog). Deployed live: after re-anchoring with the
+  correct key, daemon reports `OK chain_anchor` against the
+  8,338-record live chain.
 - **Baseline-comparison harness closes MSB-GOV-EVAL-001 §18–19**
   (`experiments/gov_corpus.py`, `experiments/harness_baseline_comparison.py`):
   the frozen 800-trial adversarial corpus (seed `20260814`) now runs against

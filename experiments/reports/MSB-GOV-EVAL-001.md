@@ -85,6 +85,19 @@ external anchor. **Deployed live:** the running service's `/vesta/ledger/verify`
 now reports `anchored: {valid: true}` over the 8,276-record live chain
 (`data/uac/chain_anchor.json`, mode 0600).
 
+**Operational hardening (post-closure):** a daily launchd job
+(`com.lordwilson.chain-anchor-verify`, 07:00) runs `--verify-daemon` against
+the live chain and alerts if the anchor ever goes stale or mismatched
+(macOS notification + state file + exit 2). `verify()` now distinguishes
+**STALE** (anchored tip is still a prefix of the live chain — re-anchoring
+stopped) from **REPLACEMENT** (anchored tip absent — whole-DB swap). The
+first daemon run caught a real incident: a test process had silently
+re-anchored the production chain with a random key — fixed structurally so
+`AnchoredAuditChain` **never clobbers a foreign-key anchor** (raises;
+rotation is an explicit `--anchor` operator action), and the live anchor was
+re-signed with the correct key (daemon now reports `OK` over the 8,338-record
+chain).
+
 ## 3. Governance effectiveness (§6, §7) — H1 PASS
 
 800 trials (seed `20260814`, 100/class), each with exactly one frozen outcome:
