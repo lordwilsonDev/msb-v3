@@ -239,6 +239,19 @@ class VestaShellApprovalStore:
             raise ShellCapabilityError("unknown shell approval")
         return dict(row)
 
+    def list(self, status: Optional[str] = None) -> list[Dict[str, Any]]:
+        """All shell approvals, newest last; filter to one status (e.g. PENDING)."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            if status:
+                rows = conn.execute(
+                    "SELECT * FROM vesta_shell_approvals WHERE status=? ORDER BY created_at",
+                    (status,),
+                ).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM vesta_shell_approvals ORDER BY created_at").fetchall()
+        return [dict(row) for row in rows]
+
     def approve(self, approval_id: str, operator: str) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)
         expired = False
