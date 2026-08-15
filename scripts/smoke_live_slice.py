@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import sys
 import tempfile
 import time
@@ -15,7 +16,29 @@ from msb_v3.agent.planner import plan  # noqa: E402
 from msb_v3.local_ai.client_factory import get_client  # noqa: E402
 
 
+def _ensure_anchor_key() -> None:
+    """Load the chain-anchor key so this live smoke appends ANCHORED.
+
+    Same rationale as scripts/demo_live_run.py: the audit chain fails
+    closed on keyless appends to the production chain, and this script runs
+    bare (no shell wrapper sourcing .env). Load just MSB_CHAIN_ANCHOR_KEY
+    from the repo's .env (own checkout first, then the live ~/msb-v3
+    deployment).
+    """
+    if os.getenv("MSB_CHAIN_ANCHOR_KEY"):
+        return
+    for env_file in (Path(__file__).resolve().parents[1] / ".env", Path.home() / "msb-v3" / ".env"):
+        if not env_file.exists():
+            continue
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("MSB_CHAIN_ANCHOR_KEY="):
+                os.environ["MSB_CHAIN_ANCHOR_KEY"] = line.split("=", 1)[1].strip().strip("\"'")
+                return
+
+
 async def main() -> None:
+    _ensure_anchor_key()
     request = "Research the vault and write a client brief about the sovereign agentic runtime."
     tenant = sys.argv[1] if len(sys.argv) > 1 else "wilson-vault"
     out = Path(tempfile.mkdtemp(prefix="dbb-smoke-"))

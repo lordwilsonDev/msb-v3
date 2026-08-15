@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,28 @@ from msb_v3.agent.handle import handle  # noqa: E402
 from msb_v3.agent.trace import compute_deterministic_hash  # noqa: E402
 
 DEFAULT_REQUEST = "Research the vault and write a client brief about the sovereign agentic runtime."
+
+
+def _ensure_anchor_key() -> None:
+    """Load the chain-anchor key so this live demo appends ANCHORED.
+
+    The audit chain fails closed (uac.audit_chain): a bare append to the
+    production chain while MSB_CHAIN_ANCHOR_KEY is configured is refused,
+    and anchored_chain_from_env() raises without the key. Shell wrappers
+    source .env, but this script runs bare — load just the anchor key from
+    the repo's .env (own checkout first, then the live ~/msb-v3 deployment)
+    so the loop carries the key regardless of who launches it.
+    """
+    if os.getenv("MSB_CHAIN_ANCHOR_KEY"):
+        return
+    for env_file in (REPO / ".env", Path.home() / "msb-v3" / ".env"):
+        if not env_file.exists():
+            continue
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("MSB_CHAIN_ANCHOR_KEY="):
+                os.environ["MSB_CHAIN_ANCHOR_KEY"] = line.split("=", 1)[1].strip().strip("\"'")
+                return
 
 
 def _stamp() -> str:
@@ -51,6 +74,7 @@ def _task_summary(trace: dict) -> None:
 
 
 async def main() -> int:
+    _ensure_anchor_key()
     request = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REQUEST
 
     stamp = _stamp()
