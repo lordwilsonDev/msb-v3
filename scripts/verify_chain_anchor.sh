@@ -22,6 +22,10 @@ export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"
 DB="${1:-$REPO/data/uac/audit_chain.db}"
 
 ARGS=(--verify-daemon "$DB")
+# Re-sign a benignly STALE anchor (newer records appended after the last
+# anchor, e.g. by a keyless background process) instead of alerting; real
+# problems (replacement / tamper / broken chain) still alert + exit 2.
+ARGS+=(--auto-anchor)
 if [ "${MSB_CHAIN_ANCHOR_NO_NOTIFY:-0}" = "1" ]; then
     ARGS+=(--no-notify)
 fi

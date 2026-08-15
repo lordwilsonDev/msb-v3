@@ -117,6 +117,74 @@ def test_verify_reports_staleness_but_stays_valid(tmp_path: Path) -> None:
     assert result["stale_seconds"] > 0
 
 
+def _stale_chain(db_path: Path, seed: bytes) -> None:
+    """Build a chain whose anchor (signed with ``seed``) covers an older tip
+    — benign staleness from records appended after the last anchor."""
+    chain = make_chain(db_path, 3)
+    ChainAnchor(seed=seed).anchor(chain)
+    chain.append("test", "normal", {"i": 99})  # append AFTER anchoring
+
+
+def test_verify_daemon_auto_reanchors_benign_staleness(tmp_path: Path, monkeypatch) -> None:
+    """With --auto-anchor, a STALE-but-valid-prefix anchor is re-signed
+    against the current tip instead of alerting (keyless background
+    processes legitimately append without re-anchoring)."""
+    from msb_v3.uac.chain_anchor import _verify_daemon
+
+    db = tmp_path / "audit.db"
+    seed = generate_seed()
+    _stale_chain(db, seed)
+    state_dir = tmp_path / "state"
+    monkeypatch.setenv(KEY_ENV, seed.hex())
+    monkeypatch.setenv("MSB_ANCHOR_STATE_DIR", str(state_dir))
+
+    assert _verify_daemon(str(db), notify=False, auto_anchor=True) == 0
+    state = json.loads((state_dir / "chain_anchor.json").read_text())
+    assert state["healthy"] is True
+    assert state["auto_reanchored"] is True
+    assert state["stale"] is False
+    assert state["record_count"] == 4  # the appended record is now covered
+
+
+def test_verify_daemon_without_auto_anchor_alerts_on_staleness(tmp_path: Path, monkeypatch) -> None:
+    from msb_v3.uac.chain_anchor import _verify_daemon
+
+    db = tmp_path / "audit.db"
+    seed = generate_seed()
+    _stale_chain(db, seed)
+    state_dir = tmp_path / "state"
+    monkeypatch.setenv(KEY_ENV, seed.hex())
+    monkeypatch.setenv("MSB_ANCHOR_STATE_DIR", str(state_dir))
+
+    assert _verify_daemon(str(db), notify=False, auto_anchor=False) == 2
+    state = json.loads((state_dir / "chain_anchor.json").read_text())
+    assert state["healthy"] is False
+    assert state["auto_reanchored"] is False
+
+
+def test_verify_daemon_auto_anchor_still_alerts_on_replacement(tmp_path: Path, monkeypatch) -> None:
+    """A whole-DB replacement (T7) must alert even with --auto-anchor — the
+    anchored tip is absent, not merely stale."""
+    from msb_v3.uac.chain_anchor import _verify_daemon
+
+    db = tmp_path / "audit.db"
+    chain = make_chain(db, 5)
+    seed = generate_seed()
+    ChainAnchor(seed=seed).anchor(chain)
+    # attacker swaps in an older internally-valid chain
+    make_chain(tmp_path / "fresh.db", 3)
+    os.replace(tmp_path / "fresh.db", db)
+    state_dir = tmp_path / "state"
+    monkeypatch.setenv(KEY_ENV, seed.hex())
+    monkeypatch.setenv("MSB_ANCHOR_STATE_DIR", str(state_dir))
+
+    assert _verify_daemon(str(db), notify=False, auto_anchor=True) == 2
+    state = json.loads((state_dir / "chain_anchor.json").read_text())
+    assert state["healthy"] is False
+    assert state["auto_reanchored"] is False
+    assert "replacement" in (state["reason"] or "")
+
+
 def test_wrapper_reanchors_after_every_append(tmp_path: Path) -> None:
     chain = make_chain(tmp_path / "audit.db", 0)
     anchored = AnchoredAuditChain(chain, ChainAnchor(seed=generate_seed()))
