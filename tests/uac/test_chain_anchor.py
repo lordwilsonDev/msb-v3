@@ -87,7 +87,9 @@ def test_stale_anchor_after_legitimate_append(tmp_path: Path) -> None:
     anchor = ChainAnchor(seed=generate_seed())
     anchor.anchor(chain)
 
-    chain.append("test", "normal", {"i": 99})  # append AFTER anchoring
+    # a legacy keyless process appends via the explicit escape hatch — the
+    # exact scenario the chain-global guard refuses for real keyless processes
+    AuditChain(str(tmp_path / "audit.db"), allow_keyless=True).append("test", "normal", {"i": 99})
     result = anchor.verify(chain)
     assert result["valid"] is False  # stale anchor is detectable by design
 
@@ -107,9 +109,10 @@ def test_verify_reports_staleness_but_stays_valid(tmp_path: Path) -> None:
     assert healthy["valid"] is True
     assert healthy["stale"] is False
 
-    # simulate re-anchoring stopping: append directly to the chain (bypassing
-    # the wrapper) so a newer record exists than the signed anchor covers
-    chain.append("test", "normal", {"i": 99})
+    # simulate re-anchoring stopping: a legacy keyless process appends via the
+    # explicit escape hatch (bypassing the wrapper) so a newer record exists
+    # than the signed anchor covers
+    AuditChain(str(tmp_path / "audit.db"), allow_keyless=True).append("test", "normal", {"i": 99})
     result = anchor.verify(chain)
     assert result["valid"] is False  # the chain is no longer covered
     assert result["stale"] is True
@@ -119,10 +122,11 @@ def test_verify_reports_staleness_but_stays_valid(tmp_path: Path) -> None:
 
 def _stale_chain(db_path: Path, seed: bytes) -> None:
     """Build a chain whose anchor (signed with ``seed``) covers an older tip
-    — benign staleness from records appended after the last anchor."""
+    — benign staleness from records appended after the last anchor by a
+    legacy keyless process (simulated via the explicit escape hatch)."""
     chain = make_chain(db_path, 3)
     ChainAnchor(seed=seed).anchor(chain)
-    chain.append("test", "normal", {"i": 99})  # append AFTER anchoring
+    AuditChain(str(db_path), allow_keyless=True).append("test", "normal", {"i": 99})
 
 
 def test_verify_daemon_auto_reanchors_benign_staleness(tmp_path: Path, monkeypatch) -> None:
@@ -227,7 +231,7 @@ def test_notary_log_verifies_latest_entry(tmp_path: Path) -> None:
     signer.anchor(chain)
     log = tmp_path / "notary.jsonl"
     signer.notarize(chain, log)  # first entry
-    chain.append("test", "normal", {"i": 99})
+    AuditChain(str(tmp_path / "audit.db"), allow_keyless=True).append("test", "normal", {"i": 99})
     signer.anchor(chain)
     signer.notarize(chain, log)  # second (latest) entry
 

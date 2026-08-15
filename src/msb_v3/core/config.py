@@ -27,7 +27,11 @@ class Settings:
     vault_path: str = field(default_factory=lambda: str(_VAULT_ROOT))
     ollama_url: str = field(default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434"))
     ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "qwen3:8b"))
-    db_path: str = field(default_factory=lambda: os.getenv("MSB_DB_PATH", "data/msb_v3.db"))
+    # Absolute by default (msb_home-relative): a CWD-relative default would
+    # scatter the audit chain and DBs under whatever directory a CLI or
+    # script happens to be run from instead of the deployment. MSB_DB_PATH
+    # still overrides.
+    db_path: str = field(default_factory=lambda: os.getenv("MSB_DB_PATH") or str(_REPO_ROOT / "data" / "msb_v3.db"))
     log_level: str = field(default_factory=lambda: os.getenv("MSB_LOG_LEVEL", "info"))
     cors_origins: str = field(default_factory=lambda: os.getenv("MSB_CORS_ORIGINS", "*"))
     request_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_REQUEST_TIMEOUT_S", "60.0")))

@@ -81,8 +81,11 @@ class FlywheelEngine:
         self._ledger = ledger or BudgetLedger.from_settings()
         self._switch = switch or KillSwitch()
         self._governor = governor or OuroborosGovernor.from_settings()
-        self._guard = Guard(self._switch, self._ledger, self._queue, self._governor)
         self._chain = audit_chain or anchored_chain_from_env()
+        # The guard audits governance decisions to the SAME chain as the
+        # engine — a defaulted guard would silently write to the default
+        # (production) chain even when an isolated chain was injected.
+        self._guard = Guard(self._switch, self._ledger, self._queue, self._governor, audit_chain=self._chain)
         self._axiom = axiom_library or AxiomLibrary()
         # Default is the real feed (Tavily, arxiv-restricted); it degrades
         # to an honest 0-papers note when the key is absent or the feed is

@@ -31,12 +31,13 @@ _RUNTIME_ROOT = Path(settings.db_path).parent / "uac"
 _AUDIT_DB = _RUNTIME_ROOT / "audit_chain.db"
 _GENESIS_HASH = "0" * 64
 
-# Mirror of chain_anchor.KEY_ENV / chain_anchor._default_key_path(): the
-# audit-chain module cannot import chain_anchor (circular), so the
-# fail-closed guard re-checks the same two signals. Keep in sync with
-# uac/chain_anchor.py.
+# Mirror of chain_anchor.KEY_ENV / chain_anchor._default_key_path() /
+# chain_anchor.ANCHOR_FILENAME: the audit-chain module cannot import
+# chain_anchor (circular), so the fail-closed guard re-checks the same
+# signals. Keep in sync with uac/chain_anchor.py.
 _KEY_ENV = "MSB_CHAIN_ANCHOR_KEY"
 _ALLOW_KEYLESS_ENV = "MSB_ALLOW_KEYLESS_APPENDS"
+_ANCHOR_FILENAME = "chain_anchor.json"
 
 
 class AuditChainKeylessAppendError(RuntimeError):
@@ -140,6 +141,30 @@ def _is_default_chain(db_path: Path) -> bool:
         return False
 
 
+def _anchor_covers_chain(db_path: Path) -> bool:
+    """True when a signed anchor file next to ``db_path`` anchors THIS chain.
+
+    The anchor file (chain_anchor.json, written next to its audit DB) records
+    the resolved db_path of the chain it signed. Only refuse bare appends
+    when that recorded path matches the target chain — a sibling anchor in
+    the same directory must not gate an unrelated chain (e.g. a fresh DB in
+    the same tmp dir during tests). An unreadable or path-less anchor next
+    to the DB fails closed (treated as covering) so a tampered anchor cannot
+    silently re-open keyless appends.
+    """
+    anchor_file = Path(db_path).parent / _ANCHOR_FILENAME
+    if not anchor_file.exists():
+        return False
+    try:
+        data = json.loads(anchor_file.read_text())
+        recorded = data.get("snapshot", {}).get("db_path")
+        if not isinstance(recorded, str):
+            return True  # anchor present but path-less -> fail closed
+        return Path(recorded).resolve() == Path(db_path).resolve()
+    except (OSError, ValueError, TypeError):
+        return True  # unreadable anchor -> fail closed
+
+
 class AuditChain:
     def __init__(
         self,
@@ -173,32 +198,47 @@ class AuditChain:
         return row["record_hash"] if row else _GENESIS_HASH
 
     def _refuse_keyless_append(self) -> None:
-        """Fail closed: no keyless appends to the production chain.
+        """Fail closed: no keyless appends to an anchored chain.
 
-        When an anchor key is configured, appending to the DEFAULT chain
-        through a bare ``AuditChain()`` would silently break the re-anchor
-        invariant (the record lands unanchored and the chain only heals when
-        the daily verify job re-signs it). Refuse instead — the only
-        sanctioned append path to the production chain is the
-        ``AnchoredAuditChain`` wrapper. Separate chains (node perimeter,
-        tests, custom DBs) are unaffected. Escape hatches:
+        Two signals refuse a bare ``AuditChain()`` append:
+
+        1. Chain-global: the target chain carries a signed anchor file
+           (``chain_anchor.json`` next to the DB, written by any anchored
+           process). The anchor is a property of the CHAIN, not of the
+           process — so even a process whose own env has no key is refused,
+           closing the hole where a keyless background loop (flywheel,
+           agent pipeline) appends to the shared production chain and only
+           heals when the daily verify job re-signs it.
+        2. Process-local: an anchor key is configured and this is the
+           default production chain (the original guard).
+
+        The only sanctioned append path to an anchored chain is the
+        ``AnchoredAuditChain`` wrapper (re-anchors after every append).
+        Separate chains without an anchor file (node perimeter, tests,
+        custom DBs) are unaffected. Escape hatches:
         ``AuditChain(..., allow_keyless=True)`` or
         ``MSB_ALLOW_KEYLESS_APPENDS=1`` (both for explicit dev/test use).
         """
         if self._anchored or self._allow_keyless:
             return
-        if not _is_default_chain(self.db_path):
-            return
         if os.getenv(_ALLOW_KEYLESS_ENV) == "1":
             return
-        if not _chain_key_configured():
-            return
-        raise AuditChainKeylessAppendError(
-            "keyless append refused: MSB_CHAIN_ANCHOR_KEY is configured and this "
-            "bare AuditChain() targets the production chain (data/uac/audit_chain.db). "
-            "Use anchored_chain_from_env() so the append re-anchors, or set "
-            "MSB_ALLOW_KEYLESS_APPENDS=1 to opt out explicitly (dev/test only)."
-        )
+        anchored_here = _anchor_covers_chain(self.db_path)
+        if anchored_here:
+            raise AuditChainKeylessAppendError(
+                "keyless append refused: this chain carries a signed anchor file "
+                f"({self.db_path.parent / _ANCHOR_FILENAME}) covering this DB — bare "
+                "AuditChain() appends would land unanchored. Use "
+                "anchored_chain_from_env() so the append re-anchors, or set "
+                "MSB_ALLOW_KEYLESS_APPENDS=1 to opt out explicitly (dev/test only)."
+            )
+        if _is_default_chain(self.db_path) and _chain_key_configured():
+            raise AuditChainKeylessAppendError(
+                "keyless append refused: MSB_CHAIN_ANCHOR_KEY is configured and this "
+                "bare AuditChain() targets the production chain (data/uac/audit_chain.db). "
+                "Use anchored_chain_from_env() so the append re-anchors, or set "
+                "MSB_ALLOW_KEYLESS_APPENDS=1 to opt out explicitly (dev/test only)."
+            )
 
     def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord:
         self._refuse_keyless_append()

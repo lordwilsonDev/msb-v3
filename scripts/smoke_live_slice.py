@@ -16,29 +16,31 @@ from msb_v3.agent.planner import plan  # noqa: E402
 from msb_v3.local_ai.client_factory import get_client  # noqa: E402
 
 
-def _ensure_anchor_key() -> None:
-    """Load the chain-anchor key so this live smoke appends ANCHORED.
+def _ensure_repo_env() -> None:
+    """Bootstrap the repo env before the smoke run.
 
-    Same rationale as scripts/demo_live_run.py: the audit chain fails
-    closed on keyless appends to the production chain, and this script runs
-    bare (no shell wrapper sourcing .env). Load just MSB_CHAIN_ANCHOR_KEY
-    from the repo's .env (own checkout first, then the live ~/msb-v3
-    deployment).
+    Same rationale as scripts/demo_live_run.py: load MSB_CHAIN_ANCHOR_KEY
+    (the audit chain fails closed on keyless appends) and pin MSB_DB_PATH
+    to the repo (the default is CWD-relative and would scatter DBs under
+    whatever directory the script is run from).
     """
-    if os.getenv("MSB_CHAIN_ANCHOR_KEY"):
-        return
-    for env_file in (Path(__file__).resolve().parents[1] / ".env", Path.home() / "msb-v3" / ".env"):
-        if not env_file.exists():
-            continue
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if line.startswith("MSB_CHAIN_ANCHOR_KEY="):
-                os.environ["MSB_CHAIN_ANCHOR_KEY"] = line.split("=", 1)[1].strip().strip("\"'")
-                return
+    repo = Path(__file__).resolve().parents[1]
+    if not os.getenv("MSB_CHAIN_ANCHOR_KEY"):
+        for env_file in (repo / ".env", Path.home() / "msb-v3" / ".env"):
+            if not env_file.exists():
+                continue
+            for line in env_file.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("MSB_CHAIN_ANCHOR_KEY="):
+                    os.environ["MSB_CHAIN_ANCHOR_KEY"] = line.split("=", 1)[1].strip().strip("\"'")
+                    break
+            if os.getenv("MSB_CHAIN_ANCHOR_KEY"):
+                break
+    os.environ.setdefault("MSB_DB_PATH", str(repo / "data" / "msb_v3.db"))
 
 
 async def main() -> None:
-    _ensure_anchor_key()
+    _ensure_repo_env()
     request = "Research the vault and write a client brief about the sovereign agentic runtime."
     tenant = sys.argv[1] if len(sys.argv) > 1 else "wilson-vault"
     out = Path(tempfile.mkdtemp(prefix="dbb-smoke-"))
