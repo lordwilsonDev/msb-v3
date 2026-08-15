@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -29,6 +30,24 @@ from msb_v3.core.config import settings
 _RUNTIME_ROOT = Path(settings.db_path).parent / "uac"
 _AUDIT_DB = _RUNTIME_ROOT / "audit_chain.db"
 _GENESIS_HASH = "0" * 64
+
+# Mirror of chain_anchor.KEY_ENV / chain_anchor._default_key_path(): the
+# audit-chain module cannot import chain_anchor (circular), so the
+# fail-closed guard re-checks the same two signals. Keep in sync with
+# uac/chain_anchor.py.
+_KEY_ENV = "MSB_CHAIN_ANCHOR_KEY"
+_ALLOW_KEYLESS_ENV = "MSB_ALLOW_KEYLESS_APPENDS"
+
+
+class AuditChainKeylessAppendError(RuntimeError):
+    """Append refused: an anchored chain is configured but this chain is bare.
+
+    Raised when a non-anchored ``AuditChain`` appends to the default
+    production chain while an anchor key is configured — the record would
+    land unanchored and only heal when the daily verify job re-signs.
+    External automation must carry the anchor key (use
+    ``anchored_chain_from_env()``) or route through the server.
+    """
 
 
 def _now_iso() -> str:
@@ -105,9 +124,37 @@ class AuditChainLike(Protocol):
     def get_chain(self, component: Optional[str] = None) -> list: ...
 
 
+def _chain_key_configured() -> bool:
+    return os.getenv(_KEY_ENV) is not None or _default_anchor_key_path().exists()
+
+
+def _default_anchor_key_path() -> Path:
+    return Path(settings.msb_home) / "data" / "uac" / "chain_anchor_key"
+
+
+def _is_default_chain(db_path: Path) -> bool:
+    """True when ``db_path`` is the production chain the anchor covers."""
+    try:
+        return Path(db_path).resolve() == _AUDIT_DB.resolve()
+    except OSError:
+        return False
+
+
 class AuditChain:
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        *,
+        allow_keyless: bool = False,
+    ) -> None:
         self.db_path = Path(db_path) if db_path else _AUDIT_DB
+        # Set True by the AnchoredAuditChain wrapper (uac.chain_anchor): the
+        # wrapper re-anchors after every append, so its inner chain is the
+        # sanctioned append path to the production chain.
+        self._anchored = False
+        # Explicit escape hatch for automation that cannot carry the anchor
+        # key yet (dev/test fixtures, legacy processes mid-migration).
+        self._allow_keyless = allow_keyless
         _init_db(self.db_path)
 
     def _conn(self) -> sqlite3.Connection:
@@ -125,7 +172,36 @@ class AuditChain:
         row = conn.execute("SELECT record_hash FROM audit_records ORDER BY seq DESC LIMIT 1").fetchone()
         return row["record_hash"] if row else _GENESIS_HASH
 
+    def _refuse_keyless_append(self) -> None:
+        """Fail closed: no keyless appends to the production chain.
+
+        When an anchor key is configured, appending to the DEFAULT chain
+        through a bare ``AuditChain()`` would silently break the re-anchor
+        invariant (the record lands unanchored and the chain only heals when
+        the daily verify job re-signs it). Refuse instead — the only
+        sanctioned append path to the production chain is the
+        ``AnchoredAuditChain`` wrapper. Separate chains (node perimeter,
+        tests, custom DBs) are unaffected. Escape hatches:
+        ``AuditChain(..., allow_keyless=True)`` or
+        ``MSB_ALLOW_KEYLESS_APPENDS=1`` (both for explicit dev/test use).
+        """
+        if self._anchored or self._allow_keyless:
+            return
+        if not _is_default_chain(self.db_path):
+            return
+        if os.getenv(_ALLOW_KEYLESS_ENV) == "1":
+            return
+        if not _chain_key_configured():
+            return
+        raise AuditChainKeylessAppendError(
+            "keyless append refused: MSB_CHAIN_ANCHOR_KEY is configured and this "
+            "bare AuditChain() targets the production chain (data/uac/audit_chain.db). "
+            "Use anchored_chain_from_env() so the append re-anchors, or set "
+            "MSB_ALLOW_KEYLESS_APPENDS=1 to opt out explicitly (dev/test only)."
+        )
+
     def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord:
+        self._refuse_keyless_append()
         timestamp = _now_iso()
         with self._conn() as conn:
             # BEGIN IMMEDIATE acquires the write lock BEFORE the prev-hash

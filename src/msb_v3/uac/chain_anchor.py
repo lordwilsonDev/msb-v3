@@ -352,6 +352,11 @@ class AnchoredAuditChain:
     def __init__(self, chain: AuditChain, anchor: ChainAnchor) -> None:
         self.chain = chain
         self.anchor = anchor
+        # Mark the inner chain as anchored so AuditChain.append's fail-closed
+        # guard (uac.audit_chain) lets this wrapper through: it re-anchors
+        # after every append, which is the only sanctioned append path to the
+        # production chain when a key is configured.
+        chain._anchored = True
         # Establish the initial anchor so verification is meaningful from birth.
         # NEVER clobber an existing anchor signed by a DIFFERENT key (found
         # live: a test process re-anchored the production chain with a random
