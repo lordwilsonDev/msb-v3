@@ -30,26 +30,31 @@ from msb_v3.agent.trace import compute_deterministic_hash  # noqa: E402
 DEFAULT_REQUEST = "Research the vault and write a client brief about the sovereign agentic runtime."
 
 
-def _ensure_anchor_key() -> None:
-    """Load the chain-anchor key so this live demo appends ANCHORED.
+def _ensure_repo_env() -> None:
+    """Bootstrap the repo env before the pipeline runs.
 
-    The audit chain fails closed (uac.audit_chain): a bare append to the
-    production chain while MSB_CHAIN_ANCHOR_KEY is configured is refused,
-    and anchored_chain_from_env() raises without the key. Shell wrappers
-    source .env, but this script runs bare — load just the anchor key from
-    the repo's .env (own checkout first, then the live ~/msb-v3 deployment)
-    so the loop carries the key regardless of who launches it.
+    - Load the chain-anchor key so this live demo appends ANCHORED: the
+      audit chain fails closed (uac.audit_chain) on keyless appends, and
+      anchored_chain_from_env() needs the key. Shell wrappers source .env,
+      but this script runs bare — load just the anchor key from the repo's
+      .env (own checkout first, then the live ~/msb-v3 deployment) so the
+      loop carries the key regardless of who launches it.
+    - Pin MSB_DB_PATH to the repo: the default is CWD-relative, so a run
+      from another directory would scatter the audit chain and DBs under
+      that CWD instead of the deployment.
     """
-    if os.getenv("MSB_CHAIN_ANCHOR_KEY"):
-        return
-    for env_file in (REPO / ".env", Path.home() / "msb-v3" / ".env"):
-        if not env_file.exists():
-            continue
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if line.startswith("MSB_CHAIN_ANCHOR_KEY="):
-                os.environ["MSB_CHAIN_ANCHOR_KEY"] = line.split("=", 1)[1].strip().strip("\"'")
-                return
+    if not os.getenv("MSB_CHAIN_ANCHOR_KEY"):
+        for env_file in (REPO / ".env", Path.home() / "msb-v3" / ".env"):
+            if not env_file.exists():
+                continue
+            for line in env_file.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("MSB_CHAIN_ANCHOR_KEY="):
+                    os.environ["MSB_CHAIN_ANCHOR_KEY"] = line.split("=", 1)[1].strip().strip("\"'")
+                    break
+            if os.getenv("MSB_CHAIN_ANCHOR_KEY"):
+                break
+    os.environ.setdefault("MSB_DB_PATH", str(REPO / "data" / "msb_v3.db"))
 
 
 def _stamp() -> str:
@@ -74,7 +79,7 @@ def _task_summary(trace: dict) -> None:
 
 
 async def main() -> int:
-    _ensure_anchor_key()
+    _ensure_repo_env()
     request = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REQUEST
 
     stamp = _stamp()

@@ -1,11 +1,20 @@
-"""Fail-closed guard: no keyless appends to the production audit chain.
+"""Fail-closed guard: no keyless appends to an anchored audit chain.
 
-When MSB_CHAIN_ANCHOR_KEY is configured, a bare AuditChain() appending to
-the default production chain is refused — the record would land unanchored
-and only heal when the daily verify job re-signs. The sanctioned path is
-the AnchoredAuditChain wrapper (re-anchors every append). Separate chains
-(node perimeter, tests, custom DBs) and the explicit escape hatches
-(allow_keyless=True, MSB_ALLOW_KEYLESS_APPENDS=1) are unaffected.
+Two signals refuse a bare AuditChain() append:
+
+1. Chain-global: the target chain carries a signed anchor file
+   (chain_anchor.json next to the DB) — the anchor is a property of the
+   CHAIN, so even a process whose own env has no key is refused (this is
+   the hole where keyless background loops — flywheel, agent pipeline —
+   appended to the shared production chain and only healed when the daily
+   verify job re-signed).
+2. Process-local: MSB_CHAIN_ANCHOR_KEY is configured and this is the
+   default production chain.
+
+The sanctioned path is the AnchoredAuditChain wrapper (re-anchors every
+append). Separate chains without an anchor file (node perimeter, tests,
+custom DBs) and the explicit escape hatches (allow_keyless=True,
+MSB_ALLOW_KEYLESS_APPENDS=1) are unaffected.
 
 ``_AUDIT_DB`` is monkeypatched to a tmp path so "the default chain" in
 these tests is a scratch file, never the live production DB.
@@ -97,6 +106,33 @@ def test_msb_allow_keyless_appends_env_is_an_explicit_escape_hatch(
     monkeypatch.setenv(KEY, _seed().hex())
     monkeypatch.setenv(ALLOW, "1")
     chain = AuditChain()
+    chain.append("test", "event", {})
+    assert chain.verify_chain()["record_count"] == 1
+
+
+def test_bare_append_refused_when_chain_has_anchor_file_even_without_env_key(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Chain-global invariant: a chain that carries chain_anchor.json is
+    refused bare appends even when the process env has NO key — this is the
+    exact hole the keyless flywheel/agent loops used (their own process
+    lacked the key, but the shared production chain was anchored)."""
+    monkeypatch.delenv(KEY, raising=False)
+    monkeypatch.delenv(ALLOW, raising=False)
+    (tmp_path / ac._ANCHOR_FILENAME).write_text('{"fake": "anchor"}')
+    chain = AuditChain(db_path=str(tmp_path / "audit.db"))
+    with pytest.raises(AuditChainKeylessAppendError, match="signed anchor file"):
+        chain.append("test", "event", {"i": 1})
+    assert chain.verify_chain()["record_count"] == 0
+
+
+def test_allow_keyless_flag_bypasses_chain_global_guard(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(KEY, raising=False)
+    monkeypatch.delenv(ALLOW, raising=False)
+    (tmp_path / ac._ANCHOR_FILENAME).write_text('{"fake": "anchor"}')
+    chain = AuditChain(db_path=str(tmp_path / "audit.db"), allow_keyless=True)
     chain.append("test", "event", {})
     assert chain.verify_chain()["record_count"] == 1
 
