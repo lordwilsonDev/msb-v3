@@ -349,6 +349,85 @@ def test_shell_operator_submit_then_device_signed_approval(tmp_path: Path) -> No
     assert result["execution"]["stdout"] == "hello\n"
 
 
+# ── Operator approval queue ────────────────────────────────────────────────
+def test_approvals_lists_pending_with_operator_bearer(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/vesta/approvals"
+        assert request.url.params["status"] == "PENDING"
+        assert request.headers["Authorization"] == "Bearer op-token"
+        return httpx.Response(
+            200,
+            json={
+                "write": [
+                    {
+                        "approval_id": "ack_abc",
+                        "target_path": "notes.md",
+                        "payload_sha256": "0" * 64,
+                        "status": "PENDING",
+                        "created_at": "2026-08-14T00:00:00+00:00",
+                    }
+                ],
+                "shell": [
+                    {
+                        "approval_id": "shell_ack_xyz",
+                        "command_json": json.dumps({"executable": "echo", "args": ["hi"]}),
+                        "command_sha256": "1" * 64,
+                        "status": "PENDING",
+                        "created_at": "2026-08-14T00:01:00+00:00",
+                    }
+                ],
+            },
+            request=request,
+        )
+
+    client = _mock_client(tmp_path, handler)
+    result = client.approvals()
+    assert result["write"][0]["approval_id"] == "ack_abc"
+    assert result["shell"][0]["approval_id"] == "shell_ack_xyz"
+
+
+def test_approve_routes_by_id_prefix(tmp_path: Path) -> None:
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        assert request.headers["Authorization"] == "Bearer op-token"
+        return httpx.Response(
+            200,
+            json={"status": "completed", "approval_id": request.url.path.split("/")[-2]},
+            request=request,
+        )
+
+    client = _mock_client(tmp_path, handler)
+    assert client.approve("ack_abc")["status"] == "completed"
+    assert paths == ["/vesta/approvals/ack_abc/approve"]
+    assert client.approve("shell_ack_xyz")["status"] == "completed"
+    assert paths == ["/vesta/approvals/ack_abc/approve", "/vesta/shell/approvals/shell_ack_xyz/approve"]
+
+
+def test_reject_sends_reason_to_route(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.read())
+        assert request.url.path == "/vesta/shell/approvals/shell_ack_xyz/reject"
+        assert body == {"reason": "not needed"}
+        assert request.headers["Authorization"] == "Bearer op-token"
+        return httpx.Response(200, json={"status": "rejected", "approval_id": "shell_ack_xyz"}, request=request)
+
+    client = _mock_client(tmp_path, handler)
+    result = client.reject("shell_ack_xyz", "not needed")
+    assert result["status"] == "rejected"
+
+
+def test_approval_queue_requires_operator_token(tmp_path: Path) -> None:
+    client = _mock_client(tmp_path, lambda r: httpx.Response(404, request=r), operator_token="")
+    with pytest.raises(DeviceClientError, match="MSB_OPERATOR_TOKEN"):
+        client.approvals()
+    with pytest.raises(DeviceClientError, match="MSB_OPERATOR_TOKEN"):
+        client.approve("ack_1")
+    with pytest.raises(DeviceClientError, match="MSB_OPERATOR_TOKEN"):
+        client.reject("ack_1")
+
+
 # ── CLI error paths ─────────────────────────────────────────────────────────
 def test_cli_enroll_exits_2_without_pairing_code(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MSB_NODE_PAIRING_CODE", raising=False)
@@ -368,3 +447,14 @@ def test_cli_accepts_global_flags_after_subcommand(tmp_path: Path, monkeypatch: 
     # flags parsed fine after the subcommand (a parse error would exit 1/2
     # with a usage message instead of reaching the config check).
     assert main(["chat", "hi", "--json", "--state-dir", str(tmp_path / "state")]) == 2
+
+
+def test_cli_approval_commands_parse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """approvals/approve/reject parse (with flags and positional reason) —
+    no identity and no operator token means the config path exits 2 before
+    any HTTP, proving argparse accepted the new shapes."""
+    monkeypatch.delenv("MSB_NODE_PAIRING_CODE", raising=False)
+    monkeypatch.delenv("MSB_OPERATOR_TOKEN", raising=False)
+    assert main(["approvals", "--json", "--state-dir", str(tmp_path / "state")]) == 2
+    assert main(["approve", "ack_1", "--state-dir", str(tmp_path / "state")]) == 2
+    assert main(["reject", "shell_ack_2", "not needed", "--state-dir", str(tmp_path / "state")]) == 2

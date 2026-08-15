@@ -345,6 +345,19 @@ def shell_reject(approval_id: str, body: dict[str, Any] | None = None) -> dict[s
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.get("/approvals", dependencies=[Depends(require_operator)])
+def approvals_list(status: str = "PENDING") -> dict[str, Any]:
+    """List durable write + shell approvals so the operator can see what is
+    waiting (and decide it) without digging in the DB. Default: PENDING only."""
+    try:
+        return {
+            "write": _write_approvals.list(status or None),
+            "shell": _shell_approvals.list(status or None),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="could not list approvals") from exc
+
+
 @router.get("/approvals/{approval_id}", dependencies=[Depends(require_operator)])
 def approval_status(approval_id: str) -> dict[str, Any]:
     try:

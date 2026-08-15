@@ -59,6 +59,26 @@ def test_shell_rejects_unknown_commands_and_flags_before_execution(tmp_path: Pat
     assert unknown["status"] == "denied"
     assert service.tasks.get(unknown["task_id"])["state"] == "DENIED"
 
+
+def test_shell_approval_store_lists_pending_and_all(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    first = service.submit(
+        VestaShellRequest(executable="echo", args=["FIRST_OK"], expected_stdout="FIRST_OK\n")
+    )
+    second = service.submit(
+        VestaShellRequest(executable="echo", args=["SECOND_OK"], expected_stdout="SECOND_OK\n")
+    )
+    service.approve_and_execute(first["approval_id"], "operator")
+
+    pending_rows = service.approvals.list("PENDING")
+    assert [a["approval_id"] for a in pending_rows] == [second["approval_id"]]
+
+    all_rows = service.approvals.list()
+    assert [a["approval_id"] for a in all_rows] == [first["approval_id"], second["approval_id"]]
+    assert all_rows[0]["status"] == "APPROVED"
+    assert all_rows[1]["status"] == "PENDING"
+    assert json.loads(all_rows[0]["command_json"])["args"] == ["FIRST_OK"]
+
     flags = service.submit(VestaShellRequest(executable="echo", args=["-e", "BAD"]))
     assert flags["status"] == "denied"
     assert service.tasks.get(flags["task_id"])["state"] == "DENIED"

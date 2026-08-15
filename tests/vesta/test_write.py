@@ -48,6 +48,22 @@ def test_rejection_never_writes(tmp_path: Path) -> None:
     assert not (tmp_path / "sandbox" / "rejected.txt").exists()
 
 
+def test_approval_store_lists_pending_and_all(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    first = service.submit(VestaFileWriteRequest(path="a.txt", content="a"))
+    second = service.submit(VestaFileWriteRequest(path="b.txt", content="b"))
+    service.approve_and_execute(first["approval_id"], "operator")
+
+    pending = service.approvals.list("PENDING")
+    assert [a["approval_id"] for a in pending] == [second["approval_id"]]
+
+    all_records = service.approvals.list()
+    assert [a["approval_id"] for a in all_records] == [first["approval_id"], second["approval_id"]]
+    assert all_records[0]["status"] == "APPROVED"
+    assert all_records[1]["status"] == "PENDING"
+    assert all_records[0]["target_path"] == "a.txt"
+
+
 def test_precondition_scope_or_kill_failure_quarantines_without_write(tmp_path: Path) -> None:
     service = make_service(tmp_path)
     existing = tmp_path / "sandbox" / "existing.txt"

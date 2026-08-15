@@ -19,6 +19,9 @@ Usage (with ``.env`` loaded):
   python scripts/device-client.py write runtime/node-sandbox/notes.md "hi"
   python scripts/device-client.py shell echo hello world
   python scripts/device-client.py status
+  python scripts/device-client.py approvals          # pending write+shell (operator)
+  python scripts/device-client.py approve ack_...    # operator-approve one
+  python scripts/device-client.py reject ack_... no  # or reject it
 """
 
 from __future__ import annotations
@@ -59,6 +62,18 @@ class DeviceClientError(Exception):
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _approval_route(approval_id: str, action: str) -> str:
+    """Route an approval decision to the write or shell surface.
+
+    Write approvals are created as ``ack_*`` and shell approvals as
+    ``shell_ack_*`` (vesta/approvals.py, vesta/shell.py), so the prefix is
+    authoritative; anything else falls back to the write route, which 404s
+    on unknown ids."""
+    if approval_id.startswith("shell_ack_"):
+        return f"/vesta/shell/approvals/{approval_id}/{action}"
+    return f"/vesta/approvals/{approval_id}/{action}"
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
@@ -307,6 +322,41 @@ class DeviceClient:
         )
         return self._post(f"/vesta/shell/approvals/{contract['approval_id']}/signed-approve", ack)
 
+    # ── Operator approval queue ──────────────────────────────────────────────
+    def approvals(self, status: str = "PENDING") -> Dict[str, Any]:
+        """List durable write + shell approvals (operator view)."""
+        if not self.operator_token:
+            raise DeviceClientError(
+                "MSB_OPERATOR_TOKEN is empty; /vesta/approvals (operator view) is closed. Set it in .env."
+            )
+        response = self._client.get(
+            "/vesta/approvals",
+            params={"status": status},
+            headers={"Authorization": f"Bearer {self.operator_token}"},
+        )
+        if response.status_code >= 400:
+            raise DeviceClientError(
+                f"GET /vesta/approvals failed: HTTP {response.status_code} "
+                f"{response.json().get('detail', '')}"
+            )
+        return response.json()
+
+    def approve(self, approval_id: str) -> Dict[str, Any]:
+        """Operator-approve one pending write or shell approval."""
+        if not self.operator_token:
+            raise DeviceClientError(
+                "MSB_OPERATOR_TOKEN is empty; approval decisions are closed. Set it in .env."
+            )
+        return self._post(_approval_route(approval_id, "approve"), {}, operator=True)
+
+    def reject(self, approval_id: str, reason: str = "owner rejected") -> Dict[str, Any]:
+        """Reject one pending write or shell approval."""
+        if not self.operator_token:
+            raise DeviceClientError(
+                "MSB_OPERATOR_TOKEN is empty; approval decisions are closed. Set it in .env."
+            )
+        return self._post(_approval_route(approval_id, "reject"), {"reason": reason}, operator=True)
+
     def close(self) -> None:
         self._client.close()
 
@@ -355,6 +405,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("args", nargs="*")
     p.add_argument("--expect-stdout", default=None, help="exact expected stdout (byte-exact postcondition)")
 
+    p = sub.add_parser("approvals", parents=[common], help="list pending write + shell approvals (operator)")
+    p.add_argument("--status", default="PENDING", help="filter by status (default PENDING)")
+
+    p = sub.add_parser("approve", parents=[common], help="operator-approve a pending write/shell approval")
+    p.add_argument("approval_id", help="approval id (ack_* write or shell_ack_* shell)")
+
+    p = sub.add_parser("reject", parents=[common], help="reject a pending write/shell approval")
+    p.add_argument("approval_id", help="approval id (ack_* write or shell_ack_* shell)")
+    p.add_argument("reason", nargs="?", default="owner rejected", help="rejection reason")
+
     return parser
 
 
@@ -384,6 +444,12 @@ def main(argv: list[str] | None = None) -> int:
                 result = client.write(args.path, content, expected_sha256=args.expect_sha256)
             elif args.cmd == "shell":
                 result = client.shell(args.executable, list(args.args), expected_stdout=args.expect_stdout)
+            elif args.cmd == "approvals":
+                result = client.approvals(status=args.status)
+            elif args.cmd == "approve":
+                result = client.approve(args.approval_id)
+            elif args.cmd == "reject":
+                result = client.reject(args.approval_id, args.reason)
             else:  # pragma: no cover — argparse requires a subcommand
                 parser.error(f"unknown command: {args.cmd}")
                 return EXIT_ERROR
@@ -437,6 +503,25 @@ def _print_human(cmd: str, result: Dict[str, Any]) -> None:
         stdout = execution.get("stdout", "")
         if stdout:
             print(stdout.rstrip("\n"))
+    elif cmd == "approvals":
+        write = result.get("write", [])
+        shell = result.get("shell", [])
+        if not write and not shell:
+            print("no pending approvals")
+        for approval in write:
+            print(
+                f"WRITE {approval['approval_id']}  -> {approval['target_path']}  "
+                f"sha256={approval['payload_sha256'][:12]}  {approval['status']}  {approval['created_at']}"
+            )
+        for approval in shell:
+            command = json.loads(approval.get("command_json", "{}"))
+            args = " ".join(command.get("args", []))
+            print(
+                f"SHELL {approval['approval_id']}  -> {command.get('executable', '?')} {args}  "
+                f"sha256={approval['command_sha256'][:12]}  {approval['status']}  {approval['created_at']}"
+            )
+    elif cmd in ("approve", "reject"):
+        print(f"status={result.get('status')} approval={result.get('approval_id')}")
 
 
 if __name__ == "__main__":  # pragma: no cover
