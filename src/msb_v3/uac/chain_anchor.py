@@ -394,15 +394,33 @@ def anchored_chain_from_env() -> AuditChain | AnchoredAuditChain:
     return AnchoredAuditChain(AuditChain(), ChainAnchor.from_env())
 
 
-def _verify_daemon(db_path: str, *, notify: bool) -> int:
+def _verify_daemon(db_path: str, *, notify: bool, auto_anchor: bool = False) -> int:
     """One-shot health check for the launchd job: internal chain + anchored
     state, a macOS notification when unhealthy, a state file for dashboards,
-    and a one-line status. Exit 0 = healthy, 2 = action needed."""
+    and a one-line status. Exit 0 = healthy, 2 = action needed.
+
+    With ``auto_anchor``, a benignly STALE anchor (the anchored tip is still
+    a valid prefix of the live chain — newer records were appended after the
+    last anchor, e.g. by a keyless background process) is re-signed against
+    the current tip instead of alerting. REPLACEMENT (anchored tip absent),
+    tamper, wrong key, missing anchor, and broken chains still alert.
+    """
     import subprocess
 
     chain = AuditChain(db_path)
+    anchor = ChainAnchor.from_env()
     internal = chain.verify_chain()
-    anchored = ChainAnchor.from_env().verify(chain)
+    anchored = anchor.verify(chain)
+    auto_reanchored = False
+    if (
+        auto_anchor
+        and internal.get("valid")
+        and anchored.get("valid") is False
+        and anchored.get("stale", False) is True
+    ):
+        anchor.anchor(chain)
+        anchored = anchor.verify(chain)
+        auto_reanchored = True
     healthy = bool(internal.get("valid") and anchored.get("valid") and not anchored.get("stale", False))
     state = {
         "checked_at": _now_iso(),
@@ -415,6 +433,7 @@ def _verify_daemon(db_path: str, *, notify: bool) -> int:
         "stale_seconds": anchored.get("stale_seconds", 0),
         "reason": anchored.get("reason"),
         "record_count": anchored.get("record_count", internal.get("record_count")),
+        "auto_reanchored": auto_reanchored,
     }
     state_dir = Path(os.getenv("MSB_ANCHOR_STATE_DIR", str(Path.home() / ".trinity" / "state")))
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -422,7 +441,8 @@ def _verify_daemon(db_path: str, *, notify: bool) -> int:
 
     if healthy:
         print(f"OK chain_anchor internal={internal.get('valid')} anchored={anchored.get('valid')} "
-              f"records={state['record_count']} anchor={anchored.get('anchored_at', '')}")
+              f"records={state['record_count']} anchor={anchored.get('anchored_at', '')}"
+              + (" auto_reanchored=1" if auto_reanchored else ""))
         return 0
     problem = state["reason"] or ("internal chain broken" if not internal.get("valid") else "unknown")
     print(f"ALERT chain_anchor: {problem}")
@@ -447,10 +467,11 @@ def _main() -> int:
     parser.add_argument("--verify-notary", metavar="AUDIT_DB", help="verify the last notary log entry against the chain")
     parser.add_argument("--notary", metavar="LOG", help="notary log path (required with --notarize / --verify-notary)")
     parser.add_argument("--verify-daemon", metavar="AUDIT_DB", help="one-shot health check for launchd (alert on problem)")
+    parser.add_argument("--auto-anchor", action="store_true", help="re-sign a benignly STALE anchor instead of alerting (with --verify-daemon)")
     parser.add_argument("--no-notify", action="store_true", help="suppress the macOS notification (testing)")
     args = parser.parse_args()
     if args.verify_daemon:
-        return _verify_daemon(args.verify_daemon, notify=not args.no_notify)
+        return _verify_daemon(args.verify_daemon, notify=not args.no_notify, auto_anchor=args.auto_anchor)
     if args.verify:
         chain = AuditChain(args.verify)
         anchor = ChainAnchor.from_env()
