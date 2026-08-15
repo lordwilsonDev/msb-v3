@@ -1,0 +1,49 @@
+# MSB v3 — real compose stack (close-out Phase 1, FR-1.3).
+#
+# Brings up msb_v3 + qdrant with named volumes so neither service loses
+# state to the host cwd (the documented Qdrant cwd footgun: storage/ and
+# snapshots/ live in the container's /qdrant, msb_v3 data in /app/data).
+#
+#   docker compose up --build
+#   curl -f http://127.0.0.1:8766/health
+#
+# Ollama is reached on the host: host.docker.internal works on Docker
+# Desktop (macOS/Windows); on Linux use 172.17.0.1 (bridge gateway) or set
+# OLLAMA_URL explicitly.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.18.3
+    ports:
+      - "6333:6333"   # REST
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
+
+  msb_v3:
+    build: .
+    ports:
+      - "8766:8766"
+    environment:
+      MSB_HOST: 0.0.0.0
+      MSB_PORT: "8766"
+      MSB_ACTIVE_BACKEND: ollama
+      OLLAMA_URL: http://host.docker.internal:11434
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+    volumes:
+      - msb_data:/app/data
+    depends_on:
+      - qdrant
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8766/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  qdrant_storage:
+  qdrant_snapshots:
+  msb_data:

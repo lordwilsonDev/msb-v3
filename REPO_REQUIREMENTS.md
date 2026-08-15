@@ -9,7 +9,7 @@ self-hosted runner that powers the browser + evidence gate.
 
 | Workflow | Runs on | Hard requirements | Notes |
 |---|---|---|---|
-| `ci.yml` | hosted `ubuntu-latest` | Actions enabled | tests (Py 3.11/3.12), ruff, mypy, pip-audit, SBOM, licenses, claims; docker job inert until a `Dockerfile` exists; deploy job skips until secrets exist |
+| `ci.yml` | hosted `ubuntu-latest` | Actions enabled | tests (Py 3.11/3.12), ruff, mypy, pip-audit, SBOM, licenses, claims; docker job builds the real image + container `/health` smoke; deploy job skips until secrets exist |
 | `factory-gate.yml` | hosted `ubuntu-latest` | **`MSB_MCP_SECRET` secret** | pytest w/ 65% coverage gate, hygiene suite, live auth probe, conversation E2E (stub, zero-spend); the auth + E2E probes fail-closed on the secret |
 | `harness-gate.yml` | **self-hosted** `[self-hosted, macOS]` | a registered runner + machine-local state | browser endpoints + video-harness evidence gate; uploads `harness-evidence-report.json` |
 | `make harness-gate-dryrun` | local | nothing extra | pre-push mirror of the harness-gate steps (probes + gate, minus upload) |
@@ -79,7 +79,7 @@ if you ever mirror the marketplace):
 | `production` environment (Settings → Environments) | deploy job uses it |
 | `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` secrets | activates the deploy job (SSH pull + restart); it **skips cleanly** until all four exist |
 | Codecov connection | `ci.yml` uploads coverage (non-failing without it) |
-| A root `Dockerfile` | activates the docker build + container smoke jobs (inert today by design) |
+| A root `Dockerfile` | **present since close-out Phase 1 (2026-08-15)** — the docker build + container smoke jobs are active |
 
 ## Self-hosted runner machine prerequisites
 

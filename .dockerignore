@@ -1,0 +1,19 @@
+# Close-out FR-1.2: the image MUST NOT bake secrets, the vault, or host state.
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+data/
+runtime/
+node_modules/
+tests/
+docs/
+experiments/
+.claude/
+.vscode/
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.msb-v3
