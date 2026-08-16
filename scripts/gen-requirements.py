@@ -2,30 +2,35 @@
 """Generate fully-pinned requirements-{runtime,dev}.lock from pyproject.toml.
 
 pyproject.toml is the single source of truth for WHAT the project depends on
-(CI installs straight from it with `pip install -e ".[dev]"`). The *.in files
-are derived from it, and the *.lock files are the full transitive closure
-(resolved by pip-compile) with cross-platform hashes, so `docker build` is
-reproducible:
+(CI installs straight from it with `pip install -e ".[dev]"`). The *.lock files
+are the full transitive closure (resolved by pip-compile) with cross-platform
+hashes, so `docker build` is reproducible:
 
-    pyproject.toml  ->  requirements-{runtime,dev}.in   (top-level, derived)
-    requirements-*.in  ->  requirements-*.lock          (pinned + hashed)
+    pyproject.toml  ->  (transient requirements-*.in)  ->  requirements-*.lock
 
-The runtime lock (installed by the image) also carries `--require-hashes`, so a
+The *.in files are NOT committed: they are pure intermediates written on the
+fly during generation. Committing them made GitHub's dependency-graph updater
+(Dependabot) treat the repo as a pip-compile project and fail on the dev .in's
+`-c requirements-runtime.lock` constraint. pyproject.toml is the only
+human-edited dependency file.
+
+The runtime lock (installed by the image) carries `--require-hashes`, so a
 hand-added hashless line fails the install instead of silently weakening the
 reproducibility guarantee. The dev lock pins pip/setuptools/wheel via
 `--allow-unsafe` (pip-tools pulls them in as build deps).
 
 Usage:
-    python scripts/gen-requirements.py              # (re)write .in + .lock
+    python scripts/gen-requirements.py              # (re)write .lock files
     python scripts/gen-requirements.py --check      # offline drift check
     python scripts/gen-requirements.py --selftest   # run embedded fixtures
     python scripts/gen-requirements.py --root DIR   # operate on DIR (tests/CI)
 
-`--check` is OFFLINE (no pip-compile, no network): it verifies the *.in files
-still match pyproject.toml and that each *.lock is present, fully `==`-pinned,
-hashed, and `--require-hashes`-guarded. Regeneration (`make deps`) is a
-deliberate step that re-resolves against PyPI; the committed lock is a frozen
-snapshot — that freezing is exactly what makes the image reproducible.
+`--check` is OFFLINE (no pip-compile, no network): it verifies each lock is
+present, fully `==`-pinned, hashed, `--require-hashes`-guarded (runtime), and
+that each lock's DIRECT dependencies still match pyproject.toml. Regeneration
+(`make deps`) is a deliberate step that re-resolves against PyPI; the committed
+lock is a frozen snapshot — that freezing is exactly what makes the image
+reproducible.
 
 Exit: 0 ok, 1 drift/stale/--check failure or selftest failure, 2 config error.
 """
@@ -34,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import re
 import subprocess
 import sys
 import tempfile
@@ -53,12 +59,20 @@ DEV_IN_HEADER = (
     + "# Constrained by the runtime lock so shared deps resolve consistently.\n"
 )
 
+# A package line in a pip-compile lock: name[extra]==version [; markers] \
+_DIRECT_RE = re.compile(r"^([A-Za-z0-9_.\-]+(?:\[[^\]]+\])?==[^ ;\\]+)")
 
-def derive_ins(pyproject: dict) -> dict[str, str]:
-    """Map .in filename -> rendered content for a parsed pyproject dict."""
+
+def deps(pyproject: dict) -> tuple[list[str], list[str]]:
+    """Return (runtime, dev) top-level dependency specifiers from pyproject."""
     project = pyproject["project"]
     runtime = list(project.get("dependencies", []))
     dev = list((project.get("optional-dependencies") or {}).get("dev", []))
+    return runtime, dev
+
+
+def in_contents(runtime: list[str], dev: list[str]) -> dict[str, str]:
+    """Transient *.in contents (top-level, plus a runtime constraint on dev)."""
     return {
         RUNTIME_IN: RUNTIME_IN_HEADER + "".join(f"{d}\n" for d in runtime),
         DEV_IN: DEV_IN_HEADER + "-c requirements-runtime.lock\n" + "".join(f"{d}\n" for d in dev),
@@ -71,6 +85,43 @@ def read_pyproject(root: Path) -> dict:
         raise FileNotFoundError(f"{path} not found")
     with open(path, "rb") as fh:
         return tomllib.load(fh)
+
+
+def direct_specs(content: str, in_name: str) -> list[str]:
+    """Direct (top-level) requirement specifiers in a pip-compile lock.
+
+    A package is direct iff its `# via` annotation references the .in file
+    (single-line `# via -r X.in` or the multi-line form under `# via`).
+    """
+    specs: list[str] = []
+    current: str | None = None
+    comments: list[str] = []
+    for line in content.splitlines():
+        s = line.strip()
+        m = _DIRECT_RE.match(s)
+        if m:
+            if current is not None and f"-r {in_name}" in " ".join(comments):
+                specs.append(current)
+            current = m.group(1)
+            comments = []
+        elif s.startswith("#"):
+            comments.append(s.lstrip("#").strip())
+    if current is not None and f"-r {in_name}" in " ".join(comments):
+        specs.append(current)
+    return specs
+
+
+def norm(spec: str) -> str:
+    """Normalize a specifier for pyproject-vs-lock comparison.
+
+    Lowercases the name (PyYAML -> pyyaml), folds _ to -, and DROPS extras
+    (httpx[http2]==0.28.1 -> httpx==0.28.1): a transitive dep can merge an
+    extra into a bare direct pin, which is correct resolution, not drift.
+    """
+    name, sep, rest = spec.partition("==")
+    if not sep:
+        return spec.lower()
+    return name.split("[", 1)[0].lower().replace("_", "-") + sep + rest
 
 
 def _diff(actual: str, expected: str, name: str) -> str:
@@ -102,7 +153,7 @@ def pinned_issues(content: str, name: str) -> list[str]:
 
 
 def _compile(root: Path) -> None:
-    """Resolve each .in to a .lock with pip-compile (requires pip-tools + network)."""
+    """Resolve each transient .in to a .lock with pip-compile (needs pip-tools)."""
     for lock, inp in ((RUNTIME_LOCK, RUNTIME_IN), (DEV_LOCK, DEV_IN)):
         cmd = [
             sys.executable,
@@ -146,38 +197,49 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[gen-requirements] FAIL: {e}", file=sys.stderr)
         return 2
 
-    ins = derive_ins(pyproject)
+    runtime_deps, dev_deps = deps(pyproject)
     if args.check:
         rc = 0
-        for name, content in ins.items():
-            path = root / name
+        for lock, in_name, expected in (
+            (RUNTIME_LOCK, RUNTIME_IN, runtime_deps),
+            (DEV_LOCK, DEV_IN, dev_deps),
+        ):
+            path = root / lock
             if not path.exists():
-                print(f"[gen-requirements] FAIL: {name} missing — run make deps", file=sys.stderr)
+                print(f"[gen-requirements] FAIL: {lock} missing — run make deps", file=sys.stderr)
                 rc = 1
                 continue
-            actual = path.read_text(encoding="utf-8")
-            if actual != content:
-                print(f"[gen-requirements] FAIL: {name} drifted from pyproject.toml:", file=sys.stderr)
-                print(_diff(actual, content, name), file=sys.stderr)
-                print("  -> regenerate with: make deps", file=sys.stderr)
-                rc = 1
-        for name in (RUNTIME_LOCK, DEV_LOCK):
-            path = root / name
-            if not path.exists():
-                print(f"[gen-requirements] FAIL: {name} missing — run make deps", file=sys.stderr)
-                rc = 1
-                continue
-            for issue in pinned_issues(path.read_text(encoding="utf-8"), name):
+            content = path.read_text(encoding="utf-8")
+            for issue in pinned_issues(content, lock):
                 print(f"[gen-requirements] FAIL: {issue}", file=sys.stderr)
                 rc = 1
+            actual = {norm(s) for s in direct_specs(content, in_name)}
+            wanted = {norm(s) for s in expected}
+            if actual != wanted:
+                print(f"[gen-requirements] FAIL: {lock} direct deps drifted from pyproject.toml:", file=sys.stderr)
+                for s in sorted(wanted - actual):
+                    print(f"  missing in lock: {s}", file=sys.stderr)
+                for s in sorted(actual - wanted):
+                    print(f"  extra in lock:   {s}", file=sys.stderr)
+                print("  -> regenerate with: make deps", file=sys.stderr)
+                rc = 1
         if rc == 0:
-            print("[gen-requirements] clean — .in match pyproject.toml; locks fully pinned + hashed")
+            print("[gen-requirements] clean — locks fully pinned + hashed, direct deps match pyproject.toml")
         return rc
 
-    for name, content in ins.items():
+    # Default: regenerate. Write .in transiently, compile, then remove them so
+    # the repo never carries .in files (which would trip Dependabot's
+    # pip-compile detection).
+    for name, content in in_contents(runtime_deps, dev_deps).items():
         (root / name).write_text(content, encoding="utf-8")
-        print(f"[gen-requirements] wrote {name}")
-    _compile(root)
+    try:
+        _compile(root)
+    finally:
+        for name in (RUNTIME_IN, DEV_IN):
+            try:
+                (root / name).unlink()
+            except FileNotFoundError:
+                pass
     _guard_runtime_hashes(root)
     print("[gen-requirements] wrote --require-hashes guard to the runtime lock")
     return 0
@@ -193,30 +255,52 @@ def _selftest() -> int:
             print(f"[gen-requirements] selftest FAIL: {msg}")
             fail += 1
 
-    # 1. .in derivation from pyproject.
+    # 1. deps + .in derivation.
     py = {
         "project": {
             "dependencies": ["fastapi==1.0.0", "uvicorn[standard]==2.0.0"],
             "optional-dependencies": {"dev": ["pytest==9.0.0", "ruff==0.9.0"]},
         }
     }
-    ins = derive_ins(py)
-    check(
-        ins[RUNTIME_IN].splitlines()[-2:] == ["fastapi==1.0.0", "uvicorn[standard]==2.0.0"],
-        "runtime .in content wrong",
-    )
-    check(
-        ins[DEV_IN].splitlines()[-2:] == ["pytest==9.0.0", "ruff==0.9.0"],
-        "dev .in content wrong",
-    )
-    check(ins[DEV_IN].startswith(_IN_HEADER) and "-c requirements-runtime.lock" in ins[DEV_IN], "dev .in missing -c constraint")
+    runtime, dev = deps(py)
+    check(runtime == ["fastapi==1.0.0", "uvicorn[standard]==2.0.0"], "runtime deps wrong")
+    check(dev == ["pytest==9.0.0", "ruff==0.9.0"], "dev deps wrong")
+    ins = in_contents(runtime, dev)
+    check("-c requirements-runtime.lock" in ins[DEV_IN], "dev .in missing -c constraint")
 
-    # 2. lock structural checks.
-    good_lock = (
+    # 2. direct_specs (single-line and multi-line # via forms).
+    runtime_lock = (
         "--require-hashes\n"
         "#\n"
         "# This file is autogenerated by pip-compile with Python 3.12\n"
         "#\n"
+        "anyio==4.0.0 \\\n    --hash=sha256:abcd\n    # via fastapi\n"
+        "fastapi==1.0.0 \\\n    --hash=sha256:abcd\n    # via -r requirements-runtime.in\n"
+        "uvicorn[standard]==2.0.0 \\\n    --hash=sha256:abcd\n    # via -r requirements-runtime.in\n"
+    )
+    check(
+        direct_specs(runtime_lock, RUNTIME_IN) == ["fastapi==1.0.0", "uvicorn[standard]==2.0.0"],
+        "runtime direct_specs wrong",
+    )
+    dev_lock = (
+        "#\n# This file is autogenerated by pip-compile with Python 3.12\n#\n"
+        "pluggy==1.0.0 \\\n    --hash=sha256:abcd\n    # via pytest\n"
+        "pytest==9.0.0 \\\n    --hash=sha256:abcd\n    # via\n    #   -r requirements-dev.in\n    #   pytest-asyncio\n"
+        "ruff==0.9.0 \\\n    --hash=sha256:abcd\n    # via -r requirements-dev.in\n"
+    )
+    check(
+        direct_specs(dev_lock, DEV_IN) == ["pytest==9.0.0", "ruff==0.9.0"],
+        "dev direct_specs wrong (multi-line # via)",
+    )
+
+    # 3. norm handles PyYAML -> pyyaml case folding and extra-stripping.
+    check(norm("PyYAML==6.0.3") == norm("pyyaml==6.0.3"), "norm case-fold wrong")
+    check(norm("httpx[http2]==0.28.1") == norm("httpx==0.28.1"), "norm extra-strip wrong")
+
+    # 4. structural checks.
+    good_lock = (
+        "--require-hashes\n"
+        "# This file is autogenerated by pip-compile with Python 3.12\n"
         "fastapi==1.0.0 \\\n    --hash=sha256:abcd\n"
     )
     check(pinned_issues(good_lock, RUNTIME_LOCK) == [], "valid lock flagged")
@@ -228,18 +312,14 @@ def _selftest() -> int:
         any("missing --require-hashes" in i for i in pinned_issues("fastapi==1.0.0\n", RUNTIME_LOCK)),
         "missing --require-hashes not flagged",
     )
-    check(
-        any("missing pip-compile header" in i for i in pinned_issues("--require-hashes\nfastapi==1.0.0\n", RUNTIME_LOCK)),
-        "missing header not flagged",
-    )
-    # The dev lock is hash-verified but not --require-hashes-guarded (it pins
+    # dev lock is hash-verified but not --require-hashes-guarded (it pins
     # pip/setuptools via --allow-unsafe), so its absence there is not drift.
     check(
         not any("missing --require-hashes" in i for i in pinned_issues("fastapi==1.0.0\n", DEV_LOCK)),
         "dev lock incorrectly requires --require-hashes",
     )
 
-    # 3. offline --check end-to-end.
+    # 5. offline --check end-to-end.
     with tempfile.TemporaryDirectory(prefix="gen-req-") as tmp:
         root = Path(tmp)
         (root / "pyproject.toml").write_text(
@@ -249,19 +329,28 @@ def _selftest() -> int:
             'dev = ["pytest==9.0.0", "ruff==0.9.0"]\n',
             encoding="utf-8",
         )
-        for name, content in derive_ins(read_pyproject(root)).items():
-            (root / name).write_text(content, encoding="utf-8")
-        for name in (RUNTIME_LOCK, DEV_LOCK):
-            (root / name).write_text(good_lock, encoding="utf-8")
+        (root / RUNTIME_LOCK).write_text(runtime_lock, encoding="utf-8")
+        (root / DEV_LOCK).write_text(dev_lock, encoding="utf-8")
         check(main(["--root", str(root), "--check"]) == 0, "--check failed on a clean tree")
 
-        # Drift the runtime .in -> --check exit 1.
-        (root / RUNTIME_IN).write_text(_IN_HEADER + "fastapi==1.0.0\n", encoding="utf-8")
-        check(main(["--root", str(root), "--check"]) == 1, "--check passed on a drifted .in")
+        # Add a dep to pyproject without regenerating -> direct deps drift.
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'dependencies = ["fastapi==1.0.0", "uvicorn[standard]==2.0.0", "httpx==0.28.1"]\n'
+            "[project.optional-dependencies]\n"
+            'dev = ["pytest==9.0.0", "ruff==0.9.0"]\n',
+            encoding="utf-8",
+        )
+        check(main(["--root", str(root), "--check"]) == 1, "--check passed on drifted direct deps")
 
-        # Restore, then unpin a lock -> --check exit 1.
-        for name, content in derive_ins(read_pyproject(root)).items():
-            (root / name).write_text(content, encoding="utf-8")
+        # Unpin a lock -> --check exit 1.
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'dependencies = ["fastapi==1.0.0", "uvicorn[standard]==2.0.0"]\n'
+            "[project.optional-dependencies]\n"
+            'dev = ["pytest==9.0.0", "ruff==0.9.0"]\n',
+            encoding="utf-8",
+        )
         (root / RUNTIME_LOCK).write_text("--require-hashes\nfastapi>=1.0.0\n", encoding="utf-8")
         check(main(["--root", str(root), "--check"]) == 1, "--check passed on an unpinned lock")
 

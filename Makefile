@@ -21,11 +21,12 @@ lint:
 	$(PY) -m mypy src --ignore-missing-imports
 	$(PY) scripts/gen-requirements.py --check
 
-# Regenerate requirements-{runtime,dev}.in + .lock from pyproject.toml (the
-# single source of truth). The .lock files are fully transitive-pinned with
+# Regenerate requirements-{runtime,dev}.lock from pyproject.toml (the single
+# source of truth). The .lock files are fully transitive-pinned with
 # cross-platform hashes via pip-compile (needs pip-tools + network), so the
-# Docker image is reproducible. `make lint` and CI run --check so a stale lock
-# can't ship.
+# Docker image is reproducible. The transient .in files are written and removed
+# here (committing them tripped Dependabot's pip-compile detection). `make
+# lint` and CI run --check so a stale lock can't ship.
 deps:
 	$(PY) scripts/gen-requirements.py
 
