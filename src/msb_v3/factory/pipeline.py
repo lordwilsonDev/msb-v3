@@ -33,7 +33,7 @@ from msb_v3.factory.builders import (
 from msb_v3.factory.classifier import classify
 from msb_v3.factory.models import FactoryRun, Issue
 from msb_v3.factory.planner import plan as plan_issue
-from msb_v3.factory.reviewer import review as review_change
+from msb_v3.factory.reviewer import areview as areview_change
 from msb_v3.factory.test_runner import run_tests
 from msb_v3.factory.verifier import verify as verify_change
 
@@ -57,12 +57,14 @@ class SoftwareFactory:
         codegraph: Any = None,
         test_command: Optional[str] = None,
         keep_worktree: bool = False,
+        reviewer_panel: Any = None,
     ) -> None:
         self._builder = builder
         self._moie = moie
         self._codegraph = codegraph
         self._test_command = test_command
         self._keep_worktree = keep_worktree
+        self._reviewer_panel = reviewer_panel
 
     async def process_issue(
         self,
@@ -94,6 +96,17 @@ class SoftwareFactory:
 
         # 3. build in an isolated worktree (original repo untouched)
         builder = self._builder or CliAgentBuilder()
+        # Reviewer-panel invariant, enforced at the point of use: the worker
+        # that built the change may never also review it.
+        if self._reviewer_panel is not None:
+            builder_model = getattr(builder, "model", "") or builder.builder_id
+            if builder_model in self._reviewer_panel.reviewer_models:
+                run.verdict = "BLOCKED"
+                run.error = (
+                    f"builder model {builder_model!r} may not also be a reviewer "
+                    f"(builder != reviewer invariant)"
+                )
+                return run
         worktree = ""
         try:
             worktree = create_worktree(repo or issue.repo)
@@ -125,9 +138,12 @@ class SoftwareFactory:
 
         # 5. independent review (MoIE + code graph) — not the builder's claim
         try:
-            reviewed = review_change(
+            moie = self._moie
+            if moie is None and self._reviewer_panel is not None:
+                moie = self._reviewer_panel.controller()
+            reviewed = await areview_change(
                 planned, build,
-                moie=self._moie, codegraph=self._codegraph, repo=repo or issue.repo,
+                moie=moie, codegraph=self._codegraph, repo=repo or issue.repo,
                 high_impact=classification.severity in ("high", "critical"),
             )
             run.review = reviewed

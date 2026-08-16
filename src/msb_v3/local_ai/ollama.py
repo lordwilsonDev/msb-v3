@@ -40,9 +40,11 @@ class LocalAIResponse:
 class LocalAIClient:
     """Thin wrapper around Ollama with tool-call awareness."""
 
-    def __init__(self, base_url: str | None = None) -> None:
+    def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
         self.base_url = base_url or settings.ollama_url
-        self.model = settings.ollama_model
+        # Explicit model override (e.g. a diverse reviewer panel serving a
+        # distinct local model per reviewer); defaults to the configured one.
+        self.model = model or settings.ollama_model
         self._tools: Dict[str, Callable[..., str]] = {}
 
     def register_tool(self, name: str, func: Callable[..., str]) -> None:

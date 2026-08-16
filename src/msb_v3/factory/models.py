@@ -118,6 +118,7 @@ class Review:
     moie_verdict: str = ""  # the independent MoIE decision's verdict
     moie_ids: float = 0.0
     independent: bool = True  # never the builder's own claim
+    reviewer_models: List[str] = field(default_factory=list)  # distinct reviewer models (LLM panel)
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -126,6 +127,7 @@ class Review:
             "moie_verdict": self.moie_verdict,
             "moie_ids": self.moie_ids,
             "independent": self.independent,
+            "reviewer_models": self.reviewer_models,
         }
 
 

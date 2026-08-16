@@ -22,6 +22,7 @@ be injected later without touching the controller.
 
 from msb_v3.moie.engine import MoIEController
 from msb_v3.moie.experts import Expert, ExpertRegistry
+from msb_v3.moie.llm_experts import LLMExpert, ReviewPanel, build_diverse_reviewer_panel
 from msb_v3.moie.models import (
     IDS,
     Assumption,
@@ -37,6 +38,9 @@ __all__ = [
     "ExpertReport",
     "ExpertRegistry",
     "IDS",
+    "LLMExpert",
     "MoIEController",
     "MoIEDecision",
+    "ReviewPanel",
+    "build_diverse_reviewer_panel",
 ]

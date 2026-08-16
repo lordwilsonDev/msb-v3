@@ -202,3 +202,60 @@ def test_review_conditional_always_surfaces_concern():
     assert r.verdict == "CONCERN"
     assert r.moie_verdict == "CONDITIONAL"
     assert any(f.severity == "concern" for f in r.findings)
+
+
+# --- diverse LLM reviewer panel (builder != reviewer) -----------------------
+
+
+def _safe_client_factory(model):
+    from types import SimpleNamespace
+
+    class _C:
+        def __init__(self, model):
+            self.model = model
+
+        def generate(self, prompt, *, system=None, **kw):
+            return SimpleNamespace(text="VERDICT: SAFE", model=self.model)
+
+    return _C(model)
+
+
+def test_factory_review_panel_llm_reviewers_flow(repo, good_patch):
+    from msb_v3.moie import build_diverse_reviewer_panel
+
+    panel = build_diverse_reviewer_panel(
+        builder_model="patch",
+        models=["qwen3:8b", "deepseek-r1"],
+        client_factory=_safe_client_factory,
+    )
+    run = _run(
+        SoftwareFactory(builder=PatchBuilder(good_patch), reviewer_panel=panel),
+        Issue(title="Add a multiply function"),
+        str(repo),
+    )
+    assert run.verdict == "MERGED", run.error
+    assert run.review is not None
+    assert run.review.reviewer_models == ["qwen3:8b", "deepseek-r1"]
+    assert run.review.independent is True
+
+
+def test_factory_rejects_builder_as_reviewer(repo, good_patch):
+    # The panel was built for a different builder ("patch"), so its reviewers
+    # legitimately include "claude" — but the factory runs a Claude CLI
+    # builder. The factory boundary must fail closed (BLOCKED) rather than
+    # let the builder's own model review it.
+    from msb_v3.factory import CliAgentBuilder
+    from msb_v3.moie import build_diverse_reviewer_panel
+
+    panel = build_diverse_reviewer_panel(
+        builder_model="patch",
+        models=["claude", "qwen3:8b"],
+        client_factory=_safe_client_factory,
+    )
+    run = _run(
+        SoftwareFactory(builder=CliAgentBuilder(), reviewer_panel=panel),
+        Issue(title="Add a multiply function"),
+        str(repo),
+    )
+    assert run.verdict == "BLOCKED"
+    assert "may not also be a reviewer" in (run.error or "")

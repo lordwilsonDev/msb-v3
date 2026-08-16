@@ -52,6 +52,7 @@ class ExpertReport:
     causal_alternatives: List[str] = field(default_factory=list)
     evidence_hits: List[str] = field(default_factory=list)  # memory-fabric ids
     summary: str = ""
+    model: str = ""  # reviewer model identity (LLM-backed experts only)
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -66,6 +67,7 @@ class ExpertReport:
             "causal_alternatives": self.causal_alternatives,
             "evidence_hits": self.evidence_hits,
             "summary": self.summary,
+            "model": self.model,
         }
 
 
