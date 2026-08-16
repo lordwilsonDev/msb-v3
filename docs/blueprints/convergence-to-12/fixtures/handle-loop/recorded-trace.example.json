@@ -1,0 +1,106 @@
+{
+  "captured_at": "2026-08-16",
+  "note": "example trace from a live PASS run (local qwen2.5-coder:0.5b); live-model runs are not byte-golden \u2014 the committed invariants are the evidence SHAPE and the replay property (deterministic_hash is a pure function of the evidence fields)",
+  "run_id": "dbb-20260816T224307-63279",
+  "request": "search the vault for n8n workflow automation notes and summarize the key findings",
+  "intent": {
+    "request": "search the vault for n8n workflow automation notes and summarize the key findings",
+    "goals": [
+      "search the vault for n8n workflow automation notes",
+      "summarize the key findings"
+    ],
+    "constraints": [],
+    "permissions": [
+      "read_vault"
+    ],
+    "privacy": true,
+    "domain": "vault_search",
+    "source": "llm"
+  },
+  "graph_source": "llm",
+  "tasks": [
+    {
+      "id": "search_vault_for_n8n_notes",
+      "capability": null,
+      "tool": null,
+      "depends_on": null
+    },
+    {
+      "id": "summarize_key_findings",
+      "capability": null,
+      "tool": null,
+      "depends_on": null
+    }
+  ],
+  "execution": [
+    {
+      "task_id": "search_vault_for_n8n_notes",
+      "ok": true,
+      "verification": {
+        "ok": true,
+        "detail": "5 hits",
+        "kind": "grounded",
+        "check": "search_returned_hits",
+        "trust": "high",
+        "verdict": "pass",
+        "confidence": 1.0
+      },
+      "error": null
+    },
+    {
+      "task_id": "summarize_key_findings",
+      "ok": true,
+      "verification": {
+        "ok": true,
+        "detail": "2150 chars",
+        "kind": "grounded",
+        "check": "synthesis_nonempty",
+        "trust": "high",
+        "verdict": "pass",
+        "confidence": 1.0
+      },
+      "error": null,
+      "context_ledger": {
+        "budget_tokens": 8000,
+        "system_tokens": 27,
+        "query_tokens": 22,
+        "included_matches": 5,
+        "evicted_matches": 0,
+        "truncated": false,
+        "total_tokens": 494,
+        "items": [
+          {
+            "source": "10_Projects/One-Person-AI-Business.md",
+            "score": 0.008197
+          },
+          {
+            "source": "Vault Business Ideas/Business Names/Welcome.md",
+            "score": 0.008065
+          },
+          {
+            "source": "40_Memory/Vault-Strengths-Map-2026-08-05.md",
+            "score": 0.007937
+          },
+          {
+            "source": "40_Memory/Vault-Gaps-Analysis-2026-08-05.md",
+            "score": 0.007812
+          },
+          {
+            "source": "99_Meta/plans/n8n-outreach-workflow-plan.md",
+            "score": 0.007692
+          }
+        ]
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "outcome": {
+    "skipped": [],
+    "error": null,
+    "total_latency_s": 29.5586,
+    "prompt_tokens": 614,
+    "completion_tokens": 518,
+    "estimated_cost_usd": 0.000518
+  },
+  "deterministic_hash": "fb0b15ed6c48aedb"
+}
