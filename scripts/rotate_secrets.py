@@ -65,8 +65,9 @@ def _restart_msb() -> None:
     for pid in pids.splitlines():
         subprocess.run(["kill", "-9", pid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # restart via wrapper
+    py = os.environ.get("MSB_PYTHON", sys.executable)
     subprocess.Popen(
-        ["/opt/homebrew/Caskroom/miniforge/base/bin/python", str(script)],
+        [py, str(script)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

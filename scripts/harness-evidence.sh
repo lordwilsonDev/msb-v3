@@ -57,7 +57,7 @@ set -uo pipefail
 #        and no stale older run); 1 = any missing / stale / non-PASS;
 #        2 = env/config error or report write failure.
 
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 HARNESS_DIR="${HARNESS_DIR:-$HOME/video-harness}"
 EVIDENCE_DIR="$HARNESS_DIR/evidence"
 EXPERIMENTS="${HARNESS_EXPERIMENTS:-p0_basic,p1_ffmpeg,p2_inference}"

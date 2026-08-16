@@ -28,7 +28,7 @@ set -euo pipefail
 #   IGNORE_EXTRA="x.js,y.js" make webcheck-desktop  # extra ignores
 
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 WEBCHECK="$HOME/bin/webcheck.py"
 DESKTOP="${DESKTOP:-$HOME/Desktop}"
 
