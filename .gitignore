@@ -3,6 +3,8 @@ __pycache__/
 .env
 data/
 logs/
+# Transient pip-compile inputs (written and removed by `make deps`).
+requirements-*.in
 .artifacts/
 .rouff_cache/
 .pytest_cache/
