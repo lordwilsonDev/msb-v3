@@ -168,6 +168,42 @@ async def test_empty_request_is_error() -> None:
     assert result.verdict == "ERROR"
 
 
+@pytest.mark.asyncio
+async def test_handle_emits_spine_vertebrae(tmp_path: Path) -> None:
+    """Phase 2.2: the handle slice emits the decision → execution →
+    verification causal chain onto the Evidence Spine when a spine is
+    injected, with every vertebra linked back to the decision."""
+    from msb_v3.evidence.spine import DecisionEvidenceStore
+
+    spine = DecisionEvidenceStore(str(tmp_path / "spine.db"))
+    client = SequenceClient(_INTENT_WITH_WRITE)
+    provider = FakeProvider(tmp_path)
+    gate = ActionGate(audit_chain=_Audit())
+
+    result = await handle(
+        "research the vault and write a client brief",
+        client=client,
+        approve=True,
+        provider=provider,
+        gate=gate,
+        spine=spine,
+    )
+
+    assert result.ok is True
+    trail = spine.trail(result.run_id)
+    assert [r.evidence.kind for r in trail] == ["decision", "execution", "verification"]
+    decision, execution, verification = trail
+    assert decision.evidence.policy_result == "ALLOW"
+    assert decision.evidence.capability_requested == ("read_vault", "write_file")
+    assert decision.evidence.capability_granted == ("read_vault", "write_file")
+    # every vertebra links back to the authorizing decision
+    assert execution.evidence.parent_decision_id == decision.decision_id
+    assert verification.evidence.parent_decision_id == decision.decision_id
+    # verification vertebra carries the deterministic hash
+    assert verification.evidence.verification_id == result.deterministic_hash
+    assert spine.verify_chain()["valid"] is True
+
+
 # ---------------------------------------------------------------------------
 # BridgeProvider — the real tool wiring (write path is hermetic)
 # ---------------------------------------------------------------------------

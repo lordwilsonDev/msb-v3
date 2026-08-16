@@ -13,6 +13,9 @@ import sqlite3
 import pytest
 
 from msb_v3.evidence.spine import (
+    KIND_DECISION,
+    KIND_EXECUTION,
+    KIND_VERIFICATION,
     DecisionEvidence,
     DecisionEvidenceStore,
     SpineError,
@@ -98,3 +101,66 @@ def test_get_unknown_raises(tmp_path):
     store = DecisionEvidenceStore(str(tmp_path / "spine.db"))
     with pytest.raises(SpineError):
         store.get("decision_nope")
+
+
+def test_unknown_kind_rejected() -> None:
+    with pytest.raises(ValueError):
+        DecisionEvidence(
+            task_id="task_1",
+            policy_version="vesta-policy-1",
+            policy_result="ALLOW",
+            risk_level="normal",
+            kind="not-a-kind",
+        )
+
+
+def test_default_kind_is_decision(tmp_path) -> None:
+    record = DecisionEvidenceStore(str(tmp_path / "spine.db")).append(_evidence("task_1"))
+    assert record.evidence.kind == KIND_DECISION
+
+
+def test_vertebrae_chain_links_via_parent_decision_id(tmp_path) -> None:
+    """The full per-task causal chain: decision anchors, execution/verification
+    vertebrae link back via parent_decision_id, and the hash chain covers the
+    kind + linkage fields so a vertebra cannot be silently re-anchored."""
+    store = DecisionEvidenceStore(str(tmp_path / "spine.db"))
+    decision = store.append(_evidence("task_1"), audit_seq=1)
+    execution = store.append(
+        DecisionEvidence(
+            kind=KIND_EXECUTION,
+            parent_decision_id=decision.decision_id,
+            task_id="task_1",
+            policy_version="vesta-policy-1",
+            policy_result="ALLOW",
+            risk_level="normal",
+            execution_id="exec-1",
+        ),
+        audit_seq=2,
+    )
+    verification = store.append(
+        DecisionEvidence(
+            kind=KIND_VERIFICATION,
+            parent_decision_id=decision.decision_id,
+            task_id="task_1",
+            policy_version="vesta-policy-1",
+            policy_result="ALLOW",
+            risk_level="normal",
+            verification_id="sha256-abc",
+        ),
+        audit_seq=3,
+    )
+
+    trail = store.trail("task_1")
+    assert [r.evidence.kind for r in trail] == [
+        KIND_DECISION,
+        KIND_EXECUTION,
+        KIND_VERIFICATION,
+    ]
+    assert trail[0].decision_id == decision.decision_id
+    assert execution.evidence.parent_decision_id == decision.decision_id
+    assert verification.evidence.parent_decision_id == decision.decision_id
+    assert verification.evidence.verification_id == "sha256-abc"
+    # kind + parent_decision_id participate in content addressing, so the
+    # three vertebrae hash differently and the whole chain still verifies.
+    assert len({decision.content_hash, execution.content_hash, verification.content_hash}) == 3
+    assert store.verify_chain() == {"valid": True, "record_count": 3}

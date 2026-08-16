@@ -27,6 +27,14 @@ from msb_v3.agent.intent import Intent, interpret_intent
 from msb_v3.agent.planner import plan
 from msb_v3.agent.safety import ActionGate, SafeProvider
 from msb_v3.agent.trace import AgentTrace, build_trace, record_trace
+from msb_v3.evidence.spine import (
+    KIND_DECISION,
+    KIND_EXECUTION,
+    KIND_VERIFICATION,
+    DecisionEvidence,
+    DecisionEvidenceRecord,
+    DecisionEvidenceStore,
+)
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
@@ -59,6 +67,24 @@ _HIGH_IMPACT_MARKERS = (
 )
 
 _AGENT_REGISTRY_IMPORTED = False
+
+# The handle slice has no versioned policy module; the ActionGate tier table is
+# the policy. This tag versions the decision records emitted onto the Evidence
+# Spine so a future policy change is distinguishable in provenance.
+_SPINE_POLICY_VERSION = "handle-gate-v1"
+
+
+def _spine_append(spine: DecisionEvidenceStore | None, evidence: DecisionEvidence) -> DecisionEvidenceRecord | None:
+    """Best-effort Evidence Spine write: the run must never break because the
+    spine store is unavailable. Returns the stored record (for linking later
+    vertebrae) or None when the spine is absent or the write fails."""
+    if spine is None:
+        return None
+    try:
+        return spine.append(evidence)
+    except Exception as exc:  # noqa: BLE001 — provenance is best-effort
+        logger.warning("spine append failed for %s: %s", evidence.task_id, exc)
+        return None
 
 
 def _resolve_agent(agent_id: str, registry: Any = None) -> Any:
@@ -535,6 +561,7 @@ async def handle(
     context_engine: Any = None,
     memory_fabric: Any = None,
     moie: Any = None,
+    spine: DecisionEvidenceStore | None = None,
 ) -> HandleResult:
     """Run the slice end-to-end. Returns the HandleResult (ok + evidence).
 
@@ -659,6 +686,26 @@ async def handle(
         # permissions (default: none — tainted writes then require review).
         approved = set(intent.permissions) if approve else set()
 
+        # Evidence spine (Phase 2.2): the plan-approval decision is the anchor
+        # vertebra for this run's causal chain. Best-effort — a spine outage
+        # degrades provenance, never the run.
+        decision_record = _spine_append(
+            spine,
+            DecisionEvidence(
+                kind=KIND_DECISION,
+                task_id=run_id,
+                agent_id=agent_identity.agent_id if agent_identity is not None else None,
+                tenant_id=tenant,
+                policy_version=_SPINE_POLICY_VERSION,
+                policy_result="ALLOW" if approve else "REVIEW",
+                risk_level="normal",
+                capability_requested=tuple(intent.permissions),
+                capability_granted=tuple(intent.permissions) if approve else (),
+                selected_action="handle",
+                available_actions=tuple(intent.permissions),
+            ),
+        )
+
         if gate is None:
             gate = ActionGate(killswitch=KillSwitch())
         if provider is None:
@@ -673,6 +720,22 @@ async def handle(
             # TOOL_EXECUTED / MUTATION_COMMITTED / POLICY_CHECKED).
             safe = EventingProvider(safe, lifecycle, run_id)
         _lifecycle_emit(lifecycle, run_id, None, state="EXECUTING")
+        if decision_record is not None:
+            _spine_append(
+                spine,
+                DecisionEvidence(
+                    kind=KIND_EXECUTION,
+                    parent_decision_id=decision_record.decision_id,
+                    task_id=run_id,
+                    agent_id=agent_identity.agent_id if agent_identity is not None else None,
+                    tenant_id=tenant,
+                    policy_version=_SPINE_POLICY_VERSION,
+                    policy_result="ALLOW" if approve else "REVIEW",
+                    risk_level="normal",
+                    capability_granted=tuple(approved),
+                    selected_action="handle",
+                ),
+            )
         store = RuntimeStore()
         report = await execute_graph(graph, safe, session=session, store=store, run_id=run_id)
 
@@ -695,6 +758,22 @@ async def handle(
             },
         )
         _lifecycle_emit(lifecycle, run_id, None, state="COMPLETED" if report.ok else "FAILED")
+        if decision_record is not None:
+            _spine_append(
+                spine,
+                DecisionEvidence(
+                    kind=KIND_VERIFICATION,
+                    parent_decision_id=decision_record.decision_id,
+                    task_id=run_id,
+                    agent_id=agent_identity.agent_id if agent_identity is not None else None,
+                    tenant_id=tenant,
+                    policy_version=_SPINE_POLICY_VERSION,
+                    policy_result="ALLOW" if approve else "REVIEW",
+                    risk_level="normal",
+                    selected_action="handle",
+                    verification_id=trace.deterministic_hash or None,
+                ),
+            )
 
         return HandleResult(
             ok=report.ok,

@@ -187,22 +187,58 @@ def test_vesta_chat_emits_decision_spine_record(
     assert response.status_code == 200
     task_id = response.json()["task_id"]
 
+    # Phase 2.2: one governed chat produces the full causal chain — decision
+    # → execution → result → verification — each vertebra linking back to the
+    # decision and cross-linked to its audit event.
     trail = services.spine.trail(task_id)
-    assert len(trail) == 1
-    record = trail[0]
-    assert record.evidence.policy_result == "ALLOW"
-    assert record.evidence.capability_requested == ("memory.read", "model.inference")
-    assert record.evidence.capability_granted == ("memory.read", "model.inference")
-    assert record.evidence.risk_level == "normal"
-    assert record.audit_seq is not None
-    # cross-link: the spine record points at the authorization.decided audit event
+    assert [r.evidence.kind for r in trail] == [
+        "decision",
+        "execution",
+        "result",
+        "verification",
+    ]
+    decision, execution, result, verification = trail
+    assert decision.evidence.policy_result == "ALLOW"
+    assert decision.evidence.capability_requested == ("memory.read", "model.inference")
+    assert decision.evidence.capability_granted == ("memory.read", "model.inference")
+    assert decision.evidence.risk_level == "normal"
+    assert decision.audit_seq is not None
+    # every vertebra links back to the authorizing decision
+    assert all(r.evidence.parent_decision_id == decision.decision_id for r in trail[1:])
+    # the result vertebra carries the model + the response evidence id
+    assert result.evidence.model_id == "test-model"
+    assert result.evidence.result_id is not None
+    assert result.evidence.result_id in response.json()["evidence_refs"]
+    # the verification vertebra carries the response digest
+    assert verification.evidence.verification_id is not None
+    # cross-link: the decision points at the authorization.decided audit event
     decided = next(
         r
         for r in services.audit.get_chain(component="vesta")
         if r.event_type == "authorization.decided" and r.payload.get("task_id") == task_id
     )
-    assert record.audit_seq == decided.seq
+    assert decision.audit_seq == decided.seq
     assert services.spine.verify_chain()["valid"] is True
+
+
+def test_vesta_denied_chat_emits_only_decision_spine(
+    vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
+) -> None:
+    """A denied action never executes: the spine holds the single decision
+    record, with no execution/result/verification vertebrae."""
+    client, _, _ = vesta_client
+    response = client.post(
+        "/vesta/chat",
+        headers={"Authorization": "Bearer operator-secret"},
+        json={"query": "delete files", "capabilities": ["filesystem.write"]},
+    )
+    assert response.status_code == 403
+    task_id = response.json()["detail"]["task_id"]
+    trail = services.spine.trail(task_id)
+    assert [r.evidence.kind for r in trail] == ["decision"]
+    assert trail[0].evidence.policy_result == "DENY"
+    assert trail[0].evidence.capability_granted == ()
 
 
 def test_signed_chat_admits_enrolled_device_and_rejects_replay(

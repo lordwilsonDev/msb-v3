@@ -30,6 +30,7 @@ from fastapi.responses import StreamingResponse
 from msb_v3.agent.handle import handle
 from msb_v3.agent.paseo import PaseoMcpError
 from msb_v3.api.auth import require_operator, require_operator_sse
+from msb_v3.core.container import ApplicationContainer, get_container_dep
 
 router = APIRouter(tags=["agent"])
 
@@ -37,7 +38,10 @@ _MAX_REQUEST_LEN = 2000
 
 
 @router.post("/handle", dependencies=[Depends(require_operator)])
-async def handle_slice(body: Dict[str, Any]) -> Dict[str, Any]:
+async def handle_slice(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     """Run the Handle-this slice end-to-end in this process.
 
     Body: {request: str, privacy?: bool, approve?: bool, tenant?: str,
@@ -80,6 +84,7 @@ async def handle_slice(body: Dict[str, Any]) -> Dict[str, Any]:
         privacy=privacy,
         agent_id=agent_id,
         repo=repo,
+        spine=container.spine,
     )
     payload = {
         "ok": result.ok,
