@@ -67,12 +67,12 @@ jobs:
           PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
 
       - name: Upload coverage
-        # codecov-action@v4 has NO tokenless upload for main-repo pushes
+        # codecov-action@v6 has NO tokenless upload for main-repo pushes
         # (tokenless was dropped in v4) — the CODECOV_TOKEN repo secret is
         # required. Set it with: gh secret set CODECOV_TOKEN -R <owner>/<repo>
         # fail_ci_if_error is ON so a revoked/expired token turns the test
         # job red instead of silently dropping coverage (the pre-token state).
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage.xml,./coverage.json
           flags: ${{ matrix.os }}-py${{ matrix.python-version }}
