@@ -6,15 +6,21 @@ set -euo pipefail
 # Appends a signed snapshot of the current chain tip to an append-only notary
 # log OUTSIDE the repo (default: ~/msb-backups/chain-anchor-notary.jsonl), so
 # an attacker who replaces the whole audit DB (T7) cannot also roll back the
-# notary. Then pushes the log to a configured rclone remote (default gdrive:),
-# which the attacker cannot reach. The remote push is best-effort: the local
-# append must succeed, and a remote failure is reported loudly (non-zero exit)
-# but never hides the local notarization.
+# notary. Each entry is ALSO pushed off-box as its OWN object
+# ({seq}-{ts}.line) under MSB_NOTARY_REMOTE via rclone — per-object, so a
+# remote cannot be silently shrunk by re-pushing (missing seqs are detected)
+# and overwrites break the signature. When MSB_TSA_URL is set, each entry
+# carries an RFC 3161 timestamp proof (third-party WHEN).
+#
+# The remote push is fail-closed but never hides the local append: a failed
+# push exits 1 loudly (the local notary log is intact), exactly the old
+# "best-effort but loud" contract.
 #
 # Env:
-#   MSB_NOTARY_LOG     local append-only log (default ~/msb-backups/chain-anchor-notary.jsonl)
-#   MSB_NOTARY_REMOTE  rclone remote:path (default gdrive:msb-v3/chain-anchor-notary.jsonl);
-#                      empty = skip the remote push
+#   MSB_NOTARY_LOG     local append-only JSONL (default ~/msb-backups/chain-anchor-notary.jsonl)
+#   MSB_NOTARY_REMOTE  rclone remote DIRECTORY (default gdrive:msb-v3/chain-anchor-notary);
+#                      empty/"none" = skip the remote push
+#   MSB_TSA_URL        RFC 3161 TSA endpoint (empty = receive-time only)
 #
 # Usage:
 #   ./scripts/notarize_chain_anchor.sh [<audit.db>]
@@ -31,25 +37,12 @@ export PYTHONPATH="$REPO/src:~/.local/lib/msb-v3"
 export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"
 
 DB="${1:-$REPO/data/uac/audit_chain.db}"
-NOTARY="${MSB_NOTARY_LOG:-$HOME/msb-backups/chain-anchor-notary.jsonl}"
-REMOTE="${MSB_NOTARY_REMOTE:-gdrive:msb-v3/chain-anchor-notary.jsonl}"
 
-mkdir -p "$(dirname "$NOTARY")"
-
-# 1) Append the signed snapshot locally (must succeed).
-"$PY" -m msb_v3.uac.chain_anchor --notarize "$DB" --notary "$NOTARY"
-
-# 2) Push out-of-band (best-effort but loud).
-if [ -n "$REMOTE" ] && command -v rclone >/dev/null 2>&1; then
-  if rclone copyto "$NOTARY" "$REMOTE" 2> >(sed 's/^/  [rclone] /' >&2); then
-    echo "[notary] pushed to $REMOTE"
-  else
-    echo "[notary] WARNING: remote push FAILED — local notary log at $NOTARY is intact but not out-of-band" >&2
-    exit 1
-  fi
-elif [ -n "$REMOTE" ]; then
-  echo "[notary] WARNING: rclone not found — skipping remote push (local log still written)" >&2
+# Local append must succeed (fail-closed); remote push failure is loud but the
+# local notary log stays intact (the CLI exits 1 in that case).
+OUT=$("$PY" -m msb_v3.uac.notary --notarize "$DB" 2>&1) || {
+  echo "$OUT" >&2
+  echo "[notary] WARNING: notarization incomplete — see above; the LOCAL notary log may be intact but the off-box push did not complete" >&2
   exit 1
-fi
-
-echo "[notary] OK: appended anchor snapshot -> $NOTARY"
+}
+echo "[notary] OK: $(echo "$OUT" | tr '\n' ' ')"

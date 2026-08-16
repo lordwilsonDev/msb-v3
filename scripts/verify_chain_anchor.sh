@@ -41,4 +41,15 @@ if [ -n "${MSB_NOTARY_LOG:-}" ]; then
   echo "[verify] $NOTARY_CHECK"
 fi
 
+# Off-box notary verification (#2): reads the REMOTE head (never the local
+# last line) and cross-checks seq sets both ways — a local notary rollback is
+# caught even when the local log AND the local anchor file were both replaced.
+# Unreachable remote is fail-closed (REMOTE_UNREACHABLE => ALERT): the absence
+# of off-box proof is never treated as health.
+REMOTE_CHECK=$("$PY" -m msb_v3.uac.notary --verify "$DB" 2>&1) || {
+  echo "ALERT chain_anchor remote-notary: $REMOTE_CHECK" >&2
+  exit 2
+}
+echo "[verify] $REMOTE_CHECK"
+
 exec "$PY" -m msb_v3.uac.chain_anchor "${ARGS[@]}"

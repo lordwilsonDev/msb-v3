@@ -18,6 +18,7 @@ dependencies = [
   "prometheus-client==0.21.1",
   "qdrant-client==1.18.0",
   "cryptography==50.0.0",
+  "asn1crypto==1.5.1",  # RFC 3161 trusted timestamping (uac/timestamping.py): pure-Python ASN.1 for the TSA token — zero transitive deps
 ]
 
 [project.optional-dependencies]

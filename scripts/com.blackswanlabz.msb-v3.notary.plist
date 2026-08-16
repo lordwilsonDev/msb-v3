@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.blackswanlabz.msb-v3.notary.plist — scheduled off-box chain-tip
+  notarization (user-domain LaunchAgent, no root needed).
+
+  Replaces the ad-hoc com.lordwilson.msb-chain-notary job. Runs
+  scripts/notarize_chain_anchor.sh daily at 07:10: appends a signed snapshot
+  to the local JSONL, pushes it off-box as its own object (per-entry, so a
+  remote cannot be silently shrunk), and — when MSB_TSA_URL is set — stamps it
+  with an RFC 3161 timestamp. A failed off-box push exits non-zero and launchd
+  records it in StandardErrorPath; the daily verify job
+  (scripts/verify_chain_anchor.sh) then reads the REMOTE head and alerts on
+  any divergence.
+
+  Install (replaces the old notary job):
+      launchctl bootout gui/$(id -u)/com.lordwilson.msb-chain-notary 2>/dev/null || true
+      cp scripts/com.blackswanlabz.msb-v3.notary.plist ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.notary.plist
+
+  Remove:
+      launchctl bootout gui/$(id -u)/com.blackswanlabz.msb-v3.notary
+      rm ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.notary.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.blackswanlabz.msb-v3.notary</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lordwilson/msb-v3/scripts/notarize_chain_anchor.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lordwilson/msb-v3</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>10</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lordwilson/msb-v3/logs/chain_notary.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/lordwilson/msb-v3/logs/chain_notary.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

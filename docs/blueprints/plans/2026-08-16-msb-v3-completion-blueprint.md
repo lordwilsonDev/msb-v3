@@ -126,14 +126,39 @@ operator/hardware decisions, see below):
   verify path is tested end-to-end with a software ECDSA key sharing the exact
   hardware wire format (uncompressed point + DER ECDSA).
 
+- **#2 off-box append-only notary** — `uac/notary.py` replaces the single-
+  file rclone overwrite with per-object pushes: every notarized entry goes to
+  `MSB_NOTARY_REMOTE` as its OWN `{seq}-{ts}.line` object, so a remote cannot
+  be silently shrunk (missing seqs are detected) and overwrites break the
+  signature. `verify()` reads the REMOTE head (never the local last line) and
+  cross-checks seq sets: remote ⊂ local ⇒ REMOTE_BEHIND (push failed / remote
+  rollback), remote ⊃ local ⇒ DIVERGED (local rollback — the T7 case),
+  remote unreachable ⇒ fail-closed REMOTE_UNREACHABLE. Notarizing into a
+  divergent state is REFUSED. The daily scripts run the Python service;
+  `scripts/com.blackswanlabz.msb-v3.notary.plist` is the versioned launchd
+  job (replaces `com.lordwilson.msb-chain-notary`). rclone is exercised in
+  tests through a fake `rclone` executable (real arg/output parsing).
+- **#9 RFC 3161 timestamping** — `uac/timestamping.py` is a real RFC 3161
+  TSA client (validated against a cryptographically real synthetic token):
+  messageImprint binding, nonce echo, signedAttrs messageDigest/contentType,
+  signer-cert selection, signature over the SET-OF signedAttrs (RFC 5652
+  §5.4), cert-validity window. Each notary entry can carry the raw token
+  (independently re-verifiable) + `genTime`; `verify_notary_entry` rejects
+  unverified or non-covering proofs. `MSB_TSA_URL` enables it (fail-closed;
+  `MSB_TSA_ALLOW_LOCAL_FALLBACK=1` opts into the weaker receive-time proof).
+  New dep `asn1crypto==1.5.1` (pure Python, zero transitive deps), pinned in
+  the runtime lock.
+
 **Still needs operator/hardware (not code):** the actual key *migration* for
 #1 (provisioning a Secure Enclave / YubiKey key — the seam is built and
 P-256-verified, but the hardware `sign()` glue is an operator completion step
 behind an optional PyObjC / PKCS#11 dependency, and the on-box Ed25519 seed
-remains the live default, which is the *documented* trust boundary), #2 truly
-off-box append-only notary (rclone primitive exists but is mutable + same-box
-creds), #9 RFC 3161 trusted timestamping. #8 Merkle proof-of-inclusion is a
-documented (not hidden) limitation: the ledger is a hash chain, not a tree.
+remains the live default, which is the *documented* trust boundary), pointing
+`MSB_NOTARY_REMOTE` at genuine object-lock / WORM storage (the per-object
+pattern makes rollback *detectable* on any remote; only object-lock makes it
+*impossible*), and choosing the actual TSA endpoint. #8 Merkle
+proof-of-inclusion is a documented (not hidden) limitation: the ledger is a
+hash chain, not a tree.
 
 ## The one rule above all
 
