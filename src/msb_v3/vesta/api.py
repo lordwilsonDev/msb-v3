@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,15 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from msb_v3 import __version__
 from msb_v3.api.auth import require_operator
 from msb_v3.core.config import settings
-from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.node.filesystem import FileReader, FileWriter
-from msb_v3.node.identity import IdentityStore, NodeAuthError, ReplayError
+from msb_v3.core.container import ApplicationContainer, get_container_dep
+from msb_v3.node.identity import NodeAuthError, ReplayError
 from msb_v3.node.models import EngageRequest
 from msb_v3.observability.metrics import Metrics
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
-from msb_v3.vesta.adapter import VestaMSBAdapter
-from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore
-from msb_v3.vesta.evidence import EvidenceError, EvidenceStore
+from msb_v3.vesta.approvals import ApprovalError
+from msb_v3.vesta.evidence import EvidenceError
 from msb_v3.vesta.models import (
     ABind,
     VestaAuthorizeRequest,
@@ -30,65 +26,14 @@ from msb_v3.vesta.models import (
     VestaShellRequest,
 )
 from msb_v3.vesta.policy import authorize_chat, capability_catalog
-from msb_v3.vesta.read import VestaReadService
-from msb_v3.vesta.runtime import TaskLifecycleError, VestaTaskStore
-from msb_v3.vesta.shell import ShellExecutor, VestaShellApprovalStore, VestaShellService
+from msb_v3.vesta.runtime import TaskLifecycleError
 from msb_v3.vesta.transport import TransportAdmission, require_vesta_transport
-from msb_v3.vesta.write import VestaWriteService
 
 # Router-level transport admission: when MSB_VESTA_REQUIRE_TUNNEL=1, the
 # entire /vesta surface (including read-only status/discovery views) is
 # reachable only from the allowed private peer CIDRs. Loopback is in the
 # default allowed set, so local operations keep working.
 router = APIRouter(tags=["vesta"], dependencies=[Depends(require_vesta_transport)])
-# Anchored when MSB_CHAIN_ANCHOR_KEY is configured (T7 fix: the write-path
-# chain re-anchors an external signed tip snapshot after every append, so a
-# whole-audit-DB replacement is detectable); plain AuditChain otherwise.
-_audit = anchored_chain_from_env()
-_tasks = VestaTaskStore()
-_evidence = EvidenceStore()
-_adapter = VestaMSBAdapter(_audit, _tasks, _evidence)
-_write_approvals = VestaApprovalStore()
-_shell_approvals = VestaShellApprovalStore()
-_node_root = Path(settings.node_sandbox_root)
-if not _node_root.is_absolute():
-    _node_root = Path(settings.msb_home) / _node_root
-_node_db = Path(settings.node_db_path)
-if not _node_db.is_absolute():
-    _node_db = Path(settings.msb_home) / _node_db
-_signed_identity = IdentityStore(
-    str(_node_db),
-    settings.node_pairing_code,
-    session_ttl_s=settings.node_session_ttl_s,
-    clock_skew_s=settings.node_clock_skew_s,
-)
-_read_service = VestaReadService(
-    _audit,
-    _tasks,
-    _evidence,
-    FileReader(_node_root, settings.node_max_read_bytes),
-    KillSwitch(str(_node_db), audit_chain=_audit),
-)
-_shell_service = VestaShellService(
-    _audit,
-    _tasks,
-    _evidence,
-    _shell_approvals,
-    ShellExecutor(
-        _node_root,
-        timeout_s=settings.vesta_shell_timeout_s,
-        max_output_bytes=settings.vesta_shell_max_output_bytes,
-    ),
-    KillSwitch(str(_node_db), audit_chain=_audit),
-)
-_write_service = VestaWriteService(
-    _audit,
-    _tasks,
-    _evidence,
-    _write_approvals,
-    FileWriter(_node_root, settings.node_max_read_bytes),
-    KillSwitch(str(_node_db), audit_chain=_audit),
-)
 
 
 def _manifest() -> dict[str, Any]:
@@ -151,26 +96,35 @@ def routes(request: Request) -> dict[str, Any]:
 
 
 @router.get("/ledger/verify")
-def ledger_verify() -> dict[str, Any]:
-    result = _audit.verify_chain()
-    anchored = getattr(_audit, "verify_anchored", None)
+def ledger_verify(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
+    audit = container.vesta.audit
+    result = audit.verify_chain()
+    anchored = getattr(audit, "verify_anchored", None)
     if anchored is not None:
         result["anchored"] = anchored()
     return result
 
 
 @router.get("/tasks/{task_id}", dependencies=[Depends(require_operator)])
-def task_status(task_id: str) -> dict[str, Any]:
+def task_status(
+    task_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _tasks.get(task_id)
+        return container.vesta.tasks.get(task_id)
     except TaskLifecycleError as exc:
         raise HTTPException(status_code=404, detail="unknown Vesta task") from exc
 
 
 @router.get("/evidence/{evidence_id}", dependencies=[Depends(require_operator)])
-def evidence_status(evidence_id: str) -> dict[str, Any]:
+def evidence_status(
+    evidence_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _evidence.get(evidence_id)
+        return container.vesta.evidence.get(evidence_id)
     except EvidenceError as exc:
         raise HTTPException(status_code=404, detail="unknown or invalid evidence object") from exc
 
@@ -180,9 +134,14 @@ def evidence_status(evidence_id: str) -> dict[str, Any]:
     response_model=VestaChatResponse,
     dependencies=[Depends(require_vesta_transport)],
 )
-async def signed_chat(request: Request, body: EngageRequest) -> VestaChatResponse:
+async def signed_chat(
+    request: Request,
+    body: EngageRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> VestaChatResponse:
+    v = container.vesta
     try:
-        device_id = _signed_identity.verify_request(body.model_dump())
+        device_id = v.signed_identity.verify_request(body.model_dump())
     except NodeAuthError as exc:
         status_code = 409 if isinstance(exc, ReplayError) else 401
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
@@ -196,7 +155,7 @@ async def signed_chat(request: Request, body: EngageRequest) -> VestaChatRespons
         capabilities=["model.inference", "memory.read"],
     )
     try:
-        execution = await _adapter.execute_chat(request, signed_body, actor=device_id)
+        execution = await v.adapter.execute_chat(request, signed_body, actor=device_id)
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Vesta could not record or complete the signed MSB action") from exc
     if execution.decision.decision != "ALLOW" or execution.response is None:
@@ -229,8 +188,11 @@ async def signed_chat(request: Request, body: EngageRequest) -> VestaChatRespons
     response_model=VestaFileReadResponse,
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def read(body: VestaFileReadRequest) -> VestaFileReadResponse:
-    return VestaFileReadResponse.model_validate(_read_service.execute(body))
+def read(
+    body: VestaFileReadRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> VestaFileReadResponse:
+    return VestaFileReadResponse.model_validate(container.vesta.read_service.execute(body))
 
 
 @router.post(
@@ -238,9 +200,13 @@ def read(body: VestaFileReadRequest) -> VestaFileReadResponse:
     response_model=VestaFileReadResponse,
     dependencies=[Depends(require_vesta_transport)],
 )
-def signed_read(body: EngageRequest) -> VestaFileReadResponse:
+def signed_read(
+    body: EngageRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> VestaFileReadResponse:
+    v = container.vesta
     try:
-        device_id = _signed_identity.verify_request(body.model_dump())
+        device_id = v.signed_identity.verify_request(body.model_dump())
     except NodeAuthError as exc:
         status_code = 409 if isinstance(exc, ReplayError) else 401
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
@@ -248,7 +214,7 @@ def signed_read(body: EngageRequest) -> VestaFileReadResponse:
     target = intent.get("target")
     if intent.get("type") != "read_file" or not isinstance(target, dict) or not isinstance(target.get("path"), str):
         raise HTTPException(status_code=422, detail="signed intent must be a read_file intent with a path target")
-    result = _read_service.execute(
+    result = v.read_service.execute(
         VestaFileReadRequest(session=body.session_id, path=target["path"]),
         actor=device_id,
     )
@@ -259,9 +225,12 @@ def signed_read(body: EngageRequest) -> VestaFileReadResponse:
     "/execute",
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def execute(body: VestaFileWriteRequest) -> dict[str, Any]:
+def execute(
+    body: VestaFileWriteRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _write_service.submit(body)
+        return container.vesta.write_service.submit(body)
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Vesta could not create the write approval") from exc
 
@@ -270,17 +239,23 @@ def execute(body: VestaFileWriteRequest) -> dict[str, Any]:
     "/shell/execute",
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def shell_execute(body: VestaShellRequest) -> dict[str, Any]:
+def shell_execute(
+    body: VestaShellRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _shell_service.submit(body)
+        return container.vesta.shell_service.submit(body)
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Vesta could not create the shell approval") from exc
 
 
 @router.get("/shell/approvals/{approval_id}", dependencies=[Depends(require_operator)])
-def shell_approval_status(approval_id: str) -> dict[str, Any]:
+def shell_approval_status(
+    approval_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _shell_approvals.get(approval_id)
+        return container.vesta.shell_approvals.get(approval_id)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="unknown shell approval") from exc
 
@@ -289,9 +264,12 @@ def shell_approval_status(approval_id: str) -> dict[str, Any]:
     "/shell/approvals/{approval_id}/approve",
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def shell_approve(approval_id: str) -> dict[str, Any]:
+def shell_approve(
+    approval_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _shell_service.approve_and_execute(approval_id, "operator")
+        return container.vesta.shell_service.approve_and_execute(approval_id, "operator")
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -300,10 +278,15 @@ def shell_approve(approval_id: str) -> dict[str, Any]:
     "/shell/approvals/{approval_id}/signed-approve",
     dependencies=[Depends(require_vesta_transport)],
 )
-def shell_signed_approve(approval_id: str, body: EngageRequest) -> dict[str, Any]:
+def shell_signed_approve(
+    approval_id: str,
+    body: EngageRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     """Accept one cryptographic owner ACK for one exact shell contract."""
+    v = container.vesta
     try:
-        device_id = _signed_identity.verify_request(body.model_dump())
+        device_id = v.signed_identity.verify_request(body.model_dump())
     except NodeAuthError as exc:
         status_code = 409 if isinstance(exc, ReplayError) else 401
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
@@ -319,7 +302,7 @@ def shell_signed_approve(approval_id: str, body: EngageRequest) -> dict[str, Any
     ):
         raise HTTPException(status_code=409, detail="signed approval target does not match the route")
     try:
-        approval = _shell_approvals.get(approval_id)
+        approval = v.shell_approvals.get(approval_id)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="unknown shell approval") from exc
     if target["command_sha256"] != approval["command_sha256"]:
@@ -327,7 +310,7 @@ def shell_signed_approve(approval_id: str, body: EngageRequest) -> dict[str, Any
     if target["policy_version"] != approval["policy_version"]:
         raise HTTPException(status_code=409, detail="signed approval policy version does not match")
     try:
-        return _shell_service.approve_and_execute(approval_id, device_id)
+        return v.shell_service.approve_and_execute(approval_id, device_id)
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -336,31 +319,42 @@ def shell_signed_approve(approval_id: str, body: EngageRequest) -> dict[str, Any
     "/shell/approvals/{approval_id}/reject",
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def shell_reject(approval_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+def shell_reject(
+    approval_id: str,
+    body: dict[str, Any] | None = None,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     reason = str((body or {}).get("reason", "owner rejected shell execution"))
     try:
-        return _shell_service.reject(approval_id, "operator", reason)
+        return container.vesta.shell_service.reject(approval_id, "operator", reason)
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/approvals", dependencies=[Depends(require_operator)])
-def approvals_list(status: str = "PENDING") -> dict[str, Any]:
+def approvals_list(
+    status: str = "PENDING",
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     """List durable write + shell approvals so the operator can see what is
     waiting (and decide it) without digging in the DB. Default: PENDING only."""
+    v = container.vesta
     try:
         return {
-            "write": _write_approvals.list(status or None),
-            "shell": _shell_approvals.list(status or None),
+            "write": v.write_approvals.list(status or None),
+            "shell": v.shell_approvals.list(status or None),
         }
     except Exception as exc:
         raise HTTPException(status_code=503, detail="could not list approvals") from exc
 
 
 @router.get("/approvals/{approval_id}", dependencies=[Depends(require_operator)])
-def approval_status(approval_id: str) -> dict[str, Any]:
+def approval_status(
+    approval_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _write_approvals.get(approval_id)
+        return container.vesta.write_approvals.get(approval_id)
     except ApprovalError as exc:
         raise HTTPException(status_code=404, detail="unknown approval") from exc
 
@@ -369,9 +363,12 @@ def approval_status(approval_id: str) -> dict[str, Any]:
     "/approvals/{approval_id}/approve",
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def approve(approval_id: str) -> dict[str, Any]:
+def approve(
+    approval_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     try:
-        return _write_service.approve_and_execute(approval_id, "operator")
+        return container.vesta.write_service.approve_and_execute(approval_id, "operator")
     except ApprovalError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -380,10 +377,15 @@ def approve(approval_id: str) -> dict[str, Any]:
     "/approvals/{approval_id}/signed-approve",
     dependencies=[Depends(require_vesta_transport)],
 )
-def signed_write_approve(approval_id: str, body: EngageRequest) -> dict[str, Any]:
+def signed_write_approve(
+    approval_id: str,
+    body: EngageRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     """Accept one cryptographic owner ACK for one exact FILE_WRITE contract."""
+    v = container.vesta
     try:
-        device_id = _signed_identity.verify_request(body.model_dump())
+        device_id = v.signed_identity.verify_request(body.model_dump())
     except NodeAuthError as exc:
         status_code = 409 if isinstance(exc, ReplayError) else 401
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
@@ -401,8 +403,8 @@ def signed_write_approve(approval_id: str, body: EngageRequest) -> dict[str, Any
     ):
         raise HTTPException(status_code=409, detail="signed write approval target is incomplete or mismatched")
     try:
-        approval = _write_approvals.get(approval_id)
-    except ApprovalError as exc:
+        approval = v.write_approvals.get(approval_id)
+    except Exception as exc:
         raise HTTPException(status_code=404, detail="unknown approval") from exc
     expected_sha256 = approval["expected_sha256"] or ""
     if (
@@ -413,7 +415,7 @@ def signed_write_approve(approval_id: str, body: EngageRequest) -> dict[str, Any
     ):
         raise HTTPException(status_code=409, detail="signed write approval does not match the durable contract")
     try:
-        return _write_service.approve_and_execute(approval_id, device_id)
+        return v.write_service.approve_and_execute(approval_id, device_id)
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -422,10 +424,14 @@ def signed_write_approve(approval_id: str, body: EngageRequest) -> dict[str, Any
     "/approvals/{approval_id}/reject",
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-def reject(approval_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+def reject(
+    approval_id: str,
+    body: dict[str, Any] | None = None,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     reason = str((body or {}).get("reason", "owner rejected write"))
     try:
-        return _write_service.reject(approval_id, "operator", reason)
+        return container.vesta.write_service.reject(approval_id, "operator", reason)
     except ApprovalError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -444,9 +450,13 @@ def authorize(body: VestaAuthorizeRequest) -> dict[str, Any]:
     response_model=VestaChatResponse,
     dependencies=[Depends(require_operator), Depends(require_vesta_transport)],
 )
-async def chat(request: Request, body: VestaChatRequest) -> VestaChatResponse:
+async def chat(
+    request: Request,
+    body: VestaChatRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> VestaChatResponse:
     try:
-        execution = await _adapter.execute_chat(request, body)
+        execution = await container.vesta.adapter.execute_chat(request, body)
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Vesta could not record or complete the MSB action") from exc
     decision = execution.decision

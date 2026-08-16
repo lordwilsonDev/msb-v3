@@ -72,7 +72,3 @@ class EventBus:
         with self._lock:
             self._history.clear()
             self._subscribers.clear()
-
-
-# Module-level singleton for Phase 0 convenience.
-bus = EventBus()

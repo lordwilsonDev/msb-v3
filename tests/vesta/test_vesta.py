@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 
 from msb_v3.api.app import create_app
 from msb_v3.core.config import settings
+from msb_v3.core.container import build_container
+from msb_v3.evidence.spine import DecisionEvidenceStore
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.harnesses.base import HarnessResult
 from msb_v3.node.crypto import generate_keypair, sign
@@ -23,7 +25,6 @@ from msb_v3.node.protocol import (
     session_signature_payload,
 )
 from msb_v3.uac.audit_chain import AuditChain
-from msb_v3.vesta import api as vesta_api
 from msb_v3.vesta.adapter import VestaMSBAdapter
 from msb_v3.vesta.approvals import VestaApprovalStore
 from msb_v3.vesta.evidence import EvidenceStore
@@ -31,6 +32,7 @@ from msb_v3.vesta.models import ABind
 from msb_v3.vesta.policy import authorize_chat
 from msb_v3.vesta.read import VestaReadService
 from msb_v3.vesta.runtime import VestaTaskStore
+from msb_v3.vesta.services import VestaServices
 from msb_v3.vesta.shell import ShellExecutor, VestaShellApprovalStore, VestaShellService
 from msb_v3.vesta.transport import TransportAdmission
 from msb_v3.vesta.write import VestaWriteService
@@ -57,47 +59,56 @@ def signed_device_session(identity: IdentityStore, device_id: str, private: Any,
 
 
 @pytest.fixture
-def vesta_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, FakeChat, AuditChain]:
+def services(tmp_path: Path) -> VestaServices:
     audit = AuditChain(str(tmp_path / "audit.db"))
-    vesta_api._audit = audit
     tasks = VestaTaskStore(str(tmp_path / "tasks.db"))
     evidence = EvidenceStore(str(tmp_path / "evidence"), str(tmp_path / "evidence.db"))
     approvals = VestaApprovalStore(str(tmp_path / "tasks.db"))
-    vesta_api._tasks = tasks
-    vesta_api._evidence = evidence
-    vesta_api._adapter = VestaMSBAdapter(audit, tasks, evidence)
-    vesta_api._write_approvals = approvals
     shell_approvals = VestaShellApprovalStore(str(tmp_path / "tasks.db"))
-    vesta_api._shell_approvals = shell_approvals
-    vesta_api._signed_identity = IdentityStore(str(tmp_path / "signed.db"), "pairing")
-    vesta_api._read_service = VestaReadService(
-        audit,
-        tasks,
-        evidence,
-        FileReader(tmp_path / "sandbox", max_bytes=100),
-        KillSwitch(str(tmp_path / "read-kill.db"), audit_chain=audit),
+    spine = DecisionEvidenceStore(str(tmp_path / "spine.db"))
+    return VestaServices(
+        audit=audit,
+        tasks=tasks,
+        evidence=evidence,
+        spine=spine,
+        adapter=VestaMSBAdapter(audit, tasks, evidence, spine=spine),
+        write_approvals=approvals,
+        shell_approvals=shell_approvals,
+        signed_identity=IdentityStore(str(tmp_path / "signed.db"), "pairing"),
+        read_service=VestaReadService(
+            audit,
+            tasks,
+            evidence,
+            FileReader(tmp_path / "sandbox", max_bytes=100),
+            KillSwitch(str(tmp_path / "read-kill.db"), audit_chain=audit),
+        ),
+        shell_service=VestaShellService(
+            audit,
+            tasks,
+            evidence,
+            shell_approvals,
+            ShellExecutor(tmp_path / "sandbox", timeout_s=1.0, max_output_bytes=128),
+            KillSwitch(str(tmp_path / "shell-kill.db"), audit_chain=audit),
+        ),
+        write_service=VestaWriteService(
+            audit,
+            tasks,
+            evidence,
+            approvals,
+            FileWriter(tmp_path / "sandbox", max_bytes=100),
+            KillSwitch(str(tmp_path / "kill.db"), audit_chain=audit),
+        ),
     )
-    vesta_api._shell_service = VestaShellService(
-        audit,
-        tasks,
-        evidence,
-        shell_approvals,
-        ShellExecutor(tmp_path / "sandbox", timeout_s=1.0, max_output_bytes=128),
-        KillSwitch(str(tmp_path / "shell-kill.db"), audit_chain=audit),
-    )
-    vesta_api._write_service = VestaWriteService(
-        audit,
-        tasks,
-        evidence,
-        approvals,
-        FileWriter(tmp_path / "sandbox", max_bytes=100),
-        KillSwitch(str(tmp_path / "kill.db"), audit_chain=audit),
-    )
+
+
+@pytest.fixture
+def vesta_client(services: VestaServices, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, FakeChat, AuditChain]:
     monkeypatch.setattr(settings, "operator_token", "operator-secret")
     app = create_app()
+    app.state.container = build_container(vesta=services)
     fake = FakeChat()
     app.state.chat = fake
-    return TestClient(app), fake, audit
+    return TestClient(app), fake, services.audit
 
 
 def test_policy_allows_only_phase_zero_to_two_capabilities() -> None:
@@ -163,11 +174,43 @@ def test_vesta_chat_creates_bind_records_events_and_propagates_context(
     assert audit.verify_chain()["valid"] is True
 
 
+def test_vesta_chat_emits_decision_spine_record(
+    vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
+) -> None:
+    client, _, _ = vesta_client
+    response = client.post(
+        "/vesta/chat",
+        headers={"Authorization": "Bearer operator-secret"},
+        json={"query": "hello spine", "session": "s1"},
+    )
+    assert response.status_code == 200
+    task_id = response.json()["task_id"]
+
+    trail = services.spine.trail(task_id)
+    assert len(trail) == 1
+    record = trail[0]
+    assert record.evidence.policy_result == "ALLOW"
+    assert record.evidence.capability_requested == ("memory.read", "model.inference")
+    assert record.evidence.capability_granted == ("memory.read", "model.inference")
+    assert record.evidence.risk_level == "normal"
+    assert record.audit_seq is not None
+    # cross-link: the spine record points at the authorization.decided audit event
+    decided = next(
+        r
+        for r in services.audit.get_chain(component="vesta")
+        if r.event_type == "authorization.decided" and r.payload.get("task_id") == task_id
+    )
+    assert record.audit_seq == decided.seq
+    assert services.spine.verify_chain()["valid"] is True
+
+
 def test_signed_chat_admits_enrolled_device_and_rejects_replay(
     vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
 ) -> None:
     client, fake, _ = vesta_client
-    identity = vesta_api._signed_identity
+    identity = services.signed_identity
     private, public = generate_keypair()
     device_id = "iphone-signed"
     identity.enroll(device_id, b64encode(public), "pairing", "software")
@@ -197,7 +240,7 @@ def test_signed_chat_admits_enrolled_device_and_rejects_replay(
     replay = client.post("/vesta/signed-chat", json=body)
     assert replay.status_code == 409
 
-    (vesta_api._read_service.reader.root / "signed-read.txt").write_text("signed read")
+    (services.read_service.reader.root / "signed-read.txt").write_text("signed read")
     read_intent = {
         "type": "read_file",
         "objective": "read a sandbox file",
@@ -214,11 +257,12 @@ def test_signed_chat_admits_enrolled_device_and_rejects_replay(
     signed_read_result = signed_read.json()
     assert signed_read_result["status"] == "completed"
     assert signed_read_result["result"]["content"] == "signed read"
-    assert vesta_api._tasks.get(signed_read_result["task_id"])["actor"] == device_id
+    assert services.tasks.get(signed_read_result["task_id"])["actor"] == device_id
 
 
 def test_signed_owner_ack_requires_exact_contract_and_cannot_replay(
     vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
 ) -> None:
     client, _, _ = vesta_client
     headers = {"Authorization": "Bearer operator-secret"}
@@ -232,7 +276,7 @@ def test_signed_owner_ack_requires_exact_contract_and_cannot_replay(
     assert approval["command_sha256"]
 
     private, public = generate_keypair()
-    session_id = signed_device_session(vesta_api._signed_identity, "iphone-owner", private, public)
+    session_id = signed_device_session(services.signed_identity, "iphone-owner", private, public)
 
     def signed_ack(request_id: str, nonce: str, command_sha256: str) -> dict[str, Any]:
         intent = {
@@ -254,7 +298,7 @@ def test_signed_owner_ack_requires_exact_contract_and_cannot_replay(
         json=signed_ack("signed-ack-wrong", "signed-ack-nonce-wrong", "0" * 64),
     )
     assert wrong.status_code == 409
-    assert vesta_api._shell_approvals.get(approval["approval_id"])["status"] == "PENDING"
+    assert services.shell_approvals.get(approval["approval_id"])["status"] == "PENDING"
 
     accepted = client.post(
         f"/vesta/shell/approvals/{approval['approval_id']}/signed-approve",
@@ -262,7 +306,7 @@ def test_signed_owner_ack_requires_exact_contract_and_cannot_replay(
     )
     assert accepted.status_code == 200
     assert accepted.json()["status"] == "completed"
-    stored = vesta_api._shell_approvals.get(approval["approval_id"])
+    stored = services.shell_approvals.get(approval["approval_id"])
     assert stored["status"] == "APPROVED"
     assert stored["decided_by"] == "iphone-owner"
 
@@ -275,6 +319,7 @@ def test_signed_owner_ack_requires_exact_contract_and_cannot_replay(
 
 def test_signed_owner_ack_expiry_fails_closed(
     vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
 ) -> None:
     client, _, _ = vesta_client
     headers = {"Authorization": "Bearer operator-secret"}
@@ -283,13 +328,13 @@ def test_signed_owner_ack_expiry_fails_closed(
         headers=headers,
         json={"executable": "echo", "args": ["EXPIRED_ACK"]},
     ).json()
-    with sqlite3.connect(vesta_api._shell_approvals.db_path) as conn:
+    with sqlite3.connect(services.shell_approvals.db_path) as conn:
         conn.execute(
             "UPDATE vesta_shell_approvals SET expires_at=? WHERE approval_id=?",
             ("2000-01-01T00:00:00+00:00", pending["approval_id"]),
         )
     private, public = generate_keypair()
-    session_id = signed_device_session(vesta_api._signed_identity, "iphone-expired", private, public)
+    session_id = signed_device_session(services.signed_identity, "iphone-expired", private, public)
     intent = {
         "type": "shell_approval",
         "objective": "Approve the exact shell contract",
@@ -307,11 +352,12 @@ def test_signed_owner_ack_expiry_fails_closed(
         json={**payload, "signature": b64encode(sign(private, canonical_json(payload)))},
     )
     assert response.status_code == 409
-    assert vesta_api._shell_approvals.get(pending["approval_id"])["status"] == "EXPIRED", response.json()
+    assert services.shell_approvals.get(pending["approval_id"])["status"] == "EXPIRED", response.json()
 
 
 def test_signed_file_write_ack_requires_exact_contract_and_cannot_replay(
     vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
     tmp_path: Path,
 ) -> None:
     client, _, _ = vesta_client
@@ -328,7 +374,7 @@ def test_signed_file_write_ack_requires_exact_contract_and_cannot_replay(
     assert approval["expected_sha256"] is None
 
     private, public = generate_keypair()
-    session_id = signed_device_session(vesta_api._signed_identity, "iphone-write-owner", private, public)
+    session_id = signed_device_session(services.signed_identity, "iphone-write-owner", private, public)
 
     def signed_ack(request_id: str, nonce: str, target_path: str, payload_sha256: str) -> dict[str, Any]:
         intent = {
@@ -352,7 +398,7 @@ def test_signed_file_write_ack_requires_exact_contract_and_cannot_replay(
         json=signed_ack("write-ack-wrong", "write-ack-nonce-wrong", "other.txt", approval["payload_sha256"]),
     )
     assert wrong.status_code == 409
-    assert vesta_api._write_approvals.get(approval["approval_id"])["status"] == "PENDING"
+    assert services.write_approvals.get(approval["approval_id"])["status"] == "PENDING"
 
     accepted = client.post(
         f"/vesta/approvals/{approval['approval_id']}/signed-approve",
@@ -361,7 +407,7 @@ def test_signed_file_write_ack_requires_exact_contract_and_cannot_replay(
     assert accepted.status_code == 200
     assert accepted.json()["status"] == "completed"
     assert (tmp_path / "sandbox" / "signed-write.txt").read_text() == "SIGNED_WRITE_OK"
-    stored = vesta_api._write_approvals.get(approval["approval_id"])
+    stored = services.write_approvals.get(approval["approval_id"])
     assert stored["status"] == "APPROVED"
     assert stored["decided_by"] == "iphone-write-owner"
 
@@ -374,6 +420,7 @@ def test_signed_file_write_ack_requires_exact_contract_and_cannot_replay(
 
 def test_signed_file_write_ack_expiry_is_persisted_and_fail_closed(
     vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
 ) -> None:
     client, _, _ = vesta_client
     headers = {"Authorization": "Bearer operator-secret"}
@@ -382,13 +429,13 @@ def test_signed_file_write_ack_expiry_is_persisted_and_fail_closed(
         headers=headers,
         json={"path": "expired-write.txt", "content": "EXPIRED"},
     ).json()
-    with sqlite3.connect(vesta_api._write_approvals.db_path) as conn:
+    with sqlite3.connect(services.write_approvals.db_path) as conn:
         conn.execute(
             "UPDATE vesta_approvals SET expires_at=? WHERE approval_id=?",
             ("2000-01-01T00:00:00+00:00", pending["approval_id"]),
         )
     private, public = generate_keypair()
-    session_id = signed_device_session(vesta_api._signed_identity, "iphone-write-expired", private, public)
+    session_id = signed_device_session(services.signed_identity, "iphone-write-expired", private, public)
     intent = {
         "type": "file_write_approval",
         "objective": "Approve the exact file-write contract",
@@ -408,7 +455,7 @@ def test_signed_file_write_ack_expiry_is_persisted_and_fail_closed(
         json={**payload, "signature": b64encode(sign(private, canonical_json(payload)))},
     )
     assert response.status_code == 409
-    assert vesta_api._write_approvals.get(pending["approval_id"])["status"] == "EXPIRED"
+    assert services.write_approvals.get(pending["approval_id"])["status"] == "EXPIRED"
 
 
 def test_vesta_file_read_api_returns_verified_evidence(

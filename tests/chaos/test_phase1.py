@@ -26,9 +26,11 @@ import threading
 import time
 from typing import Any, Callable, Dict
 
+from msb_v3.core.container import get_container
 from msb_v3.core.event_bus import Event, EventBus
-from msb_v3.core.identity import identity
 from msb_v3.core.runtime_config import get
+
+identity = get_container().identity
 
 
 # All deadlock-pinning tests run the risky call in a worker thread and

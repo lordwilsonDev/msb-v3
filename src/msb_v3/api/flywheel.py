@@ -9,8 +9,9 @@ the operator bearer token (Depends(require_operator), MSB_OPERATOR_TOKEN —
 fail-closed 503 until set, 401 on mismatch). Read endpoints (turn lists,
 turn state) stay open for the cockpit.
 
-The module-level engine singleton is monkeypatched in tests (governance
-pattern) so the whole router runs against tmp-backed state.
+The engine is resolved through the ApplicationContainer (Phase 1.4); tests
+inject a tmp-backed engine by stashing a container on ``app.state.container``
+rather than monkeypatching a module-level singleton.
 """
 
 from __future__ import annotations
@@ -20,12 +21,11 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from msb_v3.api.auth import require_operator
+from msb_v3.core.container import ApplicationContainer, get_container_dep
 from msb_v3.flywheel.engine import FlywheelEngine
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["flywheel"])
-
-_engine = FlywheelEngine()
 
 
 def _turn_payload(turn) -> dict:
@@ -45,15 +45,19 @@ def _turn_payload(turn) -> dict:
     }
 
 
-def _run_turn_background(turn_id: str) -> None:
+def _run_turn_background(turn_id: str, engine: FlywheelEngine) -> None:
     try:
-        _engine.run(turn_id)
+        engine.run(turn_id)
     except Exception as exc:
         logger.warning("background flywheel turn %s failed: %s", turn_id, exc)
 
 
 @router.post("/flywheel/turn", status_code=202, dependencies=[Depends(require_operator)])
-async def flywheel_turn(body: dict, background_tasks: BackgroundTasks) -> dict:
+async def flywheel_turn(
+    body: dict,
+    background_tasks: BackgroundTasks,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict:
     problem = body.get("problem")
     if not isinstance(problem, str) or not problem.strip():
         raise HTTPException(status_code=422, detail="problem is required")
@@ -61,37 +65,50 @@ async def flywheel_turn(body: dict, background_tasks: BackgroundTasks) -> dict:
     if charger not in ("stub", "sovereign"):
         raise HTTPException(status_code=422, detail="charger must be 'stub' or 'sovereign'")
     skill = str(body.get("skill", "") or "")
-    turn = _engine.start(problem, charger=charger, skill=skill)
+    engine = container.flywheel
+    turn = engine.start(problem, charger=charger, skill=skill)
     if turn.status == "BLOCKED":
         raise HTTPException(status_code=503, detail=f"turn blocked by brakes: {turn.notes[-1]}")
-    background_tasks.add_task(_run_turn_background, turn.turn_id)
+    background_tasks.add_task(_run_turn_background, turn.turn_id, engine)
     return {"accepted": True, "turn": _turn_payload(turn)}
 
 
 @router.get("/flywheel/turns")
-async def flywheel_turns() -> dict:
-    return {"turns": [_turn_payload(t) for t in _engine.list()]}
+async def flywheel_turns(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict:
+    return {"turns": [_turn_payload(t) for t in container.flywheel.list()]}
 
 
 @router.get("/flywheel/turns/{turn_id}")
-async def flywheel_turn_state(turn_id: str) -> dict:
-    turn = _engine.get(turn_id)
+async def flywheel_turn_state(
+    turn_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict:
+    turn = container.flywheel.get(turn_id)
     if turn is None:
         raise HTTPException(status_code=404, detail=f"unknown turn {turn_id}")
     return _turn_payload(turn)
 
 
 @router.post("/flywheel/turns/{turn_id}/approve", dependencies=[Depends(require_operator)])
-async def flywheel_approve(turn_id: str, body: dict) -> dict:
+async def flywheel_approve(
+    turn_id: str,
+    body: dict,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict:
     operator = str(body.get("operator", "operator") or "operator")
-    turn = _engine.approve(turn_id, operator=operator)
+    turn = container.flywheel.approve(turn_id, operator=operator)
     return _turn_payload(turn)
 
 
 @router.post("/flywheel/turns/{turn_id}/resume", dependencies=[Depends(require_operator)])
-async def flywheel_resume(turn_id: str) -> dict:
+async def flywheel_resume(
+    turn_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict:
     try:
-        turn = _engine.resume(turn_id)
+        turn = container.flywheel.resume(turn_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _turn_payload(turn)

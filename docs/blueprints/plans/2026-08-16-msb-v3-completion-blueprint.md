@@ -21,9 +21,9 @@ Completion is measured by one demonstration, not code volume:
 
 | Phase | Goal | Status (2026-08-16) |
 |---|---|---|
-| 0 | Freeze baseline (release doc + virgin-checkout test) | in progress |
-| 1 | Eliminate architectural debt (version drift, dual vector stores, JSON-file state, module singletons → DI) | 1.1 ✅ · 1.2 ✅ · 1.3 ✅ · 1.4 ✅ (ApplicationContainer + composition root; triumvirate migrated; vesta/memory/graph/flywheel singletons = follow-up increments) |
-| 2 | Evidence Spine (universal `event_id`, `DecisionEvidence`, causal links, evidence integrity) | not started |
+| 0 | Freeze baseline (release doc + virgin-checkout test) | ✅ done (`7a3090b`) |
+| 1 | Eliminate architectural debt (version drift, dual vector stores, JSON-file state, module singletons → DI) | ✅ done — 1.1 ✅ · 1.2 ✅ · 1.3 ✅ · 1.4 ✅ (ApplicationContainer composition root; all module-level service singletons migrated — vesta/memory/graph/flywheel/event_bus/identity/conversation-stub/planner-memory) |
+| 2 | Evidence Spine (universal `event_id`, `DecisionEvidence`, causal links, evidence integrity) | in progress — 2.1 ✅ (`DecisionEvidence` + hash-chained `DecisionEvidenceStore` with `content_hash`/`parent_hash`/`audit_seq` cross-link, wired into the Vesta decision path); 2.2/2.3 (execution/result/verification vertebrae, multi-object causal graph) next |
 | 3 | State replay + crash recovery (`ReplayEngine`, event-sourced state) | not started |
 | 4 | Prove the existing tool loop live (permitted / unauthorized / approval / killswitch / malformed) | not started |
 | 5 | Frontier seam (live smoke + provider-failure fallback) | not started |

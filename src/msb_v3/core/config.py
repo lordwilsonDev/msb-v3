@@ -63,6 +63,10 @@ class Settings:
     vesta_evidence_db_path: str = field(default_factory=lambda: os.getenv("MSB_VESTA_EVIDENCE_DB_PATH", "data/vesta/evidence.db"))
     vesta_shell_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_VESTA_SHELL_TIMEOUT_S", "10.0")))
     vesta_shell_max_output_bytes: int = field(default_factory=lambda: int(os.getenv("MSB_VESTA_SHELL_MAX_OUTPUT_BYTES", "65536")))
+    # Evidence Spine (completion blueprint Phase 2): decision-level, causally
+    # linked provenance records cross-referencing the audit chain. General
+    # (not Vesta-specific) so it lives under data/evidence/.
+    decision_spine_db_path: str = field(default_factory=lambda: os.getenv("MSB_DECISION_SPINE_DB_PATH", "data/evidence/decision_spine.db"))
     # Bearer key for the OpenAI-compatible /v1 adapter (Open WebUI etc.).
     # Empty = adapter closed (503) until configured — fail-closed.
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))

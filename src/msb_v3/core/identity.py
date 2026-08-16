@@ -29,6 +29,3 @@ class AgentIdentity:
 
     def to_dict(self) -> dict:
         return asdict(self)
-
-
-identity = AgentIdentity()

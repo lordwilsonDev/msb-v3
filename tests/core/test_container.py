@@ -24,6 +24,10 @@ def test_build_container_populates_all_services() -> None:
         "argus",
         "cluster_discovery",
         "hippocampus",
+        "event_bus",
+        "identity",
+        "memory_store",
+        "conversation_stub",
     ):
         assert getattr(container, name) is not None, f"{name} not built"
 

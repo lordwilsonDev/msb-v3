@@ -15,7 +15,7 @@ import logging
 import time
 from typing import Any, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from msb_v3.api.auth import check_auth
@@ -35,29 +35,33 @@ from msb_v3.conversation.envelope import (
     resolve_source_ts,
     validate_request,
 )
+from msb_v3.core.container import ApplicationContainer, get_container_dep
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["conversation"])
 
-# One shared stub instance for the whole app process: the endpoint increments
-# invocations, the test-hook reads them. A BLOCK must never touch it.
-_stub = StubModel()
+# The deterministic stub model is resolved through the ApplicationContainer
+# (conversation_stub): the /ask endpoint increments its invocation counter,
+# the /test-hook reads it, and a BLOCK must never touch it.
 
 
 @router.get("/test-hook")
-async def test_hook(request: Request) -> dict[str, Any]:
+async def test_hook(
+    request: Request,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any]:
     """Zero-model-spend assertion surface (harness spec §3): the stub
     invocation counter. Active in stub mode; harmless in live mode."""
     check_auth(request)
     return {
         "stub_mode": model_mode() == "stub",
-        "stub_invocations": _stub.invocations,
+        "stub_invocations": container.conversation_stub.invocations,
     }
 
 
-async def _retrieve(query: str, tenant_id: str, stub: bool) -> list[dict[str, Any]]:
+async def _retrieve(query: str, tenant_id: str, stub: bool, stub_model: StubModel) -> list[dict[str, Any]]:
     if stub:
-        return _stub.retrieve(query)
+        return stub_model.retrieve(query)
     from msb_v3.retrieval.engine import RetrievalRouter
 
     result = await RetrievalRouter(tenant_id=tenant_id).run(query, top_k=5)
@@ -76,12 +80,12 @@ async def _retrieve(query: str, tenant_id: str, stub: bool) -> list[dict[str, An
     return sources
 
 
-async def _compose(query: str, sources: list[dict[str, Any]], stub: bool) -> tuple[str, list[dict[str, Any]]]:
+async def _compose(query: str, sources: list[dict[str, Any]], stub: bool, stub_model: StubModel) -> tuple[str, list[dict[str, Any]]]:
     """(answer_text, citations). Stub: deterministic, counted. Live: attempt
     the local model once; deterministic fallback otherwise (never blocks the
     response on a dead model)."""
     if stub:
-        return _stub.compose(query, sources)
+        return stub_model.compose(query, sources)
     if not sources:
         return "I could not find supporting evidence in the retrieved sources.", []
     excerpt = str(sources[0].get("text", ""))[:200]
@@ -125,7 +129,11 @@ def _envelope_error(status_code: int, trace_id: str, code: str, message: str) ->
 # bodies) and JSONResponse (error bodies) — FastAPI must not build a Pydantic
 # model from the union annotation.
 @router.post("/ask", response_model=None)
-async def conversation_ask(body: ConversationRequest, request: Request) -> dict[str, Any] | JSONResponse:
+async def conversation_ask(
+    body: ConversationRequest,
+    request: Request,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> dict[str, Any] | JSONResponse:
     """The envelope — one request handler, both modes (spec §3/§4/§5).
 
     `sources_hint` is accepted for legacy RunRequest passthrough compatibility
@@ -151,9 +159,10 @@ async def conversation_ask(body: ConversationRequest, request: Request) -> dict[
         if contract_errors:
             return _envelope_error(422, trace_id, "contract_invalid", "; ".join(contract_errors))
 
+    stub_model = container.conversation_stub
     stub = model_mode() == "stub"
     input_v = input_guardrail(body.query)
-    if stub and _stub.is_block_query(body.query):
+    if stub and stub_model.is_block_query(body.query):
         input_v = {
             "verdict": "BLOCK", "policy": "stub-fixture-v1",
             "reason": "stub://blocked fixture", "checked_at": now_iso(),
@@ -192,12 +201,12 @@ async def conversation_ask(body: ConversationRequest, request: Request) -> dict[
 
     # --- retrieve (stub fixtures or the real RetrievalRouter) ---
     try:
-        sources = await _retrieve(body.query, body.tenant_id, stub)
+        sources = await _retrieve(body.query, body.tenant_id, stub, stub_model)
     except Exception as exc:  # noqa: BLE001 — model/db down → 503, retryable
         return _envelope_error(503, trace_id, "unavailable", f"retrieval failed: {exc}")
 
     # --- compose (the model hop; stub is deterministic and counted) ---
-    answer_text, citations = await _compose(body.query, sources, stub)
+    answer_text, citations = await _compose(body.query, sources, stub, stub_model)
 
     # --- output guardrail (guards the drafted answer vs its sources) ---
     out_v = output_guardrail(sources, citations, answer_text)

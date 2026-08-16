@@ -9,13 +9,13 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from msb_v3.memory.store import MemoryStore, Message
+from msb_v3.core.container import ApplicationContainer, get_container_dep
+from msb_v3.memory.store import Message
 
 router = APIRouter()
-store = MemoryStore()
 
 _GRAPH_DIR = Path(os.getenv("MSB_GRAPH_DIR", "data/memory_graph"))
 _GRAPH_DIR.mkdir(parents=True, exist_ok=True)
@@ -117,9 +117,12 @@ def _ingest_into_graph(session: str, text: str, metadata: Optional[Dict[str, Any
 
 
 @router.post("/ingest")
-def ingest_graph(payload: GraphIngest) -> Dict[str, Any]:
+def ingest_graph(
+    payload: GraphIngest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     message = Message(role="user", content=payload.text, tokens=0)
-    store.append(payload.session, message)
+    container.memory_store.append(payload.session, message)
     graph = _ingest_into_graph(payload.session, payload.text, payload.metadata)
     return {
         "ok": True,

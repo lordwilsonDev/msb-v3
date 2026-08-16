@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from msb_v3.api.auth import check_auth
+from msb_v3.core.container import ApplicationContainer, get_container_dep
 from msb_v3.harnesses.base import ChatHarness, HarnessResult
-from msb_v3.memory.store import MemoryStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"], dependencies=[Depends(check_auth)])
@@ -45,7 +45,11 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: Request, req: ChatRequest) -> ChatResponse:
+async def chat(
+    request: Request,
+    req: ChatRequest,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> ChatResponse:
     tenant_id = request.headers.get("X-Tenant-ID", "default")
     session = f"{tenant_id}:{req.session}" if tenant_id != "default" else req.session
     ctx: Dict[str, Any] = {}
@@ -68,8 +72,7 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
         app.state.chat = harness
 
     try:
-        store = MemoryStore()
-        recent = store.recent(session, limit=10)
+        recent = container.memory_store.recent(session, limit=10)
         hist = "\n".join([f"{m.role}: {m.content}" for m in recent])
         if hist:
             ctx["history"] = hist

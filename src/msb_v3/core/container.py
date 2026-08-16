@@ -15,21 +15,32 @@ Pattern:
   the process default, so a router mounted on a bare ``FastAPI()`` still
   resolves.
 
-Not yet in the container (next 1.4 increments): the vesta/api service singletons
-(``_tasks``, ``_evidence``, ``_write_service``, …), ``api.memory`` /
-``api.graph`` MemoryStore, ``api.flywheel`` engine, ``core.event_bus.bus`` and
-``core.identity.identity`` — these are migrated incrementally under the same
-composition-root pattern.
+The cheap, side-effect-light services (planner, anchor, guardian, sbom,
+poison-pill, argus, cluster discovery, hippocampus, event bus, identity,
+memory store, conversation stub) are built eagerly. The two heavyweight,
+settings-backed services — ``flywheel`` (FlywheelEngine) and ``vesta``
+(VestaServices) — are built lazily on first access so focused tests that only
+need e.g. ``hippocampus`` don't construct a full flywheel/vesta stack against
+the real settings paths.
+
+All named module-level service singletons are now migrated. Any remaining
+service construction is request-scoped (e.g. ``api/agent``) or a CLI-local
+helper (``flywheel/cli``), not a shared module global.
 """
 
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from fastapi import Request
 
+from msb_v3.conversation.envelope import StubModel
+from msb_v3.core.event_bus import EventBus
+from msb_v3.core.identity import AgentIdentity
+from msb_v3.flywheel.engine import FlywheelEngine
+from msb_v3.memory.store import MemoryStore
 from msb_v3.observability.audit import ArgusAuditor
 from msb_v3.retrieval.vector_store import VectorStore, get_vector_store
 from msb_v3.triumvirate.guardian_scanner import (
@@ -41,6 +52,13 @@ from msb_v3.triumvirate.hardware_sovereignty import ClusterAwareDiscovery
 from msb_v3.triumvirate.meta_cognitive_planner import MetaCognitivePlanner
 from msb_v3.triumvirate.mission_anchor import MissionAnchor
 
+# Imported lazily (see the ``vesta`` property) to break the import cycle
+# api.chat -> core.container -> vesta.services -> vesta.adapter -> api.chat.
+# The name is available to mypy under TYPE_CHECKING; at runtime the dataclass
+# annotations are strings (``from __future__ import annotations``).
+if TYPE_CHECKING:
+    from msb_v3.vesta.services import VestaServices
+
 
 @dataclass
 class ApplicationContainer:
@@ -49,6 +67,11 @@ class ApplicationContainer:
     Always construct via ``build_container()`` (which wires every field); tests
     that need a substituted service call ``build_container(service=...)`` so
     the remaining fields stay real rather than ``None``.
+
+    ``flywheel`` and ``vesta`` are lazy properties over their ``_flywheel`` /
+    ``_vesta`` holders: built on first access (and cached) so the default
+    container doesn't construct a full flywheel/vesta stack until a route that
+    needs it is actually hit.
     """
 
     planner: MetaCognitivePlanner
@@ -59,12 +82,46 @@ class ApplicationContainer:
     argus: ArgusAuditor
     cluster_discovery: ClusterAwareDiscovery
     hippocampus: VectorStore
+    event_bus: EventBus
+    identity: AgentIdentity
+    memory_store: MemoryStore
+    conversation_stub: StubModel
+    _flywheel: FlywheelEngine | None = field(default=None, repr=False)
+    _vesta: VestaServices | None = field(default=None, repr=False)
+
+    @property
+    def flywheel(self) -> FlywheelEngine:
+        engine = self._flywheel
+        if engine is None:
+            engine = FlywheelEngine()
+            self._flywheel = engine
+        return engine
+
+    @property
+    def vesta(self) -> VestaServices:
+        services = self._vesta
+        if services is None:
+            from msb_v3.vesta.services import build_vesta_services
+
+            services = build_vesta_services()
+            self._vesta = services
+        return services
 
 
 def build_container(**overrides: Any) -> ApplicationContainer:
-    """Composition root: construct the default services, then apply overrides."""
+    """Composition root: construct the default services, then apply overrides.
+
+    ``flywheel`` and ``vesta`` overrides are stored on the lazy holders so a
+    test can inject a tmp-backed engine/perimeter without triggering the
+    default (settings-backed) construction.
+    """
+    flywheel = overrides.pop("flywheel", None)
+    vesta = overrides.pop("vesta", None)
+    # One shared memory store for the planners and the memory/graph/chat
+    # routers — the planner's triumphirate session lives in the same store.
+    memory_store = overrides.pop("memory_store", None) or MemoryStore()
     services: dict[str, Any] = {
-        "planner": MetaCognitivePlanner(),
+        "planner": MetaCognitivePlanner(memory_store=memory_store),
         "anchor": MissionAnchor(),
         "guardian": GuardianScanner(),
         "sbom": SBOMRegistry(),
@@ -75,9 +132,13 @@ def build_container(**overrides: Any) -> ApplicationContainer:
         # through the unified VectorStore interface so it never blocks on a
         # remote Qdrant (see retrieval/vector_store.py).
         "hippocampus": get_vector_store(backend="sqlite"),
+        "event_bus": EventBus(),
+        "identity": AgentIdentity(),
+        "memory_store": memory_store,
+        "conversation_stub": StubModel(),
     }
     services.update(overrides)
-    return ApplicationContainer(**services)
+    return ApplicationContainer(_flywheel=flywheel, _vesta=vesta, **services)
 
 
 _default: ApplicationContainer | None = None
