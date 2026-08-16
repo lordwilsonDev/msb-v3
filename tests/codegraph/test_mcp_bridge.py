@@ -20,6 +20,7 @@ SECRET = "secret-token"
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("MCP_BRIDGE_SECRET", SECRET)
     monkeypatch.setattr(mcp_bridge, "_MCP_BRIDGE_SECRET", SECRET, raising=False)
     monkeypatch.setattr(mcp_bridge, "settings", mcp_bridge.settings, raising=False)
     monkeypatch.setattr(

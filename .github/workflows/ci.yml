@@ -127,8 +127,9 @@ jobs:
           retention-days: 7
 
   lint:
-    needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    # Always run: ruff + mypy are cheap, and a red lint job must never be
+    # hidden behind the src-changed paths-filter (a docs-only commit that
+    # left a type error would otherwise show a green CI).
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -165,8 +166,8 @@ jobs:
           retention-days: 3
 
   security:
-    needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    # Always run: the blocking CVE gate is cheap, and a vulnerable dependency
+    # must never be hidden behind the paths-filter.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

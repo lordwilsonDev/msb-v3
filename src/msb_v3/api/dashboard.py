@@ -82,7 +82,7 @@ def _hygiene_state() -> Dict[str, Any]:
     try:
         data = json.loads(_HYGIENE_FILE.read_text())
     except FileNotFoundError:
-        return {"error": "no aggregate yet (run make hygiene)"}
+        return {"aggregate": "unknown", "experiments": 0, "results": [], "note": "no aggregate yet (run make hygiene)"}
     results = data.get("results", [])
     # The aggregate file has no top-level verdict field — it is derived: pass
     # only when every experiment passed (an empty run is "unknown", never

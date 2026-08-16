@@ -22,6 +22,7 @@ def api_client(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def bridge_client(tmp_path, monkeypatch):
+    monkeypatch.setenv("MCP_BRIDGE_SECRET", SECRET)
     monkeypatch.setattr(mcp_bridge, "_MCP_BRIDGE_SECRET", SECRET, raising=False)
     monkeypatch.setattr(settings, "memory_fabric_db_path", str(tmp_path / "memory.db"))
     return TestClient(create_app())
