@@ -44,6 +44,7 @@ from msb_v3.api.triumvirate import router as triumvirate_router
 from msb_v3.api.workflow import router as workflow_router
 from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
+from msb_v3.core.container import get_container
 from msb_v3.core.rate_limit import RateLimiter
 from msb_v3.node.api import router as node_router
 from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
@@ -71,6 +72,11 @@ def create_app() -> FastAPI:
         version=__version__,
         lifespan=lifespan,
     )
+
+    # Composition root (Phase 1.4): one process-wide container, stashed on
+    # app.state so request dependencies resolve it explicitly; routers mounted
+    # on a bare FastAPI() fall back to the same process default.
+    app.state.container = get_container()
 
     origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
     allow_credentials = False if "*" in origins else True
