@@ -15,10 +15,12 @@ import time
 import pytest
 
 from msb_v3 import __version__
+from msb_v3.core.container import get_container
 from msb_v3.core.event_bus import Event, EventBus
 from msb_v3.core.health import HealthSystem
-from msb_v3.core.identity import identity
 from msb_v3.core.runtime_config import get, load_config
+
+identity = get_container().identity
 
 
 def test_event_bus_emit_and_deliver():

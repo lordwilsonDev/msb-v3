@@ -11,6 +11,7 @@ from fastapi import Request
 
 from msb_v3.api.chat import ChatRequest, ChatResponse
 from msb_v3.api.chat import chat as msb_chat
+from msb_v3.evidence.spine import DecisionEvidence, DecisionEvidenceStore
 from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.vesta.evidence import EvidenceStore
 from msb_v3.vesta.models import ABind, VestaChatRequest
@@ -41,10 +42,12 @@ class VestaMSBAdapter:
         audit: AuditChainLike,
         task_store: VestaTaskStore | None = None,
         evidence_store: EvidenceStore | None = None,
+        spine: DecisionEvidenceStore | None = None,
     ) -> None:
         self.audit = audit
         self.task_store = task_store or VestaTaskStore()
         self.evidence_store = evidence_store or EvidenceStore()
+        self.spine = spine or DecisionEvidenceStore()
 
     def _transition(
         self,
@@ -122,17 +125,35 @@ class VestaMSBAdapter:
         )
         evidence_refs.append(policy_evidence["evidence_id"])
         self.task_store.update_metadata(bind.task_id, {"evidence_refs": evidence_refs})
-        event_ids.append(
-            self.audit.append(
-                "vesta",
-                "authorization.decided",
-                {
-                    "bind_id": bind.bind_id,
-                    "task_id": bind.task_id,
-                    "evidence_refs": evidence_refs,
-                    **decision.as_dict(),
-                },
-            ).seq
+        decision_audit = self.audit.append(
+            "vesta",
+            "authorization.decided",
+            {
+                "bind_id": bind.bind_id,
+                "task_id": bind.task_id,
+                "evidence_refs": evidence_refs,
+                **decision.as_dict(),
+            },
+        )
+        event_ids.append(decision_audit.seq)
+        # Evidence spine (Phase 2): one structured decision record per
+        # governed action, cross-linked to the audit event that recorded it
+        # (audit_seq) so the WHO/WHAT/WHEN/WHY chain can be reconstructed
+        # independently of the audit chain.
+        self.spine.append(
+            DecisionEvidence(
+                task_id=bind.task_id,
+                policy_version=decision.policy_version,
+                policy_result=decision.decision,
+                risk_level=decision.risk_class,
+                capability_requested=tuple(bind.capabilities),
+                capability_granted=tuple(bind.capabilities) if decision.decision == "ALLOW" else (),
+                evidence_refs=tuple(evidence_refs),
+                selected_action="chat" if decision.decision == "ALLOW" else None,
+                available_actions=("chat",),
+                approval_required=decision.decision == "REQUIRE_APPROVAL",
+            ),
+            audit_seq=decision_audit.seq,
         )
         if decision.decision != "ALLOW":
             self._transition(

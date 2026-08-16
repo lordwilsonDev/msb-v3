@@ -16,7 +16,6 @@ from msb_v3.memory.store import MemoryStore, Message
 logger = logging.getLogger(__name__)
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _PLANNER_STATE_FILE = _RUNTIME_ROOT / "plan_state.json"
-_MEMORY = MemoryStore()
 
 
 def _now_iso() -> str:
@@ -38,13 +37,6 @@ def _ensure_artifact_dirs(slug: str) -> Dict[str, Path]:
     for d in dirs.values():
         d.mkdir(parents=True, exist_ok=True)
     return dirs
-
-
-def _append_memory(role: str, content: str, session: str = "triumvirate") -> None:
-    try:
-        _MEMORY.append(session, Message(role=role, content=content, ts=datetime.now(timezone.utc).timestamp()))
-    except Exception as exc:
-        logger.warning("triumvirate memory append failed: %s", exc)
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -92,6 +84,22 @@ class PlanArtifacts:
 class MetaCognitivePlanner:
     """Five-stage recursive planning engine."""
 
+    def __init__(self, memory_store: MemoryStore | None = None) -> None:
+        # Injected by the ApplicationContainer so the planner shares one
+        # memory store with the rest of the runtime; a bare construction
+        # (as in the planner tests) still defaults to the settings-backed
+        # store.
+        self._memory = memory_store or MemoryStore()
+
+    def _append_memory(self, role: str, content: str, session: str = "triumvirate") -> None:
+        try:
+            self._memory.append(
+                session,
+                Message(role=role, content=content, ts=datetime.now(timezone.utc).timestamp()),
+            )
+        except Exception as exc:
+            logger.warning("triumvirate memory append failed: %s", exc)
+
     def plan(self, request: PlanRequest) -> PlanArtifacts:
         started = _now_iso()
         slug = _slugify(request.goal)
@@ -114,33 +122,33 @@ class MetaCognitivePlanner:
         # Stage 1: Goal Recognition
         stage1 = self._stage_goal_recognition(request.goal)
         stages.append(stage1)
-        _append_memory("user", f"[triumvirate] goal: {request.goal}")
-        _append_memory("assistant", f"[triumvirate] stage1={stage1.name}: {stage1.thought}")
+        self._append_memory("user", f"[triumvirate] goal: {request.goal}")
+        self._append_memory("assistant", f"[triumvirate] stage1={stage1.name}: {stage1.thought}")
         _write_json(dirs["stages"] / "01-goal-recognition.json", stage1.output)
         _save_state("running")
 
         # Stage 2: Inversion Critic
         stage2 = self._stage_inversion_critic(request.goal, stage1.output)
         stages.append(stage2)
-        _append_memory("assistant", f"[triumvirate] stage2={stage2.name}: {stage2.thought}")
+        self._append_memory("assistant", f"[triumvirate] stage2={stage2.name}: {stage2.thought}")
         _write_json(dirs["stages"] / "02-inversion-critic.json", stage2.output)
 
         # Stage 3: First Principles Synthesis
         stage3 = self._stage_first_principles(stage1.output, stage2.output)
         stages.append(stage3)
-        _append_memory("assistant", f"[triumvirate] stage3={stage3.name}: {stage3.thought}")
+        self._append_memory("assistant", f"[triumvirate] stage3={stage3.name}: {stage3.thought}")
         _write_json(dirs["stages"] / "03-first-principles.json", stage3.output)
 
         # Stage 4: Plan Schema Construction
         stage4 = self._stage_plan_schema(request.goal, stage3.output)
         stages.append(stage4)
-        _append_memory("assistant", f"[triumvirate] stage4={stage4.name}: {stage4.thought}")
+        self._append_memory("assistant", f"[triumvirate] stage4={stage4.name}: {stage4.thought}")
         _write_json(dirs["stages"] / "04-plan-schema.json", stage4.output)
 
         # Stage 5: Action Queue
         stage5 = self._stage_action_queue(stage4.output)
         stages.append(stage5)
-        _append_memory("assistant", f"[triumvirate] stage5={stage5.name}: {stage5.thought}")
+        self._append_memory("assistant", f"[triumvirate] stage5={stage5.name}: {stage5.thought}")
         _write_json(dirs["stages"] / "05-action-queue.json", stage5.output)
 
         finished = _now_iso()

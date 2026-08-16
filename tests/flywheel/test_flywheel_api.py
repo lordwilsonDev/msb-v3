@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-import msb_v3.api.flywheel as flywheel_api
 from msb_v3.api.app import create_app
 from msb_v3.core.config import settings
+from msb_v3.core.container import build_container
 from msb_v3.flywheel.engine import FlywheelEngine
 from msb_v3.governance.approval import ApprovalQueue
 from msb_v3.governance.budget import BudgetLedger
@@ -36,12 +36,13 @@ def client(tmp_path, monkeypatch):
         vault_root=tmp_path / "vault",
         runtime_root=tmp_path / "rt",
     )
-    monkeypatch.setattr(flywheel_api, "_engine", engine)
     # Phase 3: control endpoints require the operator token. Fixture sets it
     # and sends it as a default header so the existing control tests run the
     # authenticated path; the auth tests below toggle it.
     monkeypatch.setattr(settings, "operator_token", "test-operator-token")
-    return TestClient(create_app(), headers={"Authorization": "Bearer test-operator-token"}), engine
+    app = create_app()
+    app.state.container = build_container(flywheel=engine)
+    return TestClient(app, headers={"Authorization": "Bearer test-operator-token"}), engine
 
 
 def _parked(client, turn_id: str):
