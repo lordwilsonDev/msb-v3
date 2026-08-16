@@ -4,6 +4,14 @@ Transforms a Requirements Specification (Stage -1 output) into a versioned,
 evidence-backed Knowledge Manifest. First executable stage of the Universal
 Agent Creator, per the Phase 1 – Stage 0 Implementation Blueprint (2026-08-02).
 
+**PARKED (M3 convergence, 2026-08-16, owner: Wilson).** Implemented +
+tested but not wired into the live runtime: the UAC stage pipeline is not on
+MSB v3's canonical core path (the governed agent handle loop), and Rule 3
+freezes new wiring during M0–M3. Kept in `src/` with its test suite
+(`tests/uac/test_stage_0_knowledge_acquisition.py`) as a complete, isolated
+capability; revisit when a UAC/agent-factory workflow is selected as a
+canonical loop (post-M7). Not advertised as a live capability.
+
 Sovereign Runtime integration, resolved 2026-08-02 after auditing what
 actually exists in msb_v3 (see universal-agent-creator-v1.0.md's UAC v1.0
 finalization notes for the full mapping):

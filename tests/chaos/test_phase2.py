@@ -37,12 +37,9 @@ import json
 import sqlite3
 import threading
 import time
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from msb_v3.core import runtime_config as config_module
 from msb_v3.core.event_bus import EventBus
-from msb_v3.core.runtime_config import get, load_config
 from msb_v3.uac.audit_chain import AuditChain, tamper
 
 
@@ -135,16 +132,6 @@ def test_duplicate_subscription_delivers_twice_then_unsubscribe_once():
     bus.unsubscribe("x", handler)
     bus.emit("x", {})
     assert len(calls) == 3  # exactly one registration remains
-
-
-def test_config_get_is_stable_and_defaults_repeatable():
-    """get() with the same path returns the same value every call; a missing
-    path returns the same default every call — no state creep between reads.
-    (Stability only — the actual value may be env/runtime.yaml overridden.)"""
-    a = get("brain.framework")
-    assert get("brain.framework") == a
-    for _ in range(5):
-        assert get("nope.missing", "fallback") == "fallback"
 
 
 def test_audit_verify_is_idempotent_and_non_mutating(tmp_path):
@@ -328,21 +315,6 @@ def test_bus_emit_with_no_subscribers_is_a_noop():
     assert event.type == "lonely"
     assert len(bus.history()) == 1
     assert bus.history()[0].payload == {"k": 1}
-
-
-def test_config_missing_yaml_falls_back_to_defaults(monkeypatch):
-    """Subtract the YAML dependency entirely: load_config() falls back to
-    defaults and get() does not crash or return partial state. Env overrides
-    are neutralized too, so the assertions pin the pure-defaults contract."""
-    monkeypatch.setattr(
-        config_module, "_CONFIG_PATH", Path("/nonexistent/runtime.yaml")
-    )
-    monkeypatch.setattr(config_module, "_env_overrides", lambda: {})
-    cfg = load_config()
-    assert cfg["brain"]["framework"] == "motia"
-    assert cfg["safety"]["fail_closed"] is True
-    assert get("brain.framework") == "motia"
-    assert get("missing.path", "dflt") == "dflt"
 
 
 # ---------------------------------------------------------------------------

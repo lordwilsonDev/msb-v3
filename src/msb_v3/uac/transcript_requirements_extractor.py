@@ -1,5 +1,13 @@
 """Transcript -> Requirements Specification extraction, Stage -1 input helper.
 
+**PARKED (M3 convergence, 2026-08-16, owner: Wilson).** Implemented +
+tested but not wired into the live runtime — the UAC stage pipeline is not
+on MSB v3's canonical core path (the governed agent handle loop), and Rule 3
+freezes new wiring during M0–M3. Kept in `src/` with its test suite
+(`tests/uac/test_transcript_requirements_extractor.py`); revisit with
+stage_0_knowledge_acquisition when a UAC workflow is selected (post-M7).
+Not advertised as a live capability.
+
 Roadmap gap (2026-08-04): Stage 0 (`stage_0_knowledge_acquisition.py`) only
 ever accepted a hand-typed `RequirementsSpecification` (profession +
 jurisdiction, typed directly). There was no path from a real transcript

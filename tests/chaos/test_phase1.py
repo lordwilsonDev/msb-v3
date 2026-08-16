@@ -13,10 +13,12 @@ What this suite pins down as CONTRACT (documented behavior, not bugs):
 3. LOCK HELD DURING HANDLERS: emit() holds the bus lock while calling
    handlers, so a slow handler blocks other emitters. This is a measured
    liveness property and known scaling constraint.
-4. CONFIG: get() re-reads the YAML + env on every call. The perf probe
-   documents the cost so a fix can be justified.
 
 Failure in any of these = a regression to investigate, not a flake.
+(Former item 4 — the runtime_config perf probe — was cut with
+`core/runtime_config.py` in M3 convergence: it was test-only dead code
+whose YAML described an aspirational "motia" brain that exists nowhere in
+`src/`; the live config is `core/config.py`.)
 """
 
 from __future__ import annotations
@@ -28,7 +30,6 @@ from typing import Any, Callable, Dict
 
 from msb_v3.core.container import get_container
 from msb_v3.core.event_bus import Event, EventBus
-from msb_v3.core.runtime_config import get
 
 identity = get_container().identity
 
@@ -336,21 +337,3 @@ def test_perf_emit_throughput():
     assert dt < 5.0  # generous; regressions from locking changes show here
 
 
-def test_perf_config_get_reloads_every_call():
-    """Documents the dead _config_cache: get() re-reads YAML + env each call.
-
-    This is a measured inefficiency, not a pass/fail gate -- it exists so
-    the cost is visible and the fix (actually using _config_cache) can be
-    justified by numbers. 2000 gets took ~667ms locally (~334us each).
-    """
-
-    n = 500
-    t0 = time.perf_counter()
-    for _ in range(n):
-        get("brain.framework")
-    dt = time.perf_counter() - t0
-    us = dt / n * 1_000_000
-    print(
-        f"\n[perf] config get(): {us:.0f} us/call ({n} calls in {dt * 1000:.0f} ms) -- cache is dead code"
-    )
-    assert dt < 5.0

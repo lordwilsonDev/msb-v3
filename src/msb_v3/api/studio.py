@@ -56,11 +56,16 @@ async def dashboard() -> str:
 
 @router.get("/status")
 async def status() -> Dict[str, Any]:
+    # Canonical /status (M3 convergence 2026-08-16): absorbed the fields from
+    # the duplicate api/status.py router (which was never mounted) and deleted
+    # that module — one live status route, no dead copy.
     return {
         "service": "msb-v3",
         "version": __version__,
         "ready": Metrics._ready,
         "model": settings.ollama_model,
+        "ollama_url": settings.ollama_url,
+        "db_path": settings.db_path,
         "host": settings.host,
         "port": settings.port,
     }
