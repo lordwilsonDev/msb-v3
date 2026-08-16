@@ -49,17 +49,44 @@ def _audit_append(tool_id: str, args: Dict[str, Any], result: str, *, tenant: st
         logger.debug("governed tool audit append failed: %s", exc)
 
 
-def _run_governed(tool_id: str, args: Dict[str, Any], *, granted: frozenset, tenant: str, session: str) -> str:
-    """Capability gate + contained execution + audit for one tool call."""
-    td = TOOLS[tool_id]
+def _run_governed(
+    tool_id: str,
+    args: Dict[str, Any],
+    *,
+    granted: frozenset,
+    tenant: str,
+    session: str,
+    approved: frozenset = frozenset(),
+) -> str:
+    """Approval gate + capability gate + contained execution + audit.
+
+    Every outcome — allow, deny, approval-required, tool-error, unknown —
+    returns a structured string AND is written to the AuditChain (best-effort,
+    never fatal), so a refusal leaves evidence rather than an absent result.
+    ``approved`` is the set of tool ids the caller's context pre-authorized
+    for approval-required tools (fail-closed: absent = refused).
+    """
+    td = TOOLS.get(tool_id)
+    if td is None:
+        outcome = f"[tool-error] unknown tool: {tool_id}"
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        return outcome
+    if td.approval_required and tool_id not in approved:
+        outcome = f"[approval-required] tool {tool_id} requires operator approval"
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        return outcome
     missing = [c for c in td.required_capabilities if c not in granted]
     if missing:
-        return f"[denied] tool {tool_id} requires capabilities: {', '.join(missing)}"
+        outcome = f"[denied] tool {tool_id} requires capabilities: {', '.join(missing)}"
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        return outcome
     # Dotted tool ids (codegraph.explore) map to underscore executors
     # (codegraph_explore) — Python attributes cannot contain dots.
     executor: Callable[..., str] | None = getattr(executors, tool_id.replace(".", "_"), None)
     if executor is None:
-        return f"[tool-error] no executor registered for {tool_id}"
+        outcome = f"[tool-error] no executor registered for {tool_id}"
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        return outcome
     result = executor(args, tenant=tenant, session=session)
     _audit_append(tool_id, args, result, tenant=tenant, session=session)
     return result
@@ -70,6 +97,7 @@ def register_governed_tools(client: Any, context: Dict[str, Any]) -> None:
 
     ``context`` keys used: ``tools`` (advertised model schemas), optional
     ``granted_capabilities`` (fail-closed: absent = read-only tools only),
+    optional ``approved_tools`` (pre-authorized approval-required tools),
     optional ``tenant`` / ``session`` (audit + retrieval scoping). Unknown
     tool names are skipped silently — the model only ever sees schemas the
     perimeter can back.
@@ -83,6 +111,7 @@ def register_governed_tools(client: Any, context: Dict[str, Any]) -> None:
         if isinstance(t, dict) and isinstance(t.get("name"), str)
     ]
     granted = frozenset(context.get("granted_capabilities") or [])
+    approved = frozenset(context.get("approved_tools") or [])
     tenant = context.get("tenant", "default")
     session = context.get("session", "default")
     for tool_id in advertised:
@@ -93,6 +122,13 @@ def register_governed_tools(client: Any, context: Dict[str, Any]) -> None:
         # advertised (a real bug: registering two tools silently ran the
         # second for both). The model's arguments arrive as **kwargs.
         def _run(_tool_id: str = tool_id, **kwargs: Any) -> str:
-            return _run_governed(_tool_id, kwargs, granted=granted, tenant=tenant, session=session)
+            return _run_governed(
+                _tool_id,
+                kwargs,
+                granted=granted,
+                tenant=tenant,
+                session=session,
+                approved=approved,
+            )
 
         register(tool_id, _run)

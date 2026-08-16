@@ -739,3 +739,74 @@ async def test_handle_cli_agent_unavailable_provider(tmp_path, registry):
     result = await handle("x", agent_id="cli_w2", registry=registry, providers=providers)
     assert result.ok is False
     assert "unavailable" in (result.error or "")
+
+
+@pytest.mark.asyncio
+async def test_handle_delegated_agent_emits_spine_vertebrae(tmp_path, registry):
+    """Phase 2.3: a delegated worker's MoIE inversion gate is the governed
+    decision — the Evidence Spine records decision -> execution ->
+    verification, each vertebra linked back to the decision."""
+    from msb_v3.agent.handle import handle
+    from msb_v3.agent.providers import (
+        AgentProvider,
+        ProviderRegistry,
+        ProviderResult,
+        ProviderSpec,
+    )
+    from msb_v3.evidence.spine import DecisionEvidenceStore
+    from msb_v3.tasks.lifecycle import TaskLifecycle
+    from msb_v3.uac.audit_chain import AuditChain
+
+    class _FakeMoIE:
+        def analyze(self, claim, context=None):
+            return type(
+                "D",
+                (),
+                {
+                    "as_dict": lambda self: {
+                        "verdict": "APPROVE",
+                        "blocked": False,
+                        "confidence": 0.9,
+                        "assumptions": [],
+                        "contradictions": [],
+                    }
+                },
+            )()
+
+    class _FakePaseoProvider(AgentProvider):
+        spec = ProviderSpec(provider_id="paseo.claude", display_name="p", kind="paseo", max_risk_tier=4)
+
+        def available(self) -> bool:
+            return True
+
+        async def execute(self, goal, *, context=None, session="default"):
+            return ProviderResult(ok=True, output="worker done")
+
+    registry.register(AgentIdentity(agent_id="spine_p", name="p", kind="paseo", provider_id="paseo.claude"))
+    providers = ProviderRegistry((_FakePaseoProvider(),))
+    chain = AuditChain(db_path=str(tmp_path / "audit.db"), allow_keyless=True)
+    lifecycle = TaskLifecycle(db_path=str(tmp_path / "tasks.db"), chain=chain)
+    spine = DecisionEvidenceStore(str(tmp_path / "spine.db"))
+
+    result = await handle(
+        "do the delegated thing",
+        agent_id="spine_p",
+        registry=registry,
+        providers=providers,
+        lifecycle=lifecycle,
+        moie=_FakeMoIE(),
+        spine=spine,
+    )
+
+    assert result.ok is True
+    trail = spine.trail(result.run_id)
+    assert [r.evidence.kind for r in trail] == ["decision", "execution", "verification"]
+    decision, execution, verification = trail
+    assert decision.evidence.policy_result == "ALLOW"
+    assert decision.evidence.selected_action == "delegate"
+    assert decision.evidence.agent_id == "spine_p"
+    assert decision.evidence.provider == "paseo.claude"
+    assert execution.evidence.parent_decision_id == decision.decision_id
+    assert verification.evidence.parent_decision_id == decision.decision_id
+    assert verification.evidence.verification_id  # the worker output digest
+    assert spine.verify_chain()["valid"] is True

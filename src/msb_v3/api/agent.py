@@ -392,3 +392,20 @@ async def get_task_events(task_id: str) -> Dict[str, Any]:
         return {"ok": True, "task_id": task_id, "events": _lifecycle().events(task_id)}
     except TaskLifecycleError as exc:
         raise HTTPException(status_code=404, detail=f"unknown task: {task_id}") from exc
+
+
+@router.get("/tasks/{task_id}/replay", dependencies=[Depends(require_operator)])
+async def replay_task(
+    task_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    """Event-sourced reconstruction (Phase 3): the task's derived state, its
+    ordered event timeline, and its Evidence Spine decision trail — rebuilt
+    from the event log, with any projection divergence surfaced. Operator-gated
+    (task bodies carry intent/plan content)."""
+    from msb_v3.tasks.events import TaskLifecycleError
+
+    try:
+        return {"ok": True, **container.replay.replay_task(task_id)}
+    except TaskLifecycleError as exc:
+        raise HTTPException(status_code=404, detail=f"unknown task: {task_id}") from exc

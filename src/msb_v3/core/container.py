@@ -17,12 +17,12 @@ Pattern:
 
 The cheap, side-effect-light services (planner, anchor, guardian, sbom,
 poison-pill, argus, cluster discovery, hippocampus, event bus, identity,
-memory store, conversation stub) are built eagerly. The three heavyweight,
+memory store, conversation stub) are built eagerly. The four heavyweight,
 settings-backed services — ``flywheel`` (FlywheelEngine), ``vesta``
-(VestaServices), and ``spine`` (DecisionEvidenceStore, shared by both) — are
-built lazily on first access so focused tests that only need e.g.
-``hippocampus`` don't construct a full flywheel/vesta/spine stack against
-the real settings paths.
+(VestaServices), ``spine`` (DecisionEvidenceStore, shared by both), and
+``replay`` (ReplayEngine) — are built lazily on first access so focused tests
+that only need e.g. ``hippocampus`` don't construct a full
+flywheel/vesta/spine/replay stack against the real settings paths.
 
 All named module-level service singletons are now migrated. Any remaining
 service construction is request-scoped (e.g. ``api/agent``) or a CLI-local
@@ -59,6 +59,7 @@ from msb_v3.triumvirate.mission_anchor import MissionAnchor
 # The name is available to mypy under TYPE_CHECKING; at runtime the dataclass
 # annotations are strings (``from __future__ import annotations``).
 if TYPE_CHECKING:
+    from msb_v3.replay.engine import ReplayEngine
     from msb_v3.vesta.services import VestaServices
 
 
@@ -91,6 +92,7 @@ class ApplicationContainer:
     _flywheel: FlywheelEngine | None = field(default=None, repr=False)
     _vesta: VestaServices | None = field(default=None, repr=False)
     _spine: DecisionEvidenceStore | None = field(default=None, repr=False)
+    _replay: ReplayEngine | None = field(default=None, repr=False)
 
     @property
     def flywheel(self) -> FlywheelEngine:
@@ -130,6 +132,24 @@ class ApplicationContainer:
             self._vesta = services
         return services
 
+    @property
+    def replay(self) -> ReplayEngine:
+        """Event-sourced reconstruction (completion blueprint Phase 3).
+
+        Built lazily over the default ``TaskLifecycle`` (the same
+        ``runtime/tasks.db`` the agent router writes) and the shared spine, so
+        ``replay_task`` reconstructs both the lifecycle events and the decision
+        vertebrae.
+        """
+        engine = self._replay
+        if engine is None:
+            from msb_v3.replay.engine import ReplayEngine
+            from msb_v3.tasks.lifecycle import TaskLifecycle
+
+            engine = ReplayEngine(TaskLifecycle(), spine=self.spine)
+            self._replay = engine
+        return engine
+
 
 def build_container(**overrides: Any) -> ApplicationContainer:
     """Composition root: construct the default services, then apply overrides.
@@ -141,6 +161,7 @@ def build_container(**overrides: Any) -> ApplicationContainer:
     flywheel = overrides.pop("flywheel", None)
     vesta = overrides.pop("vesta", None)
     spine = overrides.pop("spine", None)
+    replay = overrides.pop("replay", None)
     # One shared memory store for the planners and the memory/graph/chat
     # routers — the planner's triumphirate session lives in the same store.
     memory_store = overrides.pop("memory_store", None) or MemoryStore()
@@ -162,7 +183,7 @@ def build_container(**overrides: Any) -> ApplicationContainer:
         "conversation_stub": StubModel(),
     }
     services.update(overrides)
-    return ApplicationContainer(_flywheel=flywheel, _vesta=vesta, _spine=spine, **services)
+    return ApplicationContainer(_flywheel=flywheel, _vesta=vesta, _spine=spine, _replay=replay, **services)
 
 
 _default: ApplicationContainer | None = None

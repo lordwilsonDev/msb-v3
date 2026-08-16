@@ -260,3 +260,24 @@ async def test_plan_offloads_sync_client_via_thread() -> None:
 
     graph = await plan(Intent(request="x", goals=("x",)), client=_SyncFake("garbage"))
     assert graph.source == "template"  # graceful fallback on unusable output
+
+
+@pytest.mark.asyncio
+async def test_plan_degrades_to_template_when_frontier_fails() -> None:
+    """Kill the provider (Phase 5): a frontier 503 must degrade plan() to the
+    deterministic template DAG — never raise, never fake a frontier plan.
+    Provider failure -> safe fallback, not uncontrolled execution."""
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"detail": "frontier down"})
+
+    fc = FrontierClient(
+        base_url="http://frontier/v1",
+        api_key="k",
+        model="m",
+        transport=httpx.MockTransport(handler),
+    )
+    intent = Intent(request="public: plan a search", goals=("search",), source="llm")
+    graph = await plan(intent, client=fc)
+    assert graph.source == "template"  # safe degrade, never faked
+    assert [t.task_id for t in graph.tasks] == ["research", "synthesize"]
