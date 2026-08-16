@@ -23,6 +23,15 @@ def test_status_reports_package_version() -> None:
     assert body["version"] == __version__
 
 
+def test_status_absorbs_former_duplicate_router_fields() -> None:
+    """M3 convergence: the never-mounted api/status.py router was deleted and
+    its fields folded into the live studio /status route — pin them so a dead
+    copy can't silently reappear."""
+    body = _client().get("/status").json()
+    assert body["ollama_url"]
+    assert body["db_path"]
+
+
 def test_health_reports_package_version() -> None:
     body = _client().get("/health").json()
     assert body["version"] == __version__

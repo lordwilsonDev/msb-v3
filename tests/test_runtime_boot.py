@@ -4,21 +4,20 @@ Completion criteria:
 - `pytest tests/` passes
 - Event bus emits and delivers events
 - Identity is deterministic
-- Config loads with env overrides
-- Health system reports components
+
+(M3 convergence: the config-loader and HealthSystem tests were removed with
+`core/runtime_config.py` and `core/health.py` — both were test-only dead
+code with zero runtime callers; the live health path is `api/health.py` +
+`api/system.py /system/health`, covered by `tests/api/test_system_health.py`.)
 """
 
 from __future__ import annotations
 
 import time
 
-import pytest
-
 from msb_v3 import __version__
 from msb_v3.core.container import get_container
 from msb_v3.core.event_bus import Event, EventBus
-from msb_v3.core.health import HealthSystem
-from msb_v3.core.runtime_config import get, load_config
 
 identity = get_container().identity
 
@@ -75,38 +74,3 @@ def test_identity_deterministic():
     assert identity.runtime == "msb-v3"
 
 
-def test_config_defaults():
-    cfg = load_config()
-    assert cfg["brain"]["framework"] == "motia"
-    assert cfg["safety"]["fail_closed"] is True
-
-
-def test_config_override(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("SOVEREIGN_SAFETY_FAIL_CLOSED", "false")
-    assert get("safety.fail_closed") is False
-
-
-def test_health_system_all_online():
-    hs = HealthSystem(agent_id=identity.id)
-    hs.register("bus", lambda: True)
-    report = hs.check()
-    assert report.overall == "online"
-    assert len(report.components) == 1
-    assert report.components[0].status == "online"
-
-
-def test_health_system_degraded():
-    hs = HealthSystem(agent_id=identity.id)
-    hs.register("bus", lambda: True)
-    hs.register("db", lambda: False)
-    report = hs.check()
-    assert report.overall == "degraded"
-    assert report.to_dict()["agent_id"] == identity.id
-
-
-def test_health_component_error():
-    hs = HealthSystem()
-    hs.register("broken", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
-    report = hs.check()
-    assert report.components[0].status == "error"
-    assert "boom" in report.components[0].detail
