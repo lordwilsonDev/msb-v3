@@ -50,17 +50,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-    Ed25519PrivateKey,
-    Ed25519PublicKey,
-)
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from msb_v3.core.config import settings
 from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.signing import (
+    ED25519,
+    SigningBackend,
+    SoftwareEd25519Backend,
+    build_backend,
+    verify_signature,
+)
 
 ANCHOR_FILENAME = "chain_anchor.json"
 KEY_ENV = "MSB_CHAIN_ANCHOR_KEY"
+BACKEND_ENV = "MSB_CHAIN_ANCHOR_BACKEND"
 _VERSION = 1
 
 
@@ -95,12 +99,6 @@ def generate_seed() -> bytes:
     return Ed25519PrivateKey.generate().private_bytes_raw()
 
 
-def _private_key(seed: bytes) -> Ed25519PrivateKey:
-    if len(seed) != 32:
-        raise ValueError("chain anchor key must be 32 bytes")
-    return Ed25519PrivateKey.from_private_bytes(seed)
-
-
 class ChainAnchor:
     """Signs and verifies external chain-tip snapshots for an AuditChain."""
 
@@ -109,25 +107,36 @@ class ChainAnchor:
         seed: Optional[bytes] = None,
         anchor_path: Optional[str | Path] = None,
         public_key: Optional[bytes] = None,
+        algorithm: str = ED25519,
+        backend: Optional[SigningBackend] = None,
     ) -> None:
-        """Either a private ``seed`` (signing + verifying) or a ``public_key``
-        (verify-only, e.g. a notarized copy on a machine without the key)."""
-        self._signing = seed is not None
-        if seed is not None:
-            self._priv = _private_key(seed)
-            self._pub = self._priv.public_key().public_bytes_raw()
+        """Signing via a ``backend`` (software or hardware) or a raw Ed25519
+        ``seed``; verify-only via ``public_key`` + ``algorithm`` (e.g. a
+        notarized copy on a machine without the key)."""
+        self._signer: Optional[SigningBackend] = None
+        if backend is not None:
+            self._signer = backend
+            self._pub = backend.public_key_bytes()
+            self._algorithm = backend.algorithm
+        elif seed is not None:
+            self._signer = SoftwareEd25519Backend(seed)
+            self._pub = self._signer.public_key_bytes()
+            self._algorithm = ED25519
         elif public_key is not None:
-            if len(public_key) != 32:
-                raise ValueError("public key must be 32 bytes")
             self._pub = public_key
+            self._algorithm = algorithm
         else:
-            raise ValueError("ChainAnchor requires a seed or a public key")
+            raise ValueError("ChainAnchor requires a seed, a public key, or a signing backend")
         self.anchor_path = Path(anchor_path) if anchor_path else None
 
     @classmethod
     def from_env(cls) -> "ChainAnchor":
-        """Load the key from MSB_CHAIN_ANCHOR_KEY or the keyfile. Fail-closed:
-        a configured-but-unreadable key raises rather than degrading silently."""
+        """Load the key per MSB_CHAIN_ANCHOR_BACKEND (software default) + the
+        keyfile/env seed. Fail-closed: a configured-but-unreadable key raises
+        rather than degrading silently."""
+        name = os.getenv(BACKEND_ENV, "software")
+        if name != "software":
+            return cls(backend=build_backend(name))
         raw = os.getenv(KEY_ENV)
         if raw is None:
             keyfile = _default_key_path()
@@ -165,17 +174,16 @@ class ChainAnchor:
             "anchored_at": _now_iso(),
         }
 
+    def _canonical(self, snapshot: Dict[str, Any]) -> bytes:
+        return json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()
+
     def _sign(self, snapshot: Dict[str, Any]) -> bytes:
-        canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()
-        return self._priv.sign(canonical)
+        if self._signer is None:
+            raise ValueError("verify-only anchor cannot sign new snapshots")
+        return self._signer.sign(self._canonical(snapshot))
 
     def _verify_signature(self, snapshot: Dict[str, Any], signature: bytes) -> bool:
-        canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()
-        try:
-            Ed25519PublicKey.from_public_bytes(self._pub).verify(signature, canonical)
-            return True
-        except InvalidSignature:
-            return False
+        return verify_signature(self._canonical(snapshot), signature, self._pub, self._algorithm)
 
     # ── Anchor store ──────────────────────────────────────────────────────────
     def _store_path(self, chain: AuditChain) -> Path:
@@ -183,7 +191,7 @@ class ChainAnchor:
 
     def anchor(self, chain: AuditChain) -> Dict[str, Any]:
         """Sign the current chain tip and persist the snapshot + signature."""
-        if not self._signing:
+        if self._signer is None:
             raise ValueError("verify-only anchor cannot sign new snapshots")
         snapshot = self._snapshot(chain)
         signature = self._sign(snapshot)
@@ -191,6 +199,7 @@ class ChainAnchor:
             "snapshot": snapshot,
             "signature": signature.hex(),
             "public_key": self._pub.hex(),
+            "key_algorithm": self._algorithm,
         }
         path = self._store_path(chain)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -223,6 +232,11 @@ class ChainAnchor:
         pub_matches = bytes.fromhex(anchor["public_key"]) == self._pub
         if not pub_matches:
             return {"valid": False, "reason": "anchor public key does not match the verifying key",
+                    "anchored_tip": snapshot.get("tip_hash")}
+        recorded_algorithm = anchor.get("key_algorithm", ED25519)
+        if recorded_algorithm != self._algorithm:
+            return {"valid": False,
+                    "reason": f"anchor key algorithm mismatch: {recorded_algorithm} != {self._algorithm}",
                     "anchored_tip": snapshot.get("tip_hash")}
         if not self._verify_signature(snapshot, signature):
             return {"valid": False, "reason": "anchor signature invalid — anchor file tampered",
@@ -323,6 +337,8 @@ class ChainAnchor:
         pub = bytes.fromhex(anchor["public_key"]) if isinstance(anchor.get("public_key"), str) else b""
         if pub != self._pub:
             return {"valid": False, "reason": "notary entry signed by a different key than the current anchor key"}
+        if anchor.get("key_algorithm", ED25519) != self._algorithm:
+            return {"valid": False, "reason": "notary entry key algorithm does not match the current anchor key"}
         if not self._verify_signature(snapshot, signature):
             return {"valid": False, "reason": "notary entry signature invalid — notary log tampered"}
         tip = snapshot.get("tip_hash", "")
