@@ -15,7 +15,6 @@ from msb_v3.node.filesystem import FileReader, FileWriter
 from msb_v3.node.identity import IdentityStore, NodeAuthError, ReplayError
 from msb_v3.node.models import EngageRequest
 from msb_v3.observability.metrics import Metrics
-from msb_v3.uac.audit_chain import AuditChain
 from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.vesta.adapter import VestaMSBAdapter
 from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore

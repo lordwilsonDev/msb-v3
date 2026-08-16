@@ -75,3 +75,26 @@ def require_operator(request: Request) -> None:
         "MSB_OPERATOR_TOKEN not configured — control surface closed (set it in .env)",
         "invalid operator token",
     )
+
+
+def require_operator_sse(request: Request, token: str | None = None) -> None:
+    """Operator gate for SSE endpoints.
+
+    Accepts the bearer header (fetch-based clients) **or** ``?token=``
+    (EventSource — browsers cannot set headers). Fail-closed identical to
+    ``require_operator``: unconfigured -> 503, mismatch -> 401, constant-time
+    comparison. Token-in-URL is the pragmatic SSE tradeoff; the stream is
+    localhost-only and operator-scoped.
+    """
+    if not settings.operator_token:
+        raise HTTPException(
+            status_code=503,
+            detail="MSB_OPERATOR_TOKEN not configured — control surface closed (set it in .env)",
+        )
+    expected_b = f"Bearer {settings.operator_token}".encode()
+    provided = (request.headers.get("authorization") or "").encode()
+    if secrets.compare_digest(provided, expected_b):
+        return
+    if token and secrets.compare_digest(token.encode(), settings.operator_token.encode()):
+        return
+    raise HTTPException(status_code=401, detail="invalid operator token")

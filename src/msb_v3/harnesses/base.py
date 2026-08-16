@@ -105,6 +105,18 @@ class ChatHarness(BaseHarness):
 
         dispatcher = active_backend()
         client = self._client or get_client()
+        # Governed tool registration (Phase 1, unified-architecture §5): the
+        # model is only ever handed tools the perimeter can back. Register
+        # the advertised tools on this client, each wrapped in a capability
+        # gate + audit. Without this, every model tool call resolved to
+        # `[tool-error] unknown tool` (forensic finding 2026-08-15).
+        if tools:
+            try:
+                from msb_v3.tools.runtime import register_governed_tools
+
+                register_governed_tools(client, {**context, "session": session})
+            except Exception:
+                logger.debug("governed tool registration failed", exc_info=True)
         started = time.perf_counter()
         try:
             resp = client.execute_tool_loop(
@@ -137,12 +149,14 @@ class ChatHarness(BaseHarness):
                 payload={"query": query, "text": text, "model": resp.model},
                 telemetry=telemetry,
             )
-        except Exception:
-            # Fallback path: it's tracked in metrics via chat:fallback, but
-            # we also log here so the specific exception that triggered the
-            # fallback (transient ollama outage, broken connection, etc.)
-            # is visible in the normal log stream — the metric alone doesn't
-            # tell you which failure mode it was.
+        except Exception as exc:
+            # Fallback path — VISIBLE, never masked. Phase 1 hardening
+            # (forensic-build-audit 2026-08-15): an exception must not become
+            # ok=True success. We still serve the [fallback] text so callers
+            # get something, but ok=False + event=chat:degraded + a structured
+            # error let the caller (and /v1, /agent, dashboards) distinguish a
+            # real answer from a degraded one. Metrics keep the chat:fallback
+            # counter; the failure class rides telemetry for diagnosis.
             logger.debug("chat harness fallback path triggered", exc_info=True)
             elapsed = time.perf_counter() - started
             dispatcher = "fallback"
@@ -150,10 +164,11 @@ class ChatHarness(BaseHarness):
             Metrics.inc("chat", "chat:fallback")
             Metrics.latency("chat", elapsed)
             text, telemetry = self._fallback(query, system)
+            telemetry["failure"] = f"{type(exc).__name__}: {exc}"
             return HarnessResult(
-                ok=True,
-                event="chat:completed",
+                ok=False,
+                event="chat:degraded",
                 payload={"query": query, "text": text, "model": telemetry["model"]},
-                error=None,
+                error=f"chat_degraded:{type(exc).__name__}",
                 telemetry={"session": session, **telemetry},
             )

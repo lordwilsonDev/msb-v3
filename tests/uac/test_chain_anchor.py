@@ -42,7 +42,7 @@ def test_t7_whole_db_replacement_is_detected(tmp_path: Path) -> None:
     anchor.anchor(chain)
 
     # attacker builds a fresh internally-valid chain and swaps the DB file
-    fresh = make_chain(tmp_path / "fresh.db", 3)
+    make_chain(tmp_path / "fresh.db", 3)
     os.replace(tmp_path / "fresh.db", db)
 
     internal = chain.verify_chain()
@@ -218,7 +218,7 @@ def test_notarized_export_verifies_with_public_key_only(tmp_path: Path) -> None:
     assert verifier.verify(chain)["valid"] is True
 
     # and the notarized copy detects a DB swap too
-    fresh = make_chain(tmp_path / "swap.db", 1)
+    make_chain(tmp_path / "swap.db", 1)
     os.replace(tmp_path / "swap.db", tmp_path / "audit.db")
     assert verifier.verify(chain)["valid"] is False
 
@@ -252,7 +252,7 @@ def test_notary_log_detects_whole_db_rollback(tmp_path: Path) -> None:
     signer.notarize(chain, log)
 
     # attacker replaces the DB (and would also replace the local anchor file)
-    fresh = make_chain(tmp_path / "fresh.db", 2)
+    make_chain(tmp_path / "fresh.db", 2)
     os.replace(tmp_path / "fresh.db", tmp_path / "audit.db")
 
     result = signer.verify_notary(chain, log)

@@ -27,8 +27,8 @@ from typing import List
 
 from msb_v3.triumvirate.mission_anchor import MissionAnchor
 from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.uac.axiom_library import ArtifactRecord, AxiomLibrary
+from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.uac.models import (
     ConflictType,
     Evidence,

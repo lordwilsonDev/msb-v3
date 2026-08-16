@@ -103,6 +103,9 @@ class ActionGate:
         *,
         tainted_inputs: bool = False,
         approved: Optional[set[str]] = None,
+        granted: Optional[set[str]] = None,
+        agent_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> GateVerdict:
         """Gate one action. Caller must honor the verdict.
 
@@ -110,12 +113,40 @@ class ActionGate:
         write that was declared in the approved plan (capability in approved)
         executes; a tainted write that was NOT declared is REVIEW-gated — the
         A8 correction, enforced without blocking the approved happy path.
+
+        `granted` is the agent's standing capability whitelist (identity §17):
+        a capability outside the grant is BLOCKED outright — an agent does
+        only what it was registered to do. ``None`` = no whitelist (existing
+        callers unchanged).
+
+        `agent_id` / `tenant_id` participate in scoped lockdown (unified-
+        architecture §13): ``STOP agent_07`` blocks only agent_07, and
+        ``DISABLE <tool capability>`` blocks only that capability — without
+        stopping the whole loop. The global arm still blocks everyone.
         """
         tier = self.tier_of(capability)
 
-        # Kill switch — cheapest, most absolute, fail-closed.
-        if self._switch is not None and self._switch.is_armed():
-            return self._refuse("BLOCK", "kill switch armed — loop paused", tier, tainted_inputs, capability)
+        # Kill switch — cheapest, most absolute, fail-closed. The global arm
+        # is checked first (works for every switch, real or fake); scoped
+        # blocks are consulted per dimension when the switch supports them
+        # (unified-architecture §13) so a scoped arm never bleeds across
+        # scopes and never loosens a global lockdown.
+        if self._switch is not None:
+            if self._switch.is_armed():
+                return self._refuse("BLOCK", "kill switch armed — loop paused", tier, tainted_inputs, capability)
+            _is_blocked = getattr(self._switch, "is_blocked", None)
+            if _is_blocked is not None:
+                if _is_blocked("tool", capability):
+                    return self._refuse("BLOCK", f"kill switch armed for tool scope: {capability}", tier, tainted_inputs, capability)
+                if agent_id is not None and _is_blocked("agent", agent_id):
+                    return self._refuse("BLOCK", f"kill switch armed for agent scope: {agent_id}", tier, tainted_inputs, capability)
+                if tenant_id is not None and _is_blocked("tenant", tenant_id):
+                    return self._refuse("BLOCK", f"kill switch armed for tenant scope: {tenant_id}", tier, tainted_inputs, capability)
+
+        # Standing capability grant (identity §17): an agent does only what
+        # it was registered to do. Fail-closed — missing grant = BLOCK.
+        if granted is not None and capability not in granted:
+            return self._refuse("BLOCK", f"capability not granted to this agent: {capability}", tier, tainted_inputs, capability)
 
         # A8 correction: tainted writes must not execute on their own.
         if tainted_inputs and capability in _TAINT_ESCALATED and not (approved and capability in approved):
@@ -152,10 +183,12 @@ class SafeProvider:
         gate: ActionGate,
         *,
         approved: Optional[set[str]] = None,
+        granted: Optional[set[str]] = None,
     ) -> None:
         self._provider = provider
         self._gate = gate
         self._approved = set(approved or ())
+        self._granted = set(granted) if granted is not None else None  # None = no whitelist
         self._tainted: set[str] = set()  # task_ids whose outputs carry untrusted content
 
     async def run_tool(self, name: str, *, task: Task, inputs: Dict[str, Any], session: str) -> Any:
@@ -163,7 +196,12 @@ class SafeProvider:
         declared = task.inputs and [i.get("from") for i in task.inputs] or []
         tainted_inputs = any(pid in self._tainted for pid in declared if pid)
 
-        verdict = self._gate.gate(capability, tainted_inputs=tainted_inputs, approved=self._approved)
+        verdict = self._gate.gate(
+            capability,
+            tainted_inputs=tainted_inputs,
+            approved=self._approved,
+            granted=self._granted,
+        )
         if verdict.action == "BLOCK":
             raise GateBlocked(verdict)
         if verdict.action == "REVIEW":

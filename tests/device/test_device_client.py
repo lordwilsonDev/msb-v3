@@ -19,7 +19,13 @@ import pytest
 
 from msb_v3.device.client import DeviceClient, DeviceClientError, main
 from msb_v3.node.crypto import verify
-from msb_v3.node.protocol import b64decode, b64encode, canonical_json, request_signature_payload, session_signature_payload
+from msb_v3.node.protocol import (
+    b64decode,
+    b64encode,
+    canonical_json,
+    request_signature_payload,
+    session_signature_payload,
+)
 
 
 def _new_state() -> dict[str, Any]:

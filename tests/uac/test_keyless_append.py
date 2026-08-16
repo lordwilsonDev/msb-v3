@@ -21,8 +21,6 @@ these tests is a scratch file, never the live production DB.
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from msb_v3.uac import audit_chain as ac

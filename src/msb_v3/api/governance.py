@@ -94,6 +94,32 @@ async def killswitch_disarm(body: dict) -> dict:
     return _switch.disarm(operator)
 
 
+@router.post("/killswitch/scope/arm", dependencies=[Depends(require_operator)])
+async def killswitch_scope_arm(body: dict) -> dict:
+    """Scoped lockdown (unified-architecture §13): arm the brakes for one
+    tenant/agent/task/tool/capability/resource only — the global switch is
+    untouched, so ``DISABLE shell_execute`` does not disable ``vault_search``."""
+    scope_type = str(_body(body, "scope_type", "") or "")
+    scope_id = str(_body(body, "scope_id", "") or "")
+    operator = str(_body(body, "operator", "operator") or "operator")
+    reason = str(_body(body, "reason", "") or "")
+    try:
+        return _switch.arm_scope(scope_type, scope_id, operator, reason)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/killswitch/scope/disarm", dependencies=[Depends(require_operator)])
+async def killswitch_scope_disarm(body: dict) -> dict:
+    scope_type = str(_body(body, "scope_type", "") or "")
+    scope_id = str(_body(body, "scope_id", "") or "")
+    operator = str(_body(body, "operator", "operator") or "operator")
+    try:
+        return _switch.disarm_scope(scope_type, scope_id, operator)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.get("/approvals")
 async def approvals_list(status: Optional[str] = None) -> dict:
     items = _queue.list(status=status) if status else _queue.list()

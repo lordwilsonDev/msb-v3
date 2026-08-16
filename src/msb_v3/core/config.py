@@ -82,6 +82,26 @@ class Settings:
     # guard; 0 denies all (fail-closed).
     openai_chat_rate_max: int = field(default_factory=lambda: int(os.getenv("OPENAI_CHAT_RATE_MAX", "120")))
     openai_chat_rate_window_s: int = field(default_factory=lambda: int(os.getenv("OPENAI_CHAT_RATE_WINDOW_S", "60")))
+    # Paseo execution surface (unified-architecture §7): the daemon's
+    # agent-management MCP endpoint (Streamable HTTP, default 127.0.0.1:6767
+    # per Paseo's config.ts DEFAULT_PORT). MSB_PASEO_URL overrides; the
+    # adapter is inert (reports FAILED) when the daemon is unreachable.
+    paseo_url: str = field(default_factory=lambda: os.getenv("MSB_PASEO_URL", "http://127.0.0.1:6767/mcp/agents"))
+    # Operator-gated permission decisions: a Paseo agent's permission request
+    # parks the run until an operator decides within this TTL; after that the
+    # run is interrupted and the task fails (never silently completes).
+    paseo_permission_ttl_s: int = field(default_factory=lambda: int(os.getenv("MSB_PASEO_PERMISSION_TTL_S", "900")))
+    # Upper bound on how long a Paseo worker may run before MSB interrupts it.
+    paseo_run_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_PASEO_RUN_TIMEOUT_S", "600.0")))
+    # Code Graph subsystem (sovereign-architecture §4.2.1, P0): SQLite
+    # graph store per repo. Code-graph indexes are derived data — safe to
+    # rebuild, but kept on disk so queries stay <1s (validation gate G1).
+    codegraph_db_path: str = field(default_factory=lambda: os.getenv("MSB_CODEGRAPH_DB_PATH", "data/codegraph/graph.db"))
+    # Memory Fabric (sovereign-architecture §4.2.2, P0): SQLite store for
+    # provenance-tracked agent memory (types, verification states, decay).
+    # Separate from the message-history DB — the fabric is durable
+    # cross-session memory, not a conversation log.
+    memory_fabric_db_path: str = field(default_factory=lambda: os.getenv("MSB_MEMORY_FABRIC_DB_PATH", "data/memory_fabric/memory.db"))
     # --- Governance brakes (Phase 0B) ---
     # Budget caps per rolling window; -1 = unlimited, 0 = deny all (fail-closed).
     gov_budget_research_calls: int = field(default_factory=lambda: int(os.getenv("GOV_BUDGET_RESEARCH_CALLS", "50")))

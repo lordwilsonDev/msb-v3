@@ -118,6 +118,212 @@ def _normalize_vault_path(raw: str) -> Path:
     return path
 
 
+def _codegraph_int(raw: Any, default: int) -> int:
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _codegraph_store() -> Any:
+    """Lazy store/query access — the graph DB path is config-driven."""
+    from msb_v3.codegraph.queries import CodeGraphQueries
+    from msb_v3.codegraph.store import CodeGraphStore
+
+    return CodeGraphQueries(CodeGraphStore(settings.codegraph_db_path))
+
+
+def _codegraph_stats(repo: str) -> dict[str, Any]:
+    return _codegraph_store().store.stats(repo)
+
+
+def _codegraph_symbols(repo: str, name: str) -> list[dict[str, Any]]:
+    return _codegraph_store().find_symbol(repo, name, limit=10)
+
+
+def _codegraph_context(repo: str, symbol: str) -> dict[str, Any]:
+    return _codegraph_store().context_of(repo, symbol)
+
+
+def _codegraph_impact(repo: str, file: str, line: int) -> dict[str, Any]:
+    return _codegraph_store().impact_of(repo, file, line=line)
+
+
+def _codegraph_rename(repo: str, name: str) -> dict[str, Any]:
+    return _codegraph_store().rename_preview(repo, name)
+
+
+# --- Memory Fabric helpers (spec §4.2.2) -----------------------------------
+# recall is read-only; store/verify/forget/consolidate mutate the fabric.
+# The bridge is secret-gated (same as every other tool); verification and
+# consolidation are audited state changes, which is exactly what the fabric
+# is for — so they are allowed here, but never silently: every one returns
+# the resulting state so the caller sees what happened.
+
+
+def _memory_fabric() -> Any:
+    from msb_v3.memory_fabric.fabric import MemoryFabric
+    from msb_v3.memory_fabric.store import MemoryFabricStore
+
+    return MemoryFabric(MemoryFabricStore(settings.memory_fabric_db_path))
+
+
+def _mf_store(args: dict[str, Any]) -> dict[str, Any]:
+    from msb_v3.memory_fabric.models import MemoryType
+
+    content = str(args.get("content") or "")
+    type_raw = str(args.get("type") or "semantic")
+    try:
+        type_ = MemoryType(type_raw)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"unknown type: {type_raw}")
+    tags_raw = args.get("tags") or []
+    tags = [str(t).strip() for t in tags_raw if str(t).strip()] if isinstance(tags_raw, list) else []
+    item = _memory_fabric().store_memory(
+        content,
+        type_=type_,
+        tags=tags,
+        importance=float(args.get("importance") or 0.5),
+        source_agent=str(args.get("source_agent") or ""),
+        source="mcp-bridge",
+        task_id=str(args.get("task_id") or ""),
+        tenant=str(args.get("tenant") or "default"),
+        project=str(args.get("project") or ""),
+        tech=str(args.get("tech") or ""),
+    )
+    return item.as_dict()
+
+
+def _mf_recall(args: dict[str, Any]) -> dict[str, Any]:
+    query = str(args.get("query") or "")
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="query required")
+    try:
+        top_k = min(max(int(args.get("top_k") or 8), 1), 50)
+    except (TypeError, ValueError):
+        top_k = 8
+    hits = _memory_fabric().recall_memories(
+        query,
+        tenant=str(args.get("tenant") or "default"),
+        project=str(args.get("project") or "").strip() or None,
+        tech=str(args.get("tech") or "").strip() or None,
+        top_k=top_k,
+    )
+    return {"count": len(hits), "memories": [h.as_dict() for h in hits]}
+
+
+def _mf_verify(args: dict[str, Any]) -> dict[str, Any]:
+    from msb_v3.memory_fabric.models import VerificationState
+
+    memory_id = str(args.get("memory_id") or "")
+    state_raw = str(args.get("to_state") or "")
+    if not memory_id or not state_raw:
+        raise HTTPException(status_code=422, detail="memory_id and to_state required")
+    try:
+        to_state = VerificationState(state_raw)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"unknown state: {state_raw}")
+    item = _memory_fabric().verify_memory(
+        memory_id, to_state, by=str(args.get("by") or "operator"), reason=str(args.get("reason") or "")
+    )
+    return item.as_dict()
+
+
+def _mf_forget(args: dict[str, Any]) -> dict[str, Any]:
+    memory_id = str(args.get("memory_id") or "")
+    if not memory_id:
+        raise HTTPException(status_code=422, detail="memory_id required")
+    item = _memory_fabric().forget_memory(
+        memory_id, by=str(args.get("by") or "operator"), reason=str(args.get("reason") or "forgotten")
+    )
+    return item.as_dict()
+
+
+def _mf_consolidate(args: dict[str, Any]) -> dict[str, Any]:
+    return _memory_fabric().consolidate(
+        str(args.get("tenant") or "default"), by=str(args.get("by") or "operator")
+    )
+
+
+# --- Context Engine helper (spec §4.2.3) -----------------------------------
+
+
+def _context_compose(args: dict[str, Any]) -> dict[str, Any]:
+    from msb_v3.fabric.context_engine import ContextEngine
+
+    task = str(args.get("task") or "")
+    if not task.strip():
+        raise HTTPException(status_code=422, detail="task required")
+    try:
+        budget = max(200, min(int(args.get("budget_tokens") or 4000), 20000))
+    except (TypeError, ValueError):
+        budget = 4000
+    pkg = ContextEngine().compose(
+        task.strip(),
+        tenant=str(args.get("tenant") or "default"),
+        session=str(args.get("session") or "default"),
+        repo=str(args.get("repo") or "").strip() or None,
+        project=str(args.get("project") or "").strip() or None,
+        tech=str(args.get("tech") or "").strip() or None,
+        budget_tokens=budget,
+    )
+    return pkg.as_dict()
+
+
+# --- MoIE helper (spec §3, §23-25; Phase 3) ---------------------------------
+
+
+def _moie_analyze(args: dict[str, Any]) -> dict[str, Any]:
+    from msb_v3.moie import MoIEController
+
+    claim = str(args.get("claim") or "").strip()
+    if not claim:
+        raise HTTPException(status_code=422, detail="claim required")
+    domains = args.get("domains") or []
+    if not isinstance(domains, list):
+        domains = []
+    decision = MoIEController(tenant=str(args.get("tenant") or "default")).analyze(
+        claim,
+        context={
+            "domains": [str(d).strip() for d in domains if str(d).strip()],
+            "thorough": bool(args.get("thorough", False)),
+            "high_impact": bool(args.get("high_impact", False)),
+        },
+    )
+    return decision.as_dict()
+
+
+# --- Software Factory helper (spec §4.2.6, P3) ------------------------------
+
+
+async def _factory_run(args: dict[str, Any]) -> dict[str, Any]:
+    import os
+
+    from msb_v3.factory import Builder, CliAgentBuilder, PatchBuilder, SoftwareFactory
+    from msb_v3.factory.models import Issue
+
+    title = str(args.get("title") or "").strip()
+    repo = str(args.get("repo") or "").strip()
+    if not title or not repo:
+        raise HTTPException(status_code=422, detail="title and repo required")
+    if not os.path.isdir(repo):
+        raise HTTPException(status_code=422, detail=f"repo is not a directory: {repo}")
+    builder_name = str(args.get("builder") or "cli")
+    builder: Builder
+    if builder_name == "patch":
+        script = str(args.get("patch_script") or "").strip()
+        if not script or not os.path.isfile(script):
+            raise HTTPException(status_code=422, detail="builder=patch requires patch_script")
+        builder = PatchBuilder(script)
+    elif builder_name == "cli":
+        builder = CliAgentBuilder()
+    else:
+        raise HTTPException(status_code=422, detail=f"unknown builder: {builder_name}")
+    issue = Issue(title=title, body=str(args.get("body") or ""), repo=repo)
+    run = await SoftwareFactory(builder=builder).process_issue(issue, repo=repo)
+    return run.as_dict()
+
+
 class ToolCall(BaseModel):
     tool: str = Field(..., description="MCP tool name")
     args: dict[str, Any] = Field(default_factory=dict)
@@ -463,6 +669,59 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                         r = await client.get(f"/graph/{call.args.get('session', '')}/top?k={call.args.get('k', 20)}")
                     case "graph_sessions":
                         r = await client.get("/graph")
+                    # --- Code Graph (sovereign-architecture §4.2.1) ---
+                    # Read-only repository intelligence, executed in-process
+                    # against the local SQLite graph (the same containment
+                    # as vault_read — no network hop, no source-tree access).
+                    # Indexing stays operator-gated at POST /codegraph/index;
+                    # these are queries only.
+                    case "codegraph_stats":
+                        repo = str(call.args.get("repo") or "")
+                        if not repo:
+                            raise HTTPException(status_code=400, detail="repo required")
+                        return {"ok": True, "tool": call.tool, "result": _codegraph_stats(repo)}
+                    case "codegraph_explore":
+                        repo = str(call.args.get("repo") or "")
+                        name = str(call.args.get("name") or "")
+                        if not repo or not name:
+                            raise HTTPException(status_code=400, detail="repo and name required")
+                        return {"ok": True, "tool": call.tool, "result": {"symbols": _codegraph_symbols(repo, name)}}
+                    case "codegraph_context":
+                        repo = str(call.args.get("repo") or "")
+                        symbol = str(call.args.get("symbol") or "")
+                        if not repo or not symbol:
+                            raise HTTPException(status_code=400, detail="repo and symbol required")
+                        return {"ok": True, "tool": call.tool, "result": _codegraph_context(repo, symbol)}
+                    case "codegraph_impact":
+                        repo = str(call.args.get("repo") or "")
+                        file = str(call.args.get("file") or "")
+                        if not repo or not file:
+                            raise HTTPException(status_code=400, detail="repo and file required")
+                        line = _codegraph_int(call.args.get("line"), 0)
+                        return {"ok": True, "tool": call.tool, "result": _codegraph_impact(repo, file, line)}
+                    case "codegraph_rename":
+                        repo = str(call.args.get("repo") or "")
+                        name = str(call.args.get("name") or "")
+                        if not repo or not name:
+                            raise HTTPException(status_code=400, detail="repo and name required")
+                        return {"ok": True, "tool": call.tool, "result": _codegraph_rename(repo, name)}
+                    # --- Memory Fabric (spec §4.2.2) ---
+                    case "memory_store":
+                        return {"ok": True, "tool": call.tool, "result": _mf_store(call.args)}
+                    case "memory_recall":
+                        return {"ok": True, "tool": call.tool, "result": _mf_recall(call.args)}
+                    case "memory_verify":
+                        return {"ok": True, "tool": call.tool, "result": _mf_verify(call.args)}
+                    case "memory_forget":
+                        return {"ok": True, "tool": call.tool, "result": _mf_forget(call.args)}
+                    case "memory_consolidate":
+                        return {"ok": True, "tool": call.tool, "result": _mf_consolidate(call.args)}
+                    case "context_compose":
+                        return {"ok": True, "tool": call.tool, "result": _context_compose(call.args)}
+                    case "moie_analyze":
+                        return {"ok": True, "tool": call.tool, "result": _moie_analyze(call.args)}
+                    case "factory_run":
+                        return {"ok": True, "tool": call.tool, "result": await _factory_run(call.args)}
                     case _:
                         raise HTTPException(status_code=404, detail=f"Unknown tool: {call.tool}")
 
@@ -514,6 +773,19 @@ _MCP_TOOLS: list[dict[str, Any]] = [
     {"name": "command_execute", "description": "Execute Obsidian command", "args": ["id"]},
     {"name": "open_file", "description": "Open file in Obsidian UI", "args": ["path"]},
     {"name": "verify_build", "description": "Verify claimed files/tests exist; echo locally and to vault only if verified", "args": ["id", "files", "tests"]},
+    {"name": "codegraph_stats", "description": "Code Graph index stats for a repo", "args": ["repo"]},
+    {"name": "codegraph_explore", "description": "Search a repo's symbol index (functions/classes/methods with locations)", "args": ["repo", "name"]},
+    {"name": "codegraph_context", "description": "One symbol's definition + callers + callees", "args": ["repo", "symbol"]},
+    {"name": "codegraph_impact", "description": "Blast-radius: who a change to a file/line would affect", "args": ["repo", "file", "line"]},
+    {"name": "codegraph_rename", "description": "Rename preview: every reference a rename would touch (read-only)", "args": ["repo", "name"]},
+    {"name": "memory_store", "description": "Store a memory in the fabric (episodic/semantic/procedural/architectural)", "args": ["content", "type", "tags", "importance", "source_agent", "project", "tech", "tenant"]},
+    {"name": "memory_recall", "description": "Recall memories ranked for a query", "args": ["query", "project", "tech", "top_k", "tenant"]},
+    {"name": "memory_verify", "description": "Transition a memory's verification state (UNVERIFIED/VERIFIED/CONTRADICTED/DEPRECATED)", "args": ["memory_id", "to_state", "by", "reason"]},
+    {"name": "memory_forget", "description": "Soft-delete a memory (archived + DEPRECATED record)", "args": ["memory_id", "reason"]},
+    {"name": "memory_consolidate", "description": "Merge duplicate memories + decay everything for a tenant", "args": ["tenant"]},
+    {"name": "context_compose", "description": "Compose a layered token-budgeted context (L0-L7) for a task", "args": ["task", "repo", "project", "tech", "budget_tokens", "tenant"]},
+    {"name": "moie_analyze", "description": "Run Mixture-of-Inversion-Experts on a claim: fail-closed verdict (APPROVE/CONDITIONAL/BLOCK) + contradictions + IDS", "args": ["claim", "domains", "thorough", "high_impact", "tenant"]},
+    {"name": "factory_run", "description": "Run the Software Factory on an issue (classify → plan → build → test → review → verify) with a verdict + evidence chain; builder cli or patch", "args": ["title", "body", "repo", "labels", "builder", "patch_script"]},
 ]
 
 

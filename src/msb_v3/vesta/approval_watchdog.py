@@ -49,7 +49,7 @@ from typing import Any, Dict, List, Optional
 from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore
-from msb_v3.vesta.runtime import TASK_STATES, TaskLifecycleError, VestaTaskStore
+from msb_v3.vesta.runtime import TaskLifecycleError, VestaTaskStore
 
 # Task states from which execution cannot validly continue to completion.
 TERMINAL_TASK_STATES = frozenset({"COMPLETED", "DENIED", "QUARANTINED"})

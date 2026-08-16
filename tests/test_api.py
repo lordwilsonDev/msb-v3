@@ -97,8 +97,10 @@ def test_chat_fallback_when_ollama_unreachable(monkeypatch):
     harness = ChatHarness(client=FakeClient())
     result = harness.execute("hello", session="s1")
     assert isinstance(result, HarnessResult)
-    assert result.ok is True
-    assert result.event == "chat:completed"
+    # Phase 1: degradation is visible, never masked as success.
+    assert result.ok is False
+    assert result.event == "chat:degraded"
+    assert result.error is not None and result.error.startswith("chat_degraded:")
     assert result.payload["text"].startswith("[fallback]")
     assert result.payload["model"] == "local-fallback"
 
@@ -143,9 +145,11 @@ def test_dispatcher_metrics_increment():
 
     harness = ChatHarness(client=FakeClient())
     result = harness.execute("probe", session="metrics")
-    assert result.ok is True
+    assert result.ok is False  # Phase 1: fallback is degraded, not success
     assert result.telemetry.get("dispatcher") == "fallback"
     assert result.telemetry.get("model") == "local-fallback"
+    # the failure class rides telemetry so the degraded state is diagnosable
+    assert result.telemetry.get("failure", "")
 
 
 def test_chat_harness_records_query_counter_and_latency_on_success():
@@ -200,7 +204,7 @@ def test_chat_harness_fallback_records_fallback_event_and_latency():
 
     result = ChatHarness(client=FakeClient()).execute("probe", session="obs")
 
-    assert result.ok is True  # harness falls back, still serves
+    assert result.ok is False  # Phase 1: degraded is surfaced, not ok=True
     assert result.payload["text"].startswith("[fallback]")
     after_q = sample("msb_v3_queries_total", {"harness": "chat", "event": "chat:fallback"})
     after_c = sample("msb_v3_latency_seconds_count", {"harness": "chat"})

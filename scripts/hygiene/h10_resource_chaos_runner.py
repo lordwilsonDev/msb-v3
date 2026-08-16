@@ -34,6 +34,7 @@ if dotenv.exists():
             k, v = line.split('=', 1)
             env[k.strip()] = v.strip()
 SECRET = env.get('MCP_BRIDGE_SECRET', os.environ.get('MCP_BRIDGE_SECRET', ''))
+OPERATOR_TOKEN = os.environ.get('MSB_OPERATOR_TOKEN', env.get('MSB_OPERATOR_TOKEN', ''))
 BASE_URL = env.get('MSB_BASE_URL', os.environ.get('MSB_BASE_URL', 'http://127.0.0.1:8766'))
 TRUTH_DIR = REPO / env.get('MSB_TRUTH_DIR', 'data/truth')
 
@@ -76,6 +77,7 @@ def http_request(payload: dict[str, object], path: str) -> tuple[int, str, int]:
     data = json.dumps(payload).encode('utf-8')
     req = Request(url, data=data, headers={
         'x-mcp-secret': SECRET,
+        'authorization': f'Bearer {OPERATOR_TOKEN}',
         'content-type': 'application/json',
         'accept': 'application/json',
     })

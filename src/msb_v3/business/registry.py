@@ -9,7 +9,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from msb_v3.api.auth import require_operator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -37,7 +39,7 @@ def _checksum(content: dict) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
-@router.post("/register")
+@router.post("/register", dependencies=[Depends(require_operator)])
 async def register_truth(payload: dict[str, Any]) -> dict[str, Any]:
     """Register a sovereign truth entity."""
     size = len(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
@@ -90,7 +92,7 @@ async def list_truth() -> dict[str, Any]:
     return {"ok": True, "entities": entities, "count": len(entities)}
 
 
-@router.delete("/purge/{entity_id}")
+@router.delete("/purge/{entity_id}", dependencies=[Depends(require_operator)])
 async def purge_truth(entity_id: str) -> dict[str, Any]:
     """Purge a truth entity (irreversible)."""
     path = _entity_path(entity_id)

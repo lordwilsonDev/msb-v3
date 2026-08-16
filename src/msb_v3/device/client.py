@@ -32,7 +32,6 @@ import json
 import os
 import stat
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
