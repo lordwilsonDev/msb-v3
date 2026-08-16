@@ -49,7 +49,13 @@ case "$cmd" in
   lsl)
     f="$(localize "$1")"
     if [ -f "$FAKE_ROOT/$f" ]; then
-      stat -f "%z %Sm %N" -t "%Y-%m-%d %H:%M:%S %z" "$FAKE_ROOT/$f"
+      # GNU vs BSD stat: both emit '<size> <modtime...> <name>' so the sink's
+      # whitespace parse works on macOS (BSD) and Linux CI (GNU).
+      if stat -c %y /dev/null >/dev/null 2>&1; then
+        stat -c '%s %y %n' "$FAKE_ROOT/$f"
+      else
+        stat -f '%z %Sm %N' -t '%Y-%m-%d %H:%M:%S %z' "$FAKE_ROOT/$f"
+      fi
     else exit 3; fi ;;
   *) echo "unknown rclone cmd: $cmd" >&2; exit 2 ;;
 esac
