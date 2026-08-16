@@ -30,8 +30,11 @@ sys.path.insert(0, str(SRC))
 
 PYPROJECT = ROOT / "pyproject.toml"
 IDENTITY = SRC / "msb_v3" / "core" / "identity.py"
+MANIFEST = ROOT / "MANIFEST.md"
 # Dataclass field, 4-space indented: `    version: str = "0.2.1"`.
 _IDENTITY_VERSION_RE = re.compile(r'^    version: str = "([^"]+)"', re.MULTILINE)
+# The MANIFEST identity table row: | Name / version | `msb-v3` `0.2.3` | ...
+_MANIFEST_VERSION_RE = re.compile(r"\| Name / version \| `msb-v3` `([^`]+)` \|")
 
 
 def _pyproject_version() -> str:
@@ -45,6 +48,12 @@ def _identity_version() -> str:
     return match.group(1)
 
 
+def _manifest_version() -> str:
+    match = _MANIFEST_VERSION_RE.search(MANIFEST.read_text(encoding="utf-8"))
+    assert match is not None, "no `Name / version` row found in MANIFEST.md"
+    return match.group(1)
+
+
 def test_version_sources_agree() -> None:
     # Imported inside the test (after the sys.path insert above) so E402
     # (import-not-at-top) doesn't fire under the repo's ruff selection.
@@ -52,11 +61,16 @@ def test_version_sources_agree() -> None:
 
     pyproject_version = _pyproject_version()
     identity_version = _identity_version()
+    manifest_version = _manifest_version()
     assert __version__ == pyproject_version, (
         f"msb_v3.__version__ ({__version__}) != pyproject version ({pyproject_version})"
     )
     assert identity_version == __version__, (
         f"msb_v3.core.identity version ({identity_version}) != "
+        f"msb_v3.__version__ ({__version__})"
+    )
+    assert manifest_version == __version__, (
+        f"MANIFEST.md version ({manifest_version}) != "
         f"msb_v3.__version__ ({__version__})"
     )
 

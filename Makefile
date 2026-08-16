@@ -12,6 +12,7 @@ export MSB_HOST ?= 127.0.0.1
 export MSB_PORT ?= 8766
 
 test:
+	@bash scripts/seed-research-runtime.sh
 	$(PY) -m pytest -q tests/
 
 # Lint + typecheck — the exact gates CI's lint job runs. Cheap; the pre-push
