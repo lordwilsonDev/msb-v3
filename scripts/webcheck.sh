@@ -19,7 +19,7 @@ set -euo pipefail
 #   MSB_PORT=8767 make webcheck    # point at another instance
 
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
-PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 WEBCHECK="$HOME/bin/webcheck.py"
 HOST="${MSB_HOST:-127.0.0.1}"
 PORT="${MSB_PORT:-8766}"

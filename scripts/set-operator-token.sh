@@ -9,7 +9,7 @@
 # /v1 adapter without OPENAI_API_KEY. CLI tools are unaffected.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PY=/opt/homebrew/Caskroom/miniforge/base/bin/python
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 ENV_FILE=".env"
 
 is_set() {

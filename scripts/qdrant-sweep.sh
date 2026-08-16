@@ -39,7 +39,7 @@ TS=$(date +%Y%m%dT%H%M%SZ)
 # Classify: fetch collections, mark test-named ones for sweep (never the
 # protected list), write the audit inventory, print sweep names on stdout.
 SWEEP_LIST=$(QDRANT_BASE="$BASE" QDRANT_SWEEP_KEEP="$PROTECTED" REPO="$REPO" \
-  /opt/homebrew/Caskroom/miniforge/base/bin/python - "$TS" <<'PYEOF'
+  "${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}" - "$TS" <<'PYEOF'
 import json, os, re, sys, urllib.request, datetime
 
 base = os.environ["QDRANT_BASE"]
