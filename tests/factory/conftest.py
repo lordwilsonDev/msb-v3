@@ -47,7 +47,9 @@ def breaking_patch(tmp_path: Path) -> str:
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
         'cd "$MSB_WORKTREE"\n'
-        "sed -i '' 's/return a + b/return a - b/' app.py\n"
+        # Portable in-place edit (no `sed -i ''`, which is BSD-only and breaks
+        # on GNU sed in Linux CI): sed to a temp file, then mv over.
+        "sed 's/return a + b/return a - b/' app.py > app.py.tmp && mv app.py.tmp app.py\n"
     )
     script.chmod(0o755)
     return str(script)
