@@ -38,7 +38,6 @@ from gov_corpus import (  # noqa: E402
     SEED,
     TRIAL_FNS,
     GovernedSurface,
-    classify,
     run_corpus,
 )
 

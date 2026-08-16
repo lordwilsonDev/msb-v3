@@ -53,8 +53,8 @@ sys.path.insert(0, str(Path.home() / ".local/lib/msb-v3"))
 
 from msb_v3.node.filesystem import FileWriter  # noqa: E402
 from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
-from msb_v3.vesta.policy import authorize_chat  # noqa: E402
 from msb_v3.vesta.models import ABind  # noqa: E402
+from msb_v3.vesta.policy import authorize_chat  # noqa: E402
 
 RUN_ROOT = Path(__file__).resolve().parent
 DEFAULT_RUN = RUN_ROOT / "runs" / datetime.now(timezone.utc).strftime("%Y-%m-%d")

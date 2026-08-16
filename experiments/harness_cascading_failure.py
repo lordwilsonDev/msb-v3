@@ -46,13 +46,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path.home() / ".local/lib/msb-v3"))
 
 from msb_v3.governance.killswitch import KillSwitch  # noqa: E402
-from msb_v3.node.filesystem import CapabilityViolation, FileWriter  # noqa: E402
+from msb_v3.node.filesystem import FileWriter  # noqa: E402
 from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
 from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore  # noqa: E402
 from msb_v3.vesta.evidence import EvidenceError, EvidenceStore  # noqa: E402
-from msb_v3.vesta.models import VestaFileWriteRequest  # noqa: E402
-from msb_v3.vesta.policy import authorize_chat  # noqa: E402
-from msb_v3.vesta.models import ABind  # noqa: E402
+from msb_v3.vesta.models import (
+    ABind,  # noqa: E402
+    VestaFileWriteRequest,  # noqa: E402
+)
 from msb_v3.vesta.runtime import VestaTaskStore  # noqa: E402
 from msb_v3.vesta.write import VestaWriteService  # noqa: E402
 
@@ -265,8 +266,8 @@ def decision_probe_policy() -> dict:
 
 def decision_probe_model() -> dict:
     """Local-model loss must degrade controlled (fallback), never fake."""
-    from msb_v3.local_ai.ollama import LocalAIClient
     from msb_v3.harnesses.base import ChatHarness
+    from msb_v3.local_ai.ollama import LocalAIClient
     client = LocalAIClient(base_url="http://127.0.0.1:9")  # unreachable
     result = ChatHarness(client=client).execute("say ok")
     fallback = "fallback" in result.payload.get("text", "")
@@ -278,7 +279,7 @@ def decision_probe_model() -> dict:
 def network_probe() -> dict:
     """Network loss: cloud search fails LOUD; local mutation path unaffected."""
     import msb_v3.uac.research_backend as rb_mod
-    from msb_v3.uac.research_backend import TavilyResearchBackend, ResearchBackendError
+    from msb_v3.uac.research_backend import ResearchBackendError, TavilyResearchBackend
     original = rb_mod._TAVILY_URL
     rb_mod._TAVILY_URL = "http://127.0.0.1:9/search"
     loud = False
@@ -377,9 +378,9 @@ def main() -> int:
                      "non-governance failures never corrupt state or fake success",
         "trials": trials,
         "summary": {"total": len(trials), "unsafe": len(unsafe),
-                    "by_level": {l: {"n": len(by_level[l]),
-                                     "unsafe": sum(1 for t in by_level[l] if t["verdict"].startswith("UNSAFE"))}
-                                 for l in by_level}},
+                    "by_level": {level: {"n": len(by_level[level]),
+                                         "unsafe": sum(1 for t in by_level[level] if t["verdict"].startswith("UNSAFE"))}
+                                 for level in by_level}},
     }
     raw_path = run_dir / "raw" / f"cascading_{ts}.json"
     raw_path.write_text(json.dumps(raw, indent=2))
