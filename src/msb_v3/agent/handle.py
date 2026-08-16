@@ -68,6 +68,17 @@ _HIGH_IMPACT_MARKERS = (
 
 _AGENT_REGISTRY_IMPORTED = False
 
+# MoIE inversion verdict -> Evidence Spine policy_result. A delegated worker's
+# decision vertebra records the gate's verdict: APPROVE becomes ALLOW,
+# BLOCKED/ERROR fail closed to DENY, and REVIEW (approval required) stays
+# REVIEW.
+_INVERSION_RESULT = {
+    "APPROVE": "ALLOW",
+    "BLOCKED": "DENY",
+    "REVIEW": "REVIEW",
+    "ERROR": "DENY",
+}
+
 # The handle slice has no versioned policy module; the ActionGate tier table is
 # the policy. This tag versions the decision records emitted onto the Evidence
 # Spine so a future policy change is distinguishable in provenance.
@@ -261,6 +272,7 @@ async def _run_delegated_agent(
     repo: str | None = None,
     context_engine: Any = None,
     memory_fabric: Any = None,
+    spine: DecisionEvidenceStore | None = None,
 ) -> HandleResult:
     """Delegate the whole task to a worker agent (Claude Code / Codex /
     OpenCode as a bounded subprocess, or a Paseo-managed agent in an
@@ -306,6 +318,31 @@ async def _run_delegated_agent(
         approve=approve,
         moie=moie,
     )
+
+    # Evidence spine (Phase 2.3): the MoIE inversion gate is the governed
+    # decision for a delegated worker. The decision vertebra records the
+    # verdict even when the delegation is denied, so a refusal leaves a
+    # durable decision record rather than an absent execution.
+    policy_result = _INVERSION_RESULT.get(inversion_verdict, "DENY")
+    risk_level = "elevated" if any(m in request.lower() for m in _HIGH_IMPACT_MARKERS) else "normal"
+    decision_record = _spine_append(
+        spine,
+        DecisionEvidence(
+            kind=KIND_DECISION,
+            task_id=run_id,
+            agent_id=agent_identity.agent_id,
+            tenant_id=tenant,
+            provider=agent_provider.spec.provider_id,
+            model_id=getattr(agent_identity, "model", None),
+            policy_version=_SPINE_POLICY_VERSION,
+            policy_result=policy_result,
+            risk_level=risk_level,
+            capability_requested=tuple(agent_identity.granted_capabilities or ()),
+            capability_granted=tuple(agent_identity.granted_capabilities or ()) if inversion_ok else (),
+            selected_action="delegate",
+            available_actions=("delegate",),
+        ),
+    )
     if not inversion_ok:
         reason = inversion.get("error") or inversion.get("meta_critique") or "MoIE denied delegated execution"
         return HandleResult(
@@ -320,6 +357,23 @@ async def _run_delegated_agent(
     # COMPLETED/FAILED (the delegation *is* the plan).
     _lifecycle_emit(lifecycle, run_id, None, state="PLANNED", payload={"method": "delegate"})
     _lifecycle_emit(lifecycle, run_id, None, state="EXECUTING")
+    if decision_record is not None:
+        _spine_append(
+            spine,
+            DecisionEvidence(
+                kind=KIND_EXECUTION,
+                parent_decision_id=decision_record.decision_id,
+                task_id=run_id,
+                agent_id=agent_identity.agent_id,
+                tenant_id=tenant,
+                provider=agent_provider.spec.provider_id,
+                policy_version=_SPINE_POLICY_VERSION,
+                policy_result=policy_result,
+                risk_level=risk_level,
+                capability_granted=tuple(agent_identity.granted_capabilities or ()),
+                selected_action="delegate",
+            ),
+        )
     context: Dict[str, Any] = {
         "tenant": tenant,
         "session": session,
@@ -431,6 +485,23 @@ async def _run_delegated_agent(
         },
     )
     _lifecycle_emit(lifecycle, run_id, None, state="COMPLETED" if result.ok else "FAILED")
+    if decision_record is not None:
+        _spine_append(
+            spine,
+            DecisionEvidence(
+                kind=KIND_VERIFICATION,
+                parent_decision_id=decision_record.decision_id,
+                task_id=run_id,
+                agent_id=agent_identity.agent_id,
+                tenant_id=tenant,
+                provider=agent_provider.spec.provider_id,
+                policy_version=_SPINE_POLICY_VERSION,
+                policy_result=policy_result,
+                risk_level=risk_level,
+                selected_action="delegate",
+                verification_id=output_hash,
+            ),
+        )
     return HandleResult(
         ok=result.ok,
         run_id=run_id,
@@ -654,7 +725,7 @@ async def handle(
         return await _run_delegated_agent(
             request, run_id, agent_identity, agent_provider, lifecycle,
             session=session, tenant=tenant, approve=approve, moie=moie, repo=repo,
-            context_engine=context_engine, memory_fabric=memory_fabric,
+            context_engine=context_engine, memory_fabric=memory_fabric, spine=spine,
         )
 
     try:
