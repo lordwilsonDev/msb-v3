@@ -276,3 +276,84 @@ def test_verify_trustworthy_honors_external_anchor(tmp_path):
     result = verify_trustworthy(_Anchored())
     assert result["valid"] is False
     assert result["reason"] == "whole-DB rollback detected"
+
+
+# --- RFC 3161 timestamp proofs on notary entries (security-hardening #9) -----
+
+
+def _stamped_entry(anchor, chain, *, source="receive_time", verified=False):
+    from msb_v3.uac.timestamping import LocalReceiveTimestamper, TimestampProof
+
+    entry = anchor.build_notary_entry(chain)
+    canonical = json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()
+    proof = LocalReceiveTimestamper().stamp(canonical)
+    if source == "rfc3161":
+        proof = TimestampProof(
+            source="rfc3161",
+            digest_sha256=proof.digest_sha256,
+            tsa_url="https://tsa.invalid",
+            gen_time="2026-08-16T07:10:05+00:00",
+            token_b64="dG9rZW4=",
+            verified=verified,
+            note="synthetic",
+        )
+    entry["timestamp"] = proof.to_dict()
+    return entry
+
+
+def test_verify_notary_accepts_covering_receive_time_proof(tmp_path):
+    chain = _chain(tmp_path)
+    chain.append("stage_0", "e", {"n": 1})
+    anchor = _anchor(tmp_path)
+    entry = _stamped_entry(anchor, chain)
+
+    result = anchor.verify_notary_entry(entry, chain)
+    assert result["valid"] is True
+    assert result["timestamp_valid"] is True
+    assert result["timestamp_source"] == "receive_time"
+
+
+def test_verify_notary_rejects_timestamp_not_covering_entry(tmp_path):
+    chain = _chain(tmp_path)
+    chain.append("stage_0", "e", {"n": 1})
+    anchor = _anchor(tmp_path)
+    entry = _stamped_entry(anchor, chain)
+    # Swap in a proof stamped over a DIFFERENT entry (different notarized_at):
+    # the signature is untouched, but the proof no longer covers this entry.
+    other = anchor.build_notary_entry(chain)
+    other_canonical = json.dumps(other, sort_keys=True, separators=(",", ":")).encode()
+    entry["timestamp"] = {
+        "source": "receive_time",
+        "digest_sha256": __import__("hashlib").sha256(other_canonical).hexdigest(),
+        "received_at": "2026-08-16T07:10:06+00:00",
+        "verified": False,
+        "note": "",
+    }
+
+    result = anchor.verify_notary_entry(entry, chain)
+    assert result["valid"] is False
+    assert "does not cover" in result["reason"]
+
+
+def test_verify_notary_rejects_unverified_rfc3161_proof(tmp_path):
+    chain = _chain(tmp_path)
+    chain.append("stage_0", "e", {"n": 1})
+    anchor = _anchor(tmp_path)
+    entry = _stamped_entry(anchor, chain, source="rfc3161", verified=False)
+
+    result = anchor.verify_notary_entry(entry, chain)
+    assert result["valid"] is False
+    assert "not verified" in result["reason"]
+
+
+def test_verify_notary_reports_verified_rfc3161_proof(tmp_path):
+    chain = _chain(tmp_path)
+    chain.append("stage_0", "e", {"n": 1})
+    anchor = _anchor(tmp_path)
+    entry = _stamped_entry(anchor, chain, source="rfc3161", verified=True)
+
+    result = anchor.verify_notary_entry(entry, chain)
+    assert result["valid"] is True
+    assert result["timestamp_valid"] is True
+    assert result["timestamp_source"] == "rfc3161"
+    assert result["timestamp_gen_time"] == "2026-08-16T07:10:05+00:00"

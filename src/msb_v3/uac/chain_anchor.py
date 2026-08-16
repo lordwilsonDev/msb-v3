@@ -61,6 +61,7 @@ from msb_v3.uac.signing import (
     build_backend,
     verify_signature,
 )
+from msb_v3.uac.timestamping import TimestampProof
 
 ANCHOR_FILENAME = "chain_anchor.json"
 KEY_ENV = "MSB_CHAIN_ANCHOR_KEY"
@@ -284,6 +285,17 @@ class ChainAnchor:
                 "tip_hash": live["tip_hash"], "anchored_at": snapshot["anchored_at"],
                 "stale": stale_seconds > 0, "stale_seconds": stale_seconds}
 
+    def build_notary_entry(self, chain: AuditChain) -> Dict[str, Any]:
+        """Build ONE notary entry (``{"notarized_at", "anchor"}``) without
+        writing it — the primitive ``notarize()`` and ``NotaryService`` both
+        compose on, so the off-box push can stamp the exact bytes that were
+        appended."""
+        anchor = self._read_anchor(chain)
+        if anchor is None:
+            self.anchor(chain)
+            anchor = self._read_anchor(chain)
+        return {"notarized_at": _now_iso(), "anchor": anchor}
+
     def notarize(self, chain: AuditChain, dest: str | Path, *, append: bool = True) -> Path:
         """Export the current signed anchor out-of-band.
 
@@ -295,29 +307,75 @@ class ChainAnchor:
         """
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        anchor = self._read_anchor(chain)
-        if anchor is None:
-            self.anchor(chain)
-            anchor = self._read_anchor(chain)
-        entry = {"notarized_at": _now_iso(), "anchor": anchor}
+        entry = self.build_notary_entry(chain)
         line = json.dumps(entry, sort_keys=True, separators=(",", ":"))
         if append:
             with dest.open("a") as handle:
                 handle.write(line + "\n")
         else:
             # bare anchor copy — directly usable as an anchor store
-            dest.write_text(json.dumps(anchor, indent=2, sort_keys=True) + "\n")
+            dest.write_text(json.dumps(entry["anchor"], indent=2, sort_keys=True) + "\n")
         return dest
+
+    def verify_notary_entry(self, entry: Dict[str, Any], chain: AuditChain) -> Dict[str, Any]:
+        """Validate ONE notary entry: (1) signed by the same key with a valid
+        signature, (2) its tip is present in the live chain, and (3) when the
+        entry carries an RFC 3161 ``timestamp`` proof, that proof is verified
+        AND cryptographically covers this exact entry (recomputed from the
+        entry with the timestamp field stripped, the bytes that were stamped).
+        Fail-closed: an unverified or non-covering timestamp makes the entry
+        invalid, never silently accepted."""
+        anchor = entry.get("anchor")
+        if not isinstance(anchor, dict) or "snapshot" not in anchor:
+            return {"valid": False, "reason": "notary entry has no anchor snapshot"}
+        snapshot = anchor["snapshot"]
+        signature = bytes.fromhex(anchor["signature"]) if isinstance(anchor.get("signature"), str) else b""
+        pub = bytes.fromhex(anchor["public_key"]) if isinstance(anchor.get("public_key"), str) else b""
+        if pub != self._pub:
+            return {"valid": False, "reason": "notary entry signed by a different key than the current anchor key"}
+        if anchor.get("key_algorithm", ED25519) != self._algorithm:
+            return {"valid": False, "reason": "notary entry key algorithm does not match the current anchor key"}
+        if not self._verify_signature(snapshot, signature):
+            return {"valid": False, "reason": "notary entry signature invalid — notary log tampered"}
+        tip = snapshot.get("tip_hash", "")
+        if not any(r.record_hash == tip for r in chain.get_chain()):
+            return {
+                "valid": False,
+                "reason": "notarized tip is not in the live chain — whole-DB rollback or replacement (T7)",
+                "notarized_tip": tip,
+                "notarized_at": entry.get("notarized_at"),
+            }
+        result: Dict[str, Any] = {
+            "valid": True,
+            "tip_hash": tip,
+            "record_count": snapshot.get("record_count"),
+        }
+        ts = entry.get("timestamp")
+        if isinstance(ts, dict) and ts.get("digest_sha256"):
+            proof = TimestampProof.from_dict(ts)
+            canonical = json.dumps(
+                {k: v for k, v in entry.items() if k != "timestamp"},
+                sort_keys=True, separators=(",", ":"),
+            ).encode()
+            if proof.digest_sha256 != hashlib.sha256(canonical).hexdigest():
+                return {"valid": False, "reason": "timestamp proof does not cover this entry"}
+            if proof.source == "rfc3161" and not proof.verified:
+                return {"valid": False, "reason": "RFC 3161 timestamp proof was not verified"}
+            result["timestamp_valid"] = True
+            result["timestamp_source"] = proof.source
+            result["timestamp_gen_time"] = proof.gen_time
+        return result
 
     def verify_notary(self, chain: AuditChain, log: str | Path) -> Dict[str, Any]:
         """Verify the most recent entry in an out-of-band notary log.
 
         The notary log is an append-only JSONL of signed anchor snapshots
-        (``notarize()`` output). The LAST entry must: (1) be a valid signed
-        snapshot from the same signing key, and (2) have its tip present in
-        the live chain. Because the notary is out-of-band, a whole-DB rollback
-        that also replaces the local anchor file is still caught here — the
-        notary holds the signed tip the rolled-back chain no longer contains.
+        (``notarize()`` output). The LAST entry must be a valid entry per
+        ``verify_notary_entry``: signed by the same key, its tip present in
+        the live chain (a whole-DB rollback that also replaces the local
+        anchor file is still caught here — the notary holds the signed tip
+        the rolled-back chain no longer contains), and any RFC 3161 timestamp
+        proof must cover it.
         """
         path = Path(log)
         if not path.exists():
@@ -329,34 +387,12 @@ class ChainAnchor:
             entry = json.loads(lines[-1])
         except json.JSONDecodeError as exc:
             return {"valid": False, "reason": f"last notary entry is not valid JSON: {exc}"}
-        anchor = entry.get("anchor")
-        if not isinstance(anchor, dict) or "snapshot" not in anchor:
-            return {"valid": False, "reason": "last notary entry has no anchor snapshot"}
-        snapshot = anchor["snapshot"]
-        signature = bytes.fromhex(anchor["signature"]) if isinstance(anchor.get("signature"), str) else b""
-        pub = bytes.fromhex(anchor["public_key"]) if isinstance(anchor.get("public_key"), str) else b""
-        if pub != self._pub:
-            return {"valid": False, "reason": "notary entry signed by a different key than the current anchor key"}
-        if anchor.get("key_algorithm", ED25519) != self._algorithm:
-            return {"valid": False, "reason": "notary entry key algorithm does not match the current anchor key"}
-        if not self._verify_signature(snapshot, signature):
-            return {"valid": False, "reason": "notary entry signature invalid — notary log tampered"}
-        tip = snapshot.get("tip_hash", "")
-        in_chain = any(r.record_hash == tip for r in chain.get_chain())
-        if not in_chain:
-            return {
-                "valid": False,
-                "reason": "notarized tip is not in the live chain — whole-DB rollback or replacement (T7)",
-                "notarized_tip": tip,
-                "notarized_at": entry.get("notarized_at"),
-            }
-        return {
-            "valid": True,
-            "notarized_at": entry.get("notarized_at"),
-            "record_count": snapshot.get("record_count"),
-            "tip_hash": tip,
-            "entry_count": len(lines),
-        }
+        result = self.verify_notary_entry(entry, chain)
+        if not result.get("valid"):
+            return result
+        result["notarized_at"] = entry.get("notarized_at")
+        result["entry_count"] = len(lines)
+        return result
 
 
 class AnchoredAuditChain:
