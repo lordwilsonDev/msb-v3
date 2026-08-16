@@ -1,0 +1,45 @@
+{
+  "workflow": "governed-agent-handle",
+  "version": 1,
+  "note": "Schema every run must satisfy. Shape is the invariant; exact values vary with the live model. The deterministic_hash is a pure function of the hashed fields and can always be recomputed from a recorded trace (replay property).",
+  "handle_result": {
+    "required_fields": ["ok", "run_id", "verdict", "trace"],
+    "verdict_enum": ["PASS", "FAIL", "ERROR", "REVIEW", "BLOCKED"],
+    "run_id_pattern": "^dbb-\\d{8}T\\d{6}-\\d{5}$"
+  },
+  "trace": {
+    "required_fields": [
+      "run_id", "request", "intent", "graph_source", "tasks", "execution", "verdict", "outcome", "deterministic_hash"
+    ],
+    "hashed_fields": ["request", "intent", "graph_source", "tasks", "execution", "verdict"],
+    "intent": {"permissions": "tuple[str, ...]", "privacy": "bool"},
+    "tasks": [{"task_id": "str", "capability": "str", "tool": "str", "depends_on": "list"}],
+    "execution": [
+      {
+        "task_id": "str",
+        "ok": "bool",
+        "verification": {"ok": "bool", "kind": "grounded", "check": "str", "detail": "str"},
+        "error": "str | null"
+      }
+    ],
+    "outcome": {"skipped": "list", "error": "str | null", "total_latency_s": "float"}
+  },
+  "evidence_spine": {
+    "vertebrae": ["decision", "execution", "verification"],
+    "link": "verification.parent_decision_id == execution.parent_decision_id == decision.decision_id",
+    "task_id": "== run_id",
+    "policy_version": "handle-gate-v1",
+    "policy_result_enum": ["ALLOW", "REVIEW", "DENY"]
+  },
+  "lifecycle_events": [
+    "TASK_CREATED", "INTENT_INTERPRETED", "PLAN_CREATED", "AGENT_STARTED",
+    "TOOL_REQUESTED", "POLICY_CHECKED", "TOOL_EXECUTED", "MUTATION_COMMITTED",
+    "VERIFICATION_PASSED", "VERIFICATION_FAILED", "EVIDENCE_RECORDED",
+    "TASK_COMPLETED", "TASK_FAILED"
+  ],
+  "terminal_states": ["COMPLETED", "FAILED", "DENIED"],
+  "audit_chain": {
+    "component": "agentic",
+    "events": ["trace:run_start", "trace:plan", "trace:execution", "trace:outcome"]
+  }
+}

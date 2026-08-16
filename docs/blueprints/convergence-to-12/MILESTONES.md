@@ -6,7 +6,7 @@ exists (Blueprint Rule 2). Status: 🔴 not started · 🟡 in progress · 🟢 
 | M | Name | Status | Exit evidence (links) | Decision memo |
 |---|---|---|---|---|
 | M0 | Scope Lock and Baseline | 🟡 | v3 contract ✅ [`v3-contract.md`](v3-contract.md) · surface inventory ✅ [`surface-inventory.md`](surface-inventory.md) · baseline reproducible (portability gate + CI: lint/test/hygiene/security) · freeze active (Rule 3) | — |
-| M1 | Core Loop Selection | 🔴 | Canonical workflow named + one rejected alternative · state machine · golden fixtures · run-id observability | — |
+| M1 | Core Loop Selection | 🟢 | Canonical workflow named + one rejected alternative · state machine · golden fixtures · run-id observability — [`M1-core-loop.md`](M1-core-loop.md) + [`fixtures/handle-loop/`](fixtures/handle-loop/) | [2026-08-16: complete. Chosen: governed agent handle loop (`/agent/handle`). Rejected: daily research digest (no consequential tool actions to govern). State machine mapped from `handle.py`; boundaries (input/intent/plan/gate/execute/observe/verify/record/report-recover) documented; golden fixtures committed incl. a live PASS run (`fb0b15ed6c48aedb`).] |
 | M2 | Governance in the Loop | 🔴 | Guard on live path · fail-closed denials · complete evidence · observable governance metrics · bypass regression tests | — |
 | M3 | Shipping-Surface Convergence | 🔴 | No dateless shipping stubs · no misleading claims · before/after inventory · gates green | — |
 | M4 | Factory Dogfood | 🔴 | Full factory run artifact · diverse reviewer real · seeded defect caught · no abandoned worktrees | — |
