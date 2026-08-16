@@ -6,7 +6,8 @@ logs/
 # Transient pip-compile inputs (written and removed by `make deps`).
 requirements-*.in
 .artifacts/
-.rouff_cache/
+.ruff_cache/
+.mypy_cache/
 .pytest_cache/
 
 # Per-run hygiene experiment artifacts (ephemeral); keep the gate verdict
