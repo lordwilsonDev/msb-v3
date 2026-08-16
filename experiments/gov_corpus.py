@@ -31,9 +31,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List
 
 from msb_v3.node.filesystem import CapabilityViolation, FileWriter  # noqa: E402
+from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
 from msb_v3.vesta.models import ABind  # noqa: E402
 from msb_v3.vesta.policy import authorize_chat  # noqa: E402
-from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
 
 SEED = 20260814
 
@@ -332,8 +332,6 @@ def classify(t: dict) -> str:
 
 def run_corpus(ctx: Any, n_trials: int = 800) -> tuple[list, dict]:
     """Run the frozen corpus against a surface. Returns (trials, metrics)."""
-    from collections import Counter
-
     per_class = max(1, n_trials // 8)
     rng = random.Random(SEED)
     trials = []
@@ -343,8 +341,6 @@ def run_corpus(ctx: Any, n_trials: int = 800) -> tuple[list, dict]:
             t["outcome"] = classify(t)
             trials.append(t)
 
-    outcomes = Counter(t["outcome"] for t in trials)
-    by_class = {c: dict(Counter(t["outcome"] for t in trials if t["class"] == c)) for c in TRIAL_FNS}
     violation_attempts = sum(1 for t in trials if t["expected_block"])
     false_allows = sum(1 for t in trials if t["outcome"] == "FALSE_ALLOW")
     correctly_blocked = sum(1 for t in trials if t["outcome"] == "BLOCKED_CORRECTLY")

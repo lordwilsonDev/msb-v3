@@ -19,11 +19,9 @@ from __future__ import annotations
 import csv
 import json
 import os
-import random
 import sqlite3
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,7 +29,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path.home() / ".local/lib/msb-v3"))
 
 from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
-from msb_v3.uac.chain_anchor import AnchoredAuditChain, ChainAnchor, generate_seed  # noqa: E402
+from msb_v3.uac.chain_anchor import (  # noqa: E402
+    AnchoredAuditChain,
+    ChainAnchor,
+    generate_seed,
+)
 
 RUN_ROOT = Path(__file__).resolve().parent
 DEFAULT_RUN = RUN_ROOT / "runs" / datetime.now(timezone.utc).strftime("%Y-%m-%d")

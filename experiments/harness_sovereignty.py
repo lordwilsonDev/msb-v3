@@ -71,6 +71,7 @@ _load_env()
 
 import httpx  # noqa: E402
 
+from msb_v3.harnesses.base import ChatHarness  # noqa: E402
 from msb_v3.local_ai.ollama import LocalAIClient  # noqa: E402
 from msb_v3.node.filesystem import CapabilityViolation, FileWriter  # noqa: E402
 from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
@@ -78,7 +79,6 @@ from msb_v3.uac.research_backend import (  # noqa: E402
     ResearchBackendError,
     TavilyResearchBackend,
 )
-from msb_v3.harnesses.base import ChatHarness  # noqa: E402
 
 RUN_ROOT = Path(__file__).resolve().parent
 DEFAULT_RUN = RUN_ROOT / "runs" / datetime.now(timezone.utc).strftime("%Y-%m-%d")

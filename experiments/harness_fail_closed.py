@@ -28,8 +28,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path.home() / ".local/lib/msb-v3"))
 
-from msb_v3.node.filesystem import CapabilityViolation, FileWriter  # noqa: E402
 from msb_v3.governance.killswitch import KillSwitch  # noqa: E402
+from msb_v3.node.filesystem import CapabilityViolation, FileWriter  # noqa: E402
 from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
 
 RUN_ROOT = Path(__file__).resolve().parent

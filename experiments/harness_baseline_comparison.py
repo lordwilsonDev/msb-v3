@@ -29,7 +29,6 @@ from __future__ import annotations
 import csv
 import json
 import os
-import random
 import resource
 import statistics
 import sys

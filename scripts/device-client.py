@@ -15,8 +15,6 @@ Usage (with .env loaded):
 
 from __future__ import annotations
 
-import sys
-
 from msb_v3.device.client import main
 
 if __name__ == "__main__":
