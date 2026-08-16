@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path.home() / ".local/lib/msb-v3"))
 
-from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
+from msb_v3.uac.audit_chain import AuditChain, tamper  # noqa: E402
 from msb_v3.uac.chain_anchor import (  # noqa: E402
     AnchoredAuditChain,
     ChainAnchor,
@@ -57,12 +57,10 @@ def build_clean_chain(audit: AuditChain, n: int = 5) -> list[dict]:
 
 
 def direct_sql(db_path: Path, sql: str, params: tuple = ()) -> None:
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute(sql, params)
-        conn.commit()
-    finally:
-        conn.close()
+    # A raw UPDATE/DELETE is now refused by the append-only trigger, so the
+    # attack goes through tamper() — the way a knowledgeable attacker defeats
+    # the trigger before mutating.
+    tamper(db_path, sql, params)
 
 
 def trial(audit: AuditChain, db_path: Path, attack: str, mutate) -> dict:
@@ -102,10 +100,9 @@ def t3(db_path: Path) -> None:
     conn = sqlite3.connect(db_path)
     r2 = conn.execute("SELECT prev_hash, record_hash FROM audit_records WHERE seq=2").fetchone()
     r3 = conn.execute("SELECT prev_hash, record_hash FROM audit_records WHERE seq=3").fetchone()
-    conn.execute("UPDATE audit_records SET prev_hash=?, record_hash=? WHERE seq=2", (r3[0], r3[1]))
-    conn.execute("UPDATE audit_records SET prev_hash=?, record_hash=? WHERE seq=3", (r2[0], r2[1]))
-    conn.commit()
     conn.close()
+    tamper(db_path, "UPDATE audit_records SET prev_hash=?, record_hash=? WHERE seq=2", (r3[0], r3[1]))
+    tamper(db_path, "UPDATE audit_records SET prev_hash=?, record_hash=? WHERE seq=3", (r2[0], r2[1]))
 
 
 # ── T4: modify timestamp ────────────────────────────────────────────────────

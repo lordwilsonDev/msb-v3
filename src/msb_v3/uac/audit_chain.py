@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
+import secrets
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -79,6 +81,7 @@ def _init_db(db_path: Path) -> None:
             )
             """
         )
+        _create_triggers(conn)
 
 
 @dataclass
@@ -93,6 +96,15 @@ class AuditRecord:
 
 
 def _compute_hash(prev_hash: str, component: str, event_type: str, payload: Dict[str, Any], timestamp: str) -> str:
+    # NOTE (canonicalization, security-hardening #7): the hash is computed on
+    # the in-memory payload dict with sort_keys, and the stored payload column
+    # is re-parsed + re-serialized on verify — self-consistent for JSON-native
+    # types. Non-finite floats (NaN/Infinity) are REJECTED at append (see
+    # _reject_non_finite) because Python emits them as non-standard JSON that
+    # other tools cannot hash canonically. A full RFC 8785 (JCS) migration
+    # (ensure_ascii + no-whitespace separators) would change every existing
+    # record hash, so it is deferred to an explicit, versioned migration — it
+    # cannot be applied in place without re-anchoring the whole chain.
     canonical = json.dumps(
         {
             "prev_hash": prev_hash,
@@ -105,6 +117,93 @@ def _compute_hash(prev_hash: str, component: str, event_type: str, payload: Dict
         sort_keys=True,
     )
     return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _reject_non_finite(value: Any, path: str = "payload") -> None:
+    """Refuse non-finite floats (NaN/Infinity) in an audit payload.
+
+    Python serializes these as the non-standard tokens ``NaN``/``Infinity``
+    which most JSON parsers reject and which break cross-tool canonical
+    hashing — an audit chain that "anyone can verify" cannot carry them.
+    """
+    if isinstance(value, dict):
+        for k, v in value.items():
+            _reject_non_finite(v, f"{path}.{k}")
+    elif isinstance(value, (list, tuple)):
+        for i, v in enumerate(value):
+            _reject_non_finite(v, f"{path}[{i}]")
+    elif isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(
+            f"audit payload {path} is a non-finite float ({value!r}); "
+            "it cannot be represented in canonical JSON"
+        )
+
+
+def _create_triggers(conn: sqlite3.Connection) -> None:
+    """Append-only guards on audit_records: UPDATE/DELETE are refused at the
+    storage layer (security-hardening #4) so tampering is prevented, not just
+    detected after the fact. ``repair()`` is the only sanctioned mutator and
+    drops + restores these within its own transaction."""
+    conn.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS audit_records_no_update
+        BEFORE UPDATE ON audit_records
+        BEGIN
+            SELECT RAISE(ABORT, 'audit_records is append-only: UPDATE refused (use repair())');
+        END
+        """
+    )
+    conn.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS audit_records_no_delete
+        BEFORE DELETE ON audit_records
+        BEGIN
+            SELECT RAISE(ABORT, 'audit_records is append-only: DELETE refused');
+        END
+        """
+    )
+
+
+def _drop_triggers(conn: sqlite3.Connection) -> None:
+    conn.execute("DROP TRIGGER IF EXISTS audit_records_no_update")
+    conn.execute("DROP TRIGGER IF EXISTS audit_records_no_delete")
+
+
+def tamper(db_path: str | Path, sql: str, params: tuple = ()) -> None:
+    """Run a raw UPDATE/DELETE against an audit DB, defeating the append-only
+    triggers the way a knowledgeable attacker with write access would.
+
+    Exists ONLY for tamper-detection simulations (tests + experiments);
+    production code never calls it. The triggers make the *casual* or
+    *accidental* edit fail loudly, and this helper documents the residual:
+    a determined attacker can drop the triggers first — which is why the
+    external anchor + off-box notary are the real detection layer.
+    """
+    with sqlite3.connect(db_path) as conn:
+        _drop_triggers(conn)
+        conn.execute(sql, params)
+        _create_triggers(conn)
+
+
+def verify_trustworthy(audit: "AuditChainLike") -> Dict[str, Any]:
+    """Fail-closed verify-before-trust check (security-hardening #3).
+
+    Returns the internal chain verification, and when the chain carries an
+    external anchor (``verify_anchored``), ALSO verifies the anchor — the
+    first failing verdict wins. Callers that are about to rely on prior state
+    (e.g. a Vesta approval execution) must refuse any consequential action
+    when ``valid`` is False, instead of trusting a ledger that may have been
+    rolled back or tampered since it was last checked.
+    """
+    internal = audit.verify_chain()
+    if not internal.get("valid"):
+        return internal
+    verify_anchored = getattr(audit, "verify_anchored", None)
+    if verify_anchored is not None:
+        anchored = verify_anchored()
+        if not anchored.get("valid"):
+            return anchored
+    return internal
 
 
 class AuditChainLike(Protocol):
@@ -242,6 +341,7 @@ class AuditChain:
 
     def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord:
         self._refuse_keyless_append()
+        _reject_non_finite(payload)
         timestamp = _now_iso()
         with self._conn() as conn:
             # BEGIN IMMEDIATE acquires the write lock BEFORE the prev-hash
@@ -327,7 +427,13 @@ class AuditChain:
             "state": "quarantined",
         }
 
-    def repair(self) -> Dict[str, Any]:
+    def repair(
+        self,
+        *,
+        operator: Optional[str] = None,
+        anchor: Any = None,
+        notary_log: Optional[str | Path] = None,
+    ) -> Dict[str, Any]:
         """Cascade-rewrite the chain from the first broken record.
 
         Checkpoint recovery: re-anchor at the last verified record's hash,
@@ -336,10 +442,31 @@ class AuditChain:
         and anchor. The rewrite itself is audit-trailed, so recovery never
         happens silently. Clears the quarantine state on success.
 
+        Hardened (security-hardening #5) so a key-holding attacker cannot use
+        repair + re-anchor as a tamper laundromat:
+
+        * operator auth — when ``MSB_OPERATOR_TOKEN`` is configured, ``operator``
+          must match (constant-time) or repair refuses. Unconfigured token =
+          dev mode, recorded explicitly (never silent).
+        * notary cross-check — when ``anchor`` + ``notary_log`` are supplied,
+          the last notarized tip must still be verifiable in the live chain;
+          a whole-DB rollback/replacement is refused before any rewrite.
+        * forced re-anchor + re-notarize — after a successful repair the chain
+          is re-anchored and a fresh snapshot is notarized, so the notary is
+          never stale after recovery.
+
+        ``anchor`` is a ``ChainAnchor``-like object (``.verify_notary``,
+        ``.anchor``, ``.notarize``); it is passed in by the caller so this
+        module stays free of the chain_anchor import cycle.
+
         Returns:
             {"repaired": bool, "broken_at_seq": int|None,
-             "repaired_at_seq": int|None, "record_count": int}
+             "repaired_at_seq": int|None, "record_count": int,
+             "notarized": bool}
         """
+        if settings.operator_token and not secrets.compare_digest(operator or "", settings.operator_token):
+            raise PermissionError("operator token required to repair the audit chain")
+
         with self._conn() as conn:
             rows = conn.execute(
                 "SELECT * FROM audit_records ORDER BY seq ASC"
@@ -360,13 +487,29 @@ class AuditChain:
             self._set_meta("state", "active")
             return {"repaired": False, "reason": "chain already valid",
                     "broken_at_seq": None, "repaired_at_seq": None,
-                    "record_count": len(rows)}
+                    "record_count": len(rows), "notarized": False}
+
+        # Notary cross-check BEFORE any rewrite: the last notarized tip must
+        # still be verifiable in the live chain. A rollback/replacement that
+        # moved the chain behind the notary refuses here — never launder it.
+        notarized = False
+        if anchor is not None and notary_log:
+            notary = anchor.verify_notary(self, notary_log)
+            if not notary.get("valid"):
+                raise PermissionError(
+                    f"refusing to repair: notary log not verifiable — {notary.get('reason')}"
+                )
+
         # Rewrite the tail starting at first_broken, anchored at the last
         # verified record's hash (expected_prev at the point of break), and
         # append the auditable repair event IN THE SAME TRANSACTION — a crash
         # between rewrite and audit-log must never leave a silent repair.
+        # The append-only triggers are dropped and restored inside the same
+        # transaction so repair is the ONLY sanctioned mutator.
         repaired_at_seq: Optional[int] = None
         with self._conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            _drop_triggers(conn)
             tail = conn.execute(
                 "SELECT * FROM audit_records WHERE seq >= ? ORDER BY seq ASC",
                 (first_broken,),
@@ -384,7 +527,11 @@ class AuditChain:
                 prev = new_hash
             # Auditable repair event — recovery is never silent.
             event_ts = _now_iso()
-            event_payload = {"broken_at_seq": first_broken, "anchor": expected_prev}
+            event_payload = {
+                "broken_at_seq": first_broken,
+                "anchor": expected_prev,
+                "operator": operator or "unauthenticated-dev",
+            }
             event_hash = _compute_hash(
                 prev, "chain", "repaired", event_payload, event_ts
             )
@@ -395,11 +542,20 @@ class AuditChain:
                  event_ts, prev, event_hash),
             )
             repaired_at_seq = cur.lastrowid
+            _create_triggers(conn)
         self._set_meta("state", "active")
         self._set_meta("broken_at_seq", "")
         self._set_meta("repaired_at", _now_iso())
+
+        # Force re-anchor + re-notarize so recovery is never silently stale.
+        if anchor is not None:
+            anchor.anchor(self)
+            if notary_log:
+                anchor.notarize(self, notary_log)
+                notarized = True
         return {"repaired": True, "broken_at_seq": first_broken,
-                "repaired_at_seq": repaired_at_seq, "record_count": len(rows)}
+                "repaired_at_seq": repaired_at_seq, "record_count": len(rows),
+                "notarized": notarized}
 
     def get_chain(self, component: Optional[str] = None) -> List[AuditRecord]:
         with self._conn() as conn:

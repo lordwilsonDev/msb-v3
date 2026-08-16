@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from msb_v3.core.config import settings
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.node.filesystem import CapabilityViolation, FileWriter, FileWriteReceipt
-from msb_v3.uac.audit_chain import AuditChainLike
+from msb_v3.uac.audit_chain import AuditChainLike, verify_trustworthy
 from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore
 from msb_v3.vesta.evidence import EvidenceError, EvidenceStore
 from msb_v3.vesta.models import ABind, VestaFileWriteRequest
@@ -174,7 +174,19 @@ class VestaWriteService:
             "audit_event_ids": event_ids,
         }
 
-    def approve_and_execute(self, approval_id: str, operator: str) -> Dict[str, Any]:
+    def approve_and_execute(
+        self,
+        approval_id: str,
+        operator: str,
+        *,
+        signed_proof: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        # Verify-before-trust (security-hardening #3): the ledger must be
+        # trustworthy before we act on prior state — a rolled-back or
+        # tampered chain refuses the write, never executes on top of it.
+        trust = verify_trustworthy(self.audit)
+        if not trust.get("valid"):
+            raise ApprovalError(f"audit chain not trustworthy — verify-before-trust failed: {trust.get('reason')}")
         approval = self.approvals.approve(approval_id, operator)
         task_id = str(approval["task_id"])
         task = self.tasks.get(task_id)
@@ -187,6 +199,11 @@ class VestaWriteService:
                     "task_id": task_id,
                     "status": "APPROVED",
                     "operator": operator,
+                    # Device-binding (security-hardening #6): a signed
+                    # approval carries the device's cryptographic proof over
+                    # the exact contract, so one extracted record is
+                    # independently attributable.
+                    "signed_proof": signed_proof,
                 },
             ).seq
         ]

@@ -24,9 +24,9 @@ from msb_v3.node.protocol import (
     request_signature_payload,
     session_signature_payload,
 )
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChain, tamper
 from msb_v3.vesta.adapter import VestaMSBAdapter
-from msb_v3.vesta.approvals import VestaApprovalStore
+from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore
 from msb_v3.vesta.evidence import EvidenceStore
 from msb_v3.vesta.models import ABind
 from msb_v3.vesta.policy import authorize_chat
@@ -671,10 +671,85 @@ def test_ledger_tampering_is_detected_without_repair(tmp_path: Path) -> None:
     audit = AuditChain(str(path))
     audit.append("vesta", "test", {"value": "original"})
     audit.append("vesta", "test", {"value": "second"})
-    with sqlite3.connect(path) as conn:
-        conn.execute("UPDATE audit_records SET payload=? WHERE seq=1", ('{"value":"tampered"}',))
+    tamper(path, "UPDATE audit_records SET payload=? WHERE seq=1", ('{"value":"tampered"}',))
     result = audit.verify_chain()
     assert result["valid"] is False
     assert result["broken_at_seq"] == 1
     with sqlite3.connect(path) as conn:
         assert conn.execute("SELECT COUNT(*) FROM audit_records").fetchone()[0] == 2
+
+
+def test_write_execution_refuses_untrustworthy_chain(
+    vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
+    tmp_path: Path,
+) -> None:
+    """Verify-before-trust (#3): a tampered audit chain refuses the write
+    BEFORE anything lands — never executes on top of a ledger we can't trust."""
+    client, _, _ = vesta_client
+    headers = {"Authorization": "Bearer operator-secret"}
+    pending = client.post(
+        "/vesta/execute",
+        headers=headers,
+        json={"path": "trust.txt", "content": "SHOULD_NOT_LAND"},
+    )
+    approval = pending.json()
+
+    tamper(
+        str(services.audit.db_path),
+        "UPDATE audit_records SET payload=? WHERE seq=1",
+        ('{"t":1}',),
+    )
+    with pytest.raises(ApprovalError, match="not trustworthy"):
+        services.write_service.approve_and_execute(approval["approval_id"], "operator")
+
+    assert not (tmp_path / "sandbox" / "trust.txt").exists()
+
+
+def test_signed_approve_binds_device_signature_into_audit_record(
+    vesta_client: tuple[TestClient, FakeChat, AuditChain],
+    services: VestaServices,
+) -> None:
+    """Device-binding (#6): a signed approval's audit record carries the
+    device's cryptographic proof over the exact contract, so one extracted
+    record is independently attributable."""
+    client, _, audit = vesta_client
+    headers = {"Authorization": "Bearer operator-secret"}
+    pending = client.post(
+        "/vesta/execute",
+        headers=headers,
+        json={"path": "signed-proof.txt", "content": "PROOF_OK"},
+    )
+    approval = pending.json()
+
+    private, public = generate_keypair()
+    session_id = signed_device_session(services.signed_identity, "iphone-proof-owner", private, public)
+
+    def signed_ack(request_id: str, nonce: str) -> dict[str, Any]:
+        intent = {
+            "type": "file_write_approval",
+            "objective": "Approve the exact file-write contract",
+            "target": {
+                "approval_id": approval["approval_id"],
+                "target_path": "signed-proof.txt",
+                "payload_sha256": approval["payload_sha256"],
+                "expected_sha256": "",
+                "policy_version": approval["policy_version"],
+            },
+            "requested_capabilities": ["human.request_ack"],
+        }
+        timestamp = datetime.now(timezone.utc).isoformat()
+        payload = request_signature_payload(request_id, session_id, timestamp, nonce, intent)
+        return {**payload, "signature": b64encode(sign(private, canonical_json(payload)))}
+
+    accepted = client.post(
+        f"/vesta/approvals/{approval['approval_id']}/signed-approve",
+        json=signed_ack("proof-rid", "proof-nonce-123456"),
+    )
+    assert accepted.status_code == 200
+
+    decided = [r for r in audit.get_chain(component="vesta") if r.event_type == "approval.decided"][0]
+    proof = decided.payload["signed_proof"]
+    assert proof["device_id"] == "iphone-proof-owner"
+    assert proof["signature"]
+    assert proof["signed_payload_sha256"]

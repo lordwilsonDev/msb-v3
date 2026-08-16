@@ -25,13 +25,12 @@ from __future__ import annotations
 
 import hashlib
 import random
-import sqlite3
 import tempfile
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
 from msb_v3.node.filesystem import CapabilityViolation, FileWriter  # noqa: E402
-from msb_v3.uac.audit_chain import AuditChain  # noqa: E402
+from msb_v3.uac.audit_chain import AuditChain, tamper  # noqa: E402
 from msb_v3.vesta.models import ABind  # noqa: E402
 from msb_v3.vesta.policy import authorize_chat  # noqa: E402
 
@@ -56,17 +55,15 @@ class GovernedChain:
         return self.chain.get_chain(**k)
 
     def tamper(self, mode: str) -> None:
-        conn = sqlite3.connect(self.db_path)
+        # Defeat the append-only trigger the way a knowledgeable attacker would.
         if mode == "content":
-            conn.execute("UPDATE audit_records SET record_hash='bad' WHERE seq=1")
+            tamper(self.db_path, "UPDATE audit_records SET record_hash='bad' WHERE seq=1")
         elif mode == "delete":
-            conn.execute("DELETE FROM audit_records WHERE seq=2")
+            tamper(self.db_path, "DELETE FROM audit_records WHERE seq=2")
         elif mode == "reorder_tail":
-            conn.execute("UPDATE audit_records SET prev_hash='x' WHERE seq=2")
+            tamper(self.db_path, "UPDATE audit_records SET prev_hash='x' WHERE seq=2")
         elif mode == "timestamp":
-            conn.execute("UPDATE audit_records SET timestamp='2099-01-01T00:00:00+00:00' WHERE seq=1")
-        conn.commit()
-        conn.close()
+            tamper(self.db_path, "UPDATE audit_records SET timestamp='2099-01-01T00:00:00+00:00' WHERE seq=1")
 
 
 class GovernedSurface:
