@@ -1,4 +1,4 @@
-.PHONY: test lint portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test lint deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -19,6 +19,12 @@ test:
 lint:
 	$(PY) -m ruff check src/ tests/
 	$(PY) -m mypy src --ignore-missing-imports
+	$(PY) scripts/gen-requirements.py --check
+
+# Regenerate requirements-{runtime,dev}.lock from pyproject.toml (the single
+# source of truth). `make lint` and CI run --check so a stale lock can't ship.
+deps:
+	$(PY) scripts/gen-requirements.py
 
 # Portability gate: stage the repo to a temp dir (MSB_HOME pointed at the
 # copy), verify no /Users/... machine literals remain in live code, and run
