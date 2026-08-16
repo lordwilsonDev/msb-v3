@@ -12,46 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  preflight:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.flag.outputs.changed }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Detect changed files
-        id: changes
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            src:
-              - 'src/**'
-              - 'tests/**'
-              - 'pyproject.toml'
-              - 'requirements*.txt'
-
-      # paths-filter@v3's ONLY output is `changes` (a JSON array of matched
-      # filter names) — the v2 per-filter/any_changed boolean outputs are
-      # gone, and referencing them yields an empty string that silently
-      # skipped every gated job on every push. Resolve to an explicit
-      # "true"/"false" string so downstream `== 'true'` is unambiguous.
-      - name: Resolve changed flag
-        id: flag
-        env:
-          # Passed via env (not shell interpolation) so the JSON array
-          # value (e.g. ["src"]) can't break shell quoting.
-          CHANGES: ${{ steps.changes.outputs.changes }}
-        run: |
-          if [ "$CHANGES" != "[]" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
   test:
-    needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    # Always run: a red test suite must never be hidden behind a
+    # paths-filter (a commit touching only scripts/experiments would
+    # otherwise show green while the suite never ran).
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -226,8 +190,7 @@ jobs:
           retention-days: 7
 
   docker:
-    needs: preflight
-    if: needs.preflight.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    # Always run — same no-masking rule as test/lint/security.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

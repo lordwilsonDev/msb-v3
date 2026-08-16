@@ -123,6 +123,9 @@ jobs:
       # then runs its warn-only drift guard against a real .env instead of
       # skipping.
       - name: Env drift guard (template-generated .env, strict)
+        # Independent of the live Qdrant/server stages — run even if they
+        # fail so this leg's result is never masked.
+        if: always()
         run: |
           cp .env.example .env
           bash scripts/check-env-drift.sh --fail --template-secrets-block
@@ -137,6 +140,9 @@ jobs:
       # tests, exactly as in the local routine. Also re-runs the drift guard
       # (warn-only) against the .env generated above.
       - name: Portability gate (full suite from a foreign checkout path)
+        # Pure pytest from a foreign checkout (live tests are opt-in) —
+        # independent of the live Qdrant/server stages, so never mask it.
+        if: always()
         run: make portability
         env:
           MSB_REPO: ${{ github.workspace }}

@@ -78,6 +78,9 @@ jobs:
       # msb_v3 test surface blind spot cost 5 real errors
       # (now fixed).
       - name: Typed enforcement (mypy)
+        # Run regardless of the regression suite's result — no leg may be
+        # masked by an earlier failure.
+        if: always()
         run: mypy src --ignore-missing-imports
 
       # Uses the pinned selection in pyproject.toml ([tool.ruff.lint] =
@@ -85,9 +88,11 @@ jobs:
       # default-selection run again (138 E402s slipped through E9/F/I-only
       # in 2026-08).
       - name: Lint gate (ruff, pyproject selection)
+        if: always()
         run: ruff check .
 
       - name: Hygiene suite (offline experiments)
+        if: always()
         env:
           MSB_REPO: ${{ github.workspace }}
           MSB_PYTHON: python
@@ -122,6 +127,7 @@ jobs:
           python scripts/hygiene/hygiene_runner.py --all
 
       - name: Live auth probe (x-mcp-secret contract)
+        if: always()
         env:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
@@ -157,6 +163,7 @@ jobs:
           [ "$missing" = "401" ] && [ "$wrong" = "401" ] && [ "$correct" = "200" ]
 
       - name: Conversation E2E probe (stub, zero-spend)
+        if: always()
         # The conversation contract is the E2E probe: ask -> retrieve -> input
         # guardrail -> compose -> output guardrail -> answer -> log, every hop
         # emitting evidence into a scratch ledger. Stub model + deterministic
