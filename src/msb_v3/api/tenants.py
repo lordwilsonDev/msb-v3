@@ -8,7 +8,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from msb_v3.api.auth import require_operator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,7 +28,7 @@ def _tenant_path(tenant_id: str) -> Path:
     return path
 
 
-@router.get("/tenants")
+@router.get("")
 async def list_tenants() -> dict[str, Any]:
     """List all registered tenants."""
     tenants = []
@@ -40,7 +42,7 @@ async def list_tenants() -> dict[str, Any]:
     return {"ok": True, "tenants": tenants, "count": len(tenants)}
 
 
-@router.post("/tenants/register")
+@router.post("/register", dependencies=[Depends(require_operator)])
 async def register_tenant(payload: dict[str, Any]) -> dict[str, Any]:
     """Register a new tenant."""
     tenant_id = payload.get("id")
@@ -64,7 +66,7 @@ async def register_tenant(payload: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True, "tenant_id": tenant_id}
 
 
-@router.get("/tenants/{tenant_id}")
+@router.get("/{tenant_id}")
 async def get_tenant(tenant_id: str) -> dict[str, Any]:
     """Get tenant config."""
     path = _tenant_path(tenant_id)
@@ -74,7 +76,7 @@ async def get_tenant(tenant_id: str) -> dict[str, Any]:
     return {"ok": True, "tenant": data}
 
 
-@router.patch("/tenants/{tenant_id}")
+@router.patch("/{tenant_id}", dependencies=[Depends(require_operator)])
 async def update_tenant(tenant_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Update tenant config."""
     path = _tenant_path(tenant_id)
@@ -86,7 +88,7 @@ async def update_tenant(tenant_id: str, payload: dict[str, Any]) -> dict[str, An
     return {"ok": True, "tenant": data}
 
 
-@router.delete("/tenants/{tenant_id}")
+@router.delete("/{tenant_id}", dependencies=[Depends(require_operator)])
 async def delete_tenant(tenant_id: str) -> dict[str, Any]:
     """Delete tenant."""
     path = _tenant_path(tenant_id)

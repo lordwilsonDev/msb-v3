@@ -12,9 +12,12 @@ from starlette.middleware.gzip import GZipMiddleware
 from msb_v3 import __version__
 from msb_v3.api.agent import router as agent_router
 from msb_v3.api.chat import router as chat_router
+from msb_v3.api.codegraph import router as codegraph_router
+from msb_v3.api.context import router as context_router
 from msb_v3.api.conversation import router as conversation_router
 from msb_v3.api.dashboard import router as dashboard_router
 from msb_v3.api.evolution import router as evolution_router
+from msb_v3.api.factory import router as factory_router
 from msb_v3.api.flywheel import router as flywheel_router
 from msb_v3.api.governance import router as governance_router
 from msb_v3.api.graph import router as graph_router
@@ -23,8 +26,10 @@ from msb_v3.api.home import router as home_router
 from msb_v3.api.knowledge import router as knowledge_router
 from msb_v3.api.mcp_bridge import router as mcp_router
 from msb_v3.api.memory import router as memory_router
+from msb_v3.api.memory_fabric import router as memory_fabric_router
 from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.models import router as models_router
+from msb_v3.api.moie import router as moie_router
 from msb_v3.api.notify import router as notify_router
 from msb_v3.api.openai_compat import router as openai_compat_router
 from msb_v3.api.rag import router as rag_router
@@ -120,6 +125,11 @@ def create_app() -> FastAPI:
     app.include_router(tenants_router, prefix="/tenants", tags=["tenants"])
     app.include_router(rag_router, prefix="/rag", tags=["rag"])
     app.include_router(graph_router, prefix="/graph", tags=["knowledge-graph"])
+    app.include_router(codegraph_router, prefix="/codegraph", tags=["code-graph"])
+    app.include_router(context_router, prefix="/context", tags=["context-engine"])
+    app.include_router(moie_router, prefix="/moie", tags=["moie"])
+    app.include_router(factory_router, prefix="/factory", tags=["factory"])
+    app.include_router(memory_fabric_router, prefix="/memory-fabric", tags=["memory-fabric"])
     app.include_router(smi_router, prefix="/smi", tags=["smi"])
     app.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
     app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])

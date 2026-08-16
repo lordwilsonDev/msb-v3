@@ -7,8 +7,8 @@ import pytest
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.node.filesystem import FileWriter
 from msb_v3.uac.audit_chain import AuditChain
-from msb_v3.vesta.approvals import VestaApprovalStore
 from msb_v3.vesta.approval_watchdog import ApprovalWatchdog
+from msb_v3.vesta.approvals import VestaApprovalStore
 from msb_v3.vesta.evidence import EvidenceStore
 from msb_v3.vesta.models import VestaFileWriteRequest
 from msb_v3.vesta.runtime import VestaTaskStore

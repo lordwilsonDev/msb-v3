@@ -46,6 +46,7 @@ if dotenv.exists():
             k, v = line.split('=', 1)
             env[k.strip()] = v.strip()
 SECRET = os.environ.get('MCP_BRIDGE_SECRET', env.get('MCP_BRIDGE_SECRET', ''))
+OPERATOR_TOKEN = os.environ.get('MSB_OPERATOR_TOKEN', env.get('MSB_OPERATOR_TOKEN', ''))
 BASE_URL = env.get('MSB_BASE_URL', os.environ.get('MSB_BASE_URL', 'http://127.0.0.1:8766'))
 TRUTH_DIR = REPO / env.get('MSB_TRUTH_DIR', 'data/truth')
 
@@ -96,6 +97,7 @@ def http_post(payload: dict[str, Any], path: str) -> tuple[int, str, int]:
     data = json.dumps(payload).encode('utf-8')
     req = Request(url, data=data, headers={
         'x-mcp-secret': SECRET,
+        'authorization': f'Bearer {OPERATOR_TOKEN}',
         'content-type': 'application/json',
         'accept': 'application/json',
     })
@@ -219,7 +221,11 @@ def main() -> int:
         server_responsive = healthy_after
         no_torn = len(torn_writes) == 0
         no_checksum_violation = len(checksum_violations) == 0
-        passed = server_responsive and no_torn and no_checksum_violation
+        writes_landed = (
+            200 in {c for c, _ in same_id_results}
+            and all(c == 200 for c, _ in distinct_results)
+        )
+        passed = server_responsive and writes_landed and no_torn and no_checksum_violation
 
         record['actual_behavior'] = (
             f'same_id_statuses={sorted({c for c, _ in same_id_results})}; '
@@ -234,6 +240,11 @@ def main() -> int:
         record['verdict'] = 'pass' if passed else 'fail'
         if not server_responsive:
             record['errors'].append('server became unresponsive during concurrent writes')
+        if not writes_landed:
+            record['errors'].append(
+                f'registrations did not land (same_id={sorted({c for c, _ in same_id_results})}, '
+                f'distinct={sorted({c for c, _ in distinct_results})}) — auth or registry broken'
+            )
         if not no_torn:
             record['errors'].append(f'torn writes detected: {torn_writes}')
         if not no_checksum_violation:
