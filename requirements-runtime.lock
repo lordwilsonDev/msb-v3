@@ -1,0 +1,12 @@
+# Runtime-only dependencies for the Docker image (and any minimal production
+# install). Derived from pyproject.toml [project].dependencies — deliberately
+# excludes pytest and its transitive deps (pluggy, iniconfig, packaging) so
+# the runtime image carries no test framework. pip resolves the transitive
+# deps of these top-level pins at install time.
+fastapi==0.141.1
+uvicorn[standard]==0.34.1
+pydantic==2.10.6
+httpx==0.28.1
+prometheus-client==0.21.1
+qdrant-client==1.18.0
+cryptography==50.0.0
