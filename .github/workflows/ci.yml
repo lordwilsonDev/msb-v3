@@ -123,15 +123,12 @@ jobs:
       - name: Check requirement locks
         run: python scripts/gen-requirements.py --check
 
-      - name: Upload lint reports
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: lint-reports
-          path: |
-            .ruff_cache/
-            .mypy_cache/
-          retention-days: 3
+      # NOTE: there is deliberately no artifact upload here. The old
+      # "Upload lint reports" step uploaded .ruff_cache/.mypy_cache under the
+      # name lint-reports, but nothing ever consumed the artifact, and
+      # upload-artifact's include-hidden-files=false default excludes
+      # dot-directories anyway — it was a dead step that only emitted the
+      # "No files were found" warning.
 
   security:
     # Always run: the blocking CVE gate is cheap, and a vulnerable dependency
