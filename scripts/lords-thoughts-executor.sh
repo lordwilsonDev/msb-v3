@@ -164,8 +164,9 @@ for plan in "$PLANS_DIR"/*.md; do
   echo "- started: $TIMESTAMP" >> "$LOG_FILE"
   echo "" >> "$LOG_FILE"
 
-  # Update plan status
-  sed -i '' 's/^status:.*/status: in_progress/' "$plan"
+  # Update plan status (portable in-place edit: `sed -i ''` is BSD-only and
+  # breaks on GNU sed/Linux — sed to a temp file, then mv over).
+  sed 's/^status:.*/status: in_progress/' "$plan" > "$plan.tmp" && mv "$plan.tmp" "$plan"
 
   # Execute steps
   step_num=0
@@ -182,12 +183,12 @@ for plan in "$PLANS_DIR"/*.md; do
   done < "$plan"
 
   if [ $failed_steps -eq 0 ]; then
-    sed -i '' 's/^status:.*/status: completed/' "$plan"
+    sed 's/^status:.*/status: completed/' "$plan" > "$plan.tmp" && mv "$plan.tmp" "$plan"
     echo "- finished: $TIMESTAMP" >> "$LOG_FILE"
     echo "- result: success" >> "$LOG_FILE"
     mv "$plan" "$ARCHIVE_DIR/"
   else
-    sed -i '' 's/^status:.*/status: failed/' "$plan"
+    sed 's/^status:.*/status: failed/' "$plan" > "$plan.tmp" && mv "$plan.tmp" "$plan"
     echo "- finished: $TIMESTAMP" >> "$LOG_FILE"
     echo "- result: failed ($failed_steps step(s) failed)" >> "$LOG_FILE"
     mv "$plan" "$ARCHIVE_DIR/"
