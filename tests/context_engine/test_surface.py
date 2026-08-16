@@ -22,6 +22,7 @@ def api_client(monkeypatch):
 
 @pytest.fixture()
 def bridge_client(monkeypatch):
+    monkeypatch.setenv("MCP_BRIDGE_SECRET", SECRET)
     monkeypatch.setattr(mcp_bridge, "_MCP_BRIDGE_SECRET", SECRET, raising=False)
     return TestClient(create_app())
 

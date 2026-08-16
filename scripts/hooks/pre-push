@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# pre-push — run the portability gate before any push lands.
+# pre-push — run the lint + portability gates before any push lands.
 #
 # Git invokes this hook for every `git push` (including pushes to scratch
-# remotes). It runs the same gate as `make portability`: stage the repo to a
-# temp copy, scan for /Users/... machine literals in live code, and run the
-# full pytest suite from the foreign path. A failing gate blocks the push.
+# remotes). It runs two gates in order:
+#   1. lint  (`make lint`: ruff + mypy) — cheap; blocks type/import regressions
+#   2. portability (`make portability`): stage the repo to a temp copy, scan
+#      for /Users/... machine literals in live code, and run the full pytest
+#      suite from the foreign path.
+# A failing gate blocks the push.
 #
 #   MSB_SKIP_PORTABILITY=1 git push ...    # explicit escape hatch
 #
@@ -26,6 +29,27 @@ if [ "${MSB_SKIP_PORTABILITY:-0}" = "1" ]; then
 fi
 
 cd "$REPO"
+
+# Fast lint + type gate first (the exact gates CI's lint job runs): cheap,
+# and catches the unused-import / type-error regressions a green test suite
+# cannot see. A red lint job must never be pushed — it would turn CI red.
+echo "[pre-push] lint gate (ruff + mypy)..."
+code=0
+if [ -f Makefile ] && make -n lint >/dev/null 2>&1; then
+  make lint || code=$?
+else
+  python3 -m ruff check src/ tests/ || code=$?
+  if [ "$code" -eq 0 ]; then
+    python3 -m mypy src --ignore-missing-imports || code=$?
+  fi
+fi
+if [ "$code" -ne 0 ]; then
+  echo "[pre-push] LINT GATE FAILED — push blocked"
+  echo "[pre-push]   fix the lint/type errors above, then re-push."
+  echo "[pre-push]   to push anyway: MSB_SKIP_PORTABILITY=1 git push"
+  exit "$code"
+fi
+echo "[pre-push] lint gate PASS"
 
 echo "[pre-push] running portability gate before push..."
 echo "[pre-push]   (bypass with: MSB_SKIP_PORTABILITY=1 git push)"

@@ -1,4 +1,4 @@
-.PHONY: test portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test lint portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -13,6 +13,12 @@ export MSB_PORT ?= 8766
 
 test:
 	$(PY) -m pytest -q tests/
+
+# Lint + typecheck — the exact gates CI's lint job runs. Cheap; the pre-push
+# hook calls this so a red lint job can never land.
+lint:
+	$(PY) -m ruff check src/ tests/
+	$(PY) -m mypy src --ignore-missing-imports
 
 # Portability gate: stage the repo to a temp dir (MSB_HOME pointed at the
 # copy), verify no /Users/... machine literals remain in live code, and run
