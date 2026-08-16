@@ -17,6 +17,7 @@ from msb_v3.observability.metrics import (
     TRIUMVIRATE_PLAN,
     TRIUMVIRATE_SCAN,
 )
+from msb_v3.retrieval.vector_store import VectorDocument, get_vector_store
 from msb_v3.triumvirate.guardian_scanner import (
     GuardianScanner,
     PoisonPill,
@@ -24,9 +25,7 @@ from msb_v3.triumvirate.guardian_scanner import (
 )
 from msb_v3.triumvirate.hardware_sovereignty import (
     ClusterAwareDiscovery,
-    DocumentChunk,
     PeerNode,
-    VectorHippocampus,
 )
 from msb_v3.triumvirate.meta_cognitive_planner import MetaCognitivePlanner, PlanRequest
 from msb_v3.triumvirate.mission_anchor import MissionAnchor
@@ -67,7 +66,10 @@ sbom = SBOMRegistry()
 poison_pill = PoisonPill()
 argus = ArgusAuditor()
 cluster_discovery = ClusterAwareDiscovery()
-hippocampus = VectorHippocampus()
+# Hippocampus is the always-available sovereign memory: SQLite-backed through
+# the unified VectorStore interface (Phase 1.2) so it never blocks on a remote
+# Qdrant. Switching backends is a one-line backend= change, not a code change.
+hippocampus = get_vector_store(backend="sqlite")
 
 
 class PlanRequestModel(BaseModel):
@@ -248,27 +250,51 @@ async def cluster_list_peers() -> Dict[str, Any]:
     return {"peers": cluster_discovery.peers()}
 
 
+def _hippocampus_chunk_id(hit_id: str, doc_id: str) -> str:
+    """Recover chunk_id from a hippocampus VectorDocument id.
+
+    Upsert composes ``id = f"{doc_id}::{chunk_id}"`` and stores ``doc_id`` in
+    ``source``, so dropping the ``source + "::"`` prefix yields chunk_id
+    unambiguously (even if doc_id itself contains ``::``).
+    """
+    prefix = f"{doc_id}::"
+    return hit_id[len(prefix) :] if hit_id.startswith(prefix) else hit_id
+
+
 @router.post("/hippocampus/upsert")
 async def hippocampus_upsert(body: Dict[str, Any]) -> Dict[str, Any]:
-    chunk = DocumentChunk(
-        doc_id=body.get("doc_id") or "",
-        chunk_id=body.get("chunk_id") or "",
+    doc_id = body.get("doc_id") or ""
+    chunk_id = body.get("chunk_id") or ""
+    document = VectorDocument(
+        id=f"{doc_id}::{chunk_id}",
         text=body.get("text") or "",
-        embedding=body.get("embedding") or [],
+        source=doc_id,
         metadata=body.get("metadata") or {},
+        embedding=body.get("embedding") or [],
     )
-    hippocampus.upsert(chunk)
+    await hippocampus.index([document])
     TRIUMVIRATE_HIPPOCAMPUS.labels(op="upsert").inc()
-    return {"ok": True, "doc_id": chunk.doc_id, "chunk_id": chunk.chunk_id}
+    return {"ok": True, "doc_id": doc_id, "chunk_id": chunk_id}
 
 
 @router.post("/hippocampus/search")
 async def hippocampus_search(body: Dict[str, Any]) -> Dict[str, Any]:
     embedding = body.get("embedding") or []
     limit = int(body.get("limit") or 5)
-    results = hippocampus.search(embedding, limit=limit)
+    hits = await hippocampus.search(query="", query_embedding=embedding, limit=limit)
     TRIUMVIRATE_HIPPOCAMPUS.labels(op="search").inc()
-    return {"results": results}
+    return {
+        "results": [
+            {
+                "doc_id": hit.source,
+                "chunk_id": _hippocampus_chunk_id(hit.id, hit.source),
+                "text": hit.text,
+                "score": hit.score,
+                "metadata": hit.metadata,
+            }
+            for hit in hits
+        ]
+    }
 
 
 @router.post("/multimodal/vision/capture")
