@@ -9,6 +9,8 @@ description = "Sovereign local-first AI runtime — sovereign core"
 requires-python = ">=3.11"
 
 dependencies = [
+  # No-op comment (2026-08-16): re-fire the dependency-graph submission to
+  # confirm the .in-removal fix. Touches the manifest without changing any pin.
   "fastapi==0.141.1",
   "uvicorn[standard]==0.34.1",
   "pydantic==2.10.6",
