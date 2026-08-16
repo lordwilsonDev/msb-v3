@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -12,6 +13,7 @@ from msb_v3.core.config import settings
 from msb_v3.core.container import ApplicationContainer, get_container_dep
 from msb_v3.node.identity import NodeAuthError, ReplayError
 from msb_v3.node.models import EngageRequest
+from msb_v3.node.protocol import canonical_json, request_signature_payload
 from msb_v3.observability.metrics import Metrics
 from msb_v3.vesta.approvals import ApprovalError
 from msb_v3.vesta.evidence import EvidenceError
@@ -34,6 +36,20 @@ from msb_v3.vesta.transport import TransportAdmission, require_vesta_transport
 # reachable only from the allowed private peer CIDRs. Loopback is in the
 # default allowed set, so local operations keep working.
 router = APIRouter(tags=["vesta"], dependencies=[Depends(require_vesta_transport)])
+
+
+def _signed_proof(device_id: str, body: EngageRequest) -> dict[str, Any]:
+    """The device's cryptographic proof over the exact signed contract, bound
+    into the audit record (security-hardening #6) so one extracted record is
+    independently attributable without trusting the whole chain."""
+    signed_payload = request_signature_payload(
+        body.request_id, body.session_id, body.timestamp, body.nonce, body.intent
+    )
+    return {
+        "device_id": device_id,
+        "signature": body.signature,
+        "signed_payload_sha256": hashlib.sha256(canonical_json(signed_payload)).hexdigest(),
+    }
 
 
 def _manifest() -> dict[str, Any]:
@@ -310,7 +326,9 @@ def shell_signed_approve(
     if target["policy_version"] != approval["policy_version"]:
         raise HTTPException(status_code=409, detail="signed approval policy version does not match")
     try:
-        return v.shell_service.approve_and_execute(approval_id, device_id)
+        return v.shell_service.approve_and_execute(
+            approval_id, device_id, signed_proof=_signed_proof(device_id, body)
+        )
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -415,7 +433,9 @@ def signed_write_approve(
     ):
         raise HTTPException(status_code=409, detail="signed write approval does not match the durable contract")
     try:
-        return v.write_service.approve_and_execute(approval_id, device_id)
+        return v.write_service.approve_and_execute(
+            approval_id, device_id, signed_proof=_signed_proof(device_id, body)
+        )
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

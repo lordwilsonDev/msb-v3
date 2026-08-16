@@ -43,7 +43,7 @@ from typing import Any, Callable, Dict, List, Optional
 from msb_v3.core import runtime_config as config_module
 from msb_v3.core.event_bus import EventBus
 from msb_v3.core.runtime_config import get, load_config
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChain, tamper
 
 
 def run_with_deadlock_guard(fn: Callable[[], Any], timeout: float = 10.0) -> Any:
@@ -167,12 +167,13 @@ def test_audit_verify_is_idempotent_and_non_mutating(tmp_path):
 
 def _tamper_seq(chain: AuditChain, seq: int) -> None:
     """Edit the stored payload directly in SQLite, bypassing append() — the
-    shape of someone editing the DB file by hand."""
-    with sqlite3.connect(chain.db_path) as conn:
-        conn.execute(
-            "UPDATE audit_records SET payload=? WHERE seq=?",
-            (json.dumps({"n": "TAMPERED"}), seq),
-        )
+    shape of someone editing the DB file by hand (defeating the append-only
+    trigger the way a knowledgeable attacker would)."""
+    tamper(
+        chain.db_path,
+        "UPDATE audit_records SET payload=? WHERE seq=?",
+        (json.dumps({"n": "TAMPERED"}), seq),
+    )
 
 
 def test_audit_tamper_middle_of_large_chain_detected_and_repairable(tmp_path):

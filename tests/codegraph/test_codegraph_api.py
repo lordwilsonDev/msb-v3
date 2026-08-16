@@ -25,10 +25,13 @@ def client(tmp_path, monkeypatch):
     return TestClient(create_app(), headers={"Authorization": "Bearer test-operator-token"})
 
 
-def test_index_requires_operator():
+def test_index_requires_operator(monkeypatch):
     from msb_v3.core.config import settings as s
 
-    s.operator_token = "test-operator-token"
+    # monkeypatch, not direct assignment: a bare `s.operator_token = ...` leaks
+    # into every later test (settings is a module singleton), which silently
+    # turns on the production repair() auth gate for unrelated tests.
+    monkeypatch.setattr(s, "operator_token", "test-operator-token")
     no_auth = TestClient(create_app())
     assert no_auth.post("/codegraph/index", json={"path": REPO}).status_code == 401
 

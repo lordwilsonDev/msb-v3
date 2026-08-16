@@ -25,12 +25,11 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
-import sqlite3
 import tempfile
 from pathlib import Path
 from typing import Any
 
-from msb_v3.uac.audit_chain import AuditChain
+from msb_v3.uac.audit_chain import AuditChain, tamper
 
 EVIDENCE_DIR = Path(os.environ.get('MSB_REPO', Path(__file__).resolve().parents[2])) / 'artifacts' / 'hygiene'
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
@@ -90,12 +89,13 @@ def main() -> int:
         after5 = chain.verify_chain()
         record['sequence'].append({'step': 'after_5_appends', 'records': after5.get('record_count', 0), 'valid': after5.get('valid', True)})
 
-        # Tamper with seq=3: rewrite its payload WITHOUT recomputing its hash.
-        with sqlite3.connect(db_path) as conn:
-            conn.execute(
-                "UPDATE audit_records SET payload=? WHERE seq=3",
-                (json.dumps({'n': 'TAMPERED'}, ensure_ascii=False),),
-            )
+        # Tamper with seq=3: rewrite its payload WITHOUT recomputing its hash
+        # (defeating the append-only trigger the way an attacker would).
+        tamper(
+            db_path,
+            "UPDATE audit_records SET payload=? WHERE seq=3",
+            (json.dumps({'n': 'TAMPERED'}, ensure_ascii=False),),
+        )
         after_tamper = chain.verify_chain()
         tamper_detected = after_tamper.get('valid') is False and after_tamper.get('broken_at_seq') == 3
         record['sequence'].append({
