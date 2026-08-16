@@ -51,5 +51,23 @@ async def factory_run(body: Dict) -> Dict:
     if not isinstance(labels, list):
         labels = []
     issue = Issue(title=title, body=str(body.get("body") or ""), repo=repo, labels=[str(x) for x in labels])
-    run = await SoftwareFactory(builder=builder).process_issue(issue, repo=repo)
+
+    # Optional diverse reviewer panel: reviewer_models (list of distinct model
+    # ids). The builder!=reviewer invariant is enforced at build time (422 on
+    # violation), so a worker can never review its own change.
+    reviewer_panel = None
+    reviewer_models = body.get("reviewer_models")
+    if reviewer_models:
+        if not isinstance(reviewer_models, list):
+            raise HTTPException(status_code=422, detail="reviewer_models must be a list of model ids")
+        from msb_v3.moie import build_diverse_reviewer_panel
+
+        try:
+            reviewer_panel = build_diverse_reviewer_panel(
+                builder_model=builder.model, models=[str(m) for m in reviewer_models]
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    run = await SoftwareFactory(builder=builder, reviewer_panel=reviewer_panel).process_issue(issue, repo=repo)
     return {"ok": True, "run": run.as_dict()}

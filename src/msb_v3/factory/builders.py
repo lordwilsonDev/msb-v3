@@ -89,6 +89,7 @@ class Builder(ABC):
     diff/changed-files evidence is independently computed by the factory."""
 
     builder_id: str = "builder"
+    model: str = ""  # worker identity for the builder != reviewer invariant
 
     @abstractmethod
     async def build(self, plan: Plan, worktree: str, *, repo_hint: str = "") -> BuildResult:
@@ -103,6 +104,7 @@ class PatchBuilder(Builder):
     """
 
     builder_id = "patch"
+    model = "patch"  # deterministic — not an LLM
 
     def __init__(self, script: str, *, timeout_s: float = 60.0) -> None:
         self._script = script
@@ -151,6 +153,9 @@ class CliAgentBuilder(Builder):
             provider = CliAgentProvider(("claude", "-p"), timeout_s=timeout_s)
         self._provider = provider
         self._timeout_s = timeout_s
+        # Builder model = the worker's identity ("cli.claude" -> "claude"),
+        # used by the reviewer-panel invariant so a worker never reviews itself.
+        self.model = self._provider.spec.provider_id.split(".")[-1]
 
     async def build(self, plan: Plan, worktree: str, *, repo_hint: str = "") -> BuildResult:
         if not self._provider.available():
