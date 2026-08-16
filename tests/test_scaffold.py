@@ -33,7 +33,19 @@ def test_local_ai_client_construction():
 def test_chat_harness_returns_result():
     from msb_v3.harnesses.base import ChatHarness, HarnessResult
 
-    h = ChatHarness()
+    # Hermetic: a live Ollama (or any backend) is not guaranteed in CI, so
+    # inject a client that answers successfully — this test asserts the
+    # harness SUCCESS path, not a reachable model.
+    class FakeClient:
+        def execute_tool_loop(self, query, *, system=None, tools=None):
+            class Resp:
+                text = "ok"
+                model = "fake"
+                latency_s = 0.01
+
+            return Resp()
+
+    h = ChatHarness(client=FakeClient())
     result = h.execute("ping")
     assert isinstance(result, HarnessResult)
     assert result.event == "chat:completed"

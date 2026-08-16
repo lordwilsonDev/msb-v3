@@ -67,8 +67,13 @@ def test_system_config():
     assert "ollama_model" in body
 
 
-def test_memory_api():
+def test_memory_api(monkeypatch):
     from msb_v3.api.app import create_app
+
+    # check_auth enforces when MCP_BRIDGE_SECRET is set (CI seeds it); the
+    # native /memory surface is exercised here without auth, so stay in dev
+    # mode regardless of the ambient env.
+    monkeypatch.delenv("MCP_BRIDGE_SECRET", raising=False)
 
     app = create_app()
     client = TestClient(app)
@@ -110,6 +115,9 @@ def test_chat_includes_memory_history(monkeypatch):
     from msb_v3.harnesses.base import ChatHarness, HarnessResult
     from msb_v3.memory import store as memory_store
     from msb_v3.memory.store import Message
+
+    # Same check_auth/dev-mode reasoning as test_memory_api above.
+    monkeypatch.delenv("MCP_BRIDGE_SECRET", raising=False)
 
     def fake_recent(self, session, limit=50):
         return [Message("user", "hi"), Message("assistant", "hello")]

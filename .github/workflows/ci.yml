@@ -241,16 +241,25 @@ jobs:
         # builds the real msb_v3 runtime. No secrets are baked — the image
         # runs with MSB_HOST=0.0.0.0 and reaches ollama/qdrant over the
         # network, so this bare smoke needs neither.
+        #
+        # buildx (docker-container driver + gha cache) does NOT load the
+        # built image into the local Docker daemon, so a bare `docker run`
+        # below would try to pull the tag from Docker Hub and fail with
+        # "pull access denied". Export to a tarball and `docker load` it in
+        # the smoke step instead (type=tar works with the docker-container
+        # driver; the `load: true`/type=docker output does not).
         uses: docker/build-push-action@v5
         with:
           context: .
           push: false
           tags: msb-v3:ci-${{ github.sha }}
+          outputs: type=tar,dest=/tmp/msb-v3-image.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run container smoke test
         run: |
+          docker load -i /tmp/msb-v3-image.tar
           docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
           sleep 5
           # /status does not exist — /health is the app's liveness route.
