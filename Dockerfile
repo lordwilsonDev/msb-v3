@@ -16,8 +16,10 @@
 
 FROM python:3.12-slim AS deps
 WORKDIR /app
-COPY requirements.lock pyproject.toml ./
-RUN pip install --no-cache-dir -r requirements.lock
+# Runtime-only lock: no pytest/dev tooling, so the image carries no test
+# framework. pyproject.toml is copied as a cache-bust signal for dep changes.
+COPY requirements-runtime.lock pyproject.toml ./
+RUN pip install --no-cache-dir -r requirements-runtime.lock
 
 FROM python:3.12-slim AS runtime
 WORKDIR /app

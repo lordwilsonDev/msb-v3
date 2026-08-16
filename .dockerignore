@@ -1,19 +1,50 @@
-# Close-out FR-1.2: the image MUST NOT bake secrets, the vault, or host state.
+# Build-context hygiene: only src/, pyproject.toml, and the lock files are
+# COPY'd into the image. Everything else would still be sent to the daemon
+# (and cached as context) on every build unless excluded here.
+
+# Secrets — must never reach the daemon or the build cache.
 .env
 .env.*
 !.env.example
+
+# VCS + editor/agent/tooling state.
 .git
+.github
+.claude
+.agents
+.idea
+.vscode
 .gitignore
-data/
-runtime/
-node_modules/
-tests/
-docs/
-experiments/
-.claude/
-.vscode/
-*.pyc
-__pycache__/
-.pytest_cache/
-.mypy_cache/
 .msb-v3
+node_modules
+
+# Python build/test/type caches.
+__pycache__
+*.py[cod]
+*.pyo
+*.egg-info
+.eggs
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.pip-cache
+
+# Test/coverage/security artifacts.
+.coverage
+coverage.xml
+coverage.json
+htmlcov
+sbom.json
+licenses.json
+*.log
+
+# Local machine state + deliverables — not shipped in the runtime image.
+data
+runtime
+artifacts
+tests
+experiments
+docs
+scripts
+Makefile
+*.md
