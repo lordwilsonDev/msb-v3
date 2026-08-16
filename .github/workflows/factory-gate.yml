@@ -94,6 +94,13 @@ jobs:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
           MSB_RESEARCH_ROOT: ${{ runner.temp }}/msb-research
+          # The /business write experiments (h02/h04/h06/h08/h10) hit the
+          # operator-gated /business/register|purge. A fresh checkout has no
+          # .env and there is no MSB_OPERATOR_TOKEN repo secret, so seed a
+          # throwaway token: the booted server (settings.operator_token) and
+          # the runners both read this env and match. It gates a throwaway
+          # CI test server, not a real control surface.
+          MSB_OPERATOR_TOKEN: ci-operator-token
         run: |
           set -euo pipefail
           # h01-h10 (except h07) probe the live API on :8766, and h02
