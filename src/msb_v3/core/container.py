@@ -17,10 +17,11 @@ Pattern:
 
 The cheap, side-effect-light services (planner, anchor, guardian, sbom,
 poison-pill, argus, cluster discovery, hippocampus, event bus, identity,
-memory store, conversation stub) are built eagerly. The two heavyweight,
-settings-backed services — ``flywheel`` (FlywheelEngine) and ``vesta``
-(VestaServices) — are built lazily on first access so focused tests that only
-need e.g. ``hippocampus`` don't construct a full flywheel/vesta stack against
+memory store, conversation stub) are built eagerly. The three heavyweight,
+settings-backed services — ``flywheel`` (FlywheelEngine), ``vesta``
+(VestaServices), and ``spine`` (DecisionEvidenceStore, shared by both) — are
+built lazily on first access so focused tests that only need e.g.
+``hippocampus`` don't construct a full flywheel/vesta/spine stack against
 the real settings paths.
 
 All named module-level service singletons are now migrated. Any remaining
@@ -39,6 +40,7 @@ from fastapi import Request
 from msb_v3.conversation.envelope import StubModel
 from msb_v3.core.event_bus import EventBus
 from msb_v3.core.identity import AgentIdentity
+from msb_v3.evidence.spine import DecisionEvidenceStore
 from msb_v3.flywheel.engine import FlywheelEngine
 from msb_v3.memory.store import MemoryStore
 from msb_v3.observability.audit import ArgusAuditor
@@ -88,6 +90,7 @@ class ApplicationContainer:
     conversation_stub: StubModel
     _flywheel: FlywheelEngine | None = field(default=None, repr=False)
     _vesta: VestaServices | None = field(default=None, repr=False)
+    _spine: DecisionEvidenceStore | None = field(default=None, repr=False)
 
     @property
     def flywheel(self) -> FlywheelEngine:
@@ -98,12 +101,32 @@ class ApplicationContainer:
         return engine
 
     @property
+    def spine(self) -> DecisionEvidenceStore:
+        """The one shared Evidence Spine store (completion blueprint Phase 2).
+
+        Lazily built on first access and reused by both the Vesta perimeter and
+        the agent handle path, so every governed decision in the process lands
+        on a single hash-chained spine. When ``vesta`` was injected whole
+        (a tmp-backed ``VestaServices`` in tests), its spine wins so the two
+        remain the same instance.
+        """
+        store = self._spine
+        if store is None:
+            if self._vesta is not None:
+                store = self._vesta.spine
+                self._spine = store
+            else:
+                store = DecisionEvidenceStore()
+                self._spine = store
+        return store
+
+    @property
     def vesta(self) -> VestaServices:
         services = self._vesta
         if services is None:
             from msb_v3.vesta.services import build_vesta_services
 
-            services = build_vesta_services()
+            services = build_vesta_services(spine=self.spine)
             self._vesta = services
         return services
 
@@ -117,6 +140,7 @@ def build_container(**overrides: Any) -> ApplicationContainer:
     """
     flywheel = overrides.pop("flywheel", None)
     vesta = overrides.pop("vesta", None)
+    spine = overrides.pop("spine", None)
     # One shared memory store for the planners and the memory/graph/chat
     # routers — the planner's triumphirate session lives in the same store.
     memory_store = overrides.pop("memory_store", None) or MemoryStore()
@@ -138,7 +162,7 @@ def build_container(**overrides: Any) -> ApplicationContainer:
         "conversation_stub": StubModel(),
     }
     services.update(overrides)
-    return ApplicationContainer(_flywheel=flywheel, _vesta=vesta, **services)
+    return ApplicationContainer(_flywheel=flywheel, _vesta=vesta, _spine=spine, **services)
 
 
 _default: ApplicationContainer | None = None

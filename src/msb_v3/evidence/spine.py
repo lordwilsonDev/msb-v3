@@ -41,6 +41,18 @@ from msb_v3.core.config import settings
 
 _GENESIS_HASH = "0" * 64
 
+# Vertebra kinds: one governed action produces up to four causally-linked
+# records — the decision, its execution, its result, and its verification.
+# The decision record is the anchor; execution/result/verification records
+# carry ``parent_decision_id`` to link back to it (per-task order is still
+# recovered from ``trail(task_id)``, but the explicit link survives
+# multi-decision tasks and interleaved appends).
+KIND_DECISION = "decision"
+KIND_EXECUTION = "execution"
+KIND_RESULT = "result"
+KIND_VERIFICATION = "verification"
+_VALID_KINDS = frozenset({KIND_DECISION, KIND_EXECUTION, KIND_RESULT, KIND_VERIFICATION})
+
 # Fields whose dataclass type is a tuple but whose canonical JSON form is a
 # sorted list (deterministic content-addressing regardless of input order).
 _TUPLE_FIELDS = frozenset(
@@ -89,6 +101,8 @@ class DecisionEvidence:
     risk_level: str
     capability_requested: tuple[str, ...] = ()
     capability_granted: tuple[str, ...] = ()
+    kind: str = KIND_DECISION
+    parent_decision_id: Optional[str] = None
     timestamp: str = field(default_factory=_now_iso)
     mission_id: Optional[str] = None
     agent_id: Optional[str] = None
@@ -107,6 +121,10 @@ class DecisionEvidence:
     result_id: Optional[str] = None
     verification_id: Optional[str] = None
 
+    def __post_init__(self) -> None:
+        if self.kind not in _VALID_KINDS:
+            raise ValueError(f"unknown evidence kind: {self.kind!r}")
+
     def to_fields(self) -> dict[str, Any]:
         """Canonical, JSON-ready field map (tuples -> sorted lists)."""
         return {
@@ -119,6 +137,8 @@ class DecisionEvidence:
             "provider": self.provider,
             "capability_requested": sorted(self.capability_requested),
             "capability_granted": sorted(self.capability_granted),
+            "kind": self.kind,
+            "parent_decision_id": self.parent_decision_id,
             "policy_version": self.policy_version,
             "policy_result": self.policy_result,
             "evidence_refs": sorted(self.evidence_refs),

@@ -11,7 +11,13 @@ from fastapi import Request
 
 from msb_v3.api.chat import ChatRequest, ChatResponse
 from msb_v3.api.chat import chat as msb_chat
-from msb_v3.evidence.spine import DecisionEvidence, DecisionEvidenceStore
+from msb_v3.evidence.spine import (
+    KIND_EXECUTION,
+    KIND_RESULT,
+    KIND_VERIFICATION,
+    DecisionEvidence,
+    DecisionEvidenceStore,
+)
 from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.vesta.evidence import EvidenceStore
 from msb_v3.vesta.models import ABind, VestaChatRequest
@@ -139,8 +145,10 @@ class VestaMSBAdapter:
         # Evidence spine (Phase 2): one structured decision record per
         # governed action, cross-linked to the audit event that recorded it
         # (audit_seq) so the WHO/WHAT/WHEN/WHY chain can be reconstructed
-        # independently of the audit chain.
-        self.spine.append(
+        # independently of the audit chain. The decision record is the
+        # anchor; execution/result/verification vertebrae (below) link back
+        # to it via parent_decision_id.
+        decision_record = self.spine.append(
             DecisionEvidence(
                 task_id=bind.task_id,
                 policy_version=decision.policy_version,
@@ -179,6 +187,24 @@ class VestaMSBAdapter:
 
         self._transition(bind.task_id, "AUTHORIZED", event_ids, metadata={"evidence_refs": evidence_refs})
         self._transition(bind.task_id, "EXECUTING", event_ids, metadata={"evidence_refs": evidence_refs})
+        # Execution vertebra: the governed action is about to run, linked back
+        # to the authorizing decision and to the EXECUTING transition's audit
+        # event (event_ids[-1] is that transition's seq).
+        self.spine.append(
+            DecisionEvidence(
+                kind=KIND_EXECUTION,
+                parent_decision_id=decision_record.decision_id,
+                task_id=bind.task_id,
+                policy_version=decision.policy_version,
+                policy_result=decision.decision,
+                risk_level=decision.risk_class,
+                capability_granted=tuple(bind.capabilities),
+                evidence_refs=tuple(evidence_refs),
+                selected_action="chat",
+                execution_id=str(event_ids[-1]),
+            ),
+            audit_seq=event_ids[-1],
+        )
         request.state.vesta_bind = bind.as_dict()
         try:
             response = await msb_chat(
@@ -201,6 +227,23 @@ class VestaMSBAdapter:
                 "VERIFYING",
                 event_ids,
                 metadata={"event": response.event, "evidence_refs": evidence_refs},
+            )
+            # Result vertebra: the governed action produced a response; the
+            # result_id points at the content-addressed response evidence.
+            self.spine.append(
+                DecisionEvidence(
+                    kind=KIND_RESULT,
+                    parent_decision_id=decision_record.decision_id,
+                    task_id=bind.task_id,
+                    policy_version=decision.policy_version,
+                    policy_result=decision.decision,
+                    risk_level=decision.risk_class,
+                    model_id=response.payload.model,
+                    evidence_refs=tuple(evidence_refs),
+                    selected_action="chat",
+                    result_id=response_evidence["evidence_id"],
+                ),
+                audit_seq=event_ids[-1],
             )
         except Exception as exc:
             try:
@@ -258,6 +301,24 @@ class VestaMSBAdapter:
             "COMPLETED",
             event_ids,
             metadata={"response_sha256": response_hash, "evidence_refs": evidence_refs},
+        )
+        # Verification vertebra: the response was hashed and verified; the
+        # verification_id is the response digest (also recorded in the task
+        # metadata and the msb.completed audit event).
+        self.spine.append(
+            DecisionEvidence(
+                kind=KIND_VERIFICATION,
+                parent_decision_id=decision_record.decision_id,
+                task_id=bind.task_id,
+                policy_version=decision.policy_version,
+                policy_result=decision.decision,
+                risk_level=decision.risk_class,
+                model_id=response.payload.model,
+                evidence_refs=tuple(evidence_refs),
+                selected_action="chat",
+                verification_id=response_hash,
+            ),
+            audit_seq=event_ids[-1],
         )
         event_ids.append(
             self.audit.append(
