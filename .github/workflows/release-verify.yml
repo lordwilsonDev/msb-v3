@@ -37,7 +37,7 @@ jobs:
     runs-on: [self-hosted, macOS]
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The full suite's live endpoint tests need the dev server (:8766) —
       # same best-effort, never-stop policy as harness-gate.
