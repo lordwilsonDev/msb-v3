@@ -113,7 +113,11 @@ def main() -> int:
             'broken_at_seq': quarantine_result.get('broken_at_seq'),
             'state': quarantine_result.get('state'),
         })
-        repair_result = chain.repair()
+        # repair() is operator-gated (security-hardening #5): supply the
+        # operator token from the environment so CI's throwaway token (and any
+        # local one) matches settings.operator_token. Unset token = dev mode,
+        # which repair() records explicitly and allows.
+        repair_result = chain.repair(operator=os.environ.get("MSB_OPERATOR_TOKEN"))
         record['sequence'].append({
             'step': 'repair',
             'repaired': repair_result.get('repaired'),
