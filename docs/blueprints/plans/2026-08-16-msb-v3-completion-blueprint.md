@@ -22,7 +22,7 @@ Completion is measured by one demonstration, not code volume:
 | Phase | Goal | Status (2026-08-16) |
 |---|---|---|
 | 0 | Freeze baseline (release doc + virgin-checkout test) | in progress |
-| 1 | Eliminate architectural debt (version drift, dual vector stores, JSON-file state, module singletons → DI) | 1.1 ✅ · 1.2 ✅ · 1.3 ✅ (JSON state inventory + classification + migration plan; migration = separate increments) · 1.4 next |
+| 1 | Eliminate architectural debt (version drift, dual vector stores, JSON-file state, module singletons → DI) | 1.1 ✅ · 1.2 ✅ · 1.3 ✅ · 1.4 ✅ (ApplicationContainer + composition root; triumvirate migrated; vesta/memory/graph/flywheel singletons = follow-up increments) |
 | 2 | Evidence Spine (universal `event_id`, `DecisionEvidence`, causal links, evidence integrity) | not started |
 | 3 | State replay + crash recovery (`ReplayEngine`, event-sourced state) | not started |
 | 4 | Prove the existing tool loop live (permitted / unauthorized / approval / killswitch / malformed) | not started |

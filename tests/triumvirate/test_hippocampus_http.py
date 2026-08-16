@@ -21,17 +21,19 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-import msb_v3.api.triumvirate as triumvirate  # noqa: E402
 from msb_v3.api.triumvirate import router as triumvirate_router  # noqa: E402
+from msb_v3.core.container import build_container  # noqa: E402
 from msb_v3.retrieval.vector_store import SQLiteVectorStore  # noqa: E402
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    """Mount the triumvirate router over an isolated tmp SQLite backend."""
+def client(tmp_path):
+    """Mount the triumvirate router over an isolated tmp SQLite backend,
+    injected through the ApplicationContainer (Phase 1.4) rather than by
+    monkeypatching a module-level singleton."""
     store = SQLiteVectorStore(db_path=tmp_path / "hippocampus.db", tenant_id="default")
-    monkeypatch.setattr(triumvirate, "hippocampus", store)
     app = FastAPI()
+    app.state.container = build_container(hippocampus=store)
     app.include_router(triumvirate_router, prefix="/triumvirate")
     return TestClient(app)
 

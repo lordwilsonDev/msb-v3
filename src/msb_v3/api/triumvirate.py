@@ -1,13 +1,15 @@
 """Triumvirate router — Meta-Cognitive Planner + Mission Anchor surfaces."""
+
 from __future__ import annotations
 
 import os
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from msb_v3.observability.audit import _MULCH_DB, ArgusAuditor
+from msb_v3.core.container import ApplicationContainer, get_container_dep
+from msb_v3.observability.audit import _MULCH_DB
 from msb_v3.observability.metrics import (
     TRIUMVIRATE_AUDIT,
     TRIUMVIRATE_HIPPOCAMPUS,
@@ -17,18 +19,9 @@ from msb_v3.observability.metrics import (
     TRIUMVIRATE_PLAN,
     TRIUMVIRATE_SCAN,
 )
-from msb_v3.retrieval.vector_store import VectorDocument, get_vector_store
-from msb_v3.triumvirate.guardian_scanner import (
-    GuardianScanner,
-    PoisonPill,
-    SBOMRegistry,
-)
-from msb_v3.triumvirate.hardware_sovereignty import (
-    ClusterAwareDiscovery,
-    PeerNode,
-)
-from msb_v3.triumvirate.meta_cognitive_planner import MetaCognitivePlanner, PlanRequest
-from msb_v3.triumvirate.mission_anchor import MissionAnchor
+from msb_v3.retrieval.vector_store import VectorDocument
+from msb_v3.triumvirate.hardware_sovereignty import PeerNode
+from msb_v3.triumvirate.meta_cognitive_planner import PlanRequest
 from msb_v3.triumvirate.multimodal_interfaces import (
     HapticHeartbeat,
     SpeechFunctions,
@@ -59,18 +52,6 @@ def _multimodal_disabled() -> bool:
     monkeypatch os.environ."""
     return os.getenv("MSB_MULTIMODAL_ENABLED", "0") != "1"
 
-planner = MetaCognitivePlanner()
-anchor = MissionAnchor()
-guardian = GuardianScanner()
-sbom = SBOMRegistry()
-poison_pill = PoisonPill()
-argus = ArgusAuditor()
-cluster_discovery = ClusterAwareDiscovery()
-# Hippocampus is the always-available sovereign memory: SQLite-backed through
-# the unified VectorStore interface (Phase 1.2) so it never blocks on a remote
-# Qdrant. Switching backends is a one-line backend= change, not a code change.
-hippocampus = get_vector_store(backend="sqlite")
-
 
 class PlanRequestModel(BaseModel):
     goal: str
@@ -79,13 +60,16 @@ class PlanRequestModel(BaseModel):
 
 
 @router.post("/plan")
-async def plan_goal(body: PlanRequestModel) -> Dict[str, Any]:
+async def plan_goal(
+    body: PlanRequestModel,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     request = PlanRequest(
         goal=body.goal,
         parameters=body.parameters,
         sources=body.sources,
     )
-    plan = planner.plan(request)
+    plan = container.planner.plan(request)
     status = "ok" if plan else "error"
     TRIUMVIRATE_PLAN.labels(status=status).inc()
     return {
@@ -111,37 +95,49 @@ async def plan_goal(body: PlanRequestModel) -> Dict[str, Any]:
 
 
 @router.post("/status/lock")
-async def status_lock(body: Dict[str, Any]) -> Dict[str, Any]:
+async def status_lock(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     goal = body.get("goal") or ""
     parameters = body.get("parameters")
-    status = anchor.scope_lock(goal, parameters)
+    status = container.anchor.scope_lock(goal, parameters)
     TRIUMVIRATE_LOCK.labels(status="ok").inc()
     return status
 
 
 @router.post("/status/update")
-async def status_update(body: Dict[str, Any]) -> Dict[str, Any]:
+async def status_update(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     phase = body.get("phase") or "running"
     iteration_count = int(body.get("iteration_count") or 0)
     budget_spent_usd = float(body.get("budget_spent_usd") or 0.0)
-    status = anchor.update(phase, iteration_count, budget_spent_usd)
+    status = container.anchor.update(phase, iteration_count, budget_spent_usd)
     return status
 
 
 @router.get("/status")
-async def status_read() -> Dict[str, Any]:
-    return anchor.read()
+async def status_read(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    return container.anchor.read()
 
 
 @router.get("/status/verify")
-async def status_verify() -> Dict[str, Any]:
-    return anchor.verify()
+async def status_verify(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    return container.anchor.verify()
 
 
 @router.get("/status/dashboard")
-async def status_dashboard() -> Dict[str, Any]:
-    status = anchor.read()
-    verify = anchor.verify()
+async def status_dashboard(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    status = container.anchor.read()
+    verify = container.anchor.verify()
     return {
         "goal": status.get("goal"),
         "phase": status.get("current_phase"),
@@ -152,9 +148,12 @@ async def status_dashboard() -> Dict[str, Any]:
 
 
 @router.post("/guardian/scan")
-async def guardian_scan(body: Dict[str, Any]) -> Dict[str, Any]:
+async def guardian_scan(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     script = body.get("script") or ""
-    report = guardian.scan_script(script)
+    report = container.guardian.scan_script(script)
     TRIUMVIRATE_SCAN.labels(risk=report.risk or "UNKNOWN").inc()
     return {
         "risk": report.risk,
@@ -164,38 +163,53 @@ async def guardian_scan(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.post("/guardian/sbom/register")
-async def guardian_sbom_register(body: Dict[str, Any]) -> Dict[str, Any]:
+async def guardian_sbom_register(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     server_id = body.get("server_id") or ""
     path = body.get("path") or ""
-    entry = sbom.register(server_id, path, body.get("metadata"))
+    entry = container.sbom.register(server_id, path, body.get("metadata"))
     return entry
 
 
 @router.get("/guardian/sbom/{server_id}")
-async def guardian_sbom_trusted(server_id: str) -> Dict[str, Any]:
-    return {"trusted": sbom.trusted(server_id)}
+async def guardian_sbom_trusted(
+    server_id: str,
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    return {"trusted": container.sbom.trusted(server_id)}
 
 
 @router.post("/guardian/least-privilege")
-async def guardian_least_privilege(body: Dict[str, Any]) -> Dict[str, Any]:
+async def guardian_least_privilege(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     token = body.get("agent_token") or ""
     scope = body.get("required_scope") or ""
-    return {"allowed": guardian.enforce_least_privilege(token, scope)}
+    return {"allowed": container.guardian.enforce_least_privilege(token, scope)}
 
 
 @router.post("/guardian/poison-pill/arm")
-async def guardian_poison_arm() -> Dict[str, Any]:
-    return poison_pill.arm()
+async def guardian_poison_arm(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    return container.poison_pill.arm()
 
 
 @router.post("/guardian/poison-pill/detonate")
-async def guardian_poison_detonate() -> Dict[str, Any]:
-    return poison_pill.detonate()
+async def guardian_poison_detonate(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    return container.poison_pill.detonate()
 
 
 @router.post("/argus/audit")
-async def argus_audit() -> Dict[str, Any]:
-    result = argus.run()
+async def argus_audit(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
+    result = container.argus.run()
     count = result.get("count", 0) if isinstance(result, dict) else 0
     bucket = "0" if count == 0 else "1-5" if count <= 5 else "6+"
     TRIUMVIRATE_AUDIT.labels(count_bucket=bucket).inc()
@@ -205,8 +219,11 @@ async def argus_audit() -> Dict[str, Any]:
 @router.get("/argus/mulch")
 async def argus_mulch() -> Dict[str, Any]:
     import sqlite3
+
     with sqlite3.connect(_MULCH_DB) as conn:
-        rows = conn.execute("SELECT id, timestamp, component, finding_type, description, resolution_status FROM mulch_learnings ORDER BY timestamp DESC LIMIT 50").fetchall()
+        rows = conn.execute(
+            "SELECT id, timestamp, component, finding_type, description, resolution_status FROM mulch_learnings ORDER BY timestamp DESC LIMIT 50"
+        ).fetchall()
     return {
         "rows": [
             {
@@ -225,13 +242,19 @@ async def argus_mulch() -> Dict[str, Any]:
 @router.post("/argus/mulch/{mulch_id}/resolve")
 async def argus_mulch_resolve(mulch_id: int) -> Dict[str, Any]:
     import sqlite3
+
     with sqlite3.connect(_MULCH_DB) as conn:
-        cur = conn.execute("UPDATE mulch_learnings SET resolution_status='resolved' WHERE id=?", (mulch_id,))
+        cur = conn.execute(
+            "UPDATE mulch_learnings SET resolution_status='resolved' WHERE id=?", (mulch_id,)
+        )
         return {"ok": cur.rowcount == 1, "id": mulch_id}
 
 
 @router.post("/cluster/peers")
-async def cluster_register_peer(body: Dict[str, Any]) -> Dict[str, Any]:
+async def cluster_register_peer(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     node = PeerNode(
         node_id=body.get("node_id") or "",
         host=body.get("host") or "",
@@ -239,15 +262,17 @@ async def cluster_register_peer(body: Dict[str, Any]) -> Dict[str, Any]:
         capacity=int(body.get("capacity") or 1),
         cluster_role=body.get("cluster_role") or "worker",
     )
-    cluster_discovery.register_peer(node)
+    container.cluster_discovery.register_peer(node)
     TRIUMVIRATE_PEER_OPS.labels(op="register").inc()
     return {"ok": True, "node_id": node.node_id}
 
 
 @router.get("/cluster/peers")
-async def cluster_list_peers() -> Dict[str, Any]:
+async def cluster_list_peers(
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     TRIUMVIRATE_PEER_OPS.labels(op="list").inc()
-    return {"peers": cluster_discovery.peers()}
+    return {"peers": container.cluster_discovery.peers()}
 
 
 def _hippocampus_chunk_id(hit_id: str, doc_id: str) -> str:
@@ -262,7 +287,10 @@ def _hippocampus_chunk_id(hit_id: str, doc_id: str) -> str:
 
 
 @router.post("/hippocampus/upsert")
-async def hippocampus_upsert(body: Dict[str, Any]) -> Dict[str, Any]:
+async def hippocampus_upsert(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     doc_id = body.get("doc_id") or ""
     chunk_id = body.get("chunk_id") or ""
     document = VectorDocument(
@@ -272,16 +300,19 @@ async def hippocampus_upsert(body: Dict[str, Any]) -> Dict[str, Any]:
         metadata=body.get("metadata") or {},
         embedding=body.get("embedding") or [],
     )
-    await hippocampus.index([document])
+    await container.hippocampus.index([document])
     TRIUMVIRATE_HIPPOCAMPUS.labels(op="upsert").inc()
     return {"ok": True, "doc_id": doc_id, "chunk_id": chunk_id}
 
 
 @router.post("/hippocampus/search")
-async def hippocampus_search(body: Dict[str, Any]) -> Dict[str, Any]:
+async def hippocampus_search(
+    body: Dict[str, Any],
+    container: ApplicationContainer = Depends(get_container_dep),
+) -> Dict[str, Any]:
     embedding = body.get("embedding") or []
     limit = int(body.get("limit") or 5)
-    hits = await hippocampus.search(query="", query_embedding=embedding, limit=limit)
+    hits = await container.hippocampus.search(query="", query_embedding=embedding, limit=limit)
     TRIUMVIRATE_HIPPOCAMPUS.labels(op="search").inc()
     return {
         "results": [
@@ -330,5 +361,3 @@ async def speech_command(body: Dict[str, Any]) -> Dict[str, Any]:
     if result.get("status") != "stub":  # stub calls are not real work
         TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
     return result
-
-
