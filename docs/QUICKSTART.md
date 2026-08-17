@@ -44,6 +44,13 @@ bash scripts/start.sh start
 curl -s :8766/health
 ```
 
+There's also a browser console for operating the governed loop — open
+`http://localhost:8766/console`. It asks for the operator token once
+(kept in `sessionStorage`, sent only to this server as a Bearer header),
+then lets you run a task, see the gate verdict + tool trace, replay a
+run from its events, and list past runs — the same control surface as
+`curl`, without the shell gymnastics.
+
 If you don't have Ollama models yet:
 
 ```bash

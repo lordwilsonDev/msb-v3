@@ -13,6 +13,7 @@ from msb_v3 import __version__
 from msb_v3.api.agent import router as agent_router
 from msb_v3.api.chat import router as chat_router
 from msb_v3.api.codegraph import router as codegraph_router
+from msb_v3.api.console import router as console_router
 from msb_v3.api.context import router as context_router
 from msb_v3.api.conversation import router as conversation_router
 from msb_v3.api.dashboard import router as dashboard_router
@@ -115,6 +116,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, tags=["chat"])
     app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
     app.include_router(studio_router, tags=["studio"])
+    app.include_router(console_router, tags=["ui"])
     app.include_router(system_router, prefix="/system", tags=["system"])
     app.include_router(research_router, prefix="/research", tags=["research"])
     app.include_router(evolution_router, prefix="/evolution", tags=["evolution"])
