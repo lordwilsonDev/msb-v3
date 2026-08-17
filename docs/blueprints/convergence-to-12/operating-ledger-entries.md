@@ -317,3 +317,62 @@ validation.
   stronger model remains optional extra.
 - RC kit ready: v0.3.0-rc1 baseline + release + failure report + parking
   lot + independent-user kit — schedule M7 after M6 evidence (Entry 012).
+
+## Entry 013 — 2026-08-17 · Trial task 1 (memory-storage research-to-note)
+
+**Task:** Search the vault for recent decisions about how memory is stored
+and write a one-page note summarizing them.
+
+**Baseline:** ~15 min (grep vault, read 2–3 notes, draft a page).
+
+**MSB result:** **PASS.** run `dbb-20260817T051811-00695`, deterministic hash
+`3a1dc6be47afd07d`, ~61s on qwen3:8b. 3-task DAG (search → synthesize →
+write), each verified (search_returned_hits / synthesis_nonempty /
+file_written), replay consistent (15 events, COMPLETED).
+
+**Intervention:** Yes — **output path not honored.** The request named
+`/tmp/m6-trial-memory.md` but the write went to the slice's default
+sandboxed output dir `~/Desktop/out/write-the-one-page.md`. The content was
+correct and grounded (it honestly reported "no recent decisions about
+memory storage are documented in the provided sources" rather than
+fabricating) — only the destination diverged. Fill: `output_dir` must be
+passed through to the write tool or the note found afterwards.
+
+**Evidence quality:** **High** — task store, 15 task events, spine
+decision `2c7a5a8e9dea`, deterministic hash all consistent; the write's
+actual path is in the tool result, so the divergence is discoverable, not
+hidden.
+
+**Value:** ~14 min saved on the search+synthesis; the path divergence is a
+small fix (or a documented behavior) worth one keep/change/cut decision at
+the first weekly review.
+
+## Entry 014 — 2026-08-17 · Trial task 2 (sovereign-stack research-to-note)
+
+**Task:** Search the vault for recent decisions about the sovereign stack and write a one-page note summarizing them
+
+**Output:** /tmp/msb-trial/ (write landed at {output_dir}/{slug}.md) · **Baseline:** 12 min
+
+**MSB result:** **PASS.** run `dbb-20260817T052011-06213`, deterministic hash
+`90b79e535f58dea5`, ~52s on qwen3:8b. Write landed in the requested dir
+(`/tmp/msb-trial/write-the-one-page.md`) — the output_dir pass-through fix
+from Entry 013 verified on a real run.
+
+**Intervention:** None (output_dir now honored via the helper).
+**Evidence quality:** High — run recorded with hash; file present on disk.
+**Value:** ~11 min saved; confirms the Entry 013 fix works end-to-end.
+
+## Entry 015 — 2026-08-17 · Trial task 3 (readonly sovereign-stack lookup)
+
+**Task:** Search the vault for what the sovereign stack is
+
+**Output:** readonly (no write requested) · **Baseline:** 8 min
+
+**MSB result:** **PASS.** run `dbb-20260817T052134-41988`, deterministic hash
+`40a549b7e035958e`, ~14s on qwen3:8b — the fastest trial run yet; read-only
+path, no write task in the DAG.
+
+**Intervention:** None.
+**Evidence quality:** High — run recorded, no mutation by design.
+**Value:** ~8 min saved; confirms readonly variant of the canonical shape
+is cheap and clean.
