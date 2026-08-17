@@ -1,0 +1,218 @@
+[
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9946,
+      "component": "tasks",
+      "event_type": "task.TASK_CREATED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"kind\": \"agent.run\", \"tenant\": \"wilson-vault\", \"session\": \"default\", \"source\": \"api\"}",
+      "timestamp": "2026-08-17T04:19:42.040037+00:00",
+      "prev_hash": "c8ada0e6a5ff2fecada1ee765944c15d205f9aace900c7ffe7f37c77e780359a",
+      "record_hash": "f48462ae54725408359ef4cc3975981e0a8097b390220ca76eb51d8c1e1b273d"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9947,
+      "component": "tasks",
+      "event_type": "task.INTENT_INTERPRETED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"summary\": {\"request\": \"Search the vault for the sovereign stack and write a note to artifacts/case-kill-write.md.\", \"goals\": [\"Search the vault for the sovereign stack\", \"Write a note to artifacts/case-kill-write.md\"], \"constraints\": [], \"permissions\": [\"read_vault\", \"write_file\"], \"privacy\": true, \"domain\": \"vault\", \"source\": \"llm\", \"write_suppressed\": false}}",
+      "timestamp": "2026-08-17T04:19:47.041410+00:00",
+      "prev_hash": "f48462ae54725408359ef4cc3975981e0a8097b390220ca76eb51d8c1e1b273d",
+      "record_hash": "c096fc2dad2efd2e7db05aaa204709450d1725561e909f20f9a7790f690f6343"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9948,
+      "component": "tasks",
+      "event_type": "task.PLAN_CREATED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\"}",
+      "timestamp": "2026-08-17T04:20:05.682510+00:00",
+      "prev_hash": "c096fc2dad2efd2e7db05aaa204709450d1725561e909f20f9a7790f690f6343",
+      "record_hash": "a3e07d1df1bfc4ef696cec34559b9c4aa6ad9cef8618c3e088ab7a0290fbb79e"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9949,
+      "component": "tasks",
+      "event_type": "task.AGENT_STARTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\"}",
+      "timestamp": "2026-08-17T04:20:05.936843+00:00",
+      "prev_hash": "a3e07d1df1bfc4ef696cec34559b9c4aa6ad9cef8618c3e088ab7a0290fbb79e",
+      "record_hash": "96e54ea512c41ca1ac42b5f8b50e377ef794e8b1b49825d7629a4822bd00818c"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9950,
+      "component": "tasks",
+      "event_type": "task.TOOL_REQUESTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"tool\": \"search_query\"}",
+      "timestamp": "2026-08-17T04:20:06.411463+00:00",
+      "prev_hash": "96e54ea512c41ca1ac42b5f8b50e377ef794e8b1b49825d7629a4822bd00818c",
+      "record_hash": "a2cb7733ac9740584dd7448a546c407cabb75d08ea72f50496ddbe00fe2b7118"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9952,
+      "component": "tasks",
+      "event_type": "task.POLICY_CHECKED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"tool\": \"search_query\", \"decision\": \"DENIED\", \"reason\": \"action blocked: kill switch armed \u2014 loop paused\"}",
+      "timestamp": "2026-08-17T04:20:07.034454+00:00",
+      "prev_hash": "64412ca30ef59d0d2c8462c88fbbb75e052471ddd8acaefa98397d43ff405743",
+      "record_hash": "ddea9b15983c9c3f59712a6917c5efd31eb8a4c8bbe84a4eb90f136845560439"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9953,
+      "component": "tasks",
+      "event_type": "task.TOOL_REQUESTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"tool\": \"search_query\"}",
+      "timestamp": "2026-08-17T04:20:07.471878+00:00",
+      "prev_hash": "ddea9b15983c9c3f59712a6917c5efd31eb8a4c8bbe84a4eb90f136845560439",
+      "record_hash": "3ea46e6d773c3b7fb3c1c9dca3b5ad34fe374f2928f3532572f40c0e393c9371"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9955,
+      "component": "tasks",
+      "event_type": "task.POLICY_CHECKED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"tool\": \"search_query\", \"decision\": \"DENIED\", \"reason\": \"action blocked: kill switch armed \u2014 loop paused\"}",
+      "timestamp": "2026-08-17T04:20:08.087528+00:00",
+      "prev_hash": "8e3b478d8ec5118bede5336492a5b8b449b6ff7c90b2a2728f5228fbd947456f",
+      "record_hash": "61f0dc8cef518f3798dda886bb2d57048cefc8f87e6c9e78e515ccbbce8511a5"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9956,
+      "component": "tasks",
+      "event_type": "task.TOOL_REQUESTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"tool\": \"search_query\"}",
+      "timestamp": "2026-08-17T04:20:08.296872+00:00",
+      "prev_hash": "61f0dc8cef518f3798dda886bb2d57048cefc8f87e6c9e78e515ccbbce8511a5",
+      "record_hash": "a3b0a343305e3c80698faa0b840e66ade603eab46f73b4ac359db211e374224e"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9958,
+      "component": "tasks",
+      "event_type": "task.POLICY_CHECKED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"tool\": \"search_query\", \"decision\": \"DENIED\", \"reason\": \"action blocked: kill switch armed \u2014 loop paused\"}",
+      "timestamp": "2026-08-17T04:20:08.957917+00:00",
+      "prev_hash": "4ce627ec6ddba8db5be7710a6f31a32e8aa768986366d94dd3cab738941b1720",
+      "record_hash": "0958290c2368feb4a788c70e32da92412cbd7ac8a76b289974a4fe5032ba1c70"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9959,
+      "component": "agentic",
+      "event_type": "trace:run_start",
+      "payload": "{\"run_id\": \"dbb-20260817T041942-51186\", \"request\": \"Search the vault for the sovereign stack and write a note to artifacts/case-kill-write.md.\", \"intent\": {\"request\": \"Search the vault for the sovereign stack and write a note to artifacts/case-kill-write.md.\", \"goals\": [\"Search the vault for the sovereign stack\", \"Write a note to artifacts/case-kill-write.md\"], \"constraints\": [], \"permissions\": [\"read_vault\", \"write_file\"], \"privacy\": true, \"domain\": \"vault\", \"source\": \"llm\", \"write_suppressed\": false}}",
+      "timestamp": "2026-08-17T04:20:09.361235+00:00",
+      "prev_hash": "0958290c2368feb4a788c70e32da92412cbd7ac8a76b289974a4fe5032ba1c70",
+      "record_hash": "3b7c2661db63622b60c33a4c4c91892d60fe5bc4dc2106947442df9412d2efc8"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9960,
+      "component": "agentic",
+      "event_type": "trace:plan",
+      "payload": "{\"run_id\": \"dbb-20260817T041942-51186\", \"graph_source\": \"llm\", \"tasks\": [{\"task_id\": \"search_vault_for_sovereign_stack\", \"goal\": \"Search the vault for the sovereign stack.\", \"parent_id\": null, \"inputs\": [], \"constraints\": [], \"required_capabilities\": [\"read_vault\"], \"tools\": [\"search_query\"], \"permissions\": [], \"expected_output\": \"A list of items related to the sovereign stack found in the vault.\", \"verification_method\": \"search_returned_hits\", \"timeout_s\": 10.0, \"retry_policy\": \"retry:2\"}, {\"task_id\": \"write_note_to_artifacts_case_kill_write_md\", \"goal\": \"Write a note to artifacts/case-kill-write.md based on the search results.\", \"parent_id\": \"search_vault_for_sovereign_stack\", \"inputs\": [{\"from\": \"search_vault_for_sovereign_stack\", \"kind\": \"output\"}], \"constraints\": [], \"required_capabilities\": [\"llm_synthesis\", \"write_file\"], \"tools\": [\"chat\", \"vault_write\"], \"permissions\": [], \"expected_output\": \"A note written to the file artifacts/case-kill-write.md containing relevant information from the vault search.\", \"verification_method\": \"file_written\", \"timeout_s\": 120.0, \"retry_policy\": \"retry:2\"}]}",
+      "timestamp": "2026-08-17T04:20:09.522597+00:00",
+      "prev_hash": "3b7c2661db63622b60c33a4c4c91892d60fe5bc4dc2106947442df9412d2efc8",
+      "record_hash": "79340faaf62f2d1a8c3b6359d4262477eb0fba2a47d1ff169df0fe0537f0a592"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9961,
+      "component": "agentic",
+      "event_type": "trace:execution",
+      "payload": "{\"run_id\": \"dbb-20260817T041942-51186\", \"execution\": [{\"task_id\": \"search_vault_for_sovereign_stack\", \"ok\": false, \"verification\": {\"ok\": false, \"detail\": \"GateBlocked: action blocked: kill switch armed \u2014 loop paused\"}, \"error\": \"GateBlocked: action blocked: kill switch armed \u2014 loop paused\"}]}",
+      "timestamp": "2026-08-17T04:20:09.915685+00:00",
+      "prev_hash": "79340faaf62f2d1a8c3b6359d4262477eb0fba2a47d1ff169df0fe0537f0a592",
+      "record_hash": "3c7373fb548209518ac63952c3b113cab7dd5c459ec5b57882f3fde461d0166c"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9962,
+      "component": "agentic",
+      "event_type": "trace:outcome",
+      "payload": "{\"run_id\": \"dbb-20260817T041942-51186\", \"verdict\": \"FAIL\", \"outcome\": {\"skipped\": [\"write_note_to_artifacts_case_kill_write_md\"], \"error\": \"task search_vault_for_sovereign_stack failed: GateBlocked: action blocked: kill switch armed \u2014 loop paused\", \"total_latency_s\": 2.9488, \"prompt_tokens\": 0, \"completion_tokens\": 0, \"estimated_cost_usd\": 0.0}}",
+      "timestamp": "2026-08-17T04:20:10.333142+00:00",
+      "prev_hash": "3c7373fb548209518ac63952c3b113cab7dd5c459ec5b57882f3fde461d0166c",
+      "record_hash": "7973bf87a22c285f6ad8905e22ad7c463f0a108b148886fa9b07146905cb998a"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9963,
+      "component": "tasks",
+      "event_type": "task.VERIFICATION_STARTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\"}",
+      "timestamp": "2026-08-17T04:20:10.518608+00:00",
+      "prev_hash": "7973bf87a22c285f6ad8905e22ad7c463f0a108b148886fa9b07146905cb998a",
+      "record_hash": "cc3eac37caaf79728b845b27723de66094633881fcb8c4b9570abe0fae157de9"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9964,
+      "component": "tasks",
+      "event_type": "task.VERIFICATION_FAILED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"verdict\": \"FAIL\", \"error\": \"task search_vault_for_sovereign_stack failed: GateBlocked: action blocked: kill switch armed \u2014 loop paused\"}",
+      "timestamp": "2026-08-17T04:20:10.951928+00:00",
+      "prev_hash": "cc3eac37caaf79728b845b27723de66094633881fcb8c4b9570abe0fae157de9",
+      "record_hash": "3a5de72607a20604ba9b2f28000ac6e7390f8660b6c62ae62a43461176b62be3"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9965,
+      "component": "tasks",
+      "event_type": "task.EVIDENCE_RECORDED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\", \"deterministic_hash\": \"4c8e32430071dcbe\", \"run_id\": \"dbb-20260817T041942-51186\"}",
+      "timestamp": "2026-08-17T04:20:11.172558+00:00",
+      "prev_hash": "3a5de72607a20604ba9b2f28000ac6e7390f8660b6c62ae62a43461176b62be3",
+      "record_hash": "1c02233eb332f3351b55f19aa6f9992bf1c95a47eec4fbb2b29bc6e6087c8943"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9966,
+      "component": "tasks",
+      "event_type": "task.TASK_FAILED",
+      "payload": "{\"task_id\": \"dbb-20260817T041942-51186\"}",
+      "timestamp": "2026-08-17T04:20:11.618637+00:00",
+      "prev_hash": "1c02233eb332f3351b55f19aa6f9992bf1c95a47eec4fbb2b29bc6e6087c8943",
+      "record_hash": "9799adb0f815c08127f4cfe2eeb4b033b1a77e40c63ffdd58466a2c1a98d64ad"
+    }
+  }
+]

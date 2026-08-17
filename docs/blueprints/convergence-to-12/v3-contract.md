@@ -73,4 +73,9 @@ operate it, and the improvement is evidenced — not claimed.
 ## Exceptions to the freeze
 
 Any new work outside this contract requires a dated written exception in the
-parking-lot record (proposed value, dependency, trigger for reconsideration).
+parking-lot record (proposed value, dependency, trigger for reconsideration) —
+see `v4-parking-lot.md`. During M0–M5 the freeze is absolute: new subsystems
+enter only if a failure found in the canonical live path or a measured
+user-value gap demands them. Entries may be added to the parking lot freely;
+entries may leave the parking lot into the v3 surface only with a dated
+exception naming the evidence that justifies it.

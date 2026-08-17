@@ -118,3 +118,47 @@ async def test_run_surfaces_route_errors_without_crashing() -> None:
     assert result.latency_ms == 3
     assert result.fallback_from is None
     assert len(engine.calls) == 1  # no degrade on an errored route
+
+
+@pytest.mark.asyncio
+async def test_run_single_token_query_uses_knowledge_route() -> None:
+    """A single-token query ('sovereign') must route exactly like a phrase —
+    knowledge domain, vector + structural routes — and must not be treated
+    as a cue-less degenerate case. (Retrieval validation: token queries.)"""
+    engine = _FakeEngine([{"id": "t", "score": 0.68, "text": "hit", "source": "s.md"}])
+    result = await _router_with(engine).run("sovereign", top_k=5)
+    assert result.domain == "knowledge"
+    assert result.fallback_from is None
+    assert engine.calls[0]["routes"] == ["vector", "structural"]
+    assert result.matches[0]["id"] == "t"
+    assert len(engine.calls) == 1  # no pointless degrade
+
+
+@pytest.mark.asyncio
+async def test_run_irrelevant_query_is_honest_not_firehose() -> None:
+    """An irrelevant/nonsense query returns exactly what the vector engine
+    found (its low-confidence top hits, or empty) with the route visible —
+    never a fabricated fallback claim and never a silent firehose. The router
+    must not pretend an irrelevant query is a routed-domain miss."""
+    engine = _FakeEngine([])  # engine says: nothing relevant
+    result = await _router_with(engine).run("zzqxv kjhqwop nvmcx", top_k=5)
+    assert result.domain == "knowledge"
+    assert result.matches == []
+    assert result.route_errors == {}
+    assert result.fallback_from is None  # empty-with-no-error is honest, no lie
+    assert len(engine.calls) == 1  # a nonsense query is not a cue miss; one honest answer
+
+
+@pytest.mark.asyncio
+async def test_run_empty_query_routes_knowledge_without_crash() -> None:
+    """An empty query must not crash or firehose: it routes to knowledge,
+    calls the engine once with the empty string, and returns the engine's
+    (empty) answer. (Retrieval validation: empty queries.)"""
+    engine = _FakeEngine([])
+    result = await _router_with(engine).run("", top_k=5)
+    assert result.domain == "knowledge"
+    assert result.matches == []
+    assert result.route_errors == {}
+    assert result.fallback_from is None
+    assert len(engine.calls) == 1
+    assert engine.calls[0]["query"] == ""

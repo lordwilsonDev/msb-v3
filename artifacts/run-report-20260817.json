@@ -1,0 +1,18 @@
+{
+  "generated_at": null,
+  "latency": {
+    "agentic": {
+      "p50": 10.0,
+      "p95": 10.0,
+      "count": 1
+    }
+  },
+  "queries_total": 4,
+  "actiongate_verdicts": {
+    "allowed": 2
+  },
+  "router_decisions_total": 2,
+  "retries_total": 0,
+  "recoveries_total": 0,
+  "ready": "1.0"
+}

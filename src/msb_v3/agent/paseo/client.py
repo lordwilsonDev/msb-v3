@@ -19,7 +19,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 MCP_PROTOCOL_VERSION = "2025-03-26"
-CLIENT_INFO = {"name": "msb-v3", "version": "0.2.3"}
+CLIENT_INFO = {"name": "msb-v3", "version": "0.3.0"}
 
 
 class PaseoMcpError(RuntimeError):
