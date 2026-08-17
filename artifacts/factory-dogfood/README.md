@@ -50,20 +50,37 @@ asserted and negated in the change text ("no file written" vs "vault note
 written"). A weak LLM approving a self-contradictory change can no longer
 be the only guard.
 
+## Docs-only merge proof (2026-08-17, run 6/7)
+
+A docs-only change (`.md` under `docs/`) now skips the full test suite with
+an explicit classified-skip reason (recorded in the evidence chain, distinct
+from the honest UNVERIFIED of `ran=False`) and can reach **MERGED**. Run 7:
+verdict **MERGED**, test skipped (never ran), review APPROVE, verification
+PASS — in **24s** instead of the ~328s test-stage timeout that blocked every
+earlier run.
+
+The coherence scan was also narrowed to unambiguous completed-action verb
+forms (written/created/deleted/ran/...): the clean doc's "Canonical run"
+(noun) next to "without running tests" (gerund) was a false positive on the
+bare form "run", now covered by a regression test.
+
 ## Honest findings
 
-1. **Fail-closed works.** No run merged: missing/red test evidence →
-   NEEDS_WORK, never a pass.
+1. **Fail-closed works.** No code change merges without real test evidence;
+   a docs-only classified skip is recorded evidence with a reason, not an
+   absence of evidence.
 2. **Runs 3-4 proved the mechanism; run 5 proved the catch.** With the
    full diff + coherence lens, qwen3:8b still approved (model judgment is
    the weak link). The deterministic scan is the safety net: run 5's review
-   verdict is **CONCERN** with two findings ("both asserts and negates
-   'write'/'written'") even though the model approved. The contradiction
-   can no longer pass, whatever the reviewer model.
+   verdict is **CONCERN** ("both asserts and negates 'write'/'written'")
+   even though the model approved. The contradiction can no longer pass,
+   whatever the reviewer model.
 3. **Regression tests pin the fix:** `test_reviewer_prompt_carries_full_diff_tail`,
    `test_factory_dogfood_reviewer_catches_doc_contradiction`,
    `test_compute_changes_emits_diff_for_new_file`,
    `test_single_model_panel_is_coherence_reviewer`,
-   `test_scan_doc_contradictions_flags_assert_and_negate`, and the decisive
-   `test_deterministic_scan_catches_contradiction_even_when_llm_approves`
-   (a SAFE reviewer must NOT get the contradiction through).
+   `test_scan_doc_contradictions_flags_assert_and_negate` (incl. the
+   noun/gerund false-positive case), the decisive
+   `test_deterministic_scan_catches_contradiction_even_when_llm_approves`,
+   `test_is_docs_only_change_classifies_extensions_dirs_and_filenames`, and
+   `test_factory_merges_docs_only_change_without_running_suite`.

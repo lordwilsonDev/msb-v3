@@ -90,6 +90,13 @@ class TestEvidence:
     output_head: str = ""
     duration_s: float = 0.0
     ran: bool = False  # False = no test command found — honest UNVERIFIED
+    # A DELIBERATE classified skip (docs-only change, 2026-08-17): distinct
+    # from ran=False. ran=False means "no evidence" (fail-closed UNVERIFIED);
+    # skipped=True means "the change was classified as docs-only and the full
+    # suite is not required by policy" — recorded in the evidence chain with
+    # the reason, and treated as PASS for test criteria.
+    skipped: bool = False
+    skip_reason: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -99,6 +106,8 @@ class TestEvidence:
             "output_head": self.output_head[:1000],
             "duration_s": round(self.duration_s, 3),
             "ran": self.ran,
+            "skipped": self.skipped,
+            "skip_reason": self.skip_reason,
         }
 
 

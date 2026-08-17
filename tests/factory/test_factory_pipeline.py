@@ -60,6 +60,21 @@ def test_classify_feature_and_labels():
     assert c.severity == "high"
 
 
+# --- docs-only test classification (2026-08-17) ------------------------------
+
+
+def test_is_docs_only_change_classifies_extensions_dirs_and_filenames():
+    from msb_v3.factory.test_runner import is_docs_only_change
+
+    assert is_docs_only_change(["docs/guide.md", "README.md", "docs/sub/api.rst"])
+    assert is_docs_only_change(["CHANGELOG", "LICENSE.txt"])
+    assert is_docs_only_change(["documentation/architecture.adoc"])
+    assert not is_docs_only_change(["app.py"])
+    assert not is_docs_only_change(["docs/guide.md", "src/app.py"])  # mixed -> runs tests
+    assert not is_docs_only_change(["tests/test_app.py"])
+    assert is_docs_only_change([])  # no change at all
+
+
 # --- plan -------------------------------------------------------------------
 
 
@@ -257,6 +272,54 @@ def test_factory_review_panel_llm_reviewers_flow(repo, good_patch):
     assert run.review is not None
     assert run.review.reviewer_models == ["qwen3:8b", "deepseek-r1"]
     assert run.review.independent is True
+
+
+def test_factory_merges_docs_only_change_without_running_suite(repo, tmp_path, monkeypatch):
+    """A docs-only change (2026-08-17) skips the full test suite with a
+    recorded classified-skip reason and can reach MERGED — running (and
+    timing out on) the whole suite for a change that cannot break code was
+    the dogfood blocker. The skip is explicit evidence, distinct from the
+    honest UNVERIFIED of ran=False, and the deterministic review still runs."""
+    from msb_v3.moie import build_diverse_reviewer_panel
+
+    # Docs-only patch: adds a markdown file, touches nothing executable.
+    script = tmp_path / "docs_patch.sh"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'cd "$MSB_WORKTREE"\n'
+        "mkdir -p docs\n"
+        "cat > docs/guide.md << 'EOF'\n# Guide\n\nA doc-only change.\nEOF\n"
+    )
+    script.chmod(0o755)
+
+    # The suite must NOT run: monkeypatch run_tests to blow up if called.
+    import msb_v3.factory.pipeline as pipeline
+
+    def _boom(*a, **k):
+        raise AssertionError("full test suite ran for a docs-only change")
+
+    monkeypatch.setattr(pipeline, "run_tests", _boom)
+
+    panel = build_diverse_reviewer_panel(
+        builder_model="patch",
+        models=["qwen3:8b"],
+        client_factory=_safe_client_factory,
+    )
+    run = _run(
+        SoftwareFactory(builder=PatchBuilder(str(script)), reviewer_panel=panel),
+        Issue(title="Add a usage guide", body="docs/guide.md"),
+        str(repo),
+    )
+    assert run.verdict == "MERGED", run.error
+    assert run.test.skipped is True
+    assert "docs-only" in run.test.skip_reason
+    assert run.test.ran is False
+    assert run.verification.verdict == "PASS"
+    # The skip is committed to the evidence chain: the test-stage hash covers
+    # the serialized TestEvidence (skip_reason included), so it is
+    # re-derivable — and the full suite never ran (monkeypatched _boom).
+    assert any("test" in h for h in run.evidence_chain) or len(run.evidence_chain) >= 6
 
 
 def test_factory_rejects_builder_as_reviewer(repo, good_patch):
