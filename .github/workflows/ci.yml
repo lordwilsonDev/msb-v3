@@ -225,18 +225,26 @@ jobs:
         run: |
           docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
           trap 'docker rm -f msb-v3-test >/dev/null 2>&1 || true' EXIT
-          # /status does not exist — /health is the app's liveness route.
-          # Poll instead of a fixed 5s sleep: on a cold/shared runner the
-          # app can boot slower, and a single early curl just races it
-          # (observed 2026-08-17 as "connection reset by peer"). Bounded to
-          # 60s so a genuinely dead container fails in ~1s, not 60.
+          # /status does not exist — /health is the app's liveness route, and
+          # the image declares its own HEALTHCHECK against it. Wait on
+          # Docker's own health state instead of probing curl from the runner
+          # (a fixed 5s sleep raced slow boots on cold runners — observed
+          # 2026-08-17 as "connection reset by peer"). Bounded to 60s; a
+          # container that dies or goes unhealthy fails fast with its log.
           for _ in $(seq 1 60); do
-            if curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-              echo "health OK"
+            HEALTH=$(docker inspect -f '{{.State.Health.Status}}' msb-v3-test 2>/dev/null || echo gone)
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "container healthy"
               exit 0
             fi
-            # Fail fast if the container exited instead of still booting —
-            # otherwise a crash burns the full 60s and masks the real log.
+            if [ "$HEALTH" = "unhealthy" ] || [ "$HEALTH" = "gone" ]; then
+              echo "container $HEALTH — log follows"
+              docker logs msb-v3-test
+              exit 1
+            fi
+            # Still "starting" (or the container died without a health probe
+            # yet) — fail fast on an exited container instead of burning the
+            # full budget on a crash.
             STATE=$(docker inspect -f '{{.State.Status}}' msb-v3-test 2>/dev/null || echo gone)
             if [ "$STATE" != "running" ]; then
               echo "container exited ($STATE) before becoming healthy — log follows"
