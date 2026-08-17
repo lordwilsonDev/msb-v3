@@ -153,11 +153,11 @@ function parsePrometheus(text) {
   // Returns { verdicts: {allowed,indeterminate,denied,failed}, buckets: {le: cum} }
   const verdicts = {allowed: 0, indeterminate: 0, denied: 0, failed: 0};
   const buckets = {};
-  for (const line of text.split("\n")) {
-    let m = line.match(/^msb_v3_actiongate_decisions_total\{verdict="([^"]+)"\} (\S+)/);
+  for (const line of text.split("\\n")) {
+    let m = line.match(/^msb_v3_actiongate_decisions_total\\{verdict="([^"]+)"\\} (\\S+)/);
     if (m) verdicts[m[1]] = parseFloat(m[2]);
     // Histogram buckets: cumulative counts per le, aggregated across harnesses.
-    m = line.match(/^msb_v3_latency_seconds_bucket\{[^}]*le="([^"]+)"\} (\S+)/);
+    m = line.match(/^msb_v3_latency_seconds_bucket\\{[^}]*le="([^"]+)"\\} (\\S+)/);
     if (m) buckets[m[1]] = (buckets[m[1]] || 0) + parseFloat(m[2]);
   }
   return {verdicts, buckets};
@@ -166,21 +166,29 @@ function parsePrometheus(text) {
 function quantile(buckets, q) {
   // Estimate a latency quantile from cumulative histogram buckets via linear
   // interpolation within the bucket that crosses the quantile threshold.
-  const les = Object.keys(buckets).filter((k) => k !== "+Inf").map(Number).sort((a, b) => a - b);
+  // Iterate the STRING keys (sorted numerically): JS String(5.0) === "5" but
+  // the scrape emits le="5.0" — converting to Number and back would miss the
+  // bucket and the cumulative count would never reach the target.
+  const keys = Object.keys(buckets).filter((k) => k !== "+Inf");
+  keys.sort((a, b) => parseFloat(a) - parseFloat(b));
   const total = buckets["+Inf"] || 0;
-  if (!total || !les.length) return null;
+  if (!total || !keys.length) return null;
   const target = q * total;
   let cum = 0;
-  for (const le of les) {
-    const b = buckets[String(le)] || 0;
+  for (let i = 0; i < keys.length; i++) {
+    const b = buckets[keys[i]] || 0;
     if (cum + b >= target) {
-      const lo = le === les[0] ? 0 : les[les.indexOf(le) - 1];
+      const lo = i === 0 ? 0 : parseFloat(keys[i - 1]);
+      const hi = parseFloat(keys[i]);
       const span = b > 0 ? (target - cum) / b : 0;
-      return lo + span * (le - lo);
+      return lo + span * (hi - lo);
     }
     cum += b;
   }
-  return null;
+  // All samples sit beyond the last finite bucket (e.g. a slow run above the
+  // histogram's max bucket): the quantile is somewhere past it — report the
+  // last bucket bound as a lower-bound estimate instead of "—".
+  return parseFloat(keys[keys.length - 1]);
 }
 
 function fmtLatency(s) {
