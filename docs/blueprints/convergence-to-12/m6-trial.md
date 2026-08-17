@@ -49,11 +49,14 @@ bypasses are the most valuable rows.
 
 | Step | What | Evidence |
 |---|---|---|
-| 1 | Count tasks + completion rate | `grep -c "^## Entry" operating-ledger-entries.md` |
-| 2 | Count interventions by class (approve/fix/retry/bypass) | ledger entries |
-| 3 | Median MSB time vs median baseline estimate | ledger entries |
+| 1–3 | Count tasks, completion rate, interventions by class, median MSB vs baseline | `python3 scripts/trial-rollup.py` (parses the ledger; `--json` for machine-readable) |
 | 4 | Re-run the run-report for latency/verdicts/retries | `python3 scripts/run-report.py` |
 | 5 | Pick ONE keep/change/cut decision from the week's data | record in MILESTONES.md M6 row |
+
+The rollup is covered by hermetic parser tests
+(`tests/ops/test_trial_rollup.py`) covering both ledger formats (the
+`trial-log.sh` shape and the manual template), so a format drift breaks
+a test, not a review.
 
 At the end of each week, one sentence in MILESTONES.md M6: what the data
 said, and the one decision made. If supervision cost > time saved two weeks
