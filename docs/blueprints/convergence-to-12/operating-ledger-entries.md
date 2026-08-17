@@ -169,6 +169,34 @@ net, model judgment is optional extra.
 
 ---
 
+## Entry 009 — 2026-08-17 · Intent over-grant fixed (Entry 002 follow-up)
+
+**Task:** Fix the intent-interpretation over-grant: the model self-granted
+`write_file` on a "Do not write any files." request.
+
+**Baseline:** n/a.
+
+**MSB result:** **Fixed.** The intent path had deterministic *completion*
+(model under-declares write → code adds it) but no mirror *suppression*.
+Added `_forbids_write` + the hard floor in `interpret_intent`: an explicit
+no-write directive strips `write_file` from the model's self-grant and
+beats the completion rule (a contradictory "write a brief but do not write"
+resolves to the stricter reading). `write_suppressed` on the Intent makes
+any correction visible in the trace/chain. Fallback path honors it too.
+
+**Intervention:** 4 new tests (live-shape self-grant suppressed,
+suppression beats completion, read-only phrasing, fallback suppression).
+
+**Evidence quality:** High — live re-run of the exact over-granting request:
+intent permissions `['read_vault']` (no write_file), verdict PASS, read-only
+task DAG (run `dbb-20260817T034458-50099`).
+
+**Value:** An explicit "do not write" can no longer resolve to a write task
+whatever the model says — the same models-propose/code-governs rule that
+completes under-declared writes now suppresses over-granted ones.
+
+---
+
 ## Entry 008 — 2026-08-17 · Docs-only changes reach MERGED
 
 **Task:** Make the factory test stage skip the full suite for docs-only

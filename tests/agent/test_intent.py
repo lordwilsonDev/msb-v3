@@ -190,9 +190,60 @@ def test_fallback_completes_write_permission_for_write_request() -> None:
     assert intent.permissions == ("write_file",)
 
 
+def test_llm_path_suppresses_self_granted_write_on_do_not_write() -> None:
+    """Core-loop Entry 002 regression: the live intent model self-granted
+    write_file for "… Do not write any files." An explicit no-write
+    directive is a hard floor — the model's self-grant is stripped and the
+    suppression is visible on the intent (write_suppressed)."""
+    client = _FakeClient(
+        '{"goals": ["search the vault", "summarize findings"], "constraints": [], '
+        '"permissions": ["read_vault", "write_file"], "privacy": true}'
+    )
+    intent = interpret_intent(
+        "Search the vault for recent decisions and summarize. Do not write any files.",
+        client=client,
+    )
+    assert intent.source == "llm"
+    assert intent.permissions == ("read_vault",)
+    assert "write_file" not in intent.permissions
+    assert intent.write_suppressed is True
+
+
+def test_llm_path_suppression_beats_write_completion() -> None:
+    """A contradictory request ("write a brief but do not write") resolves
+    to the STRICTER reading: the explicit prohibition beats both the model's
+    self-grant AND the deterministic completion rule."""
+    client = _FakeClient(
+        '{"goals": ["write a brief"], "constraints": [], '
+        '"permissions": ["read_vault"], "privacy": true}'
+    )
+    intent = interpret_intent("Write a client brief but do not write any files", client=client)
+    assert "write_file" not in intent.permissions
+    assert intent.write_suppressed is False  # nothing to strip — completion withheld
+
+
+def test_llm_path_read_only_phrasing_is_suppressed() -> None:
+    client = _FakeClient(
+        '{"goals": ["review the plan"], "constraints": [], '
+        '"permissions": ["read_vault", "write_file"], "privacy": true}'
+    )
+    intent = interpret_intent("Review this plan read-only and report back", client=client)
+    assert "write_file" not in intent.permissions
+    assert intent.write_suppressed is True
+
+
+def test_fallback_suppresses_write_on_do_not_write() -> None:
+    """Even on fallback (model unreachable), a "do not write" request must
+    not resolve to a write task."""
+    intent = interpret_intent("research and summarize, do not write", client=_BrokenClient())
+    assert intent.source == "fallback"
+    assert intent.permissions == ()
+
+
 def test_as_dict_round_trip() -> None:
     intent = Intent(request="r", goals=("g",), permissions=("write_file",), source="llm")
     d = intent.as_dict()
     assert d["goals"] == ["g"]
     assert d["permissions"] == ["write_file"]
     assert d["source"] == "llm"
+    assert d["write_suppressed"] is False
