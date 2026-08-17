@@ -18,13 +18,6 @@ def test_app_imports():
     assert spec is not None
 
 
-def test_registry_items_are_unique():
-    from msb_v3.api.registry import REGISTRY
-
-    prefixes = [entry["prefix"] for entry in REGISTRY]
-    assert len(prefixes) == len(set(prefixes))
-
-
 def test_status_endpoint():
     from msb_v3.api.app import create_app
 
@@ -39,6 +32,10 @@ def test_status_endpoint():
 
 
 def test_system_routes():
+    """M3 convergence: /system/routes derives from the live app's OpenAPI
+    paths (the hand-maintained api/registry.py REGISTRY was deleted after
+    it drifted — it listed 7 routers while app.py mounts 35+). Pin the shape
+    and that the live surface is what's reported."""
     from msb_v3.api.app import create_app
 
     app = create_app()
@@ -46,9 +43,20 @@ def test_system_routes():
     r = client.get("/system/routes")
     assert r.status_code == 200
     body = r.json()
+    assert body["service"] == "msb-v3"
     assert "routes" in body
-    tags = [route["tags"] for route in body["routes"]]
-    assert any("chat" in t for t in tags)
+    paths = [route["path"] for route in body["routes"]]
+    # The live surface must be reported — these are all genuinely mounted
+    # routes, and the count reflects reality (way more than the 7 the old
+    # registry hand-listed).
+    assert "/chat" in paths
+    assert "/system/routes" in paths
+    assert "/agent/handle" in paths
+    assert len(paths) > 20
+    # Every reported route must carry its methods.
+    for route in body["routes"]:
+        assert isinstance(route["methods"], list) and route["methods"]
+        assert isinstance(route["path"], str)
 
 
 def test_system_config():
