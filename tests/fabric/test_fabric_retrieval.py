@@ -72,11 +72,28 @@ async def test_run_knowledge_uses_vector_and_structural_routes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_episodic_uses_temporal_route() -> None:
-    engine = _FakeEngine([])
+async def test_run_episodic_with_hits_stays_episodic() -> None:
+    engine = _FakeEngine([{"id": "e", "score": 0.8, "text": "event", "source": "runs.jsonl"}])
     result = await _router_with(engine).run("what happened last week", top_k=3)
     assert result.domain == "episodic"
     assert engine.calls[0]["routes"] == ["temporal"]
+    assert result.route_errors == {}
+    assert result.fallback_from is None
+
+
+@pytest.mark.asyncio
+async def test_run_empty_episodic_degrades_to_semantic() -> None:
+    """A recency-cued query whose temporal route finds nothing must not
+    silently return empty — degrade to the vector route and say so. This is
+    the live failure the core-loop case-safe run exposed (2026-08-17):
+    "recent decisions about the sovereign stack" was hijacked into episodic
+    and returned zero hits even though the semantic store had the content."""
+    engine = _FakeEngine([])  # temporal finds nothing
+    result = await _router_with(engine).run("recent decisions about the sovereign stack", top_k=5)
+    assert result.domain == "semantic"
+    assert result.fallback_from == "episodic"
+    assert engine.calls[0]["routes"] == ["temporal"]
+    assert engine.calls[1]["routes"] == ["vector"]
     assert result.route_errors == {}
 
 
@@ -91,8 +108,13 @@ async def test_run_semantic_uses_vector_route() -> None:
 
 @pytest.mark.asyncio
 async def test_run_surfaces_route_errors_without_crashing() -> None:
+    """A route that errored (qdrant down) is surfaced honestly and is NOT
+    retried — an empty result with a visible error beats a pointless second
+    call that will fail the same way."""
     engine = _FakeEngine([], errors={"temporal": "qdrant down"})
     result = await _router_with(engine).run("recent decisions")
     assert result.domain == "episodic"
     assert result.route_errors["temporal"] == "qdrant down"
     assert result.latency_ms == 3
+    assert result.fallback_from is None
+    assert len(engine.calls) == 1  # no degrade on an errored route

@@ -53,6 +53,9 @@ class DomainResult:
     matches: List[Dict[str, Any]]
     route_errors: Dict[str, str]
     latency_ms: int
+    # Set when the routed domain returned zero matches and the router degraded
+    # to the semantic (vector) route instead of silently returning nothing.
+    fallback_from: Optional[str] = None
 
 
 def detect_domain(query: str, *, declared: Optional[str] = None) -> str:
@@ -88,6 +91,23 @@ class FabricRetrievalRouter:
         domain = detect_domain(query, declared=domain)
         routes = _DOMAIN_ROUTES[domain]
         result = await self._engine.run(query, top_k=top_k, routes=routes)
+        # Degrade-to-semantic: a query cued into a domain that finds nothing
+        # (e.g. a content query carrying a recency cue landing in episodic,
+        # whose temporal route only sees the runtime event store) must not
+        # silently return empty — retry the pure vector route and say so.
+        # "search returned no hits" was a real live failure mode (core-loop
+        # case-safe, 2026-08-17); the fallback makes retrieval genuinely
+        # semantic instead of cue-locked.
+        if not result["matches"] and not result["route_errors"] and domain != "semantic":
+            fallback = await self._engine.run(query, top_k=top_k, routes=["vector"])
+            return DomainResult(
+                domain="semantic",
+                query=query,
+                matches=fallback["matches"],
+                route_errors=fallback["route_errors"],
+                latency_ms=fallback["latency_ms"],
+                fallback_from=domain,
+            )
         return DomainResult(
             domain=domain,
             query=query,

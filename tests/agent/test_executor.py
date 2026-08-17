@@ -97,6 +97,38 @@ async def test_retry_policy_recovers_after_transient_failures() -> None:
 
 
 @pytest.mark.asyncio
+async def test_retries_and_recoveries_are_measured() -> None:
+    """M5 observability: retries and recoveries are metrics, not anecdotes.
+    A task that succeeds after retries increments both; an exhausted task
+    increments retries but not recoveries."""
+    from prometheus_client.registry import REGISTRY
+
+    def count(name: str) -> float:
+        return REGISTRY.get_sample_value(name, {"harness": "agentic"}) or 0.0
+
+    before_r = count("msb_v3_task_retries_total")
+    before_c = count("msb_v3_task_recoveries_total")
+
+    # succeeds after 2 retries -> retry +1, recovery +1
+    rec = TaskGraph(
+        goal="g",
+        tasks=(Task(task_id="x", goal="gx", tools=("a",), verification_method="none", retry_policy="retry:2"),),
+    )
+    await execute_graph(rec, FakeProvider({"a": "ok"}, fail_counts={"a": 2}))
+    assert count("msb_v3_task_retries_total") == before_r + 1
+    assert count("msb_v3_task_recoveries_total") == before_c + 1
+
+    # exhausted after retries -> retry +1, recovery unchanged
+    ex = TaskGraph(
+        goal="g",
+        tasks=(Task(task_id="y", goal="gy", tools=("a",), verification_method="none", retry_policy="retry:1"),),
+    )
+    await execute_graph(ex, FakeProvider({"a": "x"}, fail_counts={"a": 5}))
+    assert count("msb_v3_task_retries_total") == before_r + 2
+    assert count("msb_v3_task_recoveries_total") == before_c + 1
+
+
+@pytest.mark.asyncio
 async def test_retries_exhausted_fails_task_and_skips_downstream() -> None:
     graph = _chain("a", "b")
     # "a" always fails (fail count higher than any retries on t0, retry:0)

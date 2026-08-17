@@ -90,6 +90,20 @@ ACTIONGATE_DECISIONS = Counter(
     "ActionGate verdicts",
     ["verdict"],
 )
+# Executor reliability (M5 core-loop observability, 2026-08-17): a task that
+# needed more than one attempt is a *retry*; a retried task that then
+# succeeded is a *recovery*. Together with the failure matrix's bounded
+# retry policy they make retries and recovery measurable, not anecdotal.
+TASK_RETRIES = Counter(
+    "msb_v3_task_retries_total",
+    "Task attempts beyond the first (retries)",
+    ["harness"],
+)
+TASK_RECOVERIES = Counter(
+    "msb_v3_task_recoveries_total",
+    "Tasks that succeeded after at least one retry",
+    ["harness"],
+)
 from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
 
 # Explicit registration: prometheus_client counters are lazy (they only enter
@@ -99,6 +113,8 @@ from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
 try:
     _REGISTRY.register(ROUTER_DECISIONS)
     _REGISTRY.register(ACTIONGATE_DECISIONS)
+    _REGISTRY.register(TASK_RETRIES)
+    _REGISTRY.register(TASK_RECOVERIES)
 except ValueError:
     pass  # already registered
 
@@ -134,6 +150,14 @@ class Metrics:
     @classmethod
     def latency(cls, harness: str, seconds: float) -> None:
         LATENCY.labels(harness=harness).observe(seconds)
+
+    @classmethod
+    def retry(cls, harness: str) -> None:
+        TASK_RETRIES.labels(harness=harness).inc()
+
+    @classmethod
+    def recovered(cls, harness: str) -> None:
+        TASK_RECOVERIES.labels(harness=harness).inc()
 
     @classmethod
     def gauge_active(cls, delta: int = 0) -> None:
