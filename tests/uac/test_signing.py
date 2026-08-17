@@ -182,7 +182,7 @@ def test_anchor_rejects_a_different_key(tmp_path):
     other = ChainAnchor(seed=generate_seed())
     result = other.verify(chain)
     assert result["valid"] is False
-    assert "does not match" in result["reason"]
+    assert "current key or recovery key" in result["reason"]
 
 
 def test_verify_only_anchor_with_public_key(tmp_path):

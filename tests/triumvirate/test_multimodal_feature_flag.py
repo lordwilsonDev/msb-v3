@@ -1,14 +1,15 @@
 """Test the MSB_MULTIMODAL_ENABLED feature flag.
 
 The /multimodal/* routes (vision_capture, haptic_heartbeat, speech_command)
-currently call stub-backed interfaces (VisionClaw, HapticHeartbeat,
-SpeechFunctions). A real implementation should not return
-status="stub"; until one ships, the routes are gated behind
+currently call PARKED interfaces (VisionClaw, HapticHeartbeat,
+SpeechFunctions — convergence pass 2026-08-17: parked, blocked_on
+mac-mini-storage). A real implementation should not return
+status="parked"; until one ships, the routes are gated behind
 MSB_MULTIMODAL_ENABLED so consumers don't get a payload that looks like
-work but isn't. Audit: stub subsystems must not inflate the dashboards.
+work but isn't. Audit: parked subsystems must not inflate the dashboards.
 
-Default: disabled (503). With MSB_MULTIMODAL_ENABLED=1: stub payload
-returned and (because payload still has status="stub") the multimodal
+Default: disabled (503). With MSB_MULTIMODAL_ENABLED=1: parked payload
+returned and (because payload still has status="parked") the multimodal
 counter is still NOT incremented — the second guard at the metric
 call site is preserved.
 """
@@ -55,26 +56,27 @@ def test_multimodal_flag_default_is_disabled(client):
         resp = client.post(path) if body is None else client.post(path, json=body)
         assert resp.status_code == 503, f"{path} expected 503, got {resp.status_code}"
         body_json = resp.json()
-        assert "stub-backed" in body_json["detail"]
+        assert "parked" in body_json["detail"] or "stub-backed" in body_json["detail"]
         assert "MSB_MULTIMODAL_ENABLED" in body_json["detail"]
 
 
-def test_multimodal_flag_enabled_returns_stub(client, monkeypatch):
+def test_multimodal_flag_enabled_returns_parked(client, monkeypatch):
     """With MSB_MULTIMODAL_ENABLED=1, routes return their underlying
-    payload (not a 503). Vision + haptic still report status="stub"
-    (their impls haven't shipped yet); speech_command is a real
-    regex-based endpoint, so it always returns a real mapping.
-    The metric-stub-guard at the call site is independent of the
+    payload (not a 503). Vision + haptic report status="parked"
+    (their impls are parked on mac-mini-storage); speech_command is a
+    real regex-based endpoint, so it always returns a real mapping.
+    The metric-parked-guard at the call site is independent of the
     feature flag and stays in place for Vision/haptic."""
     monkeypatch.setenv("MSB_MULTIMODAL_ENABLED", "1")
 
     resp = client.post("/triumvirate/multimodal/vision/capture")
     assert resp.status_code == 200
-    assert resp.json()["status"] == "stub"
+    assert resp.json()["status"] == "parked"
+    assert resp.json()["blocked_on"] == "mac-mini-storage"
 
     resp = client.post("/triumvirate/multimodal/haptic/heartbeat")
     assert resp.status_code == 200
-    assert resp.json()["status"] == "stub"
+    assert resp.json()["status"] == "parked"
 
     resp = client.post(
         "/triumvirate/multimodal/speech/command", json={"transcript": "deploy canary"}

@@ -72,6 +72,30 @@ def test_kill_switch_blocks_start(env) -> None:
     assert turn.notes[-1].startswith("start refused")
 
 
+def test_kill_switch_armed_mid_run_halts_loop(env) -> None:
+    """The convergence ask: the kill switch must stop a turn that is ALREADY
+    in flight, not just refuse new starts. Arm it after ``start``; the next
+    stage transition re-checks the guard and HALT is enforced with an
+    audited, explainable reason — never an invisible continuation."""
+    from msb_v3.governance.killswitch import KillSwitch
+
+    turn = env["engine"].start("Mid-flight kill", charger="stub")
+    assert turn.status == "PENDING"
+
+    # Arm the switch AFTER the start gate passed.
+    KillSwitch(db_path=str(env["tmp_path"] / "ks.db"),
+               audit_chain=env["chain"]).arm("wilson", "stop mid-run")
+
+    turn = env["engine"].run(turn.turn_id)
+    assert turn.status == "HALTED"
+    assert any("halted" in n for n in turn.notes)
+    assert any("kill" in n.lower() for n in turn.notes)
+
+    # The halt is on the audit chain — explainable, not a black box.
+    event_types = {e.event_type for e in env["chain"].get_chain("flywheel")}
+    assert "halted" in event_types
+
+
 def test_budget_halts_charge(env, rebuild) -> None:
     from msb_v3.governance.budget import BudgetLedger
 

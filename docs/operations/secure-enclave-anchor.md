@@ -117,10 +117,13 @@ key. Rotation is therefore an explicit operator action:
 
 ## Re-provisioning a new machine
 
-New Mac → steps 1–4 of Enrollment with a **new** key → rotation (re-anchor the
-same audit DB copy with the new key, fresh notary era). The old machine's key
-is hardware-bound and cannot be copied, so migration is enroll-and-rotate, not
-key transfer.
+New Mac → steps 1–4 of Enrollment with a **new** key → **cross-signed
+rotation** (`python -m msb_v3.uac.chain_anchor --rotate <audit.db> --backend
+secure-enclave --reason "new machine"` — the old key endorses the new one in
+`chain_key_registry.json`, then the chain is re-anchored). The old machine's
+key is hardware-bound and cannot be copied, so migration is
+enroll-and-rotate, not key transfer. Register an offline recovery key before
+rotating (see the YubiKey doc §5 — the ceremony is shared).
 
 ## Interim hardening without hardware (applied 2026-08-17)
 
