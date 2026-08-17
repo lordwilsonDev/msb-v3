@@ -37,4 +37,4 @@ fi
 sed -i.bak "/^MSB_CHAIN_ANCHOR_KEY=/d" "$REPO/.env" && rm -f "$REPO/.env.bak"
 chmod 600 "$REPO/.env"
 echo "[store-anchor-key] removed MSB_CHAIN_ANCHOR_KEY from .env and chmod 600"
-echo "[store-anchor-key] verify: python -m msb_v3.uac.chain_anchor --verify <audit.db>"
+echo "[store-anchor-key] verify: python -m msb_ledger.chain_anchor --verify <audit.db>"

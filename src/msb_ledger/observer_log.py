@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
-from msb_v3.core.config import settings
+from msb_ledger.config import settings
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "uac"
 _OBSERVER_DB = _RUNTIME_ROOT / "observer_log.db"

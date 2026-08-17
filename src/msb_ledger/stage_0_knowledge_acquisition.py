@@ -31,13 +31,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional, Protocol, runtime_checkable
 
-from msb_v3.triumvirate.mission_anchor import MissionAnchor
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.axiom_library import ArtifactRecord, AxiomLibrary
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
-from msb_v3.uac.models import (
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.axiom_library import ArtifactRecord, AxiomLibrary
+from msb_ledger.chain_anchor import anchored_chain_from_env
+from msb_ledger.models import (
     ConflictType,
     Evidence,
     FailureReport,
@@ -56,8 +55,25 @@ from msb_v3.uac.models import (
     UDSRecommendations,
     UDSRequirements,
 )
-from msb_v3.uac.observer_log import ObserverLog
-from msb_v3.uac.research_backend import ResearchBackend, ResearchBackendError
+from msb_ledger.observer_log import ObserverLog
+from msb_ledger.research_backend import ResearchBackend, ResearchBackendError
+
+
+@runtime_checkable
+class MissionAnchorLike(Protocol):
+    """Structural contract for the mission-scope component.
+
+    msb_ledger is standalone: it does not import ``msb_v3``. The host
+    application's ``MissionAnchor`` (triumvirate.mission_anchor) satisfies
+    this protocol structurally, so the engine accepts it as a constructor
+    argument instead of importing it.
+    """
+
+    def scope_lock(self, goal: str, parameters: Optional[dict] = None) -> dict: ...
+
+    def update(
+        self, phase: str, iteration_count: int = 0, budget_spent_usd: float = 0.0
+    ) -> dict: ...
 
 STAGE_NAME = "stage_0_knowledge_acquisition"
 
@@ -82,13 +98,13 @@ class Stage0KnowledgeAcquisitionEngine:
     def __init__(
         self,
         research_backend: ResearchBackend,
-        mission_anchor: "MissionAnchor | None" = None,
+        mission_anchor: "MissionAnchorLike | None" = None,
         observer_log: "ObserverLog | None" = None,
         axiom_library: "AxiomLibrary | None" = None,
         audit_chain: "AuditChainLike | None" = None,
     ) -> None:
         self.research_backend = research_backend
-        self.mission_anchor = mission_anchor or MissionAnchor()
+        self.mission_anchor = mission_anchor
         self.observer_log = observer_log or ObserverLog()
         self.axiom_library = axiom_library or AxiomLibrary()
         self.audit_chain = audit_chain or anchored_chain_from_env()
@@ -98,7 +114,12 @@ class Stage0KnowledgeAcquisitionEngine:
         never fabricates missing profession/jurisdiction (Human Availability
         Gate principle applied at the code level, not just Stage -1's prompt)."""
         self._validate_inputs(requirements)
-
+        if self.mission_anchor is None:
+            raise ValueError(
+                "Stage0KnowledgeAcquisitionEngine requires a mission_anchor — pass a "
+                "MissionAnchorLike (e.g. msb_v3.triumvirate.mission_anchor.MissionAnchor); "
+                "msb_ledger is standalone and does not construct host components"
+            )
         mission = self.mission_anchor.scope_lock(
             goal=f"UAC Stage 0: compile knowledge for {requirements.profession}",
             parameters={"profession": requirements.profession, "jurisdiction": requirements.jurisdiction},

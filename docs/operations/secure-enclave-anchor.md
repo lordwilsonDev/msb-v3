@@ -102,7 +102,7 @@ key. Rotation is therefore an explicit operator action:
 1. **Stop the app** first (`start.sh stop`) — the running app re-anchors on
    every append and would silently write the OLD key back over the new anchor.
 2. **Re-anchor** with the new key:
-   `python -m msb_v3.uac.chain_anchor --anchor <audit.db>` (with the new env).
+   `python -m msb_ledger.chain_anchor --anchor <audit.db>` (with the new env).
 3. **Start a fresh notary era**: new `MSB_NOTARY_LOG` + `MSB_NOTARY_REMOTE`
    (e.g. `...-se.jsonl` / `gdrive:msb-v3/chain-anchor-notary-se`). The v1 log
    and `gdrive:msb-v3/chain-anchor-notary` are preserved as historical
@@ -118,7 +118,7 @@ key. Rotation is therefore an explicit operator action:
 ## Re-provisioning a new machine
 
 New Mac → steps 1–4 of Enrollment with a **new** key → **cross-signed
-rotation** (`python -m msb_v3.uac.chain_anchor --rotate <audit.db> --backend
+rotation** (`python -m msb_ledger.chain_anchor --rotate <audit.db> --backend
 secure-enclave --reason "new machine"` — the old key endorses the new one in
 `chain_key_registry.json`, then the chain is re-anchored). The old machine's
 key is hardware-bound and cannot be copied, so migration is

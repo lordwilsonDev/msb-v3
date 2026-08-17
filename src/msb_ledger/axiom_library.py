@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from msb_v3.core.config import settings
+from msb_ledger.config import settings
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "uac"
 _AXIOM_DB = _RUNTIME_ROOT / "axiom_library.db"

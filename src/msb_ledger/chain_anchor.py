@@ -55,15 +55,15 @@ stays verifiable after a hardware move. Operator actions: ``--rotate``,
 ``--register-recovery``, ``--revoke``, ``--recover``.
 
 CLI:
-    python -m msb_v3.uac.chain_anchor --verify <audit.db> [--anchor <audit.db>]
-    python -m msb_v3.uac.chain_anchor --notarize <audit.db> --notary <log>
-    python -m msb_v3.uac.chain_anchor --verify-notary <audit.db> --notary <log>
-    python -m msb_v3.uac.chain_anchor --rotate <audit.db> --backend <name> \
+    python -m msb_ledger.chain_anchor --verify <audit.db> [--anchor <audit.db>]
+    python -m msb_ledger.chain_anchor --notarize <audit.db> --notary <log>
+    python -m msb_ledger.chain_anchor --verify-notary <audit.db> --notary <log>
+    python -m msb_ledger.chain_anchor --rotate <audit.db> --backend <name> \
         --reason <why>          # cross-signed successor: old key endorses new
-    python -m msb_v3.uac.chain_anchor --register-recovery <audit.db> \
+    python -m msb_ledger.chain_anchor --register-recovery <audit.db> \
         --recovery-public-key <hex> [--algorithm <alg>]
-    python -m msb_v3.uac.chain_anchor --revoke <audit.db> --reason <why>
-    python -m msb_v3.uac.chain_anchor --recover <audit.db> --seed <hex> \
+    python -m msb_ledger.chain_anchor --revoke <audit.db> --reason <why>
+    python -m msb_ledger.chain_anchor --recover <audit.db> --seed <hex> \
         --reason <why>          # re-anchor with the registered recovery key
 """
 
@@ -81,16 +81,16 @@ from typing import Any, Dict, Optional
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from msb_v3.core.config import settings
-from msb_v3.uac.audit_chain import AuditChain
-from msb_v3.uac.signing import (
+from msb_ledger.audit_chain import AuditChain
+from msb_ledger.config import settings
+from msb_ledger.signing import (
     ED25519,
     SigningBackend,
     SoftwareEd25519Backend,
     build_backend,
     verify_signature,
 )
-from msb_v3.uac.timestamping import TimestampProof
+from msb_ledger.timestamping import TimestampProof
 
 ANCHOR_FILENAME = "chain_anchor.json"
 REGISTRY_FILENAME = "chain_key_registry.json"

@@ -40,7 +40,7 @@ DB="${1:-$REPO/data/uac/audit_chain.db}"
 
 # Local append must succeed (fail-closed); remote push failure is loud but the
 # local notary log stays intact (the CLI exits 1 in that case).
-OUT=$("$PY" -m msb_v3.uac.notary --notarize "$DB" 2>&1) || {
+OUT=$("$PY" -m msb_ledger.notary --notarize "$DB" 2>&1) || {
   echo "$OUT" >&2
   echo "[notary] WARNING: notarization incomplete — see above; the LOCAL notary log may be intact but the off-box push did not complete" >&2
   exit 1

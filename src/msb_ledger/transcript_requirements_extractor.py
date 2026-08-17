@@ -27,8 +27,22 @@ from __future__ import annotations
 import json
 from typing import List, Optional, Protocol
 
-from msb_v3.harnesses.base import ChatHarness
-from msb_v3.uac.models import RequirementsSpecification
+from msb_ledger.models import RequirementsSpecification
+
+
+class ChatHarnessLike(Protocol):
+    """Structural contract for the chat harness used by the real extraction
+    backend. msb_ledger is standalone: the host application's
+    ``msb_v3.harnesses.base.ChatHarness`` satisfies this protocol, but the
+    ledger never imports it — the caller injects it."""
+
+    def execute(self, prompt: str, context: Optional[dict] = None) -> "HarnessResultLike": ...
+
+
+class HarnessResultLike(Protocol):
+    """The slice of the harness result the extractor reads."""
+
+    payload: dict
 
 _EXTRACTION_SYSTEM_PROMPT = (
     "You extract structured requirements from a real business discovery-call "
@@ -57,16 +71,17 @@ class TranscriptExtractionError(RuntimeError):
 
 
 class LocalLLMTranscriptExtractionBackend:
-    """Real backend: runs the extraction prompt through msb_v3's local model
-    via ChatHarness. Requires the local model backend to actually be
-    reachable (see `msb_v3.core.config.settings` / `OLLAMA_MODEL`) — if it
-    isn't, ChatHarness currently masks that as a fallback echo of the prompt
-    rather than raising (see harnesses/base.py `ChatHarness._fallback`), so
-    this backend detects and rejects that fallback marker explicitly rather
-    than parsing it as if it were real output."""
+    """Real backend: runs the extraction prompt through the host's local
+    model via an injected ChatHarnessLike (msb_v3's ChatHarness satisfies
+    the protocol; the ledger does not import it). Requires the local model
+    backend to actually be reachable (see the host's OLLAMA_MODEL config) —
+    if it isn't, ChatHarness currently masks that as a fallback echo of the
+    prompt rather than raising, so this backend detects and rejects that
+    fallback marker explicitly rather than parsing it as if it were real
+    output."""
 
-    def __init__(self, chat_harness: Optional[ChatHarness] = None) -> None:
-        self._chat = chat_harness or ChatHarness()
+    def __init__(self, chat_harness: ChatHarnessLike) -> None:
+        self._chat = chat_harness
 
     def extract(self, transcript: str) -> dict:
         result = self._chat.execute(transcript, context={"system": _EXTRACTION_SYSTEM_PROMPT})
