@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from msb_v3 import __version__
 from msb_v3.core.config import settings
@@ -205,16 +205,20 @@ def system_health() -> Dict[str, Any]:
 
 
 @router.get("/routes")
-def list_routes() -> Dict[str, Any]:
-    from msb_v3.api.registry import REGISTRY
-
-    # Guarded iteration: a malformed (non-dict) registry entry is skipped
-    # rather than raising — /routes is a diagnostic surface and must not 500.
+def list_routes(request: Request) -> Dict[str, Any]:
+    # Derive from the live app, not a hand-maintained registry: the old
+    # api/registry.py REGISTRY listed 7 routers by hand and drifted from the
+    # 35+ actually mounted (e.g. health mounted at root but listed as
+    # /health). FastAPI 0.141 keeps included routers as lazy wrappers in
+    # app.routes, so OpenAPI is the stable flattened route registry — same
+    # source the /vesta/routes surface uses.
     routes = []
-    for e in REGISTRY:
-        if isinstance(e, dict):
-            routes.append({"prefix": e["prefix"], "tags": e["tags"]})
-    return {"routes": routes}
+    for path, operations in request.app.openapi()["paths"].items():
+        routes.append({"path": path, "methods": sorted(operations)})
+    return {
+        "service": "msb-v3",
+        "routes": sorted(routes, key=lambda item: item["path"]),
+    }
 
 
 @router.get("/config")
