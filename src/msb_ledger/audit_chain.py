@@ -28,6 +28,18 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
 from msb_ledger.config import settings
+from msb_ledger.merkle import (
+    InclusionProof,
+)
+from msb_ledger.merkle import (
+    inclusion_proof as _merkle_inclusion_proof,
+)
+from msb_ledger.merkle import (
+    merkle_root as _merkle_root,
+)
+from msb_ledger.merkle import (
+    verify_inclusion as _verify_inclusion,
+)
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "uac"
 _AUDIT_DB = _RUNTIME_ROOT / "audit_chain.db"
@@ -573,3 +585,52 @@ class AuditChain:
             )
             for r in rows
         ]
+
+    # ── Merkle proof-of-inclusion (P4) ─────────────────────────────────────
+    def _record_hashes(self) -> List[str]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT record_hash FROM audit_records ORDER BY seq ASC"
+            ).fetchall()
+        return [r["record_hash"] for r in rows]
+
+    def merkle_root(self) -> str:
+        """Merkle root over every record hash, in chain order. Committed in
+        the signed anchor snapshot so a third party holding only the anchor
+        + one receipt can verify a single action. Empty chain -> EMPTY_ROOT
+        (matches the genesis convention)."""
+        return _merkle_root(self._record_hashes())
+
+    def inclusion_proof(self, seq: int) -> InclusionProof:
+        """Compact, independently-verifiable receipt for the record at
+        ``seq`` (1-based). Raises IndexError for an unknown seq."""
+        records = self.get_chain()
+        for i, record in enumerate(records):
+            if record.seq == seq:
+                proof = _merkle_inclusion_proof([r.record_hash for r in records], i)
+                proof.seq = seq
+                return proof
+        raise IndexError(f"no audit record with seq {seq}")
+
+    def verify_inclusion(
+        self, proof: InclusionProof, expected_root: Optional[str] = None
+    ) -> bool:
+        """Verify a receipt against the chain's Merkle root. When
+        ``expected_root`` is given it must ALSO match (anchor-committed
+        root), so a tampered root field cannot pass.
+
+        The pure-tree check proves the receipt's ``leaf_hash`` was included in
+        the root — it cannot know the record's content CHANGED after the
+        receipt was issued. So this method additionally binds the receipt to
+        the LIVE record at ``proof.seq``: the record's current hash must equal
+        the receipt's leaf hash. That is the Certificate-Transparency binding:
+        a receipt stays valid while (and only while) the record it certifies
+        is the one that was committed."""
+        if expected_root is None:
+            expected_root = self.merkle_root()
+        if not _verify_inclusion(proof, expected_root=expected_root):
+            return False
+        records = self.get_chain()
+        if not 0 <= proof.seq - 1 < len(records):
+            return False
+        return records[proof.seq - 1].record_hash == proof.leaf_hash

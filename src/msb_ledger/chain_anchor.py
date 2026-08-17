@@ -407,6 +407,10 @@ class ChainAnchor:
             "seq": seq,
             "record_count": len(records),
             "tip_hash": tip_hash,
+            # Merkle root (P4): committed in the signed snapshot so a third
+            # party holding ONLY this anchor + one inclusion receipt can
+            # verify a single action without the whole chain.
+            "merkle_root": chain.merkle_root(),
             "chain_sha256": chain_sha,
             "anchored_at": _now_iso(),
         }
@@ -618,6 +622,16 @@ class ChainAnchor:
             return {"valid": False, "reason": "chain fingerprint mismatch",
                     "anchored_chain_sha256": snapshot["chain_sha256"],
                     "live_chain_sha256": live["chain_sha256"]}
+        # Merkle-root cross-check (P4): anchors written after the Merkle
+        # upgrade commit the root; it must match the live chain's root, so a
+        # rewritten chain that somehow keeps tip + sha256 identical (or an
+        # anchor copy/pasted onto a different chain) is still caught. Pre-
+        # Merkle anchors lack the field and verify unchanged (backward
+        # compatible — the signature already covers whatever was committed).
+        if "merkle_root" in snapshot and live.get("merkle_root") != snapshot["merkle_root"]:
+            return {"valid": False, "reason": "merkle root mismatch — chain content changed under the anchor",
+                    "anchored_merkle_root": snapshot["merkle_root"],
+                    "live_merkle_root": live.get("merkle_root")}
         # Staleness of a VALID anchor: chain records newer than the signed
         # anchor mean re-anchoring stopped after the anchor — reported, with
         # the anchor itself still valid for the tip it covers.
@@ -905,6 +919,11 @@ def _main() -> int:
     parser.add_argument("--verify-daemon", metavar="AUDIT_DB", help="one-shot health check for launchd (alert on problem)")
     parser.add_argument("--auto-anchor", action="store_true", help="re-sign a benignly STALE anchor instead of alerting (with --verify-daemon)")
     parser.add_argument("--no-notify", action="store_true", help="suppress the macOS notification (testing)")
+    # Merkle proof-of-inclusion (P4)
+    parser.add_argument("--receipt", metavar="AUDIT_DB", help="emit a Merkle inclusion receipt for one record")
+    parser.add_argument("--seq", metavar="INT", type=int, help="record seq for --receipt (1-based)")
+    parser.add_argument("--verify-receipt", metavar="AUDIT_DB", help="verify a receipt JSON file against the chain")
+    parser.add_argument("--receipt-file", metavar="JSON", help="receipt file for --verify-receipt")
     # Key rotation / recovery ceremony
     parser.add_argument("--rotate", metavar="AUDIT_DB", help="cross-signed key rotation: current key endorses a new backend")
     parser.add_argument("--register-recovery", metavar="AUDIT_DB", help="register an offline recovery public key (seed stays off-box)")
@@ -929,6 +948,47 @@ def _main() -> int:
         record = ChainAnchor.from_env().anchor(chain)
         print(json.dumps({"anchored": record["snapshot"]}, indent=2))
         return 0
+    if args.receipt:
+        if not args.seq:
+            parser.error("--receipt requires --seq <int>")
+        chain = AuditChain(args.receipt)
+        proof = chain.inclusion_proof(seq=args.seq)
+        # Include the committed root from the signed anchor when one exists,
+        # so the receipt carries the externally-verifiable root, not just the
+        # chain's self-reported one.
+        committed = None
+        try:
+            anchor_record = ChainAnchor.from_env()._read_anchor(chain)
+            if anchor_record:
+                committed = anchor_record.get("snapshot", {}).get("merkle_root")
+        except Exception:  # noqa: BLE001 — receipt emission must not fail on anchor quirks
+            committed = None
+        print(json.dumps({
+            "receipt": {
+                "seq": proof.seq, "leaf_hash": proof.leaf_hash,
+                "leaf_index": proof.leaf_index, "tree_size": proof.tree_size,
+                "root": proof.root, "path": proof.path,
+            },
+            "committed_merkle_root": committed,
+            "valid_against_chain": chain.verify_inclusion(
+                proof, expected_root=committed or proof.root),
+        }, indent=2))
+        return 0
+    if args.verify_receipt:
+        if not args.receipt_file:
+            parser.error("--verify-receipt requires --receipt-file <json>")
+        chain = AuditChain(args.verify_receipt)
+        with open(args.receipt_file) as handle:
+            data = json.load(handle)
+        from msb_ledger.merkle import InclusionProof
+
+        proof = InclusionProof(**data["receipt"])
+        committed = data.get("committed_merkle_root")
+        valid = chain.verify_inclusion(proof, expected_root=committed or None)
+        print(json.dumps({"valid": valid, "seq": proof.seq,
+                          "root": proof.root,
+                          "committed_merkle_root": committed}, indent=2))
+        return 0 if valid else 1
     if args.rotate:
         if not args.backend:
             parser.error("--rotate requires --backend <secure-enclave|yubikey|software> "

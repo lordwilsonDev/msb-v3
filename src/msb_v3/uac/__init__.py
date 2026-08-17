@@ -32,6 +32,7 @@ _LEDGER_MODULES = (
     "axiom_library",
     "chain_anchor",
     "config",
+    "merkle",
     "models",
     "notary",
     "observer_log",
