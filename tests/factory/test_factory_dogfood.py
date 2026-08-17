@@ -156,3 +156,104 @@ def test_factory_dogfood_reviewer_concern_surfaces_not_silent(repo, good_patch) 
     else:
         # If it merged, the concern must at least be recorded on the review.
         assert any("concern" in f.message.lower() for f in run.review.findings)
+
+
+# ---------------------------------------------------------------------------
+# C3b — doc-level contradictions reach the reviewer (coherence lens, 2026-08-17)
+# ---------------------------------------------------------------------------
+# The live dogfood exposed a real gap: a seeded self-contradiction in the
+# FINAL section of a doc was approved by both live LLM reviewers. Root cause:
+# _build_prompt truncated the diff to 2000 chars, so the reviewer never saw
+# the tail of the change. These tests pin the fix — the full bounded diff
+# reaches the reviewer, and a coherence-reading reviewer catches the
+# contradiction through the real pipeline.
+
+def test_reviewer_prompt_carries_full_diff_tail() -> None:
+    """The reviewer prompt must include the whole change, not a truncated
+    head. A contradiction in the final section of a doc is the exact case
+    the live dogfood missed — it must be visible to the reviewer."""
+    from msb_v3.moie import LLMExpert
+
+    expert = LLMExpert(
+        expert_id="llm-coherence",
+        name="Coherence Reviewer",
+        description="coherence",
+        lens="coherence",
+        model="reviewer-model",
+        # _build_prompt never calls the client, so a bare object suffices.
+        client_factory=lambda model: SimpleNamespace(generate=lambda *a, **k: None, model=model),
+    )
+    # A diff longer than the old 2000-char cap, with the contradiction at
+    # the very end (exactly how the live miss happened).
+    tail = "case-safe/note.md — vault note written by the SAFE read-only case"
+    body = ("# H\n\n" + ("x\n" * 1100))  # > 2000 chars before the tail
+    diff = "diff --git a/doc.md b/doc.md\n" + body + "\n+ " + tail + "\n"
+    assert len(diff) > 2000
+    prompt = expert._build_prompt("goal: document the run", {"diff": diff, "changed_files": ["doc.md"]})
+    assert tail in prompt, "the tail of the diff must reach the reviewer (was truncated at 2000 chars)"
+
+
+def _contradiction_client_factory(verdict: str = "BLOCK"):
+    """A reviewer that actually reads the diff and flags a seeded
+    self-contradiction — the fake stands in for a coherence-reading model.
+    It returns BLOCK only when BOTH halves of the contradiction are present
+    in the prompt (i.e. the tail was not truncated); otherwise CONCERN."""
+
+    def _make(model: str) -> Any:
+        class _C:
+            def __init__(self, model: str) -> None:
+                self.model = model
+
+            def generate(self, prompt: str, *, system: str | None = None, **kw: Any) -> Any:
+                no_write = "no file written" in prompt
+                wrote = "vault note written by the SAFE read-only case" in prompt
+                if no_write and wrote:
+                    return SimpleNamespace(
+                        text=f"VERDICT: {verdict}\nRISK: internal contradiction — case 1 claims no write, artifacts section claims a write\n",
+                        model=self.model,
+                    )
+                return SimpleNamespace(text="VERDICT: CONCERN\nRISK: could not see the full change\n", model=self.model)
+
+        return _C(model)
+
+    return _make
+
+
+def test_factory_dogfood_reviewer_catches_doc_contradiction(repo, tmp_path) -> None:
+    """Through the REAL pipeline (patch builder, real worktree, real diff
+    computation), a reviewer that reads the whole change must see the seeded
+    contradiction in the final section of a doc and BLOCK it — proving the
+    fix reaches the live path, not just the unit level."""
+    from msb_v3.moie import build_diverse_reviewer_panel
+
+    # A patch that writes a doc whose LAST section contradicts its earlier
+    # case-1 record — the live dogfood failure shape.
+    script = tmp_path / "doc_patch.sh"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'cd "$MSB_WORKTREE"\n'
+        "mkdir -p docs\n"
+        "cat > docs/run.md << 'EOF'\n"
+        "# Core loop\n\n"
+        "## Verdict cases\n\n"
+        "1. SAFE read-only — PASS, 5 semantic hits, no file written.\n\n"
+        "## Artifacts\n\n"
+        "- `case-safe/note.md` — vault note written by the SAFE read-only case\n"
+        "EOF\n"
+    )
+    script.chmod(0o755)
+
+    panel = build_diverse_reviewer_panel(
+        builder_model="patch",
+        models=["qwen3:8b"],
+        client_factory=_contradiction_client_factory(verdict="BLOCK"),
+    )
+    run = _run(
+        SoftwareFactory(builder=PatchBuilder(str(script)), reviewer_panel=panel),
+        Issue(title="Document the core-loop run"),
+        str(repo),
+    )
+    assert run.verdict == "BLOCKED", run.error
+    assert run.review is not None
+    assert any("contradiction" in f.message.lower() for f in run.review.findings)

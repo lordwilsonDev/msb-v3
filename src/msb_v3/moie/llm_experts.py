@@ -37,14 +37,18 @@ _VERDICT_RE = re.compile(r"^\s*verdict\s*[:=\-]\s*(safe|concern|block)\b", re.IG
 _OUTPUT_CONTRACT = (
     "You are an independent, adversarial code reviewer. Try to refute the "
     "change; do not seek agreement.\n"
+    "Always check the change as a whole for INTERNAL CONSISTENCY: a "
+    "statement in one part must not contradict another part, the stated "
+    "goal, or the evidence the change itself cites. A self-contradiction "
+    "is a correctness defect — flag it.\n"
     "Reply in exactly this line format (no markdown, no extra prose):\n"
     "VERDICT: SAFE|CONCERN|BLOCK\n"
     "RISK: <one specific risk, or omit>\n"
     "MITIGATION: <one specific mitigation, or omit>\n"
     "ASSUMPTION: <one assumption the change relies on, or omit>\n"
     "Repeat RISK/MITIGATION/ASSUMPTION lines as needed. BLOCK = a hard "
-    "safety/correctness defect. CONCERN = must be fixed or explicitly "
-    "mitigated. SAFE = no material defect found."
+    "safety/correctness defect (including a self-contradiction). CONCERN = "
+    "must be fixed or explicitly mitigated. SAFE = no material defect found."
 )
 
 # Default lenses cycled across reviewer models: security first (the safety
@@ -69,6 +73,14 @@ DEFAULT_LENSES: Tuple[Tuple[str, str, str], ...] = (
         "Maintainability Reviewer",
         "refute the change for structural defects (coupling, duplicated logic, "
         "schema/interface drift, undocumented assumptions, dead code)",
+    ),
+    (
+        "coherence",
+        "Coherence Reviewer",
+        "read the WHOLE change and refute it for internal contradictions: "
+        "claims that contradict each other, the stated goal, or the evidence "
+        "the change itself cites; docs that assert one thing in one section "
+        "and the opposite elsewhere; numbers/ids that disagree",
     ),
 )
 
@@ -161,7 +173,14 @@ class LLMExpert(Expert):
             parts.append("changed files: " + ", ".join(list(changed)[:10]))
         diff = context.get("diff")
         if diff:
-            parts.append("diff (bounded):\n" + str(diff)[:2000])
+            # Show the WHOLE change. The diff is already bounded upstream
+            # (compute_changes caps at max_diff_bytes=8000) — the old
+            # [:2000] cut here re-truncated it and hid the tail of every
+            # change, which is exactly how the live dogfood reviewer missed
+            # a contradiction in the final section of a doc. Every reviewer
+            # must read the whole change; the coherence lens just says so
+            # out loud.
+            parts.append("diff (bounded):\n" + str(diff))
         return "\n\n".join(parts)
 
     def analyze(self, claim: str, context: Optional[Dict[str, Any]] = None) -> ExpertReport:
@@ -310,24 +329,53 @@ def build_diverse_reviewer_panel(
 
     ``models`` maps 1:1 onto lenses (cycled); each (model, lens) becomes one
     ``LLMExpert``. Default models come from ``MSB_REVIEWER_MODELS``; default
-    lenses are security/correctness/maintainability.
+    lenses are security/correctness/maintainability/coherence.
+
+    The coherence lens is ALWAYS included (2026-08-17): with a single
+    reviewer model the old zip-cycled panel assigned only the first lens
+    (security), so a doc-level contradiction in the change was never
+    explicitly checked — the live dogfood approved a seeded
+    self-contradiction. The last model is now dedicated to coherence so
+    every panel, however small, re-reads the whole change for internal
+    contradictions.
     """
     model_list = list(models) if models is not None else _default_reviewer_models()
     lens_list = list(lenses) if lenses is not None else list(DEFAULT_LENSES)
     if not model_list:
         raise ValueError("no reviewer models configured (set MSB_REVIEWER_MODELS)")
-    experts = tuple(
-        LLMExpert(
-            expert_id=f"llm-{lens_id}",
-            name=name,
-            description=desc,
-            lens=lens_id,
-            model=model,
-            always_on=True,
-            client_factory=client_factory,
+    if len(model_list) < len(lens_list):
+        # Fewer models than lenses: keep every lens represented by cycling,
+        # but pin the LAST model to coherence so the whole-change read is
+        # never missing from the panel.
+        built: List[LLMExpert] = []
+        for i, (model, (lens_id, name, desc)) in enumerate(zip(model_list, cycle(lens_list))):
+            if i == len(model_list) - 1:
+                lens_id, name, desc = DEFAULT_LENSES[3]
+            built.append(
+                LLMExpert(
+                    expert_id=f"llm-{lens_id}",
+                    name=name,
+                    description=desc,
+                    lens=lens_id,
+                    model=model,
+                    always_on=True,
+                    client_factory=client_factory,
+                )
+            )
+        experts: Tuple[LLMExpert, ...] = tuple(built)
+    else:
+        experts = tuple(
+            LLMExpert(
+                expert_id=f"llm-{lens_id}",
+                name=name,
+                description=desc,
+                lens=lens_id,
+                model=model,
+                always_on=True,
+                client_factory=client_factory,
+            )
+            for model, (lens_id, name, desc) in zip(model_list, cycle(lens_list))
         )
-        for model, (lens_id, name, desc) in zip(model_list, cycle(lens_list))
-    )
     panel = ReviewPanel(builder_model=builder_model, experts=experts)
     panel.validate()
     return panel

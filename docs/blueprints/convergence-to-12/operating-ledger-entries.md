@@ -136,10 +136,40 @@ scratch runtime with a corrupted chain: 19 DBs back, chain `valid: True`
 
 ---
 
+## Entry 007 — 2026-08-17 · Reviewer hardening (dogfood follow-up)
+
+**Task:** Strengthen the factory's live reviewer so it catches doc-level
+contradictions (the Entry 005 seeded-defect miss).
+
+**Baseline:** n/a.
+
+**MSB result:** **Root cause found — the reviewer never saw the change.**
+`compute_changes` skipped the diff for NEW files (missing old file raised
+OSError → loop continue) — a brand-new doc produced an EMPTY diff, so the
+LLM had nothing to read. Fixed: missing side reads as `[]`. Second bug:
+single-model panels only got the FIRST lens (security); coherence never
+fired. Fixed: last model pinned to coherence + base contract demands an
+internal-consistency check + coherence lens reads the whole change (old
+prompt truncated diff at 2000 chars).
+
+**Intervention:** The fixes + 4 regression tests (full-diff tail reaches
+prompt, coherence reviewer catches contradiction through real pipeline,
+new-file diff emitted, single-model panel is coherence reviewer).
+
+**Evidence quality:** High — live runs 3-4 (`artifacts/factory-dogfood/`)
+confirm the diff now reaches the reviewer.
+
+**Value:** Real plumbing bugs fixed. Honest residual: the live qwen3:8b
+still approved the seeded contradiction even with full diff + coherence
+lens — the mechanism is correct, model judgment is the remaining lever.
+
+---
+
 ## Running notes
 
 - Next entries: log every real task for 30 days (per M6). Failures and
   manual bypasses first — they are the valuable data.
 - Flagged for follow-up: intent interpretation is not conservative about
-  write_file permissions (Entry 002); live LLM reviewers miss doc-level
-  contradictions (Entry 005).
+  write_file permissions (Entry 002); live 8B LLM reviewers miss doc-level
+  contradictions even with the coherence lens — a stronger model or
+  deterministic contradiction rules is the next lever (Entry 007).

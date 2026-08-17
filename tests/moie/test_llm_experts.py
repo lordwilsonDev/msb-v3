@@ -129,14 +129,31 @@ def test_review_panel_accepts_distinct_models():
 
 
 def test_build_diverse_reviewer_panel_cycles_lenses():
+    """Fewer models than lenses: lenses cycle, but the LAST model is pinned
+    to coherence (2026-08-17) so the whole-change contradiction read is never
+    missing from even a single-model panel — the live dogfood approved a
+    seeded self-contradiction because the coherence lens never fired."""
     panel = build_diverse_reviewer_panel(
         builder_model="claude",
         models=["qwen3:8b", "deepseek-r1", "codegemma:7b"],
         client_factory=lambda model: _FakeClient("VERDICT: SAFE", model=model),
     )
     assert [e.model for e in panel.experts] == ["qwen3:8b", "deepseek-r1", "codegemma:7b"]
-    assert [e.lens for e in panel.experts] == ["security", "correctness", "maintainability"]
+    assert [e.lens for e in panel.experts] == ["security", "correctness", "coherence"]
+    assert "coherence" in [e.lens for e in panel.experts]
     assert panel.builder_model == "claude"
+
+
+def test_single_model_panel_is_coherence_reviewer():
+    """A one-model panel must still check coherence — the exact live
+    dogfood shape (one reviewer model approved a self-contradictory doc)."""
+    panel = build_diverse_reviewer_panel(
+        builder_model="patch",
+        models=["qwen3:8b"],
+        client_factory=lambda model: _FakeClient("VERDICT: SAFE", model=model),
+    )
+    assert [e.lens for e in panel.experts] == ["coherence"]
+    assert [e.model for e in panel.experts] == ["qwen3:8b"]
 
 
 def test_build_diverse_reviewer_panel_reads_env(monkeypatch):
@@ -155,7 +172,7 @@ def test_review_panel_controller_runs_every_reviewer():
         client_factory=lambda model: _FakeClient("VERDICT: SAFE", model=model),
     )
     decision = panel.controller().analyze("add a multiply function")
-    assert {r.expert_id for r in decision.reports} == {"llm-security", "llm-correctness"}
+    assert {r.expert_id for r in decision.reports} == {"llm-security", "llm-coherence"}
     assert decision.verdict == "APPROVE"
     assert {r.model for r in decision.reports} == {"qwen3:8b", "deepseek-r1"}
 

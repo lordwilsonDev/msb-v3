@@ -17,29 +17,49 @@ A reviewer reading the diff alone should flag the contradiction.
 
 ## Pipeline evidence (`run.json`, `run2.json`)
 
-| Stage | Run 1 (reviewer qwen2.5-coder:0.5b) | Run 2 (reviewer qwen3:8b) |
-| --- | --- | --- |
-| classify | medium | medium |
-| plan | ok | ok |
-| build | ok — 1 changed file | ok — 1 changed file |
-| test | ran, **failed** (timeout — full suite >300s in worktree) | ran, **failed** (timeout) |
-| review | **APPROVE** — defect MISSED | **APPROVE** — defect MISSED |
-| verify | FAIL | FAIL |
-| verdict | **NEEDS_WORK** | **NEEDS_WORK** |
+| Stage | Run 1 (reviewer qwen2.5-coder:0.5b) | Run 2 (reviewer qwen3:8b) | Run 3+4 (reviewer qwen3:8b, post-fix) |
+| --- | --- | --- | --- |
+| classify | medium | medium | medium |
+| plan | ok | ok | ok |
+| build | ok — 1 changed file | ok — 1 changed file | ok — 1 changed file |
+| test | ran, **failed** (timeout — full suite >300s in worktree) | ran, **failed** (timeout) | ran, **failed** (timeout) |
+| review | **APPROVE** — defect MISSED | **APPROVE** — defect MISSED | **APPROVE** — defect MISSED |
+| verify | FAIL | FAIL | FAIL |
+| verdict | **NEEDS_WORK** | **NEEDS_WORK** | **NEEDS_WORK** |
+
+## Root cause found + fixed (2026-08-17 follow-up)
+
+Runs 1-2 approved the seeded defect for a concrete, fixable reason: the
+reviewer **never saw the change**. `compute_changes` skipped the diff for
+NEW files entirely (the missing old file raised OSError and the loop
+`continue`d) — a brand-new doc produced an EMPTY diff, so `build.diff` was
+empty and the LLM had nothing to read. Fixed in
+`src/msb_v3/factory/builders.py`: a missing side reads as `[]` instead of
+skipping, so new files appear as full `+` diffs.
+
+Second fix: `build_diverse_reviewer_panel` cycled lenses across models, so a
+single-model panel only ever got the FIRST lens (security) — the coherence
+lens never fired. The last model is now pinned to coherence, and the base
+reviewer contract explicitly demands an internal-consistency check. The
+coherence lens reads the WHOLE change (the old prompt truncated the diff to
+2000 chars, hiding the tail of every doc).
 
 ## Honest findings
 
-1. **Fail-closed works.** Neither run merged: missing/red test evidence →
-   NEEDS_WORK, never a pass. The pipeline refused to merge on incomplete
-   evidence exactly as designed.
-2. **Seeded defect NOT caught by the live LLM reviewers.** The hermetic M4
-   suite (`tests/factory/test_factory_dogfood.py`) proves the deterministic
-   MoIE reviewer catches a seeded BLOCK; the live 0.5B/8B reviewers both
-   approved a doc with an internal contradiction. Conclusion: reviewer
-   strength matters — a doc-level contradiction needs a model with enough
-   context reasoning, or a lens that re-reads the whole diff. This is the
-   real gap the dogfood exposed, not a broken pipeline.
-3. **Test stage timeout is a harness artifact.** The worktree run of the
-   full suite exceeds the 300s stage budget. A docs-only change shouldn't
-   need the full suite, but the factory's default is conservative — which is
-   the safe direction.
+1. **Fail-closed works.** No run merged: missing/red test evidence →
+   NEEDS_WORK, never a pass.
+2. **The mechanism is now correct, but the 8B model still approved.**
+   Runs 3-4 confirm the full diff reaches the reviewer and the coherence
+   lens fires (single-model panel = coherence reviewer), yet qwen3:8b
+   approved a doc whose final section contradicts its own case-1 record.
+   The deterministic MoIE reviewer catches seeded defects (hermetic M4
+   suite); the live 8B local model is the weak link — a doc-level
+   contradiction needs a stronger model or the deterministic rules. This is
+   recorded honestly: the pipeline no longer STARVES the reviewer, and the
+   remaining gap is model judgment, not plumbing.
+3. **Regression tests pin the fix:** `test_reviewer_prompt_carries_full_diff_tail`
+   (the tail of a >2000-char diff reaches the prompt),
+   `test_factory_dogfood_reviewer_catches_doc_contradiction` (a coherence-
+   reading reviewer catches the contradiction through the real pipeline),
+   `test_compute_changes_emits_diff_for_new_file` (new files produce diffs),
+   `test_single_model_panel_is_coherence_reviewer`.
