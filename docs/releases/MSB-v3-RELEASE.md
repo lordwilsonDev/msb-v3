@@ -1,7 +1,8 @@
-# MSB v3 — Release Declaration (v0.3.0-rc1)
+# MSB v3 — Release Declaration (v0.3.0)
 
-**Status:** RELEASE CANDIDATE · **Dated:** 2026-08-17 · **Baseline:**
-`docs/releases/v0.3.0-rc1-baseline.md` (commit `e3fd3ff`)
+**Status:** RELEASED · **Dated:** 2026-08-17 · **Baseline:**
+`docs/releases/v0.3.0-baseline.md` · **Tag:** `v0.3.0` (verified by
+`release-verify.yml` on the self-hosted runner from a virgin clone)
 
 ## What v3 is
 
@@ -15,7 +16,7 @@ recovers when a model, tool, or permission fails.
 - Not "production-ready" by claim — readiness is earned by the evidence in
   this release (canonical run, verdict cases, failure matrix, backup/restore).
 - Not a sandboxed executor (CLI provider is best-effort isolation — L9 parked).
-- Not multi-modal (stub-gated — parked in v4).
+- Not multi-modal (parked, `blocked_on: mac-mini-storage` — v4).
 - Not a distributed mesh (parked in v4).
 
 ## What is frozen
