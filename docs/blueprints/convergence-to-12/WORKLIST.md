@@ -99,3 +99,16 @@ Legend: ✅ done · 🟡 in progress · 🔴 not started · ⏸ blocked on opera
 4. C1–C3 (factory dogfood).
 5. E1 (ledger template).
 6. H1–H8 (release-gate sequence, 2026-08-17) — all done, see table above.
+
+## I. v0.3.0-rc1 release-candidate sequence (2026-08-17)
+
+| # | Item | Destination | Exit evidence | Status |
+|---|---|---|---|---|
+| I1 | Version 0.3.0 (all sources agree) | DONE | pyproject/`__version__`/identity/MANIFEST/paseo CLIENT_INFO → 0.3.0; `test_version_sources_agree` green | ✅ |
+| I2 | RC baseline doc | DONE | `docs/releases/v0.3.0-rc1-baseline.md` — commit, lock hashes, models, env, skip inventory w/ opt-in commands, limitations | ✅ |
+| I3 | Complete verdict fixtures (full records) | DONE | re-ran SAFE/tainted/kill live; each case now has `response.txt` + `replay.json` (consistent/legal, FAILED states replay) + `audit.json` (16/22/18 records); README documents all 4 cases | ✅ |
+| I4 | Retrieval validation battery | DONE | +3 tests: single-token query, irrelevant query honesty (no fake fallback), empty query no-crash; tightened degrade rule (only when routed domain excludes vector) | ✅ |
+| I5 | Metrics run-report generator | DONE | `scripts/run-report.py` → p50/p95 from latency histogram + queries/verdicts/router/retries/recoveries; artifact `run-report-20260817.json` | ✅ |
+| I6 | Release packaging | DONE | `MSB-v3-RELEASE.md` (impl/experimental/v4 split) + `failure-report-v0.3.0-rc1.md` + `v4-parking-lot.md` + `independent-user-validation.md` (setup guide + protocol + observer template) | ✅ |
+| I7 | Freeze policy sharpened | DONE | v3-contract exceptions section now names the parking lot + evidence-justified exit rule | ✅ |
+| I8 | Tag + push + CI | NEXT | tag `v0.3.0-rc1` after battery; push; watch 3 CI gates | ⏳ |
