@@ -32,7 +32,7 @@ set -a
 [ -f "$REPO/.env" ] && . "$REPO/.env"
 set +a
 
-export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"
+export PATH="/opt/homebrew/bin:/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"
 export PYTHONPATH="$REPO/src:~/.local/lib/msb-v3"
 export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"
 
