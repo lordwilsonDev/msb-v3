@@ -43,6 +43,10 @@ def _recorded(chain: AuditChain) -> list[str]:
     return [r.event_type for r in chain.get_chain(component="tools")]
 
 
+def _verdicts(chain: AuditChain) -> list[str]:
+    return [r.payload.get("verdict", "<missing>") for r in chain.get_chain(component="tools")]
+
+
 class _RecordingClient:
     def __init__(self) -> None:
         self.tools: dict = {}
@@ -59,6 +63,7 @@ def test_permitted_vault_read_executes_and_audits(chain, vault):
     result = _run_governed("vault_read", {"path": "note.txt"}, granted=frozenset(), tenant="t", session="s")
     assert "hello sovereign" in result
     assert _recorded(chain) == ["tool.vault_read"]
+    assert _verdicts(chain) == ["allowed"]
 
 
 def test_permitted_memory_store_executes_with_capability(chain, monkeypatch, tmp_path):
@@ -87,8 +92,9 @@ def test_unauthorized_vault_write_is_denied_without_execution(chain, vault):
     )
     assert result == "[denied] tool vault_write requires capabilities: vault.write"
     assert not (vault / "x.md").exists()  # no execution
-    # audit denial: the refusal left a record, not an absent result
+    # audit denial: the refusal left a record with an explicit verdict
     assert _recorded(chain) == ["tool.vault_write"]
+    assert _verdicts(chain) == ["denied"]
     assert "denied" in chain.get_chain(component="tools")[0].payload["result_head"]
     # secrets hygiene: content is excluded from the audit payload
     assert "content" not in chain.get_chain(component="tools")[0].payload["args"]
@@ -129,8 +135,9 @@ def approval_demo(monkeypatch):
 def test_approval_required_refuses_then_proceeds_when_approved(chain, approval_demo):
     refused = _run_governed("approval.demo", {}, granted=frozenset(), tenant="t", session="s")
     assert refused == "[approval-required] tool approval.demo requires operator approval"
-    # the refusal left evidence too
+    # the refusal left evidence too, with an explicit verdict
     assert _recorded(chain) == ["tool.approval.demo"]
+    assert _verdicts(chain) == ["approval-required"]
 
     proceeded = _run_governed(
         "approval.demo",
@@ -193,11 +200,17 @@ def test_malformed_and_unknown_tool_requests_are_rejected_with_evidence(chain, v
     missing = _run_governed("vault_read", {}, granted=frozenset(), tenant="t", session="s")
     assert missing.startswith("[tool-error] vault_read: path is required")
 
-    # unknown tool -> rejected with evidence
+    # unknown tool -> rejected with evidence (verdict "unknown")
     unknown = _run_governed("no.such.tool", {}, granted=frozenset(), tenant="t", session="s")
     assert unknown == "[tool-error] unknown tool: no.such.tool"
 
     assert _recorded(chain) == ["tool.vault_read", "tool.no.such.tool"]
+    # The malformed call was ALLOWED by the gate (capability held) and the
+    # executor rejected the bad args — so the gate verdict is "allowed" and
+    # the execution error lives in result_head. The unknown tool never got a
+    # gate decision at all: verdict "unknown".
+    assert _verdicts(chain) == ["allowed", "unknown"]
+    assert "path is required" in chain.get_chain(component="tools")[0].payload["result_head"]
 
 
 def test_registration_skips_unknown_tools():
