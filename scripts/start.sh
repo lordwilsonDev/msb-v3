@@ -30,10 +30,24 @@ LOGFILE="$REPO/logs/msb-v3.log"
 SCRIPT="$REPO/scripts/run.sh"
 PORT="${MSB_PORT:-8766}"
 AGENT_LABEL="com.lordwilson.msb-v3"
-AGENT_PLIST="$REPO/scripts/launchd/$AGENT_LABEL.plist"
-[ -f "$AGENT_PLIST" ] || AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
+# The repo holds a path-neutral TEMPLATE (__MSB_REPO__ placeholders); the
+# agent that launchctl actually loads is the INSTALLED copy rendered from it
+# with THIS checkout's path (see render_plist). Never bootstrap the template
+# directly — a committed absolute path made the agent un-startable on any
+# other machine (M7 dry-run catch, 2026-08-17).
+TEMPLATE_PLIST="$REPO/scripts/launchd/$AGENT_LABEL.plist"
+AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
 
 mkdir -p "$REPO/.artifacts" "$REPO/logs"
+
+# Render the repo template into the installed LaunchAgents copy, substituting
+# the actual checkout path. Called before any bootstrap so the agent points
+# at THIS clone regardless of where it lives.
+render_plist() {
+  [ -f "$TEMPLATE_PLIST" ] || return 0
+  mkdir -p "$HOME/Library/LaunchAgents"
+  sed "s|__MSB_REPO__|$REPO|g" "$TEMPLATE_PLIST" > "$AGENT_PLIST"
+}
 
 log() { echo "[start.sh] $*"; }
 
@@ -177,6 +191,9 @@ case "$cmd" in
       log "already running (launchd or standby) -- HEALTHY"
       exit 1
     fi
+    # Render the installed plist BEFORE the is_managed/bootstrap checks below
+    # (both bootstrap paths use $AGENT_PLIST).
+    render_plist
     if is_managed; then
       # Job loaded but unhealthy (or mid-restart): nudge a clean reload. The
       # reload is NOT atomic (bootout then bootstrap), so a bootstrap failure

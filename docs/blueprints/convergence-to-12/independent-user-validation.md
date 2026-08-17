@@ -18,12 +18,26 @@ each. Observe without rescuing immediately.
 ### Install
 
 ```bash
-git clone <repo-url> msb-v3 && cd msb-v3
+git clone https://github.com/lordwilsonDev/msb-v3.git msb-v3 && cd msb-v3
+# HTTPS, not SSH — SSH requires a configured key (dry-run friction finding,
+# 2026-08-17: the plain `git clone <repo-url>` form failed on SSH).
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-runtime.lock -r requirements-dev.lock
 cp .env.example .env        # set MSB_VAULT_PATH, MSB_OPERATOR_TOKEN, OLLAMA_URL
 make server-start           # or: bash scripts/start.sh start
 ```
+
+Notes (from the 2026-08-17 operator dry-run on a fresh clone):
+- `run.sh` now prefers the checkout's own `.venv/bin/python` when present
+  (the venv the guide creates), so the locks you just installed are the ones
+  that run — no dependence on a machine-wide Python.
+- `start.sh` renders the launchd plist from a path-neutral template
+  (`__MSB_REPO__` placeholder) before bootstrap, so the agent points at THIS
+  checkout wherever it lives — a hardcoded machine path made the agent
+  un-startable on any other machine (the blocker this dry-run caught).
+- If something else already serves :8766 on your machine, set
+  `MSB_PORT` to a free port in `.env` before `make server-start`
+  (the dry-run used 8767 for this reason).
 
 ### First run (the canonical task)
 

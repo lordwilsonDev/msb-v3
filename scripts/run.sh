@@ -4,7 +4,17 @@ set -euo pipefail
 # Portable: MSB_REPO / MSB_PYTHON override (CI sets these); defaults resolve
 # sets them from the checkout + actions/setup-python).
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
-PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
+# Prefer the checkout's own venv when present (the M7 setup guide creates
+# one: `python3 -m venv .venv && pip install -r requirements-*.lock`). An
+# explicit MSB_PYTHON (CI) always wins; otherwise fall back to this machine's
+# base python so existing launchd/standby installs keep working unchanged.
+if [ -x "$REPO/.venv/bin/python" ] && [ -z "${MSB_PYTHON:-}" ]; then
+  PY="$REPO/.venv/bin/python"
+elif [ -n "${MSB_PYTHON:-}" ]; then
+  PY="$MSB_PYTHON"
+else
+  PY="/opt/homebrew/Caskroom/miniforge/base/bin/python"
+fi
 
 # Load the repo .env (gitignored secrets) so the server resolves env the
 # same way scripts/webcheck.sh does: env -> .env -> shipped default. Pre-

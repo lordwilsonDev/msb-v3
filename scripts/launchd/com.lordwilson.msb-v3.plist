@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MSB v3 launchd agent — TEMPLATE, not an install-ready plist.
+
+  __MSB_REPO__ is a placeholder for the checkout path. scripts/start.sh
+  renders this template to ~/Library/LaunchAgents/com.lordwilson.msb-v3.plist
+  (substituting the actual repo path) before launchctl bootstrap, so a fresh
+  clone on any machine — and any checkout path — gets an agent that points at
+  ITS OWN run.sh. Do NOT commit machine-specific absolute paths here; that
+  made the agent un-startable on any other machine (the M7 dry-run catch).
+-->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -8,11 +18,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/lordwilson/msb-v3/scripts/run.sh</string>
+        <string>__MSB_REPO__/scripts/run.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/lordwilson/msb-v3</string>
+    <string>__MSB_REPO__</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -20,11 +30,17 @@
     <key>KeepAlive</key>
     <true/>
 
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
     <key>StandardOutPath</key>
-    <string>/Users/lordwilson/msb-v3/logs/gateway.out.log</string>
+    <string>__MSB_REPO__/logs/gateway.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/lordwilson/msb-v3/logs/gateway.err.log</string>
+    <string>__MSB_REPO__/logs/gateway.err.log</string>
 
     <key>ProcessType</key>
     <string>Background</string>
