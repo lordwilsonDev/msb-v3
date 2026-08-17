@@ -38,4 +38,13 @@ ENV PYTHONPATH=/app/src \
     QDRANT_PORT=6333
 
 EXPOSE 8766
+
+# Liveness: the app's own /health route (the /status route does not exist).
+# curl is already installed above. The image declares its own health so any
+# consumer — CI, compose, orchestrators — can rely on Docker's state rather
+# than re-implementing a probe. start-period absorbs the boot window; the
+# smoke test in CI waits on {{.State.Health.Status}} == healthy.
+HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=5 \
+  CMD curl -f http://127.0.0.1:8766/health || exit 1
+
 CMD ["python", "-m", "msb_v3"]
