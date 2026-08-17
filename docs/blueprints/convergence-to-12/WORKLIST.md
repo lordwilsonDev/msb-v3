@@ -29,26 +29,26 @@ Legend: ✅ done · 🟡 in progress · 🔴 not started · ⏸ blocked on opera
 
 | # | Item | Destination | Exit evidence | Status |
 |---|---|---|---|---|
-| C1 | One real MSB change through the factory (generate → review → verify → merge decision) | WIRE | run artifact linking request → change → review → verification → decision | 🟡 |
-| C2 | Diverse reviewer real (builder∉reviewers, model identity recorded) | WIRE | reviewer panel config + identity record | 🟡 |
-| C3 | Seeded defect caught by the reviewer | WIRE | seeded-defect test: reviewer flags it | 🟡 |
+| C1 | One real MSB change through the factory (generate → review → verify → merge decision) | WIRE | `tests/factory/test_factory_dogfood.py` — real patch + worktree + pytest, MERGED verdict, evidence chain covers classify→plan→review→verify | ✅ |
+| C2 | Diverse reviewer real (builder∉reviewers, model identity recorded) | WIRE | panel runs distinct reviewer models recorded on `Review.reviewer_models`; builder-as-reviewer fails closed (BLOCKED) | ✅ |
+| C3 | Seeded defect caught by the reviewer | WIRE | seeded BLOCK verdict → factory BLOCKED with finding; CONCERN surfaced, never a silent merge | ✅ |
 | C4 | No abandoned worktrees | VERIFY | `git worktree list` shows only main | ✅ H1 (M3) |
 
 ## D. Reliability & Adversarial Proof (M5)
 
 | # | Item | Destination | Exit evidence | Status |
 |---|---|---|---|---|
-| D1 | Failure matrix implemented (11 modes) | WIRE | `tests/chaos/test_failure_matrix.py` — each mode: expected terminal state + evidence | 🟡 |
-| D2 | No silent unsafe continuation | WIRE | matrix asserts failed/uncertain actions cannot proceed invisibly | 🟡 |
-| D3 | Recovery bounded (retries/timeouts/escalation measurable) | WIRE | assertions on attempt counts + terminal states | 🟡 |
-| D4 | Security cases (prompt injection, authority confusion) | WIRE | injection tests produce safe outcomes | 🟡 |
+| D1 | Failure matrix implemented (11 modes) | WIRE | `tests/chaos/test_failure_matrix.py` (11 tests, all hermetic): model down / invalid output / timeout / permission denial / duplicate / partial completion / stale evidence / corrupted state / retry exhaustion / prompt injection / conflicting instructions | ✅ |
+| D2 | No silent unsafe continuation | WIRE | each mode asserts a visible terminal state (FAIL/BLOCK/REVIEW/skip) — never an invisible pass | ✅ |
+| D3 | Recovery bounded (retries/timeouts/escalation measurable) | WIRE | retry exhaustion pinned at 3 attempts; timeout fails task + skips downstream; partial completion reports successes + skips | ✅ |
+| D4 | Security cases (prompt injection, authority confusion) | WIRE | injection taint escalates write to REVIEW; conflicting-instruction rules (taint>approval, tier>approve) fail-safe | ✅ |
 | D5 | Soak run report | PARK | documented limitation — needs long-running stack; deferred to M6 trial | ⏸ |
 
 ## E. Personal production trial (M6) — operator-gated
 
 | # | Item | Destination | Exit evidence | Status |
 |---|---|---|---|---|
-| E1 | Operating-ledger template committed | WIRE | `docs/blueprints/convergence-to-12/operating-ledger.md` — task/baseline/MSB-time/intervention/outcome/failure/evidence columns | 🟡 |
+| E1 | Operating-ledger template committed | WIRE | `docs/blueprints/convergence-to-12/operating-ledger.md` — task/baseline/MSB-time/intervention/outcome/failure/evidence columns + monthly rollup + M6 decision gate | ✅ |
 | E2 | ≥30 days real usage + measurable value | OPERATOR | Wilson runs the ledger for 30–60 days | ⏸ |
 
 ## F. Trust boundary (security review #1–#9)
