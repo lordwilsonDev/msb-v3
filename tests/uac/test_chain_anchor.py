@@ -23,6 +23,35 @@ def make_chain(db_path: Path, n: int) -> AuditChain:
     return chain
 
 
+# Fake `security` CLI for hermetic keychain-resolution tests. The real one is
+# macOS-only, so the runtime resolves the seed via a subprocess; a fake on PATH
+# exercises that glue deterministically on every platform.
+FAKE_SECURITY = """#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "find-generic-password" ]; then
+  if [ "${FAKE_KEYCHAIN_RESULT:-ok}" = "missing" ]; then
+    echo "security: the specified item could not be found" >&2
+    exit 44
+  fi
+  printf '%s' "${FAKE_KEYCHAIN_SEED:-}"
+  exit 0
+fi
+exit 1
+"""
+
+
+@pytest.fixture
+def fake_security(tmp_path: Path, monkeypatch) -> Path:
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    script = bindir / "security"
+    script.write_text(FAKE_SECURITY)
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bindir}:{os.environ.get('PATH', '')}")
+    monkeypatch.setenv("FAKE_KEYCHAIN_SEED", bytes(range(32)).hex())
+    return script
+
+
 def test_anchor_verify_roundtrip(tmp_path: Path) -> None:
     chain = make_chain(tmp_path / "audit.db", 5)
     anchor = ChainAnchor(seed=generate_seed())
@@ -31,6 +60,59 @@ def test_anchor_verify_roundtrip(tmp_path: Path) -> None:
     result = anchor.verify(chain)
     assert result["valid"] is True
     assert result["record_count"] == 5
+
+
+def test_from_env_resolves_seed_from_keychain_when_configured(
+    fake_security, monkeypatch, tmp_path: Path
+) -> None:
+    """With MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE set, the seed comes from the
+    login keychain instead of env/file — so the key need not live in
+    plaintext."""
+    import msb_v3.uac.audit_chain as audit_mod
+
+    monkeypatch.setenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "msb-chain-anchor-key")
+    monkeypatch.setattr(audit_mod, "_AUDIT_DB", tmp_path / "audit.db")
+    anchor = ChainAnchor.from_env()
+
+    chain = make_chain(tmp_path / "audit.db", 3)
+    anchor.anchor(chain)
+    assert anchor.verify(chain)["valid"] is True
+    # The anchor used the keychain-provided seed (FAKE_KEYCHAIN_SEED).
+    from msb_v3.uac.signing import SoftwareEd25519Backend
+
+    expected = SoftwareEd25519Backend(bytes(range(32))).public_key_hex()
+    record = json.loads((tmp_path / "chain_anchor.json").read_text())
+    assert record["public_key"] == expected
+
+
+def test_from_env_keychain_missing_fails_closed(fake_security, monkeypatch) -> None:
+    """A configured keychain item that is absent raises with the store path —
+    never silently continues unanchored."""
+    monkeypatch.setenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "msb-chain-anchor-key")
+    monkeypatch.setenv("FAKE_KEYCHAIN_RESULT", "missing")
+    with pytest.raises(ValueError, match="store-anchor-key.sh"):
+        ChainAnchor.from_env()
+
+
+def test_anchored_chain_from_env_anchors_with_keychain(fake_security, monkeypatch, tmp_path: Path) -> None:
+    """A configured keychain item anchors even with no env seed and no keyfile
+    — the factory must not return a plain (unanchored) chain."""
+    import msb_v3.uac.audit_chain as audit_mod
+
+    monkeypatch.setenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "msb-chain-anchor-key")
+    monkeypatch.setattr(audit_mod, "_AUDIT_DB", tmp_path / "audit.db")
+    result = anchored_chain_from_env()
+    assert isinstance(result, AnchoredAuditChain)
+    assert result.verify_anchored()["valid"] is True
+
+
+def test_keychain_path_disabled_when_unconfigured(monkeypatch) -> None:
+    """Unset MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE => no keychain subprocess, the
+    standard missing-key error."""
+    monkeypatch.delenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", raising=False)
+    monkeypatch.delenv(KEY_ENV, raising=False)
+    with pytest.raises(ValueError, match="no chain anchor key configured"):
+        ChainAnchor.from_env()
 
 
 def test_t7_whole_db_replacement_is_detected(tmp_path: Path) -> None:

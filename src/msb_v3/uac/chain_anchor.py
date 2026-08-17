@@ -45,6 +45,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -91,6 +92,29 @@ def _default_key_path() -> Path:
     return Path(settings.msb_home) / "data" / "uac" / "chain_anchor_key"
 
 
+def _seed_from_keychain() -> Optional[str]:
+    """Resolve the anchor seed from the macOS login keychain (a generic
+    password item) so the key need not live in a plaintext file. Gated on
+    MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE (set by scripts/store-anchor-key.sh):
+    unset => never invoked, zero behavior change and no subprocess. Returns
+    None when the item is absent or `security` is unavailable; the caller
+    reports the missing key fail-closed."""
+    service = os.getenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "").strip()
+    if not service:
+        return None
+    account = os.getenv("MSB_CHAIN_ANCHOR_KEYCHAIN_ACCOUNT", "msb-v3")
+    try:
+        proc = subprocess.run(
+            ["security", "find-generic-password", "-s", service, "-a", account, "-w"],
+            capture_output=True, text=True, timeout=15,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None  # no `security` CLI (non-macOS) — caller fails closed
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip()
+
+
 def _default_anchor_path(db_path: Path) -> Path:
     return Path(db_path).with_name(ANCHOR_FILENAME)
 
@@ -133,20 +157,22 @@ class ChainAnchor:
     @classmethod
     def from_env(cls) -> "ChainAnchor":
         """Load the key per MSB_CHAIN_ANCHOR_BACKEND (software default) + the
-        keyfile/env seed. Fail-closed: a configured-but-unreadable key raises
-        rather than degrading silently."""
+        keyfile/env/keychain seed. Fail-closed: a configured-but-unreadable
+        key raises rather than degrading silently."""
         name = os.getenv(BACKEND_ENV, "software")
         if name != "software":
             return cls(backend=build_backend(name))
         raw = os.getenv(KEY_ENV)
+        keyfile = _default_key_path()
+        if raw is None and keyfile.exists():
+            raw = keyfile.read_text().strip()
         if raw is None:
-            keyfile = _default_key_path()
-            if keyfile.exists():
-                raw = keyfile.read_text().strip()
-            else:
-                raise ValueError(
-                    f"no chain anchor key configured: set {KEY_ENV} or create {keyfile}"
-                )
+            raw = _seed_from_keychain()
+        if raw is None:
+            raise ValueError(
+                f"no chain anchor key configured: set {KEY_ENV}, create {keyfile}, "
+                "or store it in the macOS keychain (scripts/store-anchor-key.sh)"
+            )
         try:
             seed = bytes.fromhex(raw.strip())
         except ValueError as exc:
@@ -444,13 +470,20 @@ class AnchoredAuditChain:
 def anchored_chain_from_env() -> AuditChain | AnchoredAuditChain:
     """Factory used at service wiring sites: anchored when a key OR a
     non-software backend is configured (e.g. MSB_CHAIN_ANCHOR_BACKEND=
-    secure-enclave), plain AuditChain otherwise (zero behavior change without
-    a key). Anchoring requested but unavailable must never degrade silently
-    to an unsigned chain: a configured-but-unprovisioned hardware backend
-    raises via ChainAnchor.from_env()."""
+    secure-enclave) OR a keychain item is configured
+    (MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE), plain AuditChain otherwise (zero
+    behavior change without a key). Anchoring requested but unavailable must
+    never degrade silently to an unsigned chain: a configured-but-unprovisioned
+    hardware backend raises via ChainAnchor.from_env()."""
     backend = os.getenv(BACKEND_ENV, "software")
     raw = os.getenv(KEY_ENV)
-    if backend == "software" and raw is None and not _default_key_path().exists():
+    keychain = os.getenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "").strip()
+    if (
+        backend == "software"
+        and raw is None
+        and not _default_key_path().exists()
+        and not keychain
+    ):
         return AuditChain()
     return AnchoredAuditChain(AuditChain(), ChainAnchor.from_env())
 
