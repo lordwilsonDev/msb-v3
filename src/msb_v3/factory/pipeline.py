@@ -34,7 +34,7 @@ from msb_v3.factory.classifier import classify
 from msb_v3.factory.models import FactoryRun, Issue
 from msb_v3.factory.planner import plan as plan_issue
 from msb_v3.factory.reviewer import areview as areview_change
-from msb_v3.factory.test_runner import run_tests
+from msb_v3.factory.test_runner import docs_only_skip, is_docs_only_change, run_tests
 from msb_v3.factory.verifier import verify as verify_change
 
 logger = logging.getLogger(__name__)
@@ -124,10 +124,16 @@ class SoftwareFactory:
             self._cleanup(worktree)
             return run
 
-        # 4. test (real command, real evidence) — only when the build is ok
+        # 4. test (real command, real evidence) — only when the build is ok.
+        # A docs-only change is a classified skip (recorded with the reason
+        # in the chain) instead of running — and timing out on — the whole
+        # suite for a change that cannot break code.
         if build.ok:
             try:
-                test = await run_tests(worktree, command=self._test_command, timeout_s=timeout_s)
+                if is_docs_only_change(build.changed_files):
+                    test = docs_only_skip()
+                else:
+                    test = await run_tests(worktree, command=self._test_command, timeout_s=timeout_s)
                 run.test = test
                 chain.append(_stage_hash("test", test.as_dict()))
             except Exception as exc:  # noqa: BLE001
@@ -161,11 +167,15 @@ class SoftwareFactory:
             run.error = run.error or f"verify failed: {type(exc).__name__}: {exc}"
 
         # 7. verdict (fail-closed: a missing/blocked independent review blocks)
+        # A docs-only classified skip counts as a passing test gate (the
+        # skip is recorded evidence with a reason); ran=False with no skip
+        # stays a fail-closed NEEDS_WORK.
+        test_gate_ok = run.test.skipped or (run.test.ran and run.test.passed)
         if build.ok is False:
             run.verdict = "FAILED"
         elif reviewed is None or reviewed.verdict == "BLOCK":
             run.verdict = "BLOCKED"
-        elif not run.test.ran or not run.test.passed:
+        elif not test_gate_ok:
             run.verdict = "NEEDS_WORK"
         elif run.verification.verdict == "FAIL":
             run.verdict = "NEEDS_WORK"

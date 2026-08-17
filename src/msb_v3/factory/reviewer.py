@@ -29,14 +29,23 @@ from typing import Any, Optional
 from msb_v3.factory.models import BuildResult, Plan, Review, ReviewFinding
 from msb_v3.moie import MoIEController
 
-# Deterministic coherence scan: a small set of action verbs the scan looks
-# for in BOTH asserted and negated form inside the same change. A verb that
-# appears both ways is a likely internal contradiction (e.g. "no file
-# written" in one section and "vault note written" in another).
+# Deterministic coherence scan: a small set of completed-action verb forms
+# the scan looks for in BOTH asserted and negated form inside the same
+# change. A verb that appears both ways is a likely internal contradiction
+# (e.g. "no file written" in one section and "vault note written" in
+# another).
+#
+# Only PAST-TENSE / PAST-PARTICIPLE forms are listed. Bare present forms
+# ("run", "write", "create") are too ambiguous as nouns ("a run", "a
+# write") and gerunds ("running tests" vs "a run") — the live dogfood's
+# clean doc flagged "run" because "Canonical run: ..." (noun) sat next to
+# "without running tests" (gerund). A completed-action claim like "written"
+# or "ran" is unambiguous: "no file written" vs "vault note written" is a
+# real contradiction; "a run" is not.
 _COHERENCE_VERBS = (
-    "write", "wrote", "written",
-    "create", "created", "delete", "deleted", "remove", "removed",
-    "run", "ran", "execute", "executed", "occurred", "happened",
+    "wrote", "written",
+    "created", "deleted", "removed",
+    "ran", "executed", "occurred", "happened",
 )
 
 # Negation cues that make a verb claim negative. Kept conservative so the

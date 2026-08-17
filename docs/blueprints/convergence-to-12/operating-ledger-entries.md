@@ -169,11 +169,43 @@ net, model judgment is optional extra.
 
 ---
 
+## Entry 008 — 2026-08-17 · Docs-only changes reach MERGED
+
+**Task:** Make the factory test stage skip the full suite for docs-only
+changes so the dogfood can reach MERGED (H7's blocker: every run spent
+~328s timing out on the full suite for a docs-only change).
+
+**Baseline:** n/a.
+
+**MSB result:** **Completed.** Docs-only changes (every changed file is a
+doc: `.md`/`.rst`/`.txt`/docs dirs/README etc.) now produce a classified
+`TestEvidence(skipped=True, skip_reason=...)` — recorded evidence with a
+reason, distinct from `ran=False` which stays honest UNVERIFIED. The
+verifier treats the classified skip as PASS for test criteria; the pipeline
+verdict gate accepts it. Live run 7: **MERGED in 24s** (was 328s), test
+skipped, review APPROVE, verification PASS.
+
+Also narrowed the coherence scan to unambiguous completed-action verb forms:
+run 6 false-positived on "Canonical run" (noun) vs "without running tests"
+(gerund) — now covered by a regression test.
+
+**Intervention:** `is_docs_only_change` + `docs_only_skip` in test_runner,
+`skipped`/`skip_reason` on TestEvidence, verifier + verdict-gate handling,
+verb-list narrowing, 3 new tests.
+
+**Evidence quality:** High — run7.json: MERGED, skip reason in chain.
+
+**Value:** The dogfood can now land a real change end-to-end. Docs changes
+do not pay the full-suite cost; code changes still cannot merge without
+real test evidence (fail-closed preserved).
+
+---
+
 ## Running notes
 
 - Next entries: log every real task for 30 days (per M6). Failures and
   manual bypasses first — they are the valuable data.
 - Flagged for follow-up: intent interpretation is not conservative about
   write_file permissions (Entry 002); live 8B LLM reviewers miss doc-level
-  contradictions even with the coherence lens — a stronger model or
-  deterministic contradiction rules is the next lever (Entry 007).
+  contradictions — the deterministic scan now catches them (Entry 007), a
+  stronger model remains optional extra.

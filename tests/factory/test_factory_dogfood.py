@@ -272,6 +272,17 @@ def test_scan_doc_contradictions_flags_assert_and_negate() -> None:
     consistent = "+1. SAFE read-only — PASS, 5 semantic hits.\n+- `case-safe/note.md` — vault note written by the SAFE read-only case\n"
     assert scan_doc_contradictions(consistent) == []
 
+    # Noun/gerund false positives must NOT flag: "Canonical run: ..." (noun)
+    # next to "without running tests" (gerund) is not a contradiction. Only
+    # unambiguous completed-action forms (written/created/deleted/ran/...) are
+    # scanned — the live clean-doc dogfood tripped on "run" before the list
+    # was narrowed to past forms.
+    run_semantics = (
+        "+Canonical run: dbb-20260817T015727-07143, verdict PASS.\n"
+        "+A docs-only change skips the suite without running tests it cannot affect.\n"
+    )
+    assert scan_doc_contradictions(run_semantics) == []
+
 
 def test_factory_dogfood_reviewer_catches_doc_contradiction(repo, tmp_path) -> None:
     """Through the REAL pipeline (patch builder, real worktree, real diff

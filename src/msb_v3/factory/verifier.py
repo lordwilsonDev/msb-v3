@@ -67,6 +67,11 @@ def _check_criterion(criterion: str, build: BuildResult, test: TestEvidence, rev
 
 def _check_kind(kind: str, build: BuildResult, test: TestEvidence, review_verdict: str, criterion: str) -> VerificationCheck:
     if kind == "tests pass":
+        if test.skipped:
+            # Classified docs-only skip: recorded evidence with a reason, not
+            # an absence of evidence. ran=False stays honest UNVERIFIED; a
+            # deliberate skip is a policy decision the chain records.
+            return VerificationCheck(criterion, "PASS", test.skip_reason)
         if not test.ran:
             return VerificationCheck(criterion, "UNVERIFIED", "no test command found/run — no evidence")
         if test.passed:
@@ -74,6 +79,8 @@ def _check_kind(kind: str, build: BuildResult, test: TestEvidence, review_verdic
         return VerificationCheck(criterion, "FAIL", f"exit {test.exit_code}: {test.command}")
 
     if kind == "test evidence exists":
+        if test.skipped:
+            return VerificationCheck(criterion, "PASS", test.skip_reason)
         if test.ran:
             return VerificationCheck(criterion, "PASS", f"{test.command} ran (exit {test.exit_code})")
         return VerificationCheck(criterion, "UNVERIFIED", "no test evidence produced")
