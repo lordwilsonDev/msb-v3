@@ -79,6 +79,17 @@ ROUTER_DECISIONS = Counter(
     "Model-router decisions",
     ["task_kind", "tier", "cause"],
 )
+# ActionGate verdicts (M2 governance observability). Every gate() call lands
+# in exactly one bucket: allowed (SAFE), indeterminate (REVIEW — human
+# approval required), denied (BLOCK), or failed (gate raised — fail-closed).
+# Incremented by msb_v3.agent.safety.ActionGate. The "stub" state from the
+# M2 spec does not exist for the ActionGate (no stub capabilities route
+# through it) — it is covered by other metric families.
+ACTIONGATE_DECISIONS = Counter(
+    "msb_v3_actiongate_decisions_total",
+    "ActionGate verdicts",
+    ["verdict"],
+)
 from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
 
 # Explicit registration: prometheus_client counters are lazy (they only enter
@@ -87,6 +98,7 @@ from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
 # re-imports (reload, fresh app factories) are a no-op once registered.
 try:
     _REGISTRY.register(ROUTER_DECISIONS)
+    _REGISTRY.register(ACTIONGATE_DECISIONS)
 except ValueError:
     pass  # already registered
 

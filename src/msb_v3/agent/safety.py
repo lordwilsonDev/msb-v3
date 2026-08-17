@@ -28,6 +28,7 @@ from typing import Any, Dict, Optional
 from msb_v3.agent.dag import Task
 from msb_v3.agent.executor import ToolProvider
 from msb_v3.governance.killswitch import KillSwitch
+from msb_v3.observability.metrics import ACTIONGATE_DECISIONS
 from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
@@ -124,6 +125,32 @@ class ActionGate:
         ``DISABLE <tool capability>`` blocks only that capability — without
         stopping the whole loop. The global arm still blocks everyone.
         """
+        try:
+            return self._decide(
+                capability,
+                tainted_inputs=tainted_inputs,
+                approved=approved,
+                granted=granted,
+                agent_id=agent_id,
+                tenant_id=tenant_id,
+            )
+        except Exception:
+            # Fail-closed and observable: a gate that raises must never look
+            # like an allow. Count it and re-raise — the SafeProvider turns it
+            # into a blocked execution, never a silent pass.
+            ACTIONGATE_DECISIONS.labels(verdict="failed").inc()
+            raise
+
+    def _decide(
+        self,
+        capability: str,
+        *,
+        tainted_inputs: bool,
+        approved: Optional[set[str]],
+        granted: Optional[set[str]],
+        agent_id: Optional[str],
+        tenant_id: Optional[str],
+    ) -> GateVerdict:
         tier = self.tier_of(capability)
 
         # Kill switch — cheapest, most absolute, fail-closed. The global arm
@@ -163,10 +190,14 @@ class ActionGate:
         if tier >= REVIEW_TIER:
             return self._refuse("REVIEW", "action at high risk tier", tier, tainted_inputs, capability)
 
+        ACTIONGATE_DECISIONS.labels(verdict="allowed").inc()
         return GateVerdict(True, "SAFE", "brakes clear", tier=tier, tainted=tainted_inputs)
 
     def _refuse(self, action: str, reason: str, tier: int, tainted: bool, capability: str) -> GateVerdict:
         verdict = GateVerdict(False, action, reason, tier=tier, tainted=tainted)
+        ACTIONGATE_DECISIONS.labels(
+            verdict="denied" if action == "BLOCK" else "indeterminate"
+        ).inc()
         try:
             self._audit.append("agentic", "blocked", {"action": action, "reason": reason, "capability": capability})
         except Exception as exc:
