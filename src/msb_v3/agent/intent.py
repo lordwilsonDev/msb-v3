@@ -41,6 +41,37 @@ logger = logging.getLogger(__name__)
 _WRITE_REQUEST = re.compile(r"\b(write|create|save|produce|draft|compose)\b", re.IGNORECASE)
 _HOW_TO = re.compile(r"\bhow to\b", re.IGNORECASE)
 
+# The mirror rule: a request that EXPLICITLY forbids writing must NOT carry
+# write_file even if the model self-grants it (found live, core-loop Entry
+# 002: the intent model emitted permissions ["read_vault", "write_file"]
+# for "… Do not write any files."). Deterministic suppression, the exact
+# inverse of the completion rule above — the operator's explicit
+# no-write directive beats the model's self-grant, and beats the completion
+# rule (a contradictory "write a brief but do not write" resolves to the
+# stricter reading).
+_FORBID_WRITE = re.compile(
+    r"\b(?:"
+    r"do not (?:write|save|create|produce|draft|compose|modify|edit|touch|make any changes)"
+    r"|don't (?:write|save|create|produce|draft|compose|modify|edit|touch)"
+    r"|never (?:write|save|create|produce|draft|compose|modify|edit)"
+    r"|without (?:writing|saving|creating|producing)"
+    r"|no (?:files? )?(?:writing|saves?|creation|changes)"
+    r"|read[- ]only"
+    r"|only (?:read|review)"
+    r"|just (?:read|review)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _forbids_write(request: str) -> bool:
+    """True when the request explicitly forbids producing an artifact ("do
+    not write any files", "read-only", "just summarize"). An explicit
+    prohibition is a hard floor: it beats both the model's self-granted
+    write_file and the completion rule, so a "do not write" request can
+    never resolve to a write task."""
+    return bool(request) and _FORBID_WRITE.search(request) is not None
+
 
 def _requests_write(request: str) -> bool:
     """True when the request asks to produce an artifact, not merely to
@@ -74,6 +105,10 @@ class Intent:
     domain: Optional[str] = None
     # "llm" when the model produced a parseable intent; "fallback" otherwise.
     source: str = "fallback"
+    # True when the deterministic no-write rule stripped write_file the model
+    # self-granted (observability: the trace shows the correction, so an
+    # over-grant that got suppressed is visible, not silent).
+    write_suppressed: bool = False
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -84,6 +119,7 @@ class Intent:
             "privacy": self.privacy,
             "domain": self.domain,
             "source": self.source,
+            "write_suppressed": self.write_suppressed,
         }
 
 
@@ -166,10 +202,20 @@ def interpret_intent(
         if data and goals:
             constraints = _clean_str_list(data.get("constraints"))
             permissions = _clean_str_list(data.get("permissions"))
+            write_suppressed = False
+            # Deterministic write suppression FIRST (the hard floor): an
+            # explicit no-write directive strips write_file the model
+            # self-granted, and beats the completion rule below. Found live:
+            # the model granted write_file for a "Do not write any files."
+            # request — the operator's explicit prohibition wins.
+            if _forbids_write(request) and "write_file" in permissions:
+                permissions = tuple(p for p in permissions if p != "write_file")
+                write_suppressed = True
             # Deterministic write completion (models propose, code governs):
             # a request that clearly asks to write an artifact declares
-            # write_file even if the model dropped it.
-            if "write_file" not in permissions and _requests_write(request):
+            # write_file even if the model dropped it — unless the request
+            # explicitly forbids writing.
+            if not _forbids_write(request) and "write_file" not in permissions and _requests_write(request):
                 permissions = permissions + ("write_file",)
             # Privacy defaults true unless the model emitted a real bool — a
             # string "false" must not flip the local-vs-cloud routing.
@@ -187,10 +233,16 @@ def interpret_intent(
                 privacy=privacy,
                 domain=domain,
                 source="llm",
+                write_suppressed=write_suppressed,
             )
     except Exception as exc:
         logger.warning("LLM intent extraction failed, using heuristic: %s", exc)
 
-    permissions = ("write_file",) if _requests_write(request) else ()
+    # Fallback path: same hard floor — an explicit no-write directive beats
+    # the heuristic, so a "do not write" request can never resolve to a
+    # write task even when the model is unreachable.
+    permissions = ()
+    if _requests_write(request) and not _forbids_write(request):
+        permissions = ("write_file",)
     Metrics.inc("agentic", "intent:fallback")
     return Intent(request=request, goals=(request,), permissions=permissions, source="fallback")
