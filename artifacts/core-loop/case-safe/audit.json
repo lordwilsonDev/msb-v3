@@ -1,0 +1,194 @@
+[
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9875,
+      "component": "tasks",
+      "event_type": "task.TASK_CREATED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"kind\": \"agent.run\", \"tenant\": \"wilson-vault\", \"session\": \"default\", \"source\": \"api\"}",
+      "timestamp": "2026-08-17T04:16:26.738319+00:00",
+      "prev_hash": "01ede9691bd8c7bc89b926e116edd68c4b5e167d3b7b9329db45e6ea7e79279e",
+      "record_hash": "4c155595e644be38fecb85cf5eaed747a9493c2f826c3d82a9c2f4fdd7049ef2"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9876,
+      "component": "tasks",
+      "event_type": "task.INTENT_INTERPRETED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"summary\": {\"request\": \"Search the vault for recent decisions about the sovereign stack and summarize them. Do not write any files.\", \"goals\": [\"Search the vault for recent decisions about the sovereign stack\", \"Summarize the findings\"], \"constraints\": [], \"permissions\": [\"read_vault\"], \"privacy\": true, \"domain\": \"vault_search\", \"source\": \"llm\", \"write_suppressed\": false}}",
+      "timestamp": "2026-08-17T04:16:32.113839+00:00",
+      "prev_hash": "4c155595e644be38fecb85cf5eaed747a9493c2f826c3d82a9c2f4fdd7049ef2",
+      "record_hash": "4bd003805f54852be25291f47536a29b9aa66f67a26c7bec29b4e0ad88d72cb9"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9877,
+      "component": "tasks",
+      "event_type": "task.PLAN_CREATED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\"}",
+      "timestamp": "2026-08-17T04:16:50.241479+00:00",
+      "prev_hash": "4bd003805f54852be25291f47536a29b9aa66f67a26c7bec29b4e0ad88d72cb9",
+      "record_hash": "063cd3c92065cd49f6b12e7d14d733c93546916e4dc792ce7b474f5a2cd1591c"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9878,
+      "component": "tasks",
+      "event_type": "task.AGENT_STARTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\"}",
+      "timestamp": "2026-08-17T04:16:50.434221+00:00",
+      "prev_hash": "063cd3c92065cd49f6b12e7d14d733c93546916e4dc792ce7b474f5a2cd1591c",
+      "record_hash": "4ddf821620986d61d034cde7f776ca8faee01feffbda6cca334ad0e2506b363c"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9879,
+      "component": "tasks",
+      "event_type": "task.TOOL_REQUESTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"tool\": \"search_query\"}",
+      "timestamp": "2026-08-17T04:16:50.798303+00:00",
+      "prev_hash": "4ddf821620986d61d034cde7f776ca8faee01feffbda6cca334ad0e2506b363c",
+      "record_hash": "647459b15a5171997284c33fc16afe46c25a770c607cab573e720eeba1996f4e"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9880,
+      "component": "tasks",
+      "event_type": "task.TOOL_EXECUTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"tool\": \"search_query\", \"ok\": true}",
+      "timestamp": "2026-08-17T04:16:52.560588+00:00",
+      "prev_hash": "647459b15a5171997284c33fc16afe46c25a770c607cab573e720eeba1996f4e",
+      "record_hash": "34b1059264d3a5788c780e39a2b7d4c414fa948f7b9ef5d9eb04db508d49478a"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9881,
+      "component": "tasks",
+      "event_type": "task.TOOL_REQUESTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"tool\": \"chat\"}",
+      "timestamp": "2026-08-17T04:16:52.713271+00:00",
+      "prev_hash": "34b1059264d3a5788c780e39a2b7d4c414fa948f7b9ef5d9eb04db508d49478a",
+      "record_hash": "c290c966d6bbde0573bc039ebded9f673fb9f1ba6ba7c2e4fb2a7caaa835a5e2"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9882,
+      "component": "tasks",
+      "event_type": "task.TOOL_EXECUTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"tool\": \"chat\", \"ok\": true}",
+      "timestamp": "2026-08-17T04:17:00.819862+00:00",
+      "prev_hash": "c290c966d6bbde0573bc039ebded9f673fb9f1ba6ba7c2e4fb2a7caaa835a5e2",
+      "record_hash": "b5746666fcdd8d25eb51443888b9bb7da6969953912a23799759d3b44fdfe5cf"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9883,
+      "component": "agentic",
+      "event_type": "trace:run_start",
+      "payload": "{\"run_id\": \"dbb-20260817T041626-69546\", \"request\": \"Search the vault for recent decisions about the sovereign stack and summarize them. Do not write any files.\", \"intent\": {\"request\": \"Search the vault for recent decisions about the sovereign stack and summarize them. Do not write any files.\", \"goals\": [\"Search the vault for recent decisions about the sovereign stack\", \"Summarize the findings\"], \"constraints\": [], \"permissions\": [\"read_vault\"], \"privacy\": true, \"domain\": \"vault_search\", \"source\": \"llm\", \"write_suppressed\": false}}",
+      "timestamp": "2026-08-17T04:17:01.028349+00:00",
+      "prev_hash": "b5746666fcdd8d25eb51443888b9bb7da6969953912a23799759d3b44fdfe5cf",
+      "record_hash": "bdf7173060f91772ef1251b2efbfdc590e3c6fc7bd76ee6d7b5b9d6146bdeb97"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9884,
+      "component": "agentic",
+      "event_type": "trace:plan",
+      "payload": "{\"run_id\": \"dbb-20260817T041626-69546\", \"graph_source\": \"llm\", \"tasks\": [{\"task_id\": \"search_vault_for_recent_decisions\", \"goal\": \"Search the vault for recent decisions about the sovereign stack.\", \"parent_id\": null, \"inputs\": [], \"constraints\": [], \"required_capabilities\": [\"read_vault\"], \"tools\": [\"search_query\"], \"permissions\": [], \"expected_output\": \"A list of recent decisions related to the sovereign stack found in the vault.\", \"verification_method\": \"search_returned_hits\", \"timeout_s\": 10.0, \"retry_policy\": \"retry:2\"}, {\"task_id\": \"summarize_vault_decisions\", \"goal\": \"Summarize the recent decisions about the sovereign stack found in the vault.\", \"parent_id\": \"search_vault_for_recent_decisions\", \"inputs\": [{\"from\": \"search_vault_for_recent_decisions\", \"kind\": \"output\"}], \"constraints\": [], \"required_capabilities\": [\"llm_synthesis\"], \"tools\": [\"chat\"], \"permissions\": [], \"expected_output\": \"A concise summary of the recent decisions about the sovereign stack.\", \"verification_method\": \"synthesis_nonempty\", \"timeout_s\": 120.0, \"retry_policy\": \"retry:2\"}]}",
+      "timestamp": "2026-08-17T04:17:01.469698+00:00",
+      "prev_hash": "bdf7173060f91772ef1251b2efbfdc590e3c6fc7bd76ee6d7b5b9d6146bdeb97",
+      "record_hash": "24c17d67d988345a43602acff3a32f61ff25e15f25c9686db2415935dc4e4fe9"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9885,
+      "component": "agentic",
+      "event_type": "trace:execution",
+      "payload": "{\"run_id\": \"dbb-20260817T041626-69546\", \"execution\": [{\"task_id\": \"search_vault_for_recent_decisions\", \"ok\": true, \"verification\": {\"ok\": true, \"detail\": \"5 hits\", \"kind\": \"grounded\", \"check\": \"search_returned_hits\", \"trust\": \"high\", \"verdict\": \"pass\", \"confidence\": 1.0}, \"error\": null}, {\"task_id\": \"summarize_vault_decisions\", \"ok\": true, \"verification\": {\"ok\": true, \"detail\": \"1532 chars\", \"kind\": \"grounded\", \"check\": \"synthesis_nonempty\", \"trust\": \"high\", \"verdict\": \"pass\", \"confidence\": 1.0}, \"error\": null, \"context_ledger\": {\"budget_tokens\": 8000, \"system_tokens\": 27, \"query_tokens\": 19, \"included_matches\": 5, \"evicted_matches\": 0, \"truncated\": false, \"total_tokens\": 523, \"items\": [{\"source\": \"30_Architecture/decisions/Foundation-Stack-Trim.md\", \"score\": 0.016393}, {\"source\": \"30_Architecture/diagrams/Sovereign-Stack-Tooling/raw/sop2026-log-08_cicd-mesh-devsecops-kb4-forensic-scan-cv-curriculum.md\", \"score\": 0.016129}, {\"source\": \"Vault Business Ideas/Business Names/Clippings/Qwen Studio 24.md\", \"score\": 0.015873}, {\"source\": \"40_Memory/Vault-Strengths-Map-2026-08-05.md\", \"score\": 0.015625}, {\"source\": \"30_Architecture/diagrams/Sovereign-Stack-Tooling/wiki/Overview.md\", \"score\": 0.015385}]}}]}",
+      "timestamp": "2026-08-17T04:17:01.633810+00:00",
+      "prev_hash": "24c17d67d988345a43602acff3a32f61ff25e15f25c9686db2415935dc4e4fe9",
+      "record_hash": "41d8e3f475cc94dea9c6ab42e40093ae836d35faa681fd3a59a0269b5187fcaf"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9886,
+      "component": "agentic",
+      "event_type": "trace:outcome",
+      "payload": "{\"run_id\": \"dbb-20260817T041626-69546\", \"verdict\": \"PASS\", \"outcome\": {\"skipped\": [], \"error\": null, \"total_latency_s\": 10.2275, \"prompt_tokens\": 627, \"completion_tokens\": 838, \"estimated_cost_usd\": 0.000838}}",
+      "timestamp": "2026-08-17T04:17:01.986622+00:00",
+      "prev_hash": "41d8e3f475cc94dea9c6ab42e40093ae836d35faa681fd3a59a0269b5187fcaf",
+      "record_hash": "61fa34537e00e8fefae5bdd5bbdb0ad8503e8698b0e970ac08310b45d94a5a4e"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9887,
+      "component": "tasks",
+      "event_type": "task.VERIFICATION_STARTED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\"}",
+      "timestamp": "2026-08-17T04:17:02.166871+00:00",
+      "prev_hash": "61fa34537e00e8fefae5bdd5bbdb0ad8503e8698b0e970ac08310b45d94a5a4e",
+      "record_hash": "2edfd5c8cfd97e5ff629b6dcd8b05dfa74b08eb7492121706322cf2ea3ecc3bc"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9888,
+      "component": "tasks",
+      "event_type": "task.VERIFICATION_PASSED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"verdict\": \"PASS\", \"deterministic_hash\": \"e22877effa8cccf1\"}",
+      "timestamp": "2026-08-17T04:17:02.517313+00:00",
+      "prev_hash": "2edfd5c8cfd97e5ff629b6dcd8b05dfa74b08eb7492121706322cf2ea3ecc3bc",
+      "record_hash": "5acac8974aed9d31a8ebad7896257dabd4b3c1866fbce51d67f3b2391e254324"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9889,
+      "component": "tasks",
+      "event_type": "task.EVIDENCE_RECORDED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\", \"deterministic_hash\": \"e22877effa8cccf1\", \"run_id\": \"dbb-20260817T041626-69546\"}",
+      "timestamp": "2026-08-17T04:17:02.900914+00:00",
+      "prev_hash": "5acac8974aed9d31a8ebad7896257dabd4b3c1866fbce51d67f3b2391e254324",
+      "record_hash": "519841459497f98200052cf0ef991936ce2351f5e31314fc3ee8d9c4d9ac7cde"
+    }
+  },
+  {
+    "table": "audit_records",
+    "row": {
+      "seq": 9890,
+      "component": "tasks",
+      "event_type": "task.TASK_COMPLETED",
+      "payload": "{\"task_id\": \"dbb-20260817T041626-69546\"}",
+      "timestamp": "2026-08-17T04:17:03.082775+00:00",
+      "prev_hash": "519841459497f98200052cf0ef991936ce2351f5e31314fc3ee8d9c4d9ac7cde",
+      "record_hash": "9b6bd8d0db950fadc318491609b1a16c87280225856d69e8663394b92abd011e"
+    }
+  }
+]

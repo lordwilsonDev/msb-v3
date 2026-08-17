@@ -1,0 +1,10 @@
+{
+  "generated_at": null,
+  "latency": {},
+  "queries_total": 0,
+  "actiongate_verdicts": {},
+  "router_decisions_total": 0,
+  "retries_total": 0,
+  "recoveries_total": 0,
+  "ready": "1.0"
+}

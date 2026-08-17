@@ -98,7 +98,17 @@ class FabricRetrievalRouter:
         # "search returned no hits" was a real live failure mode (core-loop
         # case-safe, 2026-08-17); the fallback makes retrieval genuinely
         # semantic instead of cue-locked.
-        if not result["matches"] and not result["route_errors"] and domain != "semantic":
+        if (
+            not result["matches"]
+            and not result["route_errors"]
+            and domain != "semantic"
+            and "vector" not in (routes or [])
+        ):
+            # Degrade only when the routed domain's route set excludes the
+            # vector route (episodic = temporal-only). If the domain already
+            # ran vector (knowledge = vector + structural), an empty result is
+            # honest — retrying the same vector route would be theater, and a
+            # nonsense query must not be dressed up as a fallback event.
             fallback = await self._engine.run(query, top_k=top_k, routes=["vector"])
             return DomainResult(
                 domain="semantic",

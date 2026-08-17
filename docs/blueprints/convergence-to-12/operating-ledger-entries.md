@@ -229,6 +229,84 @@ real test evidence (fail-closed preserved).
 
 ---
 
+## Entry 010 — 2026-08-17 · RC fixture re-capture (live verdict cases)
+
+**Task:** Re-run the three verdict cases (SAFE / tainted-write DENY /
+kill-switch BLOCK) live and capture complete fixtures — the previous
+fixtures only held the error envelope, not the full run record.
+
+**Baseline:** Manual: replay each run's events by hand and cross-check the
+audit chain. ~30+ min.
+
+**MSB result:** **Completed.** SAFE PASS (12 events, COMPLETED) · tainted
+DENY (18 events, FAILED — 3× POLICY_CHECKED → DENIED, zero files) · kill
+BLOCK (14 events, FAILED — GateBlocked before mutation). Replay of every
+run `consistent: true, legal: true`, including the FAILED ones — denials
+reconstruct from events. Audit records captured per case (16/22/18).
+
+**Intervention:** One capture-script iteration — the kill case initially
+hit the tainted-write gate (switch not armed); fixed by arming
+`/governance/killswitch/arm` first.
+
+**Evidence quality:** **High.** Full records now live in
+`artifacts/core-loop/{case-safe,case-tainted,case-kill}/` with README.
+
+**Value:** Release-gate fixtures are complete and re-runnable via
+`scripts/capture-verdict-fixtures.sh`.
+
+---
+
+## Entry 011 — 2026-08-17 · Retrieval validation + metrics run-report
+
+**Task:** Close the Phase-1 gaps: validate token/irrelevant/empty queries
+and produce a run report with p50/p95 latency + verdict/retry/recovery
+counts.
+
+**Baseline:** Manual: eyeball queries against Qdrant, hand-tally metrics.
+
+**MSB result:** **Completed.** +3 retrieval tests; tightened the
+degrade-to-semantic rule (only fires when the routed domain excludes the
+vector route — a nonsense query is no longer dressed up as a fallback
+event). `scripts/run-report.py` derives p50/p95 from the latency histogram
+and aggregates queries/verdicts/router/retries/recoveries from
+`/metrics/prometheus` → `artifacts/run-report-20260817.json`.
+
+**Intervention:** Two parser bugs (JSON-wrapped exposition, float-formatted
+counts).
+
+**Evidence quality:** **High** — the report is the M5 metrics-completion
+exit evidence.
+
+**Value:** Retrieval is honest for all query classes; metrics are
+generatable on demand, not anecdotal.
+
+---
+
+## Entry 012 — 2026-08-17 · v0.3.0-rc1 release candidate
+
+**Task:** Freeze the RC baseline: version bump, baseline doc with skip
+inventory, release packaging, failure report, v4 parking lot,
+independent-user validation kit.
+
+**Baseline:** Manual: assemble the same artifacts from scattered notes.
+
+**MSB result:** **Completed.** Version 0.3.0 (4 sources agree, pinned by
+test); `v0.3.0-rc1-baseline.md` (commit `e3fd3ff`, lock hashes, skip
+inventory with opt-in commands); `MSB-v3-RELEASE.md`;
+`failure-report-v0.3.0-rc1.md`; `v4-parking-lot.md`;
+`independent-user-validation.md`; MILESTONES M5→🟢, M8→🟡 (RC declared).
+
+**Intervention:** None.
+
+**Evidence quality:** **High** — every release claim links to a fixture,
+test, or artifact.
+
+**Value:** A defensible release candidate with an honest implemented /
+experimental / v4 split, ready for the 30-day trial and independent-user
+validation.
+
+---
+
 ## Running notes
 
 - Next entries: log every real task for 30 days (per M6). Failures and
@@ -237,3 +315,5 @@ real test evidence (fail-closed preserved).
   write_file permissions (Entry 002); live 8B LLM reviewers miss doc-level
   contradictions — the deterministic scan now catches them (Entry 007), a
   stronger model remains optional extra.
+- RC kit ready: v0.3.0-rc1 baseline + release + failure report + parking
+  lot + independent-user kit — schedule M7 after M6 evidence (Entry 012).
