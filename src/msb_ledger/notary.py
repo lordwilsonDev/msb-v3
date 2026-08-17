@@ -27,13 +27,13 @@ This module closes those holes with an append-only-per-object remote pattern:
     back (DIVERGED, the T7 notary case); remote unreachable ⇒ fail-closed
     REMOTE_UNREACHABLE (absence of off-box proof is never treated as health).
   * Each entry can carry an RFC 3161 ``timestamp`` proof (see
-    ``uac/timestamping.py``) so WHEN is attested by a third party, not by the
-    box that may be owned.
+    ``msb_ledger/timestamping.py``) so WHEN is attested by a third party, not
+    by the box that may be owned.
 
 CLI (used by scripts/notarize_chain_anchor.sh and verify_chain_anchor.sh):
 
-    python -m msb_v3.uac.notary --notarize <audit.db>   # append local + push remote + stamp
-    python -m msb_v3.uac.notary --verify <audit.db>     # local + remote integrity, reads REMOTE head
+    python -m msb_ledger.notary --notarize <audit.db>   # append local + push remote + stamp
+    python -m msb_ledger.notary --verify <audit.db>     # local + remote integrity, reads REMOTE head
 
 Env:
     MSB_NOTARY_LOG        local append-only JSONL (default ~/msb-backups/chain-anchor-notary.jsonl)
@@ -57,9 +57,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from msb_v3.uac.audit_chain import AuditChain
-from msb_v3.uac.chain_anchor import ChainAnchor
-from msb_v3.uac.timestamping import Timestamper, timestamper_from_env
+from msb_ledger.audit_chain import AuditChain
+from msb_ledger.chain_anchor import ChainAnchor
+from msb_ledger.timestamping import Timestamper, timestamper_from_env
 
 ENTRY_NAME_RE = re.compile(r"^(\d{6})-([0-9T:.+Z-]+)\.line$")
 

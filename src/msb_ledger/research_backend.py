@@ -25,7 +25,7 @@ from typing import List, Optional, Protocol
 
 import httpx
 
-from msb_v3.core.config import settings
+from msb_ledger.config import settings
 
 _TAVILY_URL = "https://api.tavily.com/search"
 

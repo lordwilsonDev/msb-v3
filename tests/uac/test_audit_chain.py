@@ -189,7 +189,9 @@ def test_append_rejects_non_finite_float(tmp_path):
 
 
 def test_repair_requires_operator_when_configured(tmp_path, monkeypatch):
-    from msb_v3.core.config import settings
+    # The ledger is standalone (P4 extraction): its operator token lives on
+    # msb_ledger.config.settings, not the host app's config.
+    from msb_ledger.config import settings
 
     monkeypatch.setattr(settings, "operator_token", "sekret")
     chain = _chain(tmp_path)

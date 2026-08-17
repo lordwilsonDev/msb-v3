@@ -37,7 +37,7 @@ fi
 # out-of-band entry against the live chain — so a whole-DB rollback that
 # also replaced the local anchor file is still caught by the notary.
 if [ -n "${MSB_NOTARY_LOG:-}" ]; then
-  NOTARY_CHECK=$("$PY" -m msb_v3.uac.chain_anchor --verify-notary "$DB" --notary "$MSB_NOTARY_LOG" 2>&1) || {
+  NOTARY_CHECK=$("$PY" -m msb_ledger.chain_anchor --verify-notary "$DB" --notary "$MSB_NOTARY_LOG" 2>&1) || {
     echo "ALERT chain_anchor notary: $NOTARY_CHECK" >&2
     exit 2
   }
@@ -49,10 +49,10 @@ fi
 # caught even when the local log AND the local anchor file were both replaced.
 # Unreachable remote is fail-closed (REMOTE_UNREACHABLE => ALERT): the absence
 # of off-box proof is never treated as health.
-REMOTE_CHECK=$("$PY" -m msb_v3.uac.notary --verify "$DB" 2>&1) || {
+REMOTE_CHECK=$("$PY" -m msb_ledger.notary --verify "$DB" 2>&1) || {
   echo "ALERT chain_anchor remote-notary: $REMOTE_CHECK" >&2
   exit 2
 }
 echo "[verify] $REMOTE_CHECK"
 
-exec "$PY" -m msb_v3.uac.chain_anchor "${ARGS[@]}"
+exec "$PY" -m msb_ledger.chain_anchor "${ARGS[@]}"

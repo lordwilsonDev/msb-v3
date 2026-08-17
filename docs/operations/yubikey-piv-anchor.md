@@ -147,7 +147,7 @@ unregistered key can never claim the anchor slot.
    ```
    Then register the public half (the seed never touches the box again):
    ```bash
-   python3 -m msb_v3.uac.chain_anchor --register-recovery <audit.db> \
+   python3 -m msb_ledger.chain_anchor --register-recovery <audit.db> \
      --recovery-public-key <recovery-public-hex> --reason "offline recovery key"
    ```
 2. **Stop the app** (so the running process can't re-anchor mid-rotation):
@@ -156,7 +156,7 @@ unregistered key can never claim the anchor slot.
    ```
 3. **Rotate** — the old key cross-signs the YubiKey key as successor:
    ```bash
-   python3 -m msb_v3.uac.chain_anchor --rotate <audit.db> \
+   python3 -m msb_ledger.chain_anchor --rotate <audit.db> \
      --backend yubikey --reason "migrate to YubiKey PIV"
    ```
    (For a software successor: `--backend software --seed <new-seed-hex>`.)
@@ -173,7 +173,7 @@ unregistered key can never claim the anchor slot.
 6. **Revoke the old key** so it can never sign a NEW anchor again (its
    historical entries remain valid):
    ```bash
-   python3 -m msb_v3.uac.chain_anchor --revoke <audit.db> --reason "retired after YubiKey migration"
+   python3 -m msb_ledger.chain_anchor --revoke <audit.db> --reason "retired after YubiKey migration"
    ```
 
 ### If the primary key is LOST (enclave died / YubiKey lost)
@@ -181,7 +181,7 @@ unregistered key can never claim the anchor slot.
 Recovery requires the pre-registered recovery seed:
 
 ```bash
-python3 -m msb_v3.uac.chain_anchor --recover <audit.db> \
+python3 -m msb_ledger.chain_anchor --recover <audit.db> \
   --seed <recovery-seed-hex> --reason "primary key lost"
 ```
 
