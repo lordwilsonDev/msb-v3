@@ -2,6 +2,12 @@
 
 Sovereign local-first AI runtime: FastAPI + SQLite + Qwen3/Ollama + Prometheus.
 
+> **New here?** Start with
+> [docs/QUICKSTART.md](docs/QUICKSTART.md) — prerequisites, the canonical
+> governed path (`/agent/handle`), the three verdict cases, and the full
+> gate battery. The release contract and honest limitations live in
+> [docs/releases/MSB-v3-RELEASE.md](docs/releases/MSB-v3-RELEASE.md).
+
 ## Endpoints
 
 - `/chat` — POST `{"query": "...", "session": "default", "system": "...", "tools": [...]}`

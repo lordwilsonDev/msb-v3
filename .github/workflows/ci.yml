@@ -127,6 +127,12 @@ jobs:
       - name: Check requirement locks
         run: python scripts/gen-requirements.py --check
 
+      # M8: the release declaration's capability claims must link to evidence
+      # that exists and matches live test counts — the declaration can never
+      # drift from the tree (or the claims are withdrawn).
+      - name: Audit release claims
+        run: python scripts/verify-claims.py
+
       # NOTE: there is deliberately no artifact upload here. The old
       # "Upload lint reports" step uploaded .ruff_cache/.mypy_cache under the
       # name lint-reports, but nothing ever consumed the artifact, and
