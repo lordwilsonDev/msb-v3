@@ -17,15 +17,14 @@ A reviewer reading the diff alone should flag the contradiction.
 
 ## Pipeline evidence (`run.json`, `run2.json`)
 
-| Stage | Run 1 (reviewer qwen2.5-coder:0.5b) | Run 2 (reviewer qwen3:8b) | Run 3+4 (reviewer qwen3:8b, post-fix) |
-| --- | --- | --- | --- |
-| classify | medium | medium | medium |
-| plan | ok | ok | ok |
-| build | ok — 1 changed file | ok — 1 changed file | ok — 1 changed file |
-| test | ran, **failed** (timeout — full suite >300s in worktree) | ran, **failed** (timeout) | ran, **failed** (timeout) |
-| review | **APPROVE** — defect MISSED | **APPROVE** — defect MISSED | **APPROVE** — defect MISSED |
-| verify | FAIL | FAIL | FAIL |
-| verdict | **NEEDS_WORK** | **NEEDS_WORK** | **NEEDS_WORK** |
+| Stage | Run 1 (qwen2.5-coder:0.5b) | Run 2 (qwen3:8b) | Run 3+4 (qwen3:8b, plumbing fix) | Run 5 (qwen3:8b, +deterministic scan) |
+| --- | --- | --- | --- | --- |
+| classify | medium | medium | medium | medium |
+| plan | ok | ok | ok | ok |
+| build | ok | ok | ok | ok |
+| test | failed (timeout) | failed (timeout) | failed (timeout) | failed (timeout) |
+| review | APPROVE — MISSED | APPROVE — MISSED | APPROVE — MISSED | **CONCERN — CAUGHT** |
+| verdict | NEEDS_WORK | NEEDS_WORK | NEEDS_WORK | NEEDS_WORK |
 
 ## Root cause found + fixed (2026-08-17 follow-up)
 
@@ -44,22 +43,27 @@ reviewer contract explicitly demands an internal-consistency check. The
 coherence lens reads the WHOLE change (the old prompt truncated the diff to
 2000 chars, hiding the tail of every doc).
 
+Third fix (run 5): a **deterministic coherence scan** (`scan_doc_contradictions`
+in `src/msb_v3/factory/reviewer.py`) now runs on EVERY review, independent
+of which MoIE controller is configured. It flags a verb that appears both
+asserted and negated in the change text ("no file written" vs "vault note
+written"). A weak LLM approving a self-contradictory change can no longer
+be the only guard.
+
 ## Honest findings
 
 1. **Fail-closed works.** No run merged: missing/red test evidence →
    NEEDS_WORK, never a pass.
-2. **The mechanism is now correct, but the 8B model still approved.**
-   Runs 3-4 confirm the full diff reaches the reviewer and the coherence
-   lens fires (single-model panel = coherence reviewer), yet qwen3:8b
-   approved a doc whose final section contradicts its own case-1 record.
-   The deterministic MoIE reviewer catches seeded defects (hermetic M4
-   suite); the live 8B local model is the weak link — a doc-level
-   contradiction needs a stronger model or the deterministic rules. This is
-   recorded honestly: the pipeline no longer STARVES the reviewer, and the
-   remaining gap is model judgment, not plumbing.
-3. **Regression tests pin the fix:** `test_reviewer_prompt_carries_full_diff_tail`
-   (the tail of a >2000-char diff reaches the prompt),
-   `test_factory_dogfood_reviewer_catches_doc_contradiction` (a coherence-
-   reading reviewer catches the contradiction through the real pipeline),
-   `test_compute_changes_emits_diff_for_new_file` (new files produce diffs),
-   `test_single_model_panel_is_coherence_reviewer`.
+2. **Runs 3-4 proved the mechanism; run 5 proved the catch.** With the
+   full diff + coherence lens, qwen3:8b still approved (model judgment is
+   the weak link). The deterministic scan is the safety net: run 5's review
+   verdict is **CONCERN** with two findings ("both asserts and negates
+   'write'/'written'") even though the model approved. The contradiction
+   can no longer pass, whatever the reviewer model.
+3. **Regression tests pin the fix:** `test_reviewer_prompt_carries_full_diff_tail`,
+   `test_factory_dogfood_reviewer_catches_doc_contradiction`,
+   `test_compute_changes_emits_diff_for_new_file`,
+   `test_single_model_panel_is_coherence_reviewer`,
+   `test_scan_doc_contradictions_flags_assert_and_negate`, and the decisive
+   `test_deterministic_scan_catches_contradiction_even_when_llm_approves`
+   (a SAFE reviewer must NOT get the contradiction through).

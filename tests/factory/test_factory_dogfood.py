@@ -219,6 +219,60 @@ def _contradiction_client_factory(verdict: str = "BLOCK"):
     return _make
 
 
+def test_deterministic_scan_catches_contradiction_even_when_llm_approves(repo, tmp_path) -> None:
+    """The decisive live-dogfood regression: a SAFE (approving) reviewer
+    must NOT get the contradiction through. The deterministic coherence scan
+    runs on every review, so a weak model's approval cannot be the only
+    guard — the change is held for review regardless."""
+    script = tmp_path / "doc_patch.sh"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'cd "$MSB_WORKTREE"\n'
+        "mkdir -p docs\n"
+        "cat > docs/run.md << 'EOF'\n"
+        "# Core loop\n\n"
+        "## Verdict cases\n\n"
+        "1. SAFE read-only — PASS, 5 semantic hits, no file written.\n\n"
+        "## Artifacts\n\n"
+        "- `case-safe/note.md` — vault note written by the SAFE read-only case\n"
+        "EOF\n"
+    )
+    script.chmod(0o755)
+
+    # SAFE verdict: the LLM panel sees nothing wrong (the live 8B failure).
+    panel = _diverse_panel(builder_model="patch", models=["qwen3:8b"], verdict="SAFE")
+    run = _run(
+        SoftwareFactory(builder=PatchBuilder(str(script)), reviewer_panel=panel),
+        Issue(title="Document the core-loop run"),
+        str(repo),
+    )
+    assert run.review is not None
+    assert any("contradiction" in f.message.lower() for f in run.review.findings), (
+        "the deterministic scan must flag the contradiction even though the LLM approved"
+    )
+    assert run.verdict != "MERGED", "a self-contradictory change must not merge"
+
+
+def test_scan_doc_contradictions_flags_assert_and_negate() -> None:
+    """The deterministic coherence scan flags a verb that appears both
+    asserted and negated in the change — the exact seeded-defect shape from
+    the live dogfood ("no file written" vs "vault note written")."""
+    from msb_v3.factory.reviewer import scan_doc_contradictions
+
+    contradictory = (
+        "+1. SAFE read-only — PASS, 5 semantic hits, no file written.\n"
+        "+- `case-safe/note.md` — vault note written by the SAFE read-only case\n"
+    )
+    findings = scan_doc_contradictions(contradictory)
+    assert any("contradiction" in f.message and "written" in f.message for f in findings)
+    assert findings[0].severity == "concern"
+
+    # A consistent doc produces no findings.
+    consistent = "+1. SAFE read-only — PASS, 5 semantic hits.\n+- `case-safe/note.md` — vault note written by the SAFE read-only case\n"
+    assert scan_doc_contradictions(consistent) == []
+
+
 def test_factory_dogfood_reviewer_catches_doc_contradiction(repo, tmp_path) -> None:
     """Through the REAL pipeline (patch builder, real worktree, real diff
     computation), a reviewer that reads the whole change must see the seeded

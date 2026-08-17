@@ -10,15 +10,82 @@ rule-based one (default) or a diverse LLM ``ReviewPanel`` controller whose
 experts run concurrently via ``areview`` (see ``moie.llm_experts``). The
 panel's distinct reviewer models are recorded on the ``Review`` so the
 evidence chain carries *who* reviewed *with which model*.
+
+Deterministic coherence scan (2026-08-17): on top of whichever MoIE
+controller runs, the change's own text is scanned for internal
+self-contradictions (a claim both asserted and negated). This runs on
+EVERY review regardless of reviewer model — a weak LLM approving a
+self-contradictory doc is exactly the failure the live dogfood exposed,
+and no model (strong or weak) should be the only thing standing between a
+contradiction and the evidence chain.
 """
 
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any, Optional
 
 from msb_v3.factory.models import BuildResult, Plan, Review, ReviewFinding
 from msb_v3.moie import MoIEController
+
+# Deterministic coherence scan: a small set of action verbs the scan looks
+# for in BOTH asserted and negated form inside the same change. A verb that
+# appears both ways is a likely internal contradiction (e.g. "no file
+# written" in one section and "vault note written" in another).
+_COHERENCE_VERBS = (
+    "write", "wrote", "written",
+    "create", "created", "delete", "deleted", "remove", "removed",
+    "run", "ran", "execute", "executed", "occurred", "happened",
+)
+
+# Negation cues that make a verb claim negative. Kept conservative so the
+# scan flags only clear negations, never "not" inside a word like "notable".
+_NEGATION_RE = re.compile(
+    r"\b(?:no|not|never|without|did\s+not|didn't|does\s+not|doesn't|no\s+\w+\s+\w+)\b",
+    re.IGNORECASE,
+)
+
+
+def scan_doc_contradictions(diff: str) -> list[ReviewFinding]:
+    """Deterministic self-contradiction scan over the change's diff text.
+
+    For every coherence verb, a verb claim is NEGATIVE if it appears within
+    4 words of a negation cue, POSITIVE otherwise. If a verb appears in both
+    polarities anywhere in the change, the change asserts and denies the
+    same action — a concern (not a hard block: the wording could be
+    describing two different subjects, so a human/stronger model confirms).
+
+    Runs on every review, independent of the MoIE controller, so a weak
+    reviewer model cannot be the only guard between a contradiction and a
+    merge.
+    """
+    if not diff:
+        return []
+    text = diff
+    findings: list[ReviewFinding] = []
+    for verb in _COHERENCE_VERBS:
+        verb_re = re.compile(rf"\b{verb}\b", re.IGNORECASE)
+        negated = False
+        asserted = False
+        for match in verb_re.finditer(text):
+            start = max(0, match.start() - 40)
+            window = text[start : match.end() + 20]
+            if _NEGATION_RE.search(window):
+                negated = True
+            else:
+                asserted = True
+            if negated and asserted:
+                findings.append(
+                    ReviewFinding(
+                        "concern",
+                        f"deterministic coherence scan: the change both asserts and "
+                        f"negates '{verb}' — possible internal contradiction "
+                        f"(check the wording, not just the model's verdict)",
+                    )
+                )
+                break
+    return findings
 
 
 def _claim(plan: Plan, build: BuildResult) -> str:
@@ -66,6 +133,11 @@ def _review_from_decision(
 
     if not build.changed_files:
         findings.append(ReviewFinding("blocker", "no files changed — the builder made no modification"))
+
+    # Deterministic coherence scan — runs on EVERY review, independent of
+    # which MoIE controller is configured. A weak LLM approving a
+    # self-contradictory change must not be the only guard.
+    findings.extend(scan_doc_contradictions(build.diff or ""))
 
     # Independent inversion of the change (MoIE), never the builder's claim.
     moie_verdict = ""

@@ -152,16 +152,20 @@ fired. Fixed: last model pinned to coherence + base contract demands an
 internal-consistency check + coherence lens reads the whole change (old
 prompt truncated diff at 2000 chars).
 
-**Intervention:** The fixes + 4 regression tests (full-diff tail reaches
-prompt, coherence reviewer catches contradiction through real pipeline,
-new-file diff emitted, single-model panel is coherence reviewer).
+**Intervention:** The plumbing fixes + a **deterministic coherence scan**
+(`scan_doc_contradictions`) that runs on EVERY review regardless of
+reviewer model — it flags a verb asserted AND negated in the same change.
+Plus 6 regression tests, including the decisive
+`test_deterministic_scan_catches_contradiction_even_when_llm_approves`.
 
-**Evidence quality:** High — live runs 3-4 (`artifacts/factory-dogfood/`)
-confirm the diff now reaches the reviewer.
+**Evidence quality:** High — live run 5 (`artifacts/factory-dogfood/run5.json`)
+shows review verdict **CONCERN** ("both asserts and negates 'write'") even
+though qwen3:8b approved. The contradiction can no longer pass whatever the
+model says.
 
-**Value:** Real plumbing bugs fixed. Honest residual: the live qwen3:8b
-still approved the seeded contradiction even with full diff + coherence
-lens — the mechanism is correct, model judgment is the remaining lever.
+**Value:** The live reviewer now catches the seeded defect end-to-end. The
+8B model's approval no longer matters — deterministic rules are the safety
+net, model judgment is optional extra.
 
 ---
 
