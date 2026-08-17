@@ -125,3 +125,18 @@ def test_console_metrics_strip_present_and_public(client: TestClient) -> None:
     # The ActionGate verdict labels the strip maps are pinned.
     assert "VERDICT_LABELS" in body
     assert '"allowed"' in body and '"denied"' in body
+
+
+def test_console_emitted_js_escapes_survive_python_string(client: TestClient) -> None:
+    """The page is a Python triple-quoted string, so JS escapes must be
+    doubled in the Python source or they are consumed at parse time and the
+    emitted script is broken. The worst offender: `text.split("\n")` becomes
+    a REAL newline (SyntaxError in the browser). Pin the literal escapes."""
+    r = client.get("/console")
+    body = r.text
+    # The JS must contain the two-character sequence backslash-n inside the
+    # split call — a raw newline here means the escape was eaten.
+    assert 'text.split("\\n")' in body, "\\n escape was consumed by the Python string"
+    # Regex escapes the parser needs must survive too.
+    assert 'actiongate_decisions_total\\{verdict=' in body, "regex brace escape was consumed"
+    assert "latency_seconds_bucket\\{" in body

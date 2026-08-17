@@ -1,0 +1,19 @@
+Metrics strip — live verification (2026-08-17, after commit bcbd4a1 + escape/quantile fixes)
+
+Verified in Chromium via ego-browser against the live stack (qwen3:8b,
+app on :8766, restarted with the strip code). The recent-runs card's
+metrics strip rendered:
+
+    SAFE 2 | REVIEW 0 | BLOCK 0 | FAIL 0 | p50 10.00s | p95 10.00s
+
+Notes:
+- Verdict counters come from msb_v3_actiongate_decisions_total
+  (allowed/indeterminate/denied/failed) on the PUBLIC /metrics/prometheus
+  scrape — fetched without a bearer header (the token never leaves gated
+  calls).
+- Latency quantiles are estimated from the msb_v3_latency_seconds bucket
+  histogram via linear interpolation. The observed run took 17.2s, beyond
+  the histogram's 10s max bucket, so p50/p95 both report the last-bucket
+  bound (lower-bound estimate) instead of "—".
+- /metrics/prometheus now returns real Prometheus text (text/plain),
+  pinned by response_class=PlainTextResponse (was JSON-escaped).
