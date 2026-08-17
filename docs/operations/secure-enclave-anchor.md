@@ -7,9 +7,11 @@ external anchor ("detectable unless the signing key is compromised" → the key
 cannot be copied because it never leaves the enclave).
 
 Status on the sovereign node (Mac mini M4, macOS 26.2):
-**backend implemented + fail-closed; enrollment pending an Apple ID in Xcode**
-(see "The macOS entitlement wall" below — this is a real OS constraint, not a
-stubbed feature).
+**backend implemented + fail-closed; enrollment pending an Apple ID in Xcode
+or a YubiKey** (see "The macOS entitlement wall" below — this is a real OS
+constraint, not a stubbed feature). Interim hardening already applied:
+**the Ed25519 seed now lives in the macOS login keychain, not in plaintext**
+(see "Interim hardening without hardware" below).
 
 ## Architecture
 
@@ -119,6 +121,37 @@ New Mac → steps 1–4 of Enrollment with a **new** key → rotation (re-anchor
 same audit DB copy with the new key, fresh notary era). The old machine's key
 is hardware-bound and cannot be copied, so migration is enroll-and-rotate, not
 key transfer.
+
+## Interim hardening without hardware (applied 2026-08-17)
+
+Until a Secure Enclave key or YubiKey is enrolled, the software seed is no
+longer a plaintext string in `.env` (which was found world-readable,
+`-rw-r--r--` — readable by any local process). It now lives in the macOS
+login keychain:
+
+- `scripts/store-anchor-key.sh` stores the seed as a generic password
+  (`msb-chain-anchor-key` / `msb-v3`), removes `MSB_CHAIN_ANCHOR_KEY` from
+  `.env`, adds `MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE`, and `chmod 600`s `.env`.
+- `ChainAnchor.from_env()` falls back to the keychain when
+  `MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE` is set (gated — zero behavior change
+  when unset, and no subprocess). `anchored_chain_from_env` anchors when the
+  service is configured.
+- Fail-closed: a configured-but-absent keychain item raises with the store
+  path; it never silently continues unanchored.
+
+The keychain item is encrypted at rest and unreachable while the Mac is
+locked — a meaningful reduction versus a readable file, while the hardware
+paths remain the completion goal (a box owner in an unlocked session can
+still read it, which is exactly what the Secure Enclave/YubiKey closes).
+
+### Operational note — disk pressure (2026-08-17)
+
+A full disk took down the verify job's state write (`ENOSPC`). The backup
+retention is 14 (~450 MB each and growing as the DB count grows); the
+`pip-tools` cache alone was 2.7 GB. Regenerable caches and stale portability
+copies were cleared (~4.2 GB freed). Watch `df -h /System/Volumes/Data` —
+keep the volume below ~90% or the trust jobs (which write anchor state and
+the notary log on every run) fail closed.
 
 ## Verification
 

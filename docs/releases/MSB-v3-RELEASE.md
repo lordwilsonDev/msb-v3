@@ -54,6 +54,10 @@ recovers when a model, tool, or permission fails.
 - MoIE engine — exists and powers the factory reviewer, not a general chat path.
 - RFC 3161 timestamping + off-box notary — implemented, notary automation
   scheduled; anchor key trust boundary documented.
+- Chain-anchor key — moved out of plaintext into the macOS login keychain
+  (was world-readable in `.env`); Secure Enclave/YubiKey backend implemented
+  + fail-closed, enrollment pending an Apple ID or a YubiKey.
+  (docs/operations/secure-enclave-anchor.md)
 
 ## Planned for v4 (parking lot — see `v4-parking-lot.md`)
 
