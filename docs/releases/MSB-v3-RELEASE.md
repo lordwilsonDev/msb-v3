@@ -51,7 +51,7 @@ recovers when a model, tool, or permission fails.
 | Merkle proof-of-inclusion (P4): every audit record gets a compact O(log n) receipt verified against the root committed in the signed anchor — a third party holding only the anchor + one receipt can verify a single action | `tests/uac/test_merkle.py` (23 tests) + `docs/operations/merkle-receipts.md` |
 | Capability claims are auditable (M8): every claim in THIS table links to evidence that exists and matches live test counts — enforced by a gate in `make lint`, CI, and pre-push, so the declaration cannot drift from the tree | `scripts/verify-claims.py` (PASS: 13 claims, 21 evidence paths) |
 | Demo is reproducible (M8): an outsider can bring MSB up from a clean checkout and run the canonical path + three verdict cases + Merkle receipt | `docs/QUICKSTART.md` |
-| Governed-loop console (M8): a single-page browser console at `/console` to run a task, see the gate verdict + tool trace, replay a run from its events, and list past runs — a client of the existing operator-gated API (token entered once, kept in sessionStorage), no new backdoor | `src/msb_v3/api/console.py` + `tests/api/test_console.py` (6 tests) |
+| Governed-loop console (M8): a single-page browser console at `/console` to run a task, see the gate verdict + tool trace, replay a run from its events, and list past runs — a client of the existing operator-gated API (token entered once, kept in sessionStorage), no new backdoor. Live-verified end-to-end in Chromium: token gate → PASS run (hash `7aec748770e14f4f`, replay consistent) → replay of a DENIED run | `src/msb_v3/api/console.py` + `tests/api/test_console.py` (6 tests) + `artifacts/console/` screenshots + README |
 
 ## Implemented but experimental (not on the default live path)
 
