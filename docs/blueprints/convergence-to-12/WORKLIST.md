@@ -85,6 +85,7 @@ Legend: ✅ done · 🟡 in progress · 🔴 not started · ⏸ blocked on opera
 | H5 | Reliability metrics | DONE | `msb_v3_task_retries_total` + `msb_v3_task_recoveries_total` added + tested; queries/latency/verdicts already live | ✅ |
 | H6 | Daily backup + restore test | DONE | launchd job loaded (03:00) · backup 19 DBs notarized · restore over corrupted runtime: chain `valid: True` 9,858 rec | ✅ |
 | H7 | Factory dogfood (one real change) | DONE | 2 runs, pipeline failed closed NEEDS_WORK; seeded defect MISSED by live 0.5B/8B reviewers (real finding) — `artifacts/factory-dogfood/` | ✅ |
+| H9 | Reviewer hardening (H7 follow-up) | DONE | Root cause: new files produced EMPTY diffs (OSError skip) + single-model panels never ran the coherence lens + prompt truncated diff at 2000 chars. Fixed all three; 4 regression tests; live runs 3-4 confirm diff reaches reviewer | ✅ |
 | H8 | Operating ledger opened | DONE | 6 dated entries — `operating-ledger-entries.md` | ✅ |
 
 ---

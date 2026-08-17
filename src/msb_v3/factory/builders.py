@@ -72,11 +72,19 @@ def compute_changes(repo_path: str, worktree: str, *, max_diff_bytes: int = 8000
             continue
 
     for rel_str in changed[:25]:
+        # A changed file may not exist on one side: a NEW file has no old
+        # content, a DELETED file has no new content. Read what exists and
+        # treat the missing side as empty — never skip the diff (an empty
+        # diff silently starves the reviewer: the live dogfood's new-file
+        # doc got no diff at all, so the reviewer could not see the change).
         try:
             old = (src_root / rel_str).read_text(errors="replace").splitlines(keepends=True)
+        except OSError:
+            old = []
+        try:
             new = (wt_root / rel_str).read_text(errors="replace").splitlines(keepends=True)
         except OSError:
-            continue
+            new = []
         for line in difflib.unified_diff(old, new, fromfile=f"a/{rel_str}", tofile=f"b/{rel_str}", lineterm=""):
             total += len(line) + 1
             if total <= max_diff_bytes:

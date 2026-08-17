@@ -20,6 +20,26 @@ def _run(factory: SoftwareFactory, issue: Issue, repo: str):
     return asyncio.run(factory.process_issue(issue, repo=repo))
 
 
+def test_compute_changes_emits_diff_for_new_file(tmp_path: Path) -> None:
+    """The diff the reviewer reads must include NEW files. The live dogfood
+    missed a seeded doc contradiction because a brand-new file produced an
+    EMPTY diff (the old file was read and its missing-source OSError skipped
+    the whole file) — the reviewer had no change to read. A new file must
+    appear as a full +-diff."""
+    from msb_v3.factory.builders import compute_changes, create_worktree
+
+    src = tmp_path / "repo"
+    src.mkdir()
+
+    wt = create_worktree(str(src))
+    (Path(wt) / "new.md").write_text("# New\ncontent\n")
+
+    changed, diff = compute_changes(str(src), wt)
+    assert "new.md" in changed
+    assert "# New" in diff, "a NEW file must appear in the diff (was empty)"
+    assert "content" in diff
+
+
 # --- classify ---------------------------------------------------------------
 
 
