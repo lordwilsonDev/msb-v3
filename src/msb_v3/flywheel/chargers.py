@@ -30,7 +30,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
-from msb_v3.uac.research_backend import (
+from msb_ledger.research_backend import (
     ResearchBackend,
     ResearchBackendError,
     TavilyResearchBackend,

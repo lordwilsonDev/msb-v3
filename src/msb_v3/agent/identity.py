@@ -171,7 +171,7 @@ class AgentRegistry:
         try:
             chain = self._chain
             if chain is None:
-                from msb_v3.uac.chain_anchor import anchored_chain_from_env
+                from msb_ledger.chain_anchor import anchored_chain_from_env
 
                 chain = anchored_chain_from_env()
             chain.append("agents", event_type, payload)

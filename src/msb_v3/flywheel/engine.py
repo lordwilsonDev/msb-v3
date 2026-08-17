@@ -22,6 +22,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.axiom_library import ArtifactRecord, AxiomLibrary
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.core.config import settings
 from msb_v3.flywheel.chargers import (
     PaperScanner,
@@ -41,9 +44,6 @@ from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import OuroborosGovernor
 from msb_v3.governance.guard import Guard
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.axiom_library import ArtifactRecord, AxiomLibrary
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 

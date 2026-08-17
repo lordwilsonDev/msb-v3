@@ -17,13 +17,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.core.config import settings
 from msb_v3.evidence.spine import DecisionEvidenceStore
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.node.filesystem import FileReader, FileWriter
 from msb_v3.node.identity import IdentityStore
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 from msb_v3.vesta.adapter import VestaMSBAdapter
 from msb_v3.vesta.approvals import VestaApprovalStore
 from msb_v3.vesta.evidence import EvidenceStore

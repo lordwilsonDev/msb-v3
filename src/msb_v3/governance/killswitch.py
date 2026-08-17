@@ -25,9 +25,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.governance.db import default_db_path
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 
 class GovernanceHalt(Exception):

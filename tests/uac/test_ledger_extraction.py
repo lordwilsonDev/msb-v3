@@ -24,6 +24,7 @@ LEDGER_MODULES = sorted(
 
 
 def _imports_msb_v3(path: Path) -> list[str]:
+    """Any ``msb_v3`` import (used by the standalone-ness guard)."""
     tree = ast.parse(path.read_text())
     found: list[str] = []
     for node in ast.walk(tree):
@@ -33,6 +34,21 @@ def _imports_msb_v3(path: Path) -> list[str]:
                     found.append(alias.name)
         elif isinstance(node, ast.ImportFrom):
             if node.module and (node.module == "msb_v3" or node.module.startswith("msb_v3.")):
+                found.append(node.module)
+    return found
+
+
+def _imports_msb_v3_uac(path: Path) -> list[str]:
+    """Specifically ``msb_v3.uac`` imports (the mypy-blind shim path)."""
+    tree = ast.parse(path.read_text())
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "msb_v3.uac" or alias.name.startswith("msb_v3.uac."):
+                    found.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and (node.module == "msb_v3.uac" or node.module.startswith("msb_v3.uac.")):
                 found.append(node.module)
     return found
 
@@ -51,6 +67,24 @@ def test_uac_shim_resolves_to_ledger(module_name: str) -> None:
     canonical = importlib.import_module(f"msb_ledger.{module_name}")
     shimmed = importlib.import_module(f"msb_v3.uac.{module_name}")
     assert shimmed is canonical
+
+
+def test_no_internal_msb_v3_uac_imports_outside_shim() -> None:
+    """Internal src/msb_v3 code must import the ledger directly
+    (``from msb_ledger.X import ...``), never through the ``msb_v3.uac``
+    shim. The shim is a runtime alias only — static mypy cannot see through
+    it, so a routed-through-shim import turns ``mypy src`` red while tests
+    stay green (the exact regression found 2026-08-17 after the P4
+    extraction). The only file allowed to reference ``msb_v3.uac`` is the
+    shim itself."""
+    host_root = Path(__file__).resolve().parents[2] / "src" / "msb_v3"
+    offenders: list[str] = []
+    for path in host_root.rglob("*.py"):
+        if path.name == "__init__.py" and path.parent.name == "uac":
+            continue  # the shim itself
+        if _imports_msb_v3_uac(path):
+            offenders.append(str(path.relative_to(host_root.parent.parent)))
+    assert not offenders, f"internal msb_v3.uac imports (mypy-blind shim): {offenders}"
 
 
 def test_ledger_modules_registered_in_sys_modules() -> None:

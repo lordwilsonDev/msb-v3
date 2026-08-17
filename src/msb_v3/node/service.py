@@ -7,13 +7,13 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict
 
+from msb_ledger.audit_chain import AuditChain
 from msb_v3.core.config import settings
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.node.approval import NodeApprovalStore
 from msb_v3.node.filesystem import CapabilityViolation, FileReader
 from msb_v3.node.identity import IdentityStore
 from msb_v3.node.policy import NodePolicy
-from msb_v3.uac.audit_chain import AuditChain
 
 
 class NodeService:

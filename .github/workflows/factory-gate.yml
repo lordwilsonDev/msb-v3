@@ -81,7 +81,11 @@ jobs:
         # Run regardless of the regression suite's result — no leg may be
         # masked by an earlier failure.
         if: always()
-        run: mypy src --ignore-missing-imports
+        # No --ignore-missing-imports: the blanket suppress masked the P4
+        # extraction's red state (sys.modules shim aliases are runtime-only,
+        # invisible to static mypy). Bare mypy is the discipline; targeted
+        # overrides live in pyproject.toml ([tool.mypy.overrides]).
+        run: mypy src
 
       # Uses the pinned selection in pyproject.toml ([tool.ruff.lint] =
       # E4/E7/E9/F/I) so this gate can never diverge from the CI lint job's
