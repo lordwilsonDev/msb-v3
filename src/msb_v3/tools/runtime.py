@@ -27,11 +27,24 @@ from msb_v3.tools.registry import TOOLS
 logger = logging.getLogger(__name__)
 
 
-def _audit_append(tool_id: str, args: Dict[str, Any], result: str, *, tenant: str, session: str) -> None:
+def _audit_append(
+    tool_id: str,
+    args: Dict[str, Any],
+    result: str,
+    *,
+    tenant: str,
+    session: str,
+    verdict: str = "error",
+) -> None:
     """Best-effort audit of a governed tool call. The chain is the record of
     what actually happened; an append failure is logged, never fatal (the
     tool result still returns — the caller asked for the tool, not the audit).
-    Tool content is excluded from the audit payload (secrets hygiene)."""
+    Tool content is excluded from the audit payload (secrets hygiene).
+
+    ``verdict`` is the machine-readable gate outcome (M2 observability):
+    "allowed" | "denied" | "approval-required" | "unknown" | "error". The
+    audit record therefore answers "under which policy, with what verdict"
+    without parsing the prose result."""
     try:
         from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
@@ -41,6 +54,7 @@ def _audit_append(tool_id: str, args: Dict[str, Any], result: str, *, tenant: st
             {
                 "tenant": tenant,
                 "session": session,
+                "verdict": verdict,
                 "args": {k: v for k, v in args.items() if k != "content"},
                 "result_head": str(result)[:200],
             },
@@ -69,26 +83,26 @@ def _run_governed(
     td = TOOLS.get(tool_id)
     if td is None:
         outcome = f"[tool-error] unknown tool: {tool_id}"
-        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="unknown")
         return outcome
     if td.approval_required and tool_id not in approved:
         outcome = f"[approval-required] tool {tool_id} requires operator approval"
-        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="approval-required")
         return outcome
     missing = [c for c in td.required_capabilities if c not in granted]
     if missing:
         outcome = f"[denied] tool {tool_id} requires capabilities: {', '.join(missing)}"
-        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="denied")
         return outcome
     # Dotted tool ids (codegraph.explore) map to underscore executors
     # (codegraph_explore) — Python attributes cannot contain dots.
     executor: Callable[..., str] | None = getattr(executors, tool_id.replace(".", "_"), None)
     if executor is None:
         outcome = f"[tool-error] no executor registered for {tool_id}"
-        _audit_append(tool_id, args, outcome, tenant=tenant, session=session)
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="error")
         return outcome
     result = executor(args, tenant=tenant, session=session)
-    _audit_append(tool_id, args, result, tenant=tenant, session=session)
+    _audit_append(tool_id, args, result, tenant=tenant, session=session, verdict="allowed")
     return result
 
 
