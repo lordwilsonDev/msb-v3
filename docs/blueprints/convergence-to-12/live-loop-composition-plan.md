@@ -54,7 +54,7 @@ Vault task → memory recall → codegraph blast radius → propose patch → ru
 
 ### P4 — M4: Factory dogfood (one real change through the factory)
 **Goal:** MSB builds, reviews (diverse-LLM reviewer, builder∉reviewers), verifies, and lands one real change on itself — with the seeded-defect proof.
-- Reuse the existing `factory/` + `moie/llm_experts.py` reviewer panel; run a real MSB change (pick a small P2/P3 item) through it; record the artifact; catch one seeded defect.
+- Reuse the existing `factory/` + `src/msb_v3/moie/llm_experts.py` reviewer panel; run a real MSB change (pick a small P2/P3 item) through it; record the artifact; catch one seeded defect.
 - **Exit evidence:** run artifact linking request → generated change → review → verification → merge decision; defect-detection record.
 
 ### P5 — External MCP client smoke (optional, needs external tooling)
@@ -64,7 +64,7 @@ Vault task → memory recall → codegraph blast radius → propose patch → ru
 ## 4. Explicitly deferred (parked, not forgotten)
 - New modalities, more agent personas, more providers, dashboards, distributed nodes — all post-M7 per the v3 contract. No new subsystem enters during P0-P2 unless a core-path failure demands it (Rule 3).
 
-## 5. Definition of done (the review's finish line, made testable)
+## 5. Exit criteria for this plan (the review's finish line, made testable)
 1. A request through **any** surface (MCP, chat, agent) that attempts a consequential action is governed — denied actions produce no side effect and an audit record.
 2. `tests/governance/` + `tests/live/test_live_loop.py` green (live test against the real stack, artifact committed).
 3. One real MSB change lands via the factory with a diverse reviewer and seeded-defect evidence.
