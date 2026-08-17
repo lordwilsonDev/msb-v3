@@ -46,7 +46,8 @@ recovers when a model, tool, or permission fails.
 | Metrics: queries, latency, verdicts, retries, recoveries | `scripts/run-report.py` → `artifacts/run-report-20260817.json` |
 | Factory dogfood: docs-only change reached MERGED | `artifacts/factory-dogfood/run7.json` |
 | Intent over-grant suppressed (model can't self-grant write) | `tests/agent/test_intent.py` |
-| Ledger extracted as a standalone library (P4): `msb_ledger` with zero `msb_v3` imports; `msb_v3.uac` is a thin alias shim, so all ~73 consumers + tests work unchanged | `tests/uac/test_ledger_extraction.py` (27 guards) |
+| Ledger extracted as a standalone library (P4): `msb_ledger` with zero `msb_v3` imports; `msb_v3.uac` is a thin alias shim, so all ~73 consumers + tests work unchanged | `tests/uac/test_ledger_extraction.py` (28 guards) |
+| Merkle proof-of-inclusion (P4): every audit record gets a compact O(log n) receipt verified against the root committed in the signed anchor — a third party holding only the anchor + one receipt can verify a single action | `tests/uac/test_merkle.py` (23 tests) + `docs/operations/merkle-receipts.md` |
 
 ## Implemented but experimental (not on the default live path)
 
