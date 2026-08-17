@@ -246,8 +246,10 @@ class NotaryService:
 
     # -- notarize ---------------------------------------------------------------
     def notarize(self) -> dict:
-        """Append a signed snapshot locally, stamp it, push it off-box. Raises
-        NotaryDiverged if the local log was rolled back behind the remote."""
+        """Append a signed snapshot locally, stamp it, push it off-box, and
+        backfill any older local entries the remote is missing (a previously
+        failed push converges on the next run). Raises NotaryDiverged if the
+        local log was rolled back behind the remote."""
         try:
             entries = self._read_local_entries()
         except NotaryError as exc:
@@ -287,6 +289,29 @@ class NotaryService:
                 result["remote_push_ok"] = False
                 result["remote_error"] = str(exc)
                 result["ok"] = False  # loud: off-box guarantee not met
+
+            # Backfill: converge the remote to the full local history. A
+            # remote push that failed on an earlier run leaves older seqs
+            # missing (verify => REMOTE_BEHIND); the next notarize re-pushes
+            # them so the remote self-heals without operator action. Never
+            # overwrites: only seqs the remote lacks are pushed, and the
+            # rollback guard above already ruled out remote-ahead-of-local.
+            backfilled: list[int] = []
+            backfill_errors: list[str] = []
+            for s in sorted(set(range(1, seq)) - remote_seqs):
+                old = entries[s - 1]
+                old_line = json.dumps(old, sort_keys=True, separators=(",", ":"))
+                old_name = f"{s:06d}-{old['notarized_at'].replace(':', '').replace('+00:00', 'Z')}.line"
+                try:
+                    self.remote.append(old_name, (old_line + "\n").encode())
+                    backfilled.append(s)
+                except NotaryRemoteError as exc:
+                    backfill_errors.append(f"{s}: {exc}")
+            if backfilled:
+                result["backfilled"] = backfilled
+            if backfill_errors:
+                result["backfill_errors"] = backfill_errors
+                result["ok"] = False  # remote still behind => verify would alert
         return result
 
     # -- verify ------------------------------------------------------------------

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.lordwilson.chain-anchor-verify.plist — tight-interval chain-anchor +
+  off-box notary verification (user-domain LaunchAgent, no root needed).
+
+  Runs scripts/verify_chain_anchor.sh every 10 minutes (StartInterval 600):
+  the live audit chain is checked against its external signed chain-tip anchor
+  and the REMOTE notary head. A daily-only check (the old 07:00 job) leaves a
+  tamper live and trusted for up to ~24h; every-10-minutes bounds the
+  undetected window to minutes. Any problem (stale/replaced anchor, anchor
+  tamper, broken internal chain, remote notary unreachable/diverged) exits
+  non-zero and launchd records it in StandardErrorPath. Benign stale anchors
+  are re-signed (--auto-anchor); real problems alert + exit 2.
+
+  Install:
+      cp scripts/com.lordwilson.chain-anchor-verify.plist ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.lordwilson.chain-anchor-verify.plist
+
+  Reload after editing:
+      launchctl bootout gui/$(id -u)/com.lordwilson.chain-anchor-verify
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.lordwilson.chain-anchor-verify.plist
+
+  Remove:
+      launchctl bootout gui/$(id -u)/com.lordwilson.chain-anchor-verify
+      rm ~/Library/LaunchAgents/com.lordwilson.chain-anchor-verify.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.lordwilson.chain-anchor-verify</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lordwilson/msb-v3/scripts/verify_chain_anchor.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lordwilson/msb-v3</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lordwilson/.trinity/logs/chain_anchor_verify.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/lordwilson/.trinity/logs/chain_anchor_verify.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

@@ -136,6 +136,57 @@ def test_verify_healthy(service_factory, tmp_path: Path):
     assert report["timestamp"] is None  # no timestamper configured
 
 
+def test_notarize_backfills_missing_remote_entries(service_factory, tmp_path: Path):
+    """A remote left behind by a failed push converges on the next notarize:
+    older local entries are re-pushed (never overwritten) so the remote
+    reaches full history and verify goes HEALTHY."""
+    remote_dir = tmp_path / "remote"
+    service = service_factory(remote_dir=remote_dir)
+    service.notarize()  # seq 1
+    service.notarize()  # seq 2
+    # Simulate a failed push for seq 1: the remote only ever received seq 2.
+    first = min(p for p in remote_dir.iterdir())
+    first.unlink()
+
+    result = service.notarize()  # seq 3 -> must ALSO backfill seq 1
+    assert result["ok"] is True
+    assert result["seq"] == 3
+    assert result["backfilled"] == [1]
+    names = sorted(p.name for p in remote_dir.iterdir())
+    assert len(names) == 3
+    assert any(n.startswith("000001-") for n in names)
+    assert any(n.startswith("000002-") for n in names)
+    assert any(n.startswith("000003-") for n in names)
+
+    report = service.verify()
+    assert report["verdict"] == "HEALTHY"
+    assert report["remote_entries"] == 3
+
+
+def test_notarize_backfill_failure_is_loud(service_factory, tmp_path: Path):
+    """If a backfilled entry cannot be pushed, notarize stays loud (ok=False)
+    so the schedule alerts — the remote is still behind."""
+    remote_dir = tmp_path / "remote"
+    service = service_factory(remote_dir=remote_dir)
+    service.notarize()  # seq 1
+    service.notarize()  # seq 2
+    first = min(p for p in remote_dir.iterdir())
+    first.unlink()
+
+    class FlakySink(LocalDirSink):
+        def append(self, name: str, data: bytes) -> None:
+            if name.startswith("000001-"):
+                raise NotaryRemoteError("gdrive: transient timeout")
+            super().append(name, data)
+
+    service.remote = FlakySink(remote_dir)
+    result = service.notarize()
+    assert result["ok"] is False
+    assert result["backfill_errors"], "expected a loud backfill failure"
+    assert "1:" in result["backfill_errors"][0]  # seq 1 backfill failed
+    assert "transient timeout" in result["backfill_errors"][0]
+
+
 def test_verify_remote_behind_when_remote_entry_missing(service_factory, tmp_path: Path):
     remote_dir = tmp_path / "remote"
     service = service_factory(remote_dir=remote_dir)

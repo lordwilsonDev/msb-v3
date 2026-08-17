@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Daily chain-anchor verifier (launchd: com.lordwilson.chain-anchor-verify).
+# Tight-interval chain-anchor verifier (launchd:
+# com.lordwilson.chain-anchor-verify, StartInterval 600 = every 10 min).
 # Verifies the LIVE audit chain against its external signed chain-tip anchor
-# (the T7 fix). Healthy => one-line OK + state file. Any problem (stale
-# anchor, whole-DB replacement, anchor tamper, missing key/anchor, broken
-# internal chain) => macOS notification + ALERT line + non-zero exit.
-# Override the DB for testing: ./scripts/verify_chain_anchor.sh <path>
+# (the T7 fix). A daily-only check would leave a tamper live and trusted for
+# up to ~24h; every-10-minutes bounds the undetected window to minutes.
+# Healthy => one-line OK + state file. Any problem (stale anchor, whole-DB
+# replacement, anchor tamper, missing key/anchor, broken internal chain,
+# remote notary unreachable/diverged) => macOS notification + ALERT line +
+# non-zero exit. Override the DB for testing: ./scripts/verify_chain_anchor.sh <path>
 
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
@@ -15,7 +18,7 @@ set -a
 [ -f "$REPO/.env" ] && . "$REPO/.env"
 set +a
 
-export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"
+export PATH="/opt/homebrew/bin:/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"
 export PYTHONPATH="$REPO/src:~/.local/lib/msb-v3"
 export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"
 
