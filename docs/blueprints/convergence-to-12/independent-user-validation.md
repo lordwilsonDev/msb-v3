@@ -93,8 +93,26 @@ For each user, in order:
 - [ ] Findings become explicit keep / change / cut decisions (recorded here
       and in `MILESTONES.md`).
 
+## Kickoff schedule (added 2026-08-17, trial rolling)
+
+Week-1 M6 data already points the right way (86.7% completion, zero
+approve/retry/bypass interventions, ~10 min saved per task, evidence
+useful 15/15), so the gate is expected to pass — but the plan's rule is
+30 days of evidence, so the kickoff is scheduled around the trial's end
+with prep running in parallel NOW.
+
+| When | What | Owner | Evidence |
+|---|---|---|---|
+| 2026-08-17 → 08-28 | **Recruit 2–3 candidates.** Technically capable; can run a terminal + clone a repo. Ask: available for one 60–90 min session in the 09-17 → 10-01 window; have a folder of markdown notes to use as a vault. | Wilson | names + session slots in the observer log |
+| By 2026-09-05 | **Dry-run the kit on a clean machine.** Fresh venv + clone, run the setup guide + canonical task + governance/failure probes exactly as a user would (the operator is user #0). Every friction point found here is one a real user won't hit. | Wilson | updated setup guide (commands that actually work from a virgin checkout — same discipline as `make portability` and the M7 kit's own `make server-start` fix) |
+| 2026-09-12 | **M6 gate check (4th Friday review).** Rollup: completion ≥90% supported, intervention burden not rising, time saved positive. If the gate passes → confirm kickoff. If not → delay M7 and narrow the workflow per m6-trial.md. | Wilson | `scripts/trial-rollup.py` output recorded in MILESTONES.md M6 row |
+| 2026-09-17 → 10-01 | **M7 validation window.** 2–3 sessions (one per user), observer log per the protocol above; at least one user must reach a useful result without live intervention; every session records keep/change/cut findings. | Wilson | observer log rows per user |
+| 2026-10-02 | **M7 exit review.** Combine the session findings into explicit keep/change/cut decisions; feed into M8 final release decision (dated). | Wilson | decisions recorded here + MILESTONES.md M7 row |
+
 ## Gate
 
 Independent validation begins only after the 30-day personal trial shows
 positive net value (completion rate up, intervention rate down, measurable
-time saved). The kit is ready now; the schedule is gated on M6 evidence.
+time saved). The kit is ready now; the schedule above respects that gate:
+prep (recruit + dry-run) runs during the trial, sessions start 09-17, and
+the 09-12 review is the formal go/no-go.
