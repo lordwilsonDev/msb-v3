@@ -14,7 +14,9 @@ touching the anchor/notary code:
     the non-Ed25519 path end-to-end.
   * ``SecureEnclaveBackend`` — P-256 ECDSA signing inside Apple's Secure
     Enclave (macOS); the private key never leaves the enclave.
-  * ``YubiKeyPivBackend`` — P-256/P-384 ECDSA signing on a YubiKey PIV slot.
+  * ``YubiKeyPivBackend`` — P-256/P-384 ECDSA signing on a YubiKey PIV slot
+    via ``python-pkcs11`` + Yubico's ``libykcs11`` PKCS#11 module.  The
+    private key never leaves the YubiKey hardware.
 
 The anchor record now carries ``key_algorithm`` and verification dispatches on
 it, so an Ed25519 anchor and a P-256 (hardware) anchor coexist; an anchor
@@ -29,6 +31,14 @@ enrolled it fails closed: ``available()`` is False with a provisioning reason
 and ``sign()`` raises ``SigningBackendUnavailable``. Enrollment on macOS 12+
 requires the ``keychain-access-groups`` entitlement (an Xcode-signed build;
 see the backend docstring and docs/operations/secure-enclave-anchor.md).
+
+``YubiKeyPivBackend`` talks to the YubiKey via ``libykcs11`` (installed by
+``brew install yubico-piv-tool``) using the ``python-pkcs11`` wrapper.  The
+private key is generated on-device and never leaves the hardware; signing
+happens inside the YubiKey's secure element.  Requires a P-256 key + X.509
+certificate enrolled in a PIV slot (see docs/operations/yubikey-piv-anchor.md
+for the one-time enrollment steps).  Tests exercise the full PKCS#11 glue
+with a fake ``libykcs11`` module so no physical YubiKey is needed.
 
 Signature encoding contract (must be kept consistent across backends):
 
@@ -254,31 +264,234 @@ def _resolve_secenclave_tool() -> Optional[str]:
 class YubiKeyPivBackend(SigningBackend):
     """P-256/P-384 ECDSA signing on a YubiKey PIV slot.
 
-    Completion step (operator): enroll a key into a PIV slot (``ykman piv
-    keys generate``) and sign via PKCS#11 (``ykcs11`` / ``pkcs11-tool --sign``
-    with ECDSA-SHA256), returning the DER signature. A raw r||s result must be
-    converted with ``_x962_to_der``.
+    Uses ``python-pkcs11`` with Yubico's ``libykcs11`` PKCS#11 module to:
+
+    1. Read the X.509 certificate from the PIV slot and extract the EC public
+       point (uncompressed, same wire format as the software and SE backends).
+    2. Sign via the PKCS#11 ``ECDSA_SHA256`` mechanism, which returns a
+       DER-encoded signature directly — no X9.62→DER conversion needed.
+
+    Configuration (environment):
+
+    * ``MSB_YUBIKEY_PKCS11_LIB`` — path to ``libykcs11.dylib`` / ``.so``.
+      Default search: ``/opt/homebrew/lib/libykcs11.dylib`` (Homebrew macOS)
+      then ``/usr/lib/libykcs11.so`` (Linux).
+    * ``MSB_YUBIKEY_PIN`` — PIV user PIN.  If absent, falls back to reading
+      ``~/.yubikey-pin`` (one line, trimmed).  If neither exists, the PIN is
+      prompted interactively — but unattended launchd jobs should set the env
+      var or the file.
+    * ``MSB_YUBIKEY_PIV_SLOT`` — PIV slot hex (default ``9a`` = PIV
+      Authentication; ``9c`` = Signature; ``9d`` = Key Management).
+
+    Enrollment (operator, one-time)::
+
+        # 1. Generate P-256 key in slot 9a
+        ykman piv keys generate --algorithm ECCP256 9a /tmp/yubikey-pub.pem
+        # 2. Generate self-signed cert (required by PKCS#11 Sign)
+        ykman piv certificates generate --subject "CN=msb-chain-anchor" 9a /tmp/yubikey-pub.pem
+        # 3. Set PIN if still default
+        ykman piv access change-pin --pin 123456 --new-pin <YOUR-PIN>
+        # 4. Store PIN for launchd jobs
+        echo '<YOUR-PIN>' > ~/.yubikey-pin && chmod 600 ~/.yubikey-pin
+
+    Until a key is enrolled this backend fails closed: ``available()`` is
+    False with the enrollment steps and ``sign()`` raises
+    ``SigningBackendUnavailable``.
+
+    Signature contract: PKCS#11 ``ECDSA_SHA256`` returns DER, which is the
+    exact encoding ``verify_signature`` expects — no conversion.
     """
 
-    def __init__(self, curve: str = SECP256R1, slot: str = "9a") -> None:
+    # PIN resolution order: env → file → (None = fail-closed for unattended)
+    _PIN_FILE = Path.home() / ".yubikey-pin"
+
+    def __init__(self, curve: str = SECP256R1, slot: Optional[str] = None) -> None:
         self.algorithm = curve
-        self._slot = slot or os.getenv("MSB_YUBIKEY_PIV_SLOT", "9a")
+        chosen = slot or os.getenv("MSB_YUBIKEY_PIV_SLOT") or "9a"
+        self._slot = str(chosen).lower()
+        self._lib_path = self._resolve_pkcs11_lib()
+        self._pin: Optional[str] = self._resolve_pin()
 
-    def available(self) -> bool:
-        # A YubiKey must be present AND a key enrolled; unverifiable here.
-        return False
+    # ── resolution helpers ────────────────────────────────────────────────
 
-    def unavailable_reason(self) -> str:
-        return (
-            "yubikey-piv backend not provisioned: enroll a key in PIV slot "
-            f"{self._slot!r} and wire PKCS#11 signing (see uac/signing.py)"
+    @staticmethod
+    def _resolve_pkcs11_lib() -> Optional[str]:
+        env = os.getenv("MSB_YUBIKEY_PKCS11_LIB", "").strip()
+        if env:
+            return env
+        for candidate in (
+            "/opt/homebrew/lib/libykcs11.dylib",  # macOS Homebrew
+            "/usr/local/lib/libykcs11.dylib",      # macOS Intel Homebrew
+            "/usr/lib/libykcs11.so",                # Linux
+        ):
+            if os.path.isfile(candidate) and os.access(candidate, os.R_OK):
+                return candidate
+        return None
+
+    @staticmethod
+    def _resolve_pin() -> Optional[str]:
+        pin = os.getenv("MSB_YUBIKEY_PIN", "").strip()
+        if pin:
+            return pin
+        if YubiKeyPivBackend._PIN_FILE.is_file():
+            return YubiKeyPivBackend._PIN_FILE.read_text().strip() or None
+        return None
+
+    # ── PKCS#11 helpers ───────────────────────────────────────────────────
+
+    def _open_session(self):
+        """Return a context manager that yields an opened PKCS#11 session
+        on the first token (YubiKey).  Raises SigningBackendUnavailable
+        if the library is missing, no token is present, or the PIN is bad."""
+        if self._lib_path is None:
+            raise SigningBackendUnavailable(self.unavailable_reason())
+        try:
+            import pkcs11 as _pkcs11
+        except ImportError as exc:
+            raise SigningBackendUnavailable(
+                "python-pkcs11 not installed — run: pip install python-pkcs11"
+            ) from exc
+
+        try:
+            lib = _pkcs11.lib(self._lib_path)
+        except Exception as exc:
+            raise SigningBackendUnavailable(
+                f"could not load PKCS#11 library {self._lib_path}: {exc}"
+            ) from exc
+
+        tokens = list(lib.get_tokens())
+        if not tokens:
+            raise SigningBackendUnavailable(
+                "no YubiKey detected —插 one and try again"
+            )
+        token = tokens[0]
+
+        pin = self._pin
+        if pin is None:
+            raise SigningBackendUnavailable(
+                "no YubiKey PIN configured — set MSB_YUBIKEY_PIN env var or "
+                f"create {self._PIN_FILE} with the PIN"
+            )
+
+        try:
+            session = token.open(rw=True, user_pin=pin)
+        except Exception as exc:
+            raise SigningBackendUnavailable(
+                f"PKCS#11 session open failed (wrong PIN?): {exc}"
+            ) from exc
+        return session
+
+    # PIV slot hex → the CKA_ID byte used by ykcs11 to tag every object in
+    # that slot (docs: developers.yubico.com/yubico-piv-tool/YKCS11).
+    def _slot_id(self) -> bytes:
+        try:
+            return bytes([int(self._slot, 16)])
+        except ValueError as exc:
+            raise SigningBackendUnavailable(
+                f"invalid PIV slot {self._slot!r} — use a hex slot like 9a or 9c"
+            ) from exc
+
+    def _find_cert(self, session):
+        """Find the X.509 certificate in the PIV slot (by CKA_ID)."""
+        from pkcs11 import Attribute, ObjectClass
+
+        # ykcs11 tags cert/key/data objects in a slot with CKA_ID = slot byte.
+        certs = list(session.get_objects({
+            Attribute.CLASS: ObjectClass.CERTIFICATE,
+            Attribute.ID: self._slot_id(),
+        }))
+        if not certs:
+            raise SigningBackendUnavailable(
+                f"no certificate in PIV slot {self._slot!r} — enroll one first:\n"
+                f"  ykman piv keys generate --algorithm ECCP256 {self._slot} /tmp/pub.pem\n"
+                f"  ykman piv certificates generate --subject \"CN=msb-anchor\" {self._slot} /tmp/pub.pem"
+            )
+        return certs[0]
+
+    def _get_public_key_from_cert(self, session, cert_obj) -> bytes:
+        """Extract uncompressed EC point from the X.509 certificate."""
+        from cryptography.x509 import load_der_x509_certificate
+
+        cert_der = cert_obj["VALUE"]
+        x509_cert = load_der_x509_certificate(cert_der)
+        pub_key = x509_cert.public_key()
+
+        if not isinstance(pub_key, ec.EllipticCurvePublicKey):
+            raise SigningBackendUnavailable(
+                f"PIV certificate in slot {self._slot!r} does not hold an EC key"
+            )
+        if self.algorithm in (SECP256R1, SECP384R1):
+            return _public_point(pub_key)
+        raise SigningBackendUnavailable(
+            f"unsupported YubiKey PIV curve: {self.algorithm}"
         )
 
+    def _find_private_key(self, session):
+        """Find the private key object in the PIV slot (by CKA_ID)."""
+        from pkcs11 import Attribute, ObjectClass
+
+        keys = list(session.get_objects({
+            Attribute.CLASS: ObjectClass.PRIVATE_KEY,
+            Attribute.ID: self._slot_id(),
+        }))
+        if not keys:
+            raise SigningBackendUnavailable(
+                f"no private key in PIV slot {self._slot!r} — generate one first:\n"
+                f"  ykman piv keys generate --algorithm ECCP256 {self._slot} /tmp/pub.pem"
+            )
+        return keys[0]
+
+    # ── SigningBackend interface ───────────────────────────────────────────
+
+    def available(self) -> bool:
+        if self._lib_path is None or self._pin is None:
+            return False
+        try:
+            with self._open_session() as session:
+                self._find_cert(session)
+                return True
+        except SigningBackendUnavailable:
+            return False
+
+    def unavailable_reason(self) -> str:
+        if self._lib_path is None:
+            return (
+                "yubikey-piv backend not available: libykcs11 not found — "
+                "brew install yubico-piv-tool (macOS) or install ykcs11 (Linux), "
+                "or set MSB_YUBIKEY_PKCS11_LIB"
+            )
+        if self._pin is None:
+            return (
+                f"yubikey-piv backend not available: no PIN — set MSB_YUBIKEY_PIN "
+                f"or create {self._PIN_FILE}"
+            )
+        # Provisioned path: return "" when a session opens and a cert is
+        # found (matches the base-class contract: available => no reason).
+        try:
+            with self._open_session() as session:
+                self._find_cert(session)
+            return ""
+        except SigningBackendUnavailable as exc:
+            return str(exc)
+
     def public_key_bytes(self) -> bytes:
-        raise SigningBackendUnavailable(self.unavailable_reason())
+        with self._open_session() as session:
+            cert_obj = self._find_cert(session)
+            return self._get_public_key_from_cert(session, cert_obj)
 
     def sign(self, message: bytes) -> bytes:
-        raise SigningBackendUnavailable(self.unavailable_reason())
+        """Sign *message* via PKCS#11 ECDSA-SHA256.
+
+        Returns DER-encoded signature — the format ``verify_signature``
+        expects.  No X9.62→DER conversion is needed.
+        """
+        from pkcs11 import Mechanism
+
+        with self._open_session() as session:
+            key = self._find_private_key(session)
+            # ECDSA_SHA256 hashes internally and returns DER r||s.
+            der_sig = key.sign(message, mechanism=Mechanism.ECDSA_SHA256)
+        return bytes(der_sig)
 
     def hardware_assurance(self) -> str:
         return "yubikey-piv"

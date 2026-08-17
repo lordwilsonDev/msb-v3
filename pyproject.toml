@@ -19,6 +19,7 @@ dependencies = [
   "qdrant-client==1.18.0",
   "cryptography==50.0.0",
   "asn1crypto==1.5.1",  # RFC 3161 trusted timestamping (uac/timestamping.py): pure-Python ASN.1 for the TSA token — zero transitive deps
+  "python-pkcs11==0.9.5",  # YubiKey PIV signing via libykcs11 PKCS#11 (uac/signing.py)
 ]
 
 [project.optional-dependencies]

@@ -303,3 +303,233 @@ def test_secure_enclave_backend_fail_closed_without_tool(monkeypatch):
     assert "secenclave-tool" in backend.unavailable_reason()
     with pytest.raises(SigningBackendUnavailable, match="failed to run"):
         backend.sign(b"x")
+
+
+# ── YubiKey PIV backend tests (hermetic — fake PKCS#11 session) ────────────
+
+# No physical YubiKey is needed: the backend's PKCS#11 session helpers
+# (``_open_session``) are monkeypatched with a fake session backed by a
+# software P-256 key + self-signed cert, so the public-key extraction, DER
+# signing, and anchor-integration paths are exercised end-to-end.  The
+# fail-closed cases (no lib, no PIN) exercise the real resolution logic.
+
+
+@pytest.fixture
+def fake_ykcs11(tmp_path, monkeypatch):
+    """Provide a fake libykcs11 that YubiKeyPivBackend can use via
+    python-pkcs11.  Returns (lib_path, state_dir).
+
+    Since python-pkcs11 loads the .so through ctypes and expects a real
+    PKCS#11 C entry point, we instead test the backend's *logic* by
+    monkeypatching the ``_open_session`` / ``_find_cert`` / ``_find_private_key``
+    helpers — the same strategy the SE backend uses (fake tool for subprocess
+    glue, real backend logic).
+    """
+    state = tmp_path / "yk-state"
+    state.mkdir()
+    monkeypatch.setenv("FAKE_YKCS11_STATE", str(state))
+    return state
+
+
+def _make_fake_session(state_dir: Path, label: str = "msb-chain-anchor"):
+    """Return a fake session-like object that provides get_objects(),
+    sign(), and the VALUE attribute for certificates."""
+    import datetime as _dt
+
+    from cryptography import x509 as _x509
+    from cryptography.hazmat.primitives import hashes as _hashes
+    from cryptography.hazmat.primitives import serialization as _ser
+    from cryptography.hazmat.primitives.asymmetric import ec as _ec
+    from cryptography.x509.oid import NameOID as _NOID
+
+    kp = state_dir / f"{label}.key"
+    if kp.exists():
+        priv = _ser.load_pem_private_key(kp.read_bytes(), None)
+    else:
+        priv = _ec.generate_private_key(_ec.SECP256R1())
+        kp.write_bytes(
+            priv.private_bytes(
+                _ser.Encoding.PEM, _ser.PrivateFormat.PKCS8, _ser.NoEncryption()
+            )
+        )
+        subject = issuer = _x509.Name(
+            [_x509.NameAttribute(_NOID.COMMON_NAME, f"yk-{label}")]
+        )
+        cert = (
+            _x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer)
+            .public_key(priv.public_key())
+            .serial_number(_x509.random_serial_number())
+            .not_valid_before(_dt.datetime.now(_dt.timezone.utc))
+            .not_valid_after(_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(days=3650))
+            .sign(priv, _hashes.SHA256())
+        )
+        (state_dir / f"{label}.der").write_bytes(cert.public_bytes(_ser.Encoding.DER))
+
+    cert_der = (state_dir / f"{label}.der").read_bytes()
+
+    class _CertObj:
+        def __init__(self, d: dict):
+            self._d = d
+
+        def __getitem__(self, k):
+            return self._d[k]
+
+    class _KeyObj:
+        def __init__(self, k):
+            self._k = k
+
+        def sign(self, message, mechanism=None):
+            return self._k.sign(message, _ec.ECDSA(_hashes.SHA256()))
+
+    cert_obj = _CertObj({"VALUE": cert_der})
+    key_obj = _KeyObj(priv)
+
+    slot_id = b"\x9a"  # the default PIV slot 9a byte (all fake tests use 9a)
+
+    class _Session:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+        def get_objects(self, attrs=None):
+            # Mirror python-pkcs11's dict-attribute search API.  The fake
+            # honors CLASS (cert vs private key) and ID (slot byte) filters
+            # the same way real ykcs11 does.
+            from pkcs11 import Attribute, ObjectClass
+
+            attrs = attrs or {}
+            if attrs.get(Attribute.ID) is not None and attrs[Attribute.ID] != slot_id:
+                return []
+            klass = attrs.get(Attribute.CLASS)
+            if klass == ObjectClass.CERTIFICATE:
+                return [cert_obj]
+            if klass == ObjectClass.PRIVATE_KEY:
+                return [key_obj]
+            return [cert_obj, key_obj]
+
+    return _Session()
+
+
+def test_yubikey_backend_fail_closed_no_lib(monkeypatch):
+    """Without libykcs11 on disk, the backend fails closed."""
+    monkeypatch.delenv("MSB_YUBIKEY_PKCS11_LIB", raising=False)
+    # Deterministic on every machine: force resolution to find nothing,
+    # even if yubico-piv-tool happens to be installed.
+    monkeypatch.setattr(YubiKeyPivBackend, "_resolve_pkcs11_lib", staticmethod(lambda: None))
+    backend = YubiKeyPivBackend()
+    assert backend._lib_path is None
+    assert backend.available() is False
+    assert "libykcs11" in backend.unavailable_reason()
+    with pytest.raises(SigningBackendUnavailable, match="not available"):
+        backend.sign(b"x")
+    with pytest.raises(SigningBackendUnavailable, match="not available"):
+        backend.public_key_bytes()
+
+
+def test_yubikey_backend_fail_closed_no_pin(fake_ykcs11, monkeypatch):
+    """Without a PIN configured, the backend fails closed."""
+    monkeypatch.setenv("MSB_YUBIKEY_PKCS11_LIB", "/fake/libykcs11.dylib")
+    monkeypatch.delenv("MSB_YUBIKEY_PIN", raising=False)
+    # Ensure ~/.yubikey-pin doesn't exist
+    pin_file = YubiKeyPivBackend._PIN_FILE
+    monkeypatch.setattr("pathlib.Path.is_file", lambda self: False if self == pin_file else Path.is_file(self))
+    backend = YubiKeyPivBackend()
+    assert backend._pin is None
+    assert backend.available() is False
+    assert "PIN" in backend.unavailable_reason()
+
+
+def test_yubikey_backend_reads_pin_from_env(fake_ykcs11, monkeypatch):
+    monkeypatch.setenv("MSB_YUBIKEY_PKCS11_LIB", "/fake/libykcs11.dylib")
+    monkeypatch.setenv("MSB_YUBIKEY_PIN", "my-pin-42")
+    backend = YubiKeyPivBackend()
+    assert backend._pin == "my-pin-42"
+
+
+def test_yubikey_backend_reads_pin_from_file(fake_ykcs11, monkeypatch, tmp_path):
+    monkeypatch.setenv("MSB_YUBIKEY_PKCS11_LIB", "/fake/libykcs11.dylib")
+    monkeypatch.delenv("MSB_YUBIKEY_PIN", raising=False)
+    pin_file = tmp_path / ".yubikey-pin"
+    pin_file.write_text("file-pin-99\n")
+    monkeypatch.setattr(YubiKeyPivBackend, "_PIN_FILE", pin_file)
+    backend = YubiKeyPivBackend()
+    assert backend._pin == "file-pin-99"
+
+
+def test_yubikey_backend_slot_from_env(fake_ykcs11, monkeypatch):
+    monkeypatch.setenv("MSB_YUBIKEY_PIV_SLOT", "9c")
+    backend = YubiKeyPivBackend()
+    assert backend._slot == "9c"
+
+
+def test_yubikey_backend_sign_roundtrip(tmp_path, monkeypatch):
+    """Full roundtrip: sign a message via the fake PKCS#11 session and
+    verify with the public key — proving the DER encoding is correct."""
+    state = tmp_path / "yk-state"
+    state.mkdir()
+    monkeypatch.setenv("MSB_YUBIKEY_PKCS11_LIB", "/fake/libykcs11.dylib")
+    monkeypatch.setenv("MSB_YUBIKEY_PIN", "123456")
+
+    backend = YubiKeyPivBackend(curve=SECP256R1, slot="9a")
+
+    # Monkeypatch the session helpers to use our fake session
+    fake_session = _make_fake_session(state)
+    monkeypatch.setattr(backend, "_open_session", lambda: fake_session)
+
+    # Extract public key
+    pub = backend.public_key_bytes()
+    assert len(pub) == 65  # uncompressed P-256 point
+    assert pub[0] == 0x04
+
+    # Sign and verify
+    msg = b"the canonicalized anchor snapshot"
+    der_sig = backend.sign(msg)
+    assert len(der_sig) > 0
+    assert verify_signature(msg, der_sig, pub, SECP256R1) is True
+    assert verify_signature(b"wrong message", der_sig, pub, SECP256R1) is False
+    assert backend.hardware_assurance() == "yubikey-piv"
+
+
+def test_yubikey_backend_anchors_notarizes_and_verifies(tmp_path, monkeypatch):
+    """End-to-end: YubiKeyPivBackend → ChainAnchor → AuditChain."""
+    state = tmp_path / "yk-state"
+    state.mkdir()
+    monkeypatch.setenv("MSB_YUBIKEY_PKCS11_LIB", "/fake/libykcs11.dylib")
+    monkeypatch.setenv("MSB_YUBIKEY_PIN", "123456")
+
+    backend = YubiKeyPivBackend()
+    fake_session = _make_fake_session(state)
+    monkeypatch.setattr(backend, "_open_session", lambda: fake_session)
+
+    chain = AuditChain(str(tmp_path / "audit.db"))
+    for i in range(3):
+        chain.append("s", "e", {"n": i})
+
+    anchor = ChainAnchor(backend=backend)
+    anchor.anchor(chain)
+    assert anchor.verify(chain)["valid"] is True
+
+    notary = tmp_path / "notary.jsonl"
+    anchor.notarize(chain, notary)
+    assert anchor.verify_notary(chain, notary)["valid"] is True
+
+    record = json.loads((tmp_path / "chain_anchor.json").read_text())
+    assert record["key_algorithm"] == "secp256r1"
+
+
+def test_yubikey_backend_available_when_provisioned(tmp_path, monkeypatch):
+    state = tmp_path / "yk-state"
+    state.mkdir()
+    monkeypatch.setenv("MSB_YUBIKEY_PKCS11_LIB", "/fake/libykcs11.dylib")
+    monkeypatch.setenv("MSB_YUBIKEY_PIN", "123456")
+
+    backend = YubiKeyPivBackend()
+    fake_session = _make_fake_session(state)
+    monkeypatch.setattr(backend, "_open_session", lambda: fake_session)
+
+    assert backend.available() is True
+    assert backend.unavailable_reason() == ""

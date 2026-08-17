@@ -55,9 +55,12 @@ recovers when a model, tool, or permission fails.
 - RFC 3161 timestamping + off-box notary — implemented, notary automation
   scheduled; anchor key trust boundary documented.
 - Chain-anchor key — moved out of plaintext into the macOS login keychain
-  (was world-readable in `.env`); Secure Enclave/YubiKey backend implemented
-  + fail-closed, enrollment pending an Apple ID or a YubiKey.
-  (docs/operations/secure-enclave-anchor.md)
+  (was world-readable in `.env`); Secure Enclave and YubiKey PIV backends both
+  implemented, tested (hermetic, no hardware needed), and fail-closed. YubiKey
+  PIV is the no-Apple-ID hardware path: key generated on-device, never leaves
+  it, PKCS#11 ECDSA-SHA256 (python-pkcs11 + libykcs11). Enrollment is a one
+  command (`bash scripts/yubikey-enroll.sh`) once a key is bought.
+  (docs/operations/secure-enclave-anchor.md, docs/operations/yubikey-piv-anchor.md)
 
 ## Planned for v4 (parking lot — see `v4-parking-lot.md`)
 
