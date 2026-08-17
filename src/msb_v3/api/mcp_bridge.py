@@ -34,6 +34,37 @@ _MCP_BRIDGE_SECRET = os.getenv("MCP_BRIDGE_SECRET", "")
 _VAULT_BASE = Path(settings.vault_path).resolve()
 _VERIFY_BUILD_ECHO_DIR = Path(os.path.expanduser("~/.local/share/msb-v3/verify-build"))
 _AUDIT_LOGGER = logging.getLogger("msb_v3.mcp_audit")
+# MCP bridge capability grant (M2/P1 hardening, 2026-08-17). The vault_*
+# mutations route through the governed tool loop; this is the bridge caller's
+# standing grant. Empty (the default) = read-only — a mutation without an
+# explicit grant is DENIED and audited with a verdict, exactly like the chat
+# surface. Operators who want Make.com workflows to write the vault must set
+# MSB_MCP_GRANTED_CAPABILITIES (comma-separated capability ids, e.g.
+# vault.write).
+_MCP_GRANTED_CAPABILITIES = frozenset(
+    c.strip()
+    for c in os.getenv("MSB_MCP_GRANTED_CAPABILITIES", "").split(",")
+    if c.strip()
+)
+
+
+def _run_governed_proxy(tool_id: str, args: dict[str, Any]) -> str:
+    """Route a bridge tool call through the governed tool loop.
+
+    Same gate as the chat surface (tools.runtime._run_governed): capability
+    grant + approval gate + contained executor + UAC-chain audit carrying an
+    explicit verdict. No grant = fail-closed deny. The bridge-level audit
+    event is still logged by the caller for actor/timestamp context.
+    """
+    from msb_v3.tools.runtime import _run_governed
+
+    return _run_governed(
+        tool_id,
+        args,
+        granted=_MCP_GRANTED_CAPABILITIES,
+        tenant="mcp-bridge",
+        session="mcp-bridge",
+    )
 # verify_build ids are used directly as filenames; allow only safe characters
 # so a caller can never inject path separators or control characters.
 _SAFE_BUILD_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
@@ -394,82 +425,18 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                             result="success",
                         ))
                         return {"ok": True, "tool": call.tool, "result": {"content": target.read_text(encoding="utf-8", errors="replace")}}
-                    case "vault_write":
-                        target = _normalize_vault_path(call.args.get("path", ""))
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        target.write_text(call.args.get("content", ""), encoding="utf-8")
-                        _log_audit(_AuditEvent(
-                            actor=actor,
-                            action="write_file",
-                            target=str(target),
-                            timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result="success",
-                        ))
-                        return {"ok": True, "tool": call.tool, "result": {"written": str(target)}}
-                    case "vault_append":
-                        target = _normalize_vault_path(call.args.get("path", ""))
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        with target.open("a", encoding="utf-8") as f:
-                            f.write(call.args.get("content", ""))
-                        _log_audit(_AuditEvent(
-                            actor=actor,
-                            action="append_file",
-                            target=str(target),
-                            timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result="success",
-                        ))
-                        return {"ok": True, "tool": call.tool, "result": {"appended": str(target)}}
-                    case "vault_patch":
-                        target = _normalize_vault_path(call.args.get("path", ""))
-                        if not target.exists():
-                            raise HTTPException(status_code=404, detail=f"File not found: {target}")
-                        content = target.read_text(encoding="utf-8", errors="replace")
-                        operation = call.args.get("operation", "replace")
-                        pattern = call.args.get("target", "")
-                        replacement = call.args.get("content", "")
-                        if operation == "replace":
-                            new_content = content.replace(pattern, replacement)
-                        elif operation == "regex":
-                            new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
-                        else:
-                            raise HTTPException(status_code=400, detail=f"Unknown operation: {operation}")
-                        target.write_text(new_content, encoding="utf-8")
-                        _log_audit(_AuditEvent(
-                            actor=actor,
-                            action="patch_file",
-                            target=str(target),
-                            timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result="success",
-                        ))
-                        return {"ok": True, "tool": call.tool, "result": {"patched": str(target)}}
-                    case "vault_delete":
-                        target = _normalize_vault_path(call.args.get("path", ""))
-                        if not target.exists():
-                            raise HTTPException(status_code=404, detail=f"File not found: {target}")
-                        target.unlink()
-                        _log_audit(_AuditEvent(
-                            actor=actor,
-                            action="delete_file",
-                            target=str(target),
-                            timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result="success",
-                        ))
-                        return {"ok": True, "tool": call.tool, "result": {"deleted": str(target)}}
-                    case "vault_move":
-                        src = _normalize_vault_path(call.args.get("from_path", ""))
-                        dst = _normalize_vault_path(call.args.get("to_path", ""))
-                        if not src.exists():
-                            raise HTTPException(status_code=404, detail=f"Source not found: {src}")
-                        dst.parent.mkdir(parents=True, exist_ok=True)
-                        src.rename(dst)
-                        _log_audit(_AuditEvent(
-                            actor=actor,
-                            action="move_file",
-                            target=f"{src} -> {dst}",
-                            timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
-                            result="success",
-                        ))
-                        return {"ok": True, "tool": call.tool, "result": {"from": str(src), "to": str(dst)}}
+                    case "vault_write" | "vault_append" | "vault_patch" | "vault_delete" | "vault_move":
+                        # Governed vault mutations (M2/P1 hardening, 2026-08-17):
+                        # these used to execute file I/O directly with only auth
+                        # — the live-loop test proved the gap (an unprivileged
+                        # vault_write actually wrote to the vault). Now they
+                        # route through the same governed loop as the chat
+                        # surface (_run_governed: capability gate + approval
+                        # gate + contained executor + UAC-chain audit with
+                        # verdict). No grant = fail-closed deny, matching the
+                        # chat path.
+                        outcome = _run_governed_proxy(call.tool, call.args)
+                        return {"ok": True, "tool": call.tool, "result": {"governed": outcome}}
                     case "vault_get_document_map":
                         root = _normalize_vault_path(call.args.get("path", ""))
                         if not root.exists() or not root.is_dir():

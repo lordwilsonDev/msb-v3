@@ -38,19 +38,19 @@ def _mcp_client():
     return TestClient(create_app())
 
 
-def _auth_headers() -> dict[str, str]:
-    from msb_v3.core.config import settings
+def _bridge_secret() -> str:
+    return os.getenv("MCP_BRIDGE_SECRET", "")
 
-    return {"x-mcp-secret": settings.mcp_secret}
+
+def _auth_headers() -> dict[str, str]:
+    return {"x-mcp-secret": _bridge_secret()}
 
 
 def test_live_loop_composes_governed_chain() -> None:
-    """A single MCP `chat` call lands in the governed tool loop, executes
-    against the live stack, and leaves a verdict-bearing audit record."""
-    from msb_v3.core.config import settings
-
-    if not settings.mcp_secret:
-        pytest.skip("MCP secret not configured — bridge closed")
+    """A single MCP call lands in the governed tool loop, executes against
+    the live stack, and leaves a verdict-bearing audit record."""
+    if not _bridge_secret():
+        pytest.skip("MCP_BRIDGE_SECRET not configured — bridge closed")
 
     client = _mcp_client()
 
@@ -71,27 +71,33 @@ def test_live_loop_composes_governed_chain() -> None:
 
 
 def test_live_loop_gate_denial_leaves_evidence() -> None:
-    """A tool call that the caller lacks capability for is denied with a
-    verdict-bearing audit record — never an uncontrolled execution."""
-    from msb_v3.core.config import settings
+    """A tool call the caller lacks capability for is denied with a
+    verdict-bearing audit record — never an uncontrolled execution.
+
+    M2/P1 hardening (2026-08-17): vault mutations now route through the
+    governed loop, so an unprivileged caller is DENIED and no file is
+    written. The live run proved the pre-fix gap (it actually wrote)."""
     from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
-    if not settings.mcp_secret:
-        pytest.skip("MCP secret not configured — bridge closed")
+    if not _bridge_secret():
+        pytest.skip("MCP_BRIDGE_SECRET not configured — bridge closed")
 
     client = _mcp_client()
 
     # vault_write requires vault.write; an MCP caller with no grant is
-    # denied at the governed registration gate.
+    # denied at the governed loop (fail-closed, matching the chat surface).
     r = client.post(
         "/mcp/proxy",
         json={"tool": "vault_write", "args": {"path": "live-loop.md", "content": "x"}},
         headers=_auth_headers(),
     )
     assert r.status_code == 200  # the proxy returns the tool outcome
-    assert "denied" in r.json().get("result", "").lower() or "[denied]" in r.json().get("result", "")
+    result = r.json().get("result", {})
+    governed = result.get("governed", "") if isinstance(result, dict) else ""
+    assert "[denied]" in governed, f"expected a denial, got: {governed}"
+    assert "vault.write" in governed
 
-    # Evidence: the denial is in the audit chain with an explicit verdict.
+    # Evidence: the denial is in the UAC audit chain with an explicit verdict.
     chain = anchored_chain_from_env()
     records = chain.get_chain(component="tools")
     assert any(
@@ -105,8 +111,8 @@ def test_live_loop_replay_reconstructs_run() -> None:
     re-walked through the ReplayEngine without the model."""
     from msb_v3.core.config import settings
 
-    if not settings.mcp_secret:
-        pytest.skip("MCP secret not configured — bridge closed")
+    if not _bridge_secret():
+        pytest.skip("MCP_BRIDGE_SECRET not configured — bridge closed")
 
     # /agent/handle requires the operator token; this asserts the endpoint
     # is reachable and returns a structured refusal on empty input — the
