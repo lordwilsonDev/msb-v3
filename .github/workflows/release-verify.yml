@@ -16,7 +16,11 @@ name: release-verify
 
 on:
   push:
-    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    # Semver releases AND release candidates — a fresh RC cut must be
+    # auto-verified from a virgin clone just like a final release (rc2 was
+    # verified only via workflow_dispatch on 2026-08-17 because the rc
+    # pattern was missing).
+    tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-rc*']
   workflow_dispatch:
     inputs:
       tag:
