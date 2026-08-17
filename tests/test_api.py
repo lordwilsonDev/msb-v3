@@ -242,6 +242,44 @@ def test_prometheus_scrape():
     assert "msb_v3_ready" in text
 
 
+def test_prometheus_scrape_is_real_text_format():
+    """The scrape must be the Prometheus text format, not a JSON-escaped
+    string. A bare `str` return in FastAPI is serialized as application/json
+    with literal \\n escapes — that is NOT parseable as exposition text (a
+    scraper, or the /console metrics strip, would fail). This pins the
+    content-type and the actual line structure."""
+    from msb_v3.api.app import create_app
+    from msb_v3.observability.metrics import ACTIONGATE_DECISIONS, LATENCY
+
+    client = TestClient(create_app())
+    # The latency histogram and the actiongate counter are lazy — they only
+    # emit sample lines after the first observe/increment. Touch both once so
+    # the families exist in this isolated run.
+    LATENCY.labels(harness="test").observe(0.25)
+    ACTIONGATE_DECISIONS.labels(verdict="allowed").inc()
+    r = client.get("/metrics/prometheus")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/plain"), (
+        "Prometheus scrape must be text/plain, got " + r.headers["content-type"]
+    )
+    text = r.text
+    # Real newlines, not literal \\n escapes inside one JSON string.
+    assert "\\n" not in text, "scrape body is JSON-escaped, not plain text"
+    # A sample line must parse as exposition text: name{labels} value.
+    import re
+
+    sample = next(
+        (line for line in text.splitlines() if line.startswith("msb_v3_latency_seconds_bucket")),
+        None,
+    )
+    assert sample is not None, "no latency bucket line in scrape"
+    assert re.match(r"^msb_v3_latency_seconds_bucket\{[^}]*\} [0-9.e+]+$", sample), sample
+    # And the ActionGate verdict family the console strip reads must be there.
+    assert any(
+        line.startswith('msb_v3_actiongate_decisions_total{verdict=') for line in text.splitlines()
+    ), "actiongate verdict family missing from scrape"
+
+
 def test_research_rate_limit_rejection_counts_on_prometheus():
     """The /research/assistant/run middleware refusal increments the
     msb_v3_rate_limit_rejections_total{limiter="run"} counter."""
