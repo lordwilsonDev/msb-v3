@@ -144,6 +144,17 @@ async def execute_graph(
                 error = f"{type(exc).__name__}: {exc}"
 
         latency = round(time.perf_counter() - task_started, 4)
+        # Reliability observability (M5): a task that needed more than one
+        # attempt is a retry; one that then succeeded is a recovery. Bounded
+        # by the retry policy — the failure matrix pins that exhaustion stops
+        # (never infinite). Metrics are best-effort like the rest of the loop.
+        if attempts > 1:
+            try:
+                Metrics.retry("agentic")
+                if error is None:
+                    Metrics.recovered("agentic")
+            except Exception:  # noqa: BLE001 — metrics must never break a run
+                pass
         if error is None:
             verification = verify(task, output) if verify is not None else verify_task(task, output)
             task_ok = bool(verification.get("ok", False))

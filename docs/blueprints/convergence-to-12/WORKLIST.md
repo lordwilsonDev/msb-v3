@@ -74,6 +74,19 @@ Legend: ✅ done · 🟡 in progress · 🔴 not started · ⏸ blocked on opera
 | G1 | M7 independent user validation | OPERATOR | 2–3 users complete a task unaided | ⏸ |
 | G2 | M8 public release | OPERATOR | auditable claims + demo + quantified results | ⏸ |
 
+## H. Release-gate sequence (2026-08-17, core-loop verified)
+
+| # | Item | Destination | Exit evidence | Status |
+|---|---|---|---|---|
+| H1 | Canonical task live through /agent/handle | DONE | run `dbb-20260817T015727-07143`, verdict PASS, hash `30a7ccc192e0bbb6`, replay consistent (15 events), spine 3 vertebrae, chain 19 records — `artifacts/core-loop/run1/` | ✅ |
+| H2 | Three verdict cases live | DONE | SAFE read-only PASS (5 hits) · unapproved write FAIL GateReview + POLICY_CHECKED DENIED ×3, no mutation · kill-switch FAIL GateBlocked, no mutation — `artifacts/core-loop/case-*/` | ✅ |
+| H3 | Failure matrix rerun | DONE | 11/11 modes bounded/visible (model down, timeout, retry exhaustion, injection, tamper…) + bypass 13/13 | ✅ |
+| H4 | Semantic retrieval fallback | DONE | `FabricRetrievalRouter` degrades empty episodic → vector with `fallback_from`; live re-run PASS 5 hits (was 0) | ✅ |
+| H5 | Reliability metrics | DONE | `msb_v3_task_retries_total` + `msb_v3_task_recoveries_total` added + tested; queries/latency/verdicts already live | ✅ |
+| H6 | Daily backup + restore test | DONE | launchd job loaded (03:00) · backup 19 DBs notarized · restore over corrupted runtime: chain `valid: True` 9,858 rec | ✅ |
+| H7 | Factory dogfood (one real change) | DONE | 2 runs, pipeline failed closed NEEDS_WORK; seeded defect MISSED by live 0.5B/8B reviewers (real finding) — `artifacts/factory-dogfood/` | ✅ |
+| H8 | Operating ledger opened | DONE | 6 dated entries — `operating-ledger-entries.md` | ✅ |
+
 ---
 
 ## Next actions (this session, in order)
@@ -82,3 +95,4 @@ Legend: ✅ done · 🟡 in progress · 🔴 not started · ⏸ blocked on opera
 3. D1–D4 (failure matrix).
 4. C1–C3 (factory dogfood).
 5. E1 (ledger template).
+6. H1–H8 (release-gate sequence, 2026-08-17) — all done, see table above.
