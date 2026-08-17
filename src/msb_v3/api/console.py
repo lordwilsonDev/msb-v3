@@ -14,12 +14,15 @@ Security model (important, not incidental):
     ``Authorization: Bearer`` header ``curl`` would send. The server-side
     ``require_operator`` gates (fail-closed 503 until configured, 401 on
     mismatch) are the authority — deleting this page changes nothing.
-  * The console calls exactly three documented endpoints:
+  * The console calls exactly four documented endpoints:
       POST /agent/handle            (run a task, gated)
       GET  /agent/tasks/{id}/replay (event-sourced reconstruction, gated)
       GET  /agent/tasks             (recent runs, gated)
-    All three already exist and are operator-gated; this page adds no new
-    route that mutates anything.
+      GET  /metrics/prometheus      (verdict + latency counters, public
+                                     scrape endpoint — no token needed)
+    All four already exist; this page adds no new route that mutates
+    anything. The metrics fetch carries NO bearer header (it is a public
+    Prometheus scrape), so the token never leaves the gated calls.
 
 Tests: tests/api/test_console.py — page serves, references the gated
 endpoints, contains no token, and renders a fixture run.
@@ -70,6 +73,11 @@ _CONSOLE_HTML = """<!doctype html>
   .task-row { cursor:pointer; }
   .task-row:hover { background:#161b26; }
   #status { margin-top:10px; font-size:0.85rem; }
+  .metrics-strip { display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+                   margin:0 0 12px; font-size:0.82rem; }
+  .chip { background:#0b0d12; border:1px solid #1e2430; border-radius:999px;
+          padding:3px 10px; display:inline-flex; gap:6px; align-items:center; }
+  .chip b { font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -113,6 +121,7 @@ _CONSOLE_HTML = """<!doctype html>
 
 <div class="card">
   <h2 style="margin:0 0 10px;font-size:1rem;">Recent runs</h2>
+  <div class="metrics-strip" id="metrics-strip"><span class="muted">metrics loading …</span></div>
   <div id="tasks"><p class="muted">Enter a token and click “Refresh recent runs”.</p></div>
 </div>
 
@@ -133,6 +142,80 @@ const api = async (path, opts = {}) => {
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
   ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 const fmt = (o) => esc(JSON.stringify(o, null, 2));
+
+// --- Metrics strip: verdict counters + latency quantiles ---
+// Fed by the public /metrics/prometheus scrape (no bearer header — it is
+// not operator-gated). Parsed here in plain JS so the console needs no
+// server-side aggregation endpoint.
+const VERDICT_LABELS = {"allowed": "SAFE", "indeterminate": "REVIEW", "denied": "BLOCK", "failed": "FAIL"};
+
+function parsePrometheus(text) {
+  // Returns { verdicts: {allowed,indeterminate,denied,failed}, buckets: {le: cum} }
+  const verdicts = {allowed: 0, indeterminate: 0, denied: 0, failed: 0};
+  const buckets = {};
+  for (const line of text.split("\n")) {
+    let m = line.match(/^msb_v3_actiongate_decisions_total\{verdict="([^"]+)"\} (\S+)/);
+    if (m) verdicts[m[1]] = parseFloat(m[2]);
+    // Histogram buckets: cumulative counts per le, aggregated across harnesses.
+    m = line.match(/^msb_v3_latency_seconds_bucket\{[^}]*le="([^"]+)"\} (\S+)/);
+    if (m) buckets[m[1]] = (buckets[m[1]] || 0) + parseFloat(m[2]);
+  }
+  return {verdicts, buckets};
+}
+
+function quantile(buckets, q) {
+  // Estimate a latency quantile from cumulative histogram buckets via linear
+  // interpolation within the bucket that crosses the quantile threshold.
+  const les = Object.keys(buckets).filter((k) => k !== "+Inf").map(Number).sort((a, b) => a - b);
+  const total = buckets["+Inf"] || 0;
+  if (!total || !les.length) return null;
+  const target = q * total;
+  let cum = 0;
+  for (const le of les) {
+    const b = buckets[String(le)] || 0;
+    if (cum + b >= target) {
+      const lo = le === les[0] ? 0 : les[les.indexOf(le) - 1];
+      const span = b > 0 ? (target - cum) / b : 0;
+      return lo + span * (le - lo);
+    }
+    cum += b;
+  }
+  return null;
+}
+
+function fmtLatency(s) {
+  if (s == null) return "—";
+  if (s < 0.001) return Math.round(s * 1e6) + "µs";
+  if (s < 1) return Math.round(s * 1000) + "ms";
+  return s.toFixed(2) + "s";
+}
+
+function renderMetricsStrip(data) {
+  const {verdicts, buckets} = data;
+  const chips = Object.entries(VERDICT_LABELS).map(([k, label]) => {
+    const n = verdicts[k] || 0;
+    const cls = k === "allowed" ? "ok" : k === "indeterminate" ? "warn" : "bad";
+    return `<span class="chip"><span class="${cls}">${label}</span> <b>${n}</b></span>`;
+  }).join("");
+  const p50 = quantile(buckets, 0.5);
+  const p95 = quantile(buckets, 0.95);
+  const lat = `<span class="chip"><span class="muted">p50</span> <b>${fmtLatency(p50)}</b></span>` +
+    `<span class="chip"><span class="muted">p95</span> <b>${fmtLatency(p95)}</b></span>`;
+  return chips + lat;
+}
+
+async function loadMetrics() {
+  const el = $("metrics-strip");
+  try {
+    // Public scrape endpoint — deliberately no bearer header (the token must
+    // never leave the gated calls). Same-origin, so no CORS concern.
+    const r = await fetch("/metrics/prometheus");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    el.innerHTML = renderMetricsStrip(parsePrometheus(await r.text()));
+  } catch (e) {
+    el.innerHTML = `<span class="muted">metrics unavailable: ${esc(e.message)}</span>`;
+  }
+}
 
 function renderRun(payload) {
   const v = payload.verdict || "ERROR";
@@ -224,7 +307,7 @@ async function loadTasks() {
   try { renderTasks((await api("/agent/tasks", {params: undefined})).tasks); }
   catch (e) { $("tasks").innerHTML = '<p class="muted">tasks unavailable: ' + esc(e.message) + "</p>"; }
 }
-$("refresh-tasks").onclick = loadTasks;
+$("refresh-tasks").onclick = () => { loadTasks(); loadMetrics(); };
 
 // Keep the token in sessionStorage so a reload of the page does not force a
 // re-paste, but never persist it across tabs/browser restarts, and never
@@ -232,6 +315,10 @@ $("refresh-tasks").onclick = loadTasks;
 $("token").value = sessionStorage.getItem("msb_console_token") || "";
 $("token").addEventListener("input", () =>
   sessionStorage.setItem("msb_console_token", $("token").value.trim()));
+
+// The metrics strip is public (Prometheus scrape) — load it on page load so
+// the operator sees verdict/latency health even before entering a token.
+loadMetrics();
 </script>
 </body>
 </html>

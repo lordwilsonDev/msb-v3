@@ -4,12 +4,15 @@ The console is a CLIENT of the existing operator-gated API (no new auth
 surface, no token in HTML). These tests pin that contract:
 
   1. the page serves and is the console, not the cockpit;
-  2. it references exactly the three gated endpoints it is allowed to call;
+  2. it references exactly the endpoints it is allowed to call — the three
+     operator-gated /agent/* endpoints PLUS the public /metrics/prometheus
+     scrape (verdict + latency strip);
   3. the HTML contains no secret material (the token is entered by the
      operator at runtime, kept in sessionStorage, sent as the standard
      bearer header);
   4. the router is genuinely mounted (no dead-router regression);
-  5. the run/replay/task rendering functions exist and handle fixture data.
+  5. the run/replay/task rendering functions exist and handle fixture data;
+  6. the metrics strip is present and carries no bearer header (public).
 """
 from __future__ import annotations
 
@@ -33,19 +36,23 @@ def test_console_serves_page(client: TestClient) -> None:
 
 
 def test_console_references_only_gated_endpoints(client: TestClient) -> None:
-    """The page may only call the three documented operator-gated endpoints —
-    it must not invent a new mutation surface or bypass."""
+    """The page may only call the three documented operator-gated endpoints
+    plus the public /metrics/prometheus scrape — it must not invent a new
+    mutation surface or bypass."""
     r = client.get("/console")
     body = r.text
-    for path in ("/agent/handle", "/agent/tasks/"):
+    for path in ("/agent/handle", "/agent/tasks/", "/metrics/prometheus"):
         assert path in body, f"console must reference {path}"
     # No unchecked fetch targets: every fetch() call in the page goes through
-    # the api() helper against /agent/* (the token is added there).
+    # the api() helper against /agent/* (the token is added there), except
+    # the metrics scrape which is public and carries no bearer header.
     import re
 
     fetches = re.findall(r'fetch\("([^"]+)"', body)
     for f in fetches:
-        assert f.startswith("/agent/"), f"console must not call {f} directly"
+        assert f.startswith("/agent/") or f == "/metrics/prometheus", (
+            f"console must not call {f} directly"
+        )
 
 
 def test_console_html_contains_no_token_or_secret(client: TestClient) -> None:
@@ -98,3 +105,23 @@ def test_console_approve_and_tenant_controls_present(client: TestClient) -> None
     assert 'id="tenant"' in body
     assert 'id="request"' in body
     assert 'id="token"' in body
+
+
+def test_console_metrics_strip_present_and_public(client: TestClient) -> None:
+    """The recent-runs card carries a metrics strip fed by the PUBLIC
+    /metrics/prometheus scrape. The fetch for it must NOT go through the
+    token-carrying api() helper (the token never leaves gated calls) and the
+    strip must render verdict chips + latency quantiles."""
+    r = client.get("/console")
+    body = r.text
+    # Strip element exists in the recent-runs card.
+    assert 'id="metrics-strip"' in body
+    assert "metrics loading" in body
+    # The metrics fetch is a bare fetch (no api() helper — no bearer header).
+    assert 'fetch("/metrics/prometheus")' in body
+    # Parsing + quantile + rendering functions exist.
+    for fn in ("parsePrometheus", "quantile", "renderMetricsStrip", "loadMetrics"):
+        assert fn in body, f"console must define {fn}"
+    # The ActionGate verdict labels the strip maps are pinned.
+    assert "VERDICT_LABELS" in body
+    assert '"allowed"' in body and '"denied"' in body
