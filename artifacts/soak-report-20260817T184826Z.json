@@ -1,0 +1,29 @@
+{
+  "runs": 60,
+  "scenarios": {
+    "happy": 25,
+    "recover": 13,
+    "model_outage": 11,
+    "timeout": 4,
+    "denied": 4,
+    "tainted": 3
+  },
+  "metrics": {
+    "completion_rate": 1.0,
+    "unsafe_escape_rate": 0.0,
+    "evidence_completeness": 1.0,
+    "recovery_rate": 1.0,
+    "escalation_rate": 0.0795,
+    "total_retries": 13,
+    "p50_latency_s": 0.001,
+    "p95_latency_s": 0.051
+  },
+  "targets": {
+    "completion_rate_min": 0.9,
+    "unsafe_escape_rate_max": 0.0,
+    "evidence_completeness_min": 0.98,
+    "recovery_rate_min": 0.8
+  },
+  "seed": 7,
+  "run_at": "2026-08-17T18:48:26.156932+00:00"
+}

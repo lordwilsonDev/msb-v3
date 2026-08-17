@@ -41,6 +41,7 @@ recovers when a model, tool, or permission fails.
 | Kill switch blocks execution, no mutation | `artifacts/core-loop/case-kill/` + `audit.json` |
 | Replay reconstructs state from events (successes AND failures) | `replay.json` in each fixture |
 | Failure matrix: 11/11 modes + 13/13 bypass invariants, no P0/P1 | `tests/chaos/test_failure_matrix.py` (11 modes) + `tests/governance/test_bypass.py` / `tests/vesta/test_approval_bypass.py` (13 bypass) |
+| M5 soak run: 60-run seeded workload through the real loop — completion 1.0, unsafe-escape 0.0, evidence 1.0, recovery 1.0, escalation 7.95%, p50 0.001s / p95 0.051s | `scripts/soak-run.py` → `artifacts/soak-report-*.json` + `tests/chaos/test_soak.py` (deterministic per seed) |
 | Backup + restore verified over a corrupted runtime | launchd `com.lordwilson.msb-backup`, restore drill 2026-08-17 |
 | Retrieval is semantic with honest fallback (no silent empty) | `tests/fabric/test_fabric_retrieval.py`, `tests/api/test_mcp_search.py` |
 | Metrics: queries, latency, verdicts, retries, recoveries | `scripts/run-report.py` → `artifacts/run-report-20260817.json` |
