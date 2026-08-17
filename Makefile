@@ -24,6 +24,7 @@ lint:
 	$(PY) -m ruff check src/ tests/
 	$(PY) -m mypy src
 	$(PY) scripts/gen-requirements.py --check
+	$(PY) scripts/verify-claims.py
 
 # Regenerate requirements-{runtime,dev}.lock from pyproject.toml (the single
 # source of truth). The .lock files are fully transitive-pinned with
