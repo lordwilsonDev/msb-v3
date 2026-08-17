@@ -20,12 +20,15 @@ The anchor record now carries ``key_algorithm`` and verification dispatches on
 it, so an Ed25519 anchor and a P-256 (hardware) anchor coexist; an anchor
 without the field is treated as Ed25519 (backward compatible).
 
-The hardware backends are **unverified on this box** (no PyObjC / YubiKey in
-CI) and fail closed: ``available()`` is False with a provisioning reason, and
-``sign()`` raises ``SigningBackendUnavailable`` listing the exact completion
-steps. The seam + the P-256 verification + the anchor-format change are the
-real, tested deliverable; the hardware ``sign()`` glue is an operator
-completion step that needs the optional dependency and a provisioned key.
+``SecureEnclaveBackend`` talks to a small Swift helper
+(``scripts/secenclave/secenclave.swift``, built by ``build.sh``) over a JSON
+CLI — no Python dependency, and the same wire format the software backend
+uses, so hermetic tests exercise the full glue with a fake tool and the real
+enclave plugs in without touching the anchor/notary code. Until a key is
+enrolled it fails closed: ``available()`` is False with a provisioning reason
+and ``sign()`` raises ``SigningBackendUnavailable``. Enrollment on macOS 12+
+requires the ``keychain-access-groups`` entitlement (an Xcode-signed build;
+see the backend docstring and docs/operations/secure-enclave-anchor.md).
 
 Signature encoding contract (must be kept consistent across backends):
 
@@ -37,8 +40,11 @@ Signature encoding contract (must be kept consistent across backends):
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional
 
 from cryptography.exceptions import InvalidSignature
@@ -132,41 +138,117 @@ class SoftwareEcdsaBackend(SigningBackend):
 class SecureEnclaveBackend(SigningBackend):
     """P-256 ECDSA signing inside Apple's Secure Enclave (macOS).
 
-    Completion step (operator, on the Mac, once):
-      1. `pip install pyobjc-framework-Security` (add to a hardware-extra, not
-         the runtime lock — it is macOS-only).
-      2. Generate a non-exportable P-256 key with
-         `SecKeyCreateRandomKey` + `kSecAttrTokenIDSecureEnclave` + the label
-         `MSB_SECURE_ENCLAVE_KEY_LABEL` (default ``msb-chain-anchor``), stored
-         in the keychain.
-      3. Implement ``sign`` below: fetch the key with ``SecItemCopyMatching``,
-         then ``SecKeyCreateSignature(key, kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
-         message, error)`` — which yields a raw r||s (X9.62) signature; convert
-         it to DER with ``_x962_to_der`` before returning.
+    Talks to the ``secenclave-tool`` helper (scripts/secenclave/secenclave.swift,
+    built by scripts/secenclave/build.sh) over its JSON CLI. The private key is
+    generated inside the enclave and NEVER leaves it; the tool persists a
+    reference to it in the keychain under ``MSB_SECURE_ENCLAVE_KEY_LABEL``
+    (default ``msb-chain-anchor``) with AfterFirstUnlock + privateKeyUsage
+    access control, so the unattended launchd notary/verify jobs can sign once
+    the operator has unlocked the Mac after boot.
+
+    Provisioning note (macOS 12+): persisting an enclave key requires the
+    ``keychain-access-groups`` entitlement, which macOS validates against an
+    embedded provisioning profile, not a bare signature. Unsigned and
+    ad-hoc-signed binaries both fail with errSecMissingEntitlement (-34018).
+    The tool must therefore be built and signed inside an Xcode project with
+    the Keychain Sharing capability (free Apple ID) — see
+    docs/operations/secure-enclave-anchor.md for the one-time enrollment steps.
+    Until then this backend fails closed: ``available()`` is False and
+    ``sign()`` raises with the exact completion steps.
+
+    Signature contract (kept identical to the software P-256 backend): the
+    tool returns Apple's raw X9.62 r||s; ``_x962_to_der`` converts it to the
+    DER encoding ``verify_signature`` accepts.
     """
 
     algorithm = SECP256R1
 
     def __init__(self, label: str = "") -> None:
         self._label = label or os.getenv("MSB_SECURE_ENCLAVE_KEY_LABEL", "msb-chain-anchor")
+        self._tool = _resolve_secenclave_tool()
+
+    def _run(self, *args: str) -> dict:
+        if self._tool is None:
+            raise SigningBackendUnavailable(self.unavailable_reason())
+        try:
+            proc = subprocess.run(
+                [self._tool, *args], capture_output=True, text=True, timeout=30
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            raise SigningBackendUnavailable(
+                f"secure-enclave tool failed to run ({self._tool}): {exc}"
+            ) from exc
+        try:
+            out = json.loads(proc.stdout)
+        except json.JSONDecodeError as exc:
+            raise SigningBackendUnavailable(
+                f"secure-enclave tool returned unparseable output: {proc.stdout[:200]!r}"
+            ) from exc
+        if proc.returncode != 0 or out.get("ok") not in (True, "true"):
+            raise SigningBackendUnavailable(
+                f"secure-enclave: {out.get('error', 'unknown error (rc=%d)' % proc.returncode)}"
+            )
+        return out
 
     def available(self) -> bool:
-        return False  # needs PyObjC + a provisioned enclave key (see docstring)
+        if self._tool is None:
+            return False
+        try:
+            self._run("public", "--label", self._label)
+            return True
+        except SigningBackendUnavailable:
+            return False
 
     def unavailable_reason(self) -> str:
+        if self._tool is None:
+            return (
+                "secure-enclave backend not provisioned: secenclave-tool not found — build it "
+                "with scripts/secenclave/build.sh (macOS only)"
+            )
         return (
-            "secure-enclave backend not provisioned: install pyobjc-framework-Security "
-            f"and enroll a P-256 key labeled {self._label!r} (see uac/signing.py)"
+            "secure-enclave backend not provisioned: no enclave key labeled "
+            f"{self._label!r} — enroll with ~/.local/bin/secenclave-tool create --label "
+            f"{self._label} (the tool must be provisioning-profile signed; see "
+            "docs/operations/secure-enclave-anchor.md)"
         )
 
     def public_key_bytes(self) -> bytes:
-        raise SigningBackendUnavailable(self.unavailable_reason())
+        out = self._run("public", "--label", self._label)
+        try:
+            return bytes.fromhex(out["public_key"])
+        except (KeyError, ValueError) as exc:
+            raise SigningBackendUnavailable(
+                "secure-enclave: tool returned a malformed public key"
+            ) from exc
 
     def sign(self, message: bytes) -> bytes:
-        raise SigningBackendUnavailable(self.unavailable_reason())
+        out = self._run("sign", "--label", self._label, "--hex", message.hex())
+        try:
+            raw = bytes.fromhex(out["signature"])
+        except (KeyError, ValueError) as exc:
+            raise SigningBackendUnavailable(
+                "secure-enclave: tool returned a malformed signature"
+            ) from exc
+        return _x962_to_der(raw)
 
     def hardware_assurance(self) -> str:
         return "secure-enclave"
+
+
+def _resolve_secenclave_tool() -> Optional[str]:
+    """Locate the secenclave-tool binary: MSB_SECURE_ENCLAVE_TOOL, then
+    ~/.local/bin/secenclave-tool, then <repo>/scripts/secenclave-tool."""
+    env = os.getenv("MSB_SECURE_ENCLAVE_TOOL", "").strip()
+    if env:
+        return env
+    candidates = [
+        Path.home() / ".local" / "bin" / "secenclave-tool",
+        Path(__file__).resolve().parents[3] / "scripts" / "secenclave-tool",
+    ]
+    for cand in candidates:
+        if cand.exists() and os.access(cand, os.X_OK):
+            return str(cand)
+    return None
 
 
 class YubiKeyPivBackend(SigningBackend):

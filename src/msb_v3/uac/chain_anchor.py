@@ -442,10 +442,15 @@ class AnchoredAuditChain:
 
 
 def anchored_chain_from_env() -> AuditChain | AnchoredAuditChain:
-    """Factory used at service wiring sites: anchored when a key is configured,
-    plain AuditChain otherwise (zero behavior change without a key)."""
+    """Factory used at service wiring sites: anchored when a key OR a
+    non-software backend is configured (e.g. MSB_CHAIN_ANCHOR_BACKEND=
+    secure-enclave), plain AuditChain otherwise (zero behavior change without
+    a key). Anchoring requested but unavailable must never degrade silently
+    to an unsigned chain: a configured-but-unprovisioned hardware backend
+    raises via ChainAnchor.from_env()."""
+    backend = os.getenv(BACKEND_ENV, "software")
     raw = os.getenv(KEY_ENV)
-    if raw is None and not _default_key_path().exists():
+    if backend == "software" and raw is None and not _default_key_path().exists():
         return AuditChain()
     return AnchoredAuditChain(AuditChain(), ChainAnchor.from_env())
 
