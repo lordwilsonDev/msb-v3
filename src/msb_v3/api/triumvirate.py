@@ -333,11 +333,11 @@ async def vision_capture() -> Dict[str, Any]:
     if _multimodal_disabled():
         raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     result = VisionClaw().capture_screen()
-    # Stub calls are not real work: don't let the metrics count a stub
-    # payload as a delivered multimodal operation (audit: stub subsystems
+    # Parked calls are not real work: don't let the metrics count a parked
+    # payload as a delivered multimodal operation (audit: parked subsystems
     # must not inflate the dashboards). Counts resume automatically when a
-    # real implementation stops returning status="stub".
-    if result.get("status") != "stub":
+    # real implementation stops returning status="parked".
+    if result.get("status") != "parked":
         TRIUMVIRATE_MULTIMODAL.labels(interface="vision").inc()
     return result
 
@@ -347,7 +347,7 @@ async def haptic_heartbeat() -> Dict[str, Any]:
     if _multimodal_disabled():
         raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     result = HapticHeartbeat().poll_sac()
-    if result.get("status") != "stub":  # stub calls are not real work
+    if result.get("status") != "parked":  # parked calls are not real work
         TRIUMVIRATE_MULTIMODAL.labels(interface="haptic").inc()
     return result
 
@@ -358,6 +358,6 @@ async def speech_command(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     transcript = body.get("transcript") or ""
     result = SpeechFunctions().map_command(transcript)
-    if result.get("status") != "stub":  # stub calls are not real work
+    if result.get("status") != "parked":  # parked calls are not real work
         TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
     return result

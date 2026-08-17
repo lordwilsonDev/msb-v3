@@ -1,4 +1,5 @@
-"""Tests for Triumvirate Phase 6 — Multimodal interfaces."""
+"""Tests for Triumvirate Phase 6 — Multimodal interfaces (convergence pass
+2026-08-17: parked, blocked_on mac-mini-storage)."""
 from __future__ import annotations
 
 from msb_v3.triumvirate.multimodal_interfaces import (
@@ -8,10 +9,11 @@ from msb_v3.triumvirate.multimodal_interfaces import (
 )
 
 
-def test_vision_claw_capture_returns_stub():
+def test_vision_claw_capture_returns_parked():
     vc = VisionClaw()
     resp = vc.capture_screen()
-    assert resp["status"] == "stub"
+    assert resp["status"] == "parked"
+    assert resp["blocked_on"] == "mac-mini-storage"
     assert resp["platform"] == "macOS"
 
 

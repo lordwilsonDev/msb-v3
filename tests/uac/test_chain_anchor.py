@@ -14,6 +14,7 @@ from msb_v3.uac.chain_anchor import (
     anchored_chain_from_env,
     generate_seed,
 )
+from msb_v3.uac.signing import ED25519, SoftwareEd25519Backend
 
 
 def make_chain(db_path: Path, n: int) -> AuditChain:
@@ -161,7 +162,9 @@ def test_wrong_key_is_detected(tmp_path: Path) -> None:
     other = ChainAnchor(seed=generate_seed())  # different key, same anchor file
     result = other.verify(chain)
     assert result["valid"] is False
-    assert "public key does not match" in result["reason"]
+    # The registry (bootstrapped in-memory to the verifying key when no
+    # registry file exists yet) rejects the foreign key's anchor.
+    assert "current key or recovery key" in result["reason"]
 
 
 def test_stale_anchor_after_legitimate_append(tmp_path: Path) -> None:
@@ -416,3 +419,171 @@ def test_wrapper_init_with_same_key_is_fine(tmp_path: Path) -> None:
     # same key -> construction succeeds and verification stays valid
     wrapped = AnchoredAuditChain(chain, anchor)
     assert wrapped.verify_anchored()["valid"] is True
+
+
+# ── key rotation / recovery ceremony ──────────────────────────────────────
+
+
+def test_rotation_cross_signs_successor_and_reanchors(tmp_path: Path) -> None:
+    """A planned rotation: the OLD key cross-signs a successor endorsement,
+    the registry advances, and the chain is re-anchored with the new key.
+    The new anchor verifies under the new key."""
+    chain = make_chain(tmp_path / "audit.db", 3)
+    old = ChainAnchor(seed=generate_seed())
+    old.anchor(chain)
+    assert old.verify(chain)["valid"] is True
+
+    new_seed = generate_seed()
+    result = old.rotate(chain, SoftwareEd25519Backend(new_seed), "hardware migration")
+
+    # The rotation record is cross-signed by the OLD key.
+    rotation = result["rotation"]
+    assert rotation["from"] == old.public_key_hex()
+    assert rotation["from_signature"]  # non-empty: old key endorsed it
+    assert rotation["to"] == SoftwareEd25519Backend(new_seed).public_key_hex()
+    assert rotation["reason"] == "hardware migration"
+
+    # The anchor moved to the NEW key and verifies under it.
+    new = ChainAnchor(seed=new_seed)
+    assert new.verify(chain)["valid"] is True
+    # The OLD key can no longer verify (its registry slot is gone).
+    assert old.verify(chain)["valid"] is False
+
+    # The registry recorded the rotation and advanced the current key.
+    reg = json.loads((tmp_path / "chain_key_registry.json").read_text())
+    assert reg["current_public_key"] == rotation["to"]
+    assert len(reg["rotations"]) == 1
+
+
+def test_rotation_cannot_happen_without_current_key(tmp_path: Path) -> None:
+    """A stale key cannot rotate: only the registry's current key signs
+    successor endorsements."""
+    chain = make_chain(tmp_path / "audit.db", 2)
+    old = ChainAnchor(seed=generate_seed())
+    old.anchor(chain)
+    old.rotate(chain, SoftwareEd25519Backend(generate_seed()), "rotate away")
+
+    # A THIRD key pretending to be a successor without being current:
+    imposter = ChainAnchor(seed=generate_seed())
+    with pytest.raises(ValueError, match="not the registry's current key"):
+        imposter.rotate(chain, SoftwareEd25519Backend(generate_seed()), "imposter")
+
+
+def test_recovery_key_reanchors_after_primary_lost(tmp_path: Path) -> None:
+    """The recovery path: register an offline recovery public key, then
+    (simulating the primary key dying) re-anchor with the recovery seed. The
+    chain stays verifiable and verification reports the recovery signer."""
+    chain = make_chain(tmp_path / "audit.db", 3)
+    primary = ChainAnchor(seed=generate_seed())
+    primary.anchor(chain)
+
+    recovery_seed = generate_seed()
+    recovery_pub = SoftwareEd25519Backend(recovery_seed).public_key_bytes()
+    primary.register_recovery(chain, recovery_pub, ED25519, "offline recovery")
+
+    # Primary key dies: verification with the recovery key re-anchors.
+    recovery = ChainAnchor(seed=recovery_seed)
+    result = recovery.recover(chain, SoftwareEd25519Backend(recovery_seed), "enclave died")
+    assert result["anchored"]["valid"] is True
+
+    # The chain verifies under the recovery key and reports the signer.
+    assert recovery.verify(chain)["valid"] is True
+    assert recovery.verify(chain)["signer"] == "recovery-key"
+
+    # The primary key cannot re-anchor anymore (it lost the current slot).
+    assert primary.verify(chain)["valid"] is False
+
+
+def test_recovery_fails_closed_without_registered_key(tmp_path: Path) -> None:
+    """Recovery is impossible if no recovery key was registered beforehand."""
+    chain = make_chain(tmp_path / "audit.db", 2)
+    primary = ChainAnchor(seed=generate_seed())
+    primary.anchor(chain)
+    recovery_seed = generate_seed()
+    recovery = ChainAnchor(seed=recovery_seed)
+    with pytest.raises(ValueError, match="no recovery key registered"):
+        recovery.recover(chain, SoftwareEd25519Backend(recovery_seed), "lost key")
+
+
+def test_recovery_rejects_unregistered_key(tmp_path: Path) -> None:
+    """A random key cannot claim recovery: it must match the registered
+    recovery public key."""
+    chain = make_chain(tmp_path / "audit.db", 2)
+    primary = ChainAnchor(seed=generate_seed())
+    primary.anchor(chain)
+    primary.register_recovery(chain, SoftwareEd25519Backend(generate_seed()).public_key_bytes())
+
+    attacker = ChainAnchor(seed=generate_seed())
+    with pytest.raises(ValueError, match="does not match the registered recovery"):
+        attacker.recover(chain, SoftwareEd25519Backend(generate_seed()), "stolen key")
+
+
+def test_revoked_key_cannot_sign_new_anchors_but_history_stays_valid(tmp_path: Path) -> None:
+    """Revocation retires a key for NEW anchors; its historical notary
+    entries remain verifiable (a revoked key cannot un-sign history)."""
+    chain = make_chain(tmp_path / "audit.db", 3)
+    old = ChainAnchor(seed=generate_seed())
+    old.anchor(chain)
+
+    # Notarize under the old key first — this history must survive rotation.
+    notary = tmp_path / "notary.jsonl"
+    old.notarize(chain, notary)
+
+    # Rotate to a new key.
+    new_seed = generate_seed()
+    old.rotate(chain, SoftwareEd25519Backend(new_seed), "revoke old key")
+    new = ChainAnchor(seed=new_seed)
+
+    # Revoke the OLD key (signed by the current key).
+    old_pub = bytes.fromhex(old.public_key_hex())
+    record = new.revoke(chain, key_to_revoke=old_pub, reason="compromised")
+    assert record["key"] == old.public_key_hex()
+
+    # The revoked key cannot sign a NEW anchor.
+    assert old.verify(chain)["valid"] is False  # anchor moved anyway
+    reg = json.loads((tmp_path / "chain_key_registry.json").read_text())
+    assert any(r["key"] == old.public_key_hex() for r in reg["revocations"])
+
+    # The historical notary entry from the revoked key still verifies.
+    report = new.verify_notary(chain, notary)
+    assert report["valid"] is True
+
+
+def test_notary_history_verifies_across_rotation(tmp_path: Path) -> None:
+    """The core P1 fix: notary entries signed by the PRE-rotation key remain
+    verifiable after the anchor key moves (hardware migration must not
+    invalidate history)."""
+    chain = make_chain(tmp_path / "audit.db", 3)
+    old = ChainAnchor(seed=generate_seed())
+    old.anchor(chain)
+    notary = tmp_path / "notary.jsonl"
+    old.notarize(chain, notary)
+    old.notarize(chain, notary)  # two entries under the old key
+
+    old.rotate(chain, SoftwareEd25519Backend(generate_seed()), "hardware move")
+    new = ChainAnchor(seed=generate_seed())
+    new.anchor(chain)
+
+    report = new.verify_notary(chain, notary)
+    assert report["valid"] is True
+    assert report["entry_count"] == 2
+
+
+def test_unknown_key_notary_entry_rejected(tmp_path: Path) -> None:
+    """An entirely unknown key (never registered) is still rejected in the
+    notary log — rotation broadens acceptance, it does not open it."""
+    chain = make_chain(tmp_path / "audit.db", 2)
+    old = ChainAnchor(seed=generate_seed())
+    old.anchor(chain)
+    notary = tmp_path / "notary.jsonl"
+    old.notarize(chain, notary)
+
+    # Tamper the notary log: replace with an entry signed by an unregistered key.
+    intruder = ChainAnchor(seed=generate_seed())
+    intruder.anchor(chain)
+    intruder.notarize(chain, notary)
+
+    # The LAST entry (intruder) is rejected; the log is not trusted.
+    report = old.verify_notary(chain, notary)
+    assert report["valid"] is False
+    assert "not registered" in report["reason"]

@@ -126,28 +126,40 @@ Expected: `available: True`, `signature ok: True`.
 
 ---
 
-## 5. Migrate the anchor to the YubiKey key (rotation)
+## 5. Migrate the anchor to the YubiKey key (rotation ceremony)
 
-Rotating the anchor key is an explicit operator action. It invalidates the
-previously anchored history under the *old* key — so the old anchor record and
-notary log are preserved as historical evidence, and a **fresh notary era**
-starts.
+Rotation is now a **cross-signed ceremony**, not a bare re-sign: the OLD key
+signs a successor endorsement, the `chain_key_registry.json` advances, and the
+chain is re-anchored with the new key. The old key's historical notary
+entries stay verifiable (a hardware move must not invalidate history), and an
+unregistered key can never claim the anchor slot.
 
-1. **Stop the app** (so the running process can't re-anchor with the old key
-   mid-rotation):
+1. **Prepare a recovery key FIRST** (one-time, before any migration — if the
+   primary key dies before this step, recovery is impossible):
+   ```bash
+   python3 - <<'EOF'
+   from msb_v3.uac.chain_anchor import ChainAnchor, generate_seed
+   from msb_v3.uac.signing import SoftwareEd25519Backend
+   seed = generate_seed()
+   print("RECOVERY SEED (store OFFLINE, e.g. paper/password manager):", seed.hex())
+   print("RECOVERY PUBLIC KEY (register with --register-recovery):", SoftwareEd25519Backend(seed).public_key_hex())
+   EOF
+   ```
+   Then register the public half (the seed never touches the box again):
+   ```bash
+   python3 -m msb_v3.uac.chain_anchor --register-recovery <audit.db> \
+     --recovery-public-key <recovery-public-hex> --reason "offline recovery key"
+   ```
+2. **Stop the app** (so the running process can't re-anchor mid-rotation):
    ```bash
    bash scripts/start.sh stop
    ```
-2. **Re-anchor the existing chain with the new key** (explicit `--anchor`):
+3. **Rotate** — the old key cross-signs the YubiKey key as successor:
    ```bash
-   python3 -m msb_v3.uac.chain_anchor --anchor --backend yubikey
+   python3 -m msb_v3.uac.chain_anchor --rotate <audit.db> \
+     --backend yubikey --reason "migrate to YubiKey PIV"
    ```
-3. **Start a fresh notary era** — the old notary log stays on gdrive as
-   historical evidence; the new one starts at the re-anchored tip:
-   ```bash
-   # archive the v1 notary log path (see scripts/notarize_chain_anchor.sh for
-   # the current path), then point MSB_NOTARY_LOG at a v2 path
-   ```
+   (For a software successor: `--backend software --seed <new-seed-hex>`.)
 4. **Restart the app** and confirm it re-anchors with the YubiKey key:
    ```bash
    bash scripts/start.sh start
@@ -158,6 +170,23 @@ starts.
    Ed25519 seed (`security delete-generic-password -s <service>` — see
    `scripts/store-anchor-key.sh` for the service name) and the
    `MSB_CHAIN_ANCHOR_KEY` / keyfile references from `.env`.
+6. **Revoke the old key** so it can never sign a NEW anchor again (its
+   historical entries remain valid):
+   ```bash
+   python3 -m msb_v3.uac.chain_anchor --revoke <audit.db> --reason "retired after YubiKey migration"
+   ```
+
+### If the primary key is LOST (enclave died / YubiKey lost)
+
+Recovery requires the pre-registered recovery seed:
+
+```bash
+python3 -m msb_v3.uac.chain_anchor --recover <audit.db> \
+  --seed <recovery-seed-hex> --reason "primary key lost"
+```
+
+Fails closed when no recovery key was registered — the chain stays verifiable
+via the off-box notary but cannot be re-anchored.
 
 ---
 
