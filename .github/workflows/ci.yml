@@ -224,10 +224,30 @@ jobs:
       - name: Run container smoke test
         run: |
           docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
-          sleep 5
+          trap 'docker rm -f msb-v3-test >/dev/null 2>&1 || true' EXIT
           # /status does not exist — /health is the app's liveness route.
-          curl -f http://127.0.0.1:8766/health || (docker logs msb-v3-test && exit 1)
-          docker rm -f msb-v3-test
+          # Poll instead of a fixed 5s sleep: on a cold/shared runner the
+          # app can boot slower, and a single early curl just races it
+          # (observed 2026-08-17 as "connection reset by peer"). Bounded to
+          # 60s so a genuinely dead container fails in ~1s, not 60.
+          for _ in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:8766/health; then
+              echo "health OK"
+              exit 0
+            fi
+            # Fail fast if the container exited instead of still booting —
+            # otherwise a crash burns the full 60s and masks the real log.
+            STATE=$(docker inspect -f '{{.State.Status}}' msb-v3-test 2>/dev/null || echo gone)
+            if [ "$STATE" != "running" ]; then
+              echo "container exited ($STATE) before becoming healthy — log follows"
+              docker logs msb-v3-test
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "container never became healthy within 60s — log follows"
+          docker logs msb-v3-test
+          exit 1
 
   claims:
     runs-on: ubuntu-latest
