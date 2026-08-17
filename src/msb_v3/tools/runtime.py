@@ -46,7 +46,7 @@ def _audit_append(
     audit record therefore answers "under which policy, with what verdict"
     without parsing the prose result."""
     try:
-        from msb_v3.uac.chain_anchor import anchored_chain_from_env
+        from msb_ledger.chain_anchor import anchored_chain_from_env
 
         anchored_chain_from_env().append(
             "tools",

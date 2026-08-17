@@ -23,8 +23,13 @@ Modules:
     transcript_requirements_extractor.py  transcript -> requirements (parked)
 
 The ``msb_v3.uac`` package is now a thin compatibility namespace that
-aliases each module here (``sys.modules`` aliasing), so every existing
-``from msb_v3.uac.X import Y`` consumer keeps working unchanged.
+aliases each module here (``sys.modules`` aliasing) for EXTERNAL
+consumers (the test suite, third-party callers). INTERNAL ``msb_v3`` code
+imports the ledger directly (``from msb_ledger.X import ...``) — the shim
+is a runtime-only alias that static mypy cannot see, so routing internal
+code through it would turn ``mypy src`` red while tests stay green (the
+regression found 2026-08-17, guarded by
+``tests/uac/test_ledger_extraction.py``).
 """
 
 from msb_ledger.config import configure, settings

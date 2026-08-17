@@ -46,8 +46,8 @@ import json
 import sqlite3
 from typing import Any, Dict, List, Optional
 
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.vesta.approvals import ApprovalError, VestaApprovalStore
 from msb_v3.vesta.runtime import TaskLifecycleError, VestaTaskStore
 

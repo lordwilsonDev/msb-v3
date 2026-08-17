@@ -18,6 +18,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.api.auth import require_operator
 from msb_v3.governance.approval import (
     APPROVAL_KINDS,
@@ -29,7 +30,6 @@ from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import OuroborosGovernor
 from msb_v3.governance.guard import Guard, GuardVerdict
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 router = APIRouter(tags=["governance"])
 

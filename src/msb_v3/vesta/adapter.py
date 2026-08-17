@@ -9,6 +9,7 @@ from typing import Any, List
 
 from fastapi import Request
 
+from msb_ledger.audit_chain import AuditChainLike
 from msb_v3.api.chat import ChatRequest, ChatResponse
 from msb_v3.api.chat import chat as msb_chat
 from msb_v3.evidence.spine import (
@@ -18,7 +19,6 @@ from msb_v3.evidence.spine import (
     DecisionEvidence,
     DecisionEvidenceStore,
 )
-from msb_v3.uac.audit_chain import AuditChainLike
 from msb_v3.vesta.evidence import EvidenceStore
 from msb_v3.vesta.models import ABind, VestaChatRequest
 from msb_v3.vesta.policy import PolicyDecision, authorize_chat

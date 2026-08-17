@@ -40,7 +40,9 @@ if [ -f Makefile ] && make -n lint >/dev/null 2>&1; then
 else
   python3 -m ruff check src/ tests/ || code=$?
   if [ "$code" -eq 0 ]; then
-    python3 -m mypy src --ignore-missing-imports || code=$?
+    # Bare mypy — no blanket --ignore-missing-imports (it masked the P4
+    # extraction's red state; targeted overrides live in pyproject.toml).
+    python3 -m mypy src || code=$?
   fi
 fi
 if [ "$code" -ne 0 ]; then

@@ -25,12 +25,12 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.agent.dag import Task
 from msb_v3.agent.executor import ToolProvider
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.observability.metrics import ACTIONGATE_DECISIONS
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 # capability -> risk tier (blueprint §7 tier table, trimmed to the slice +

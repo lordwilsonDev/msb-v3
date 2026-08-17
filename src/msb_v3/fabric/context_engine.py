@@ -383,8 +383,8 @@ class ContextEngine:
 
     def _retrieve_l6(self, task, tenant, session, repo, project, tech) -> tuple[str, str]:
         try:
+            from msb_ledger.audit_chain import AuditChain
             from msb_v3.core.config import settings as cfg
-            from msb_v3.uac.audit_chain import AuditChain
         except Exception:
             return "", "audit chain unavailable"
         chain = AuditChain(db_path=cfg.db_path, allow_keyless=True)

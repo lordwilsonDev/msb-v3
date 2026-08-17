@@ -85,7 +85,7 @@ def _probe_auditchain() -> Dict[str, Any]:
         with sqlite3.connect(str(chain_db)) as conn:
             count = conn.execute("SELECT COUNT(*) FROM audit_records").fetchone()[0]
         try:
-            from msb_v3.uac.audit_chain import AuditChain
+            from msb_ledger.audit_chain import AuditChain
             verified = AuditChain(db_path=str(chain_db)).verify_chain()
             ok = bool(verified.get("valid", True)) if isinstance(verified, dict) else True
         except Exception:

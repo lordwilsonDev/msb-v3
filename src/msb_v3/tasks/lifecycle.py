@@ -29,6 +29,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.core.config import settings
 from msb_v3.tasks.events import (
     RECOVERABLE_STATES,
@@ -38,8 +40,6 @@ from msb_v3.tasks.events import (
     validate_transition,
 )
 from msb_v3.tasks.models import UnifiedTask
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 

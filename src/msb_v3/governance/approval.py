@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.governance.db import default_db_path
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 # The blueprint's §0.6 approval-gated actions. The guard enforces these;
 # an unknown kind is refused on submit (fail-closed — nothing sneaks

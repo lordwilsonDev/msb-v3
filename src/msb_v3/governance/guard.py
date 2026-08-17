@@ -22,12 +22,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.governance.approval import APPROVAL_KINDS, ApprovalQueue
 from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import GovernorVerdict, OuroborosGovernor
 from msb_v3.governance.killswitch import KillSwitch
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 
 @dataclass

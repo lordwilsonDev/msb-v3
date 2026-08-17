@@ -17,9 +17,12 @@ test:
 
 # Lint + typecheck — the exact gates CI's lint job runs. Cheap; the pre-push
 # hook calls this so a red lint job can never land.
+# Bare mypy (no --ignore-missing-imports): the blanket suppress masked the
+# P4 extraction's red state — sys.modules shim aliases are runtime-only and
+# invisible to static mypy. Targeted overrides live in pyproject.toml.
 lint:
 	$(PY) -m ruff check src/ tests/
-	$(PY) -m mypy src --ignore-missing-imports
+	$(PY) -m mypy src
 	$(PY) scripts/gen-requirements.py --check
 
 # Regenerate requirements-{runtime,dev}.lock from pyproject.toml (the single

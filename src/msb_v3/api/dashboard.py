@@ -100,7 +100,7 @@ def _hygiene_state() -> Dict[str, Any]:
 
 
 def _audit_state() -> Dict[str, Any]:
-    from msb_v3.uac.audit_chain import AuditChain
+    from msb_ledger.audit_chain import AuditChain
 
     chain = AuditChain()
     verify = chain.verify_chain()
@@ -320,7 +320,7 @@ async def cockpit_api() -> dict:
 
 
 def _audit_search(query: str) -> List[Dict[str, Any]]:
-    from msb_v3.uac.audit_chain import AuditChain
+    from msb_ledger.audit_chain import AuditChain
 
     q = query.lower()
     hits = []

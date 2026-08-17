@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from msb_v3.uac.audit_chain import AuditChain
+from msb_ledger.audit_chain import AuditChain
 
 
 def _now() -> str:

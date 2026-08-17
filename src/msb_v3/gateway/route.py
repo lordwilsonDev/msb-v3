@@ -30,9 +30,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, FrozenSet, Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.local_ai.client_factory import active_backend
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 

@@ -24,12 +24,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from msb_ledger.audit_chain import AuditChainLike
+from msb_ledger.chain_anchor import anchored_chain_from_env
 from msb_v3.agent.dag import TaskGraph
 from msb_v3.agent.executor import ExecReport
 from msb_v3.agent.intent import Intent
 from msb_v3.observability.metrics import Metrics
-from msb_v3.uac.audit_chain import AuditChainLike
-from msb_v3.uac.chain_anchor import anchored_chain_from_env
 
 logger = logging.getLogger(__name__)
 
