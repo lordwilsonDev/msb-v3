@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from msb_v3 import __version__
 from msb_v3.api import mcp_bridge
 from msb_v3.api.app import create_app
+from msb_v3.core.config import settings
 
 
 @pytest.fixture()
@@ -33,6 +34,138 @@ def test_missing_secret_returns_401(client):
     response = client.post("/mcp/proxy", json={"tool": "status", "args": {}})
     assert response.status_code == 401
     assert response.json()["detail"] == "unauthorized"
+
+
+# ---------------------------------------------------------------------------
+# M2/P1 hardening — vault mutations route through the governed loop
+# (2026-08-17: the live-loop test proved the pre-fix proxy executed vault
+# writes with only auth; now they go through _run_governed and an
+# unprivileged caller is DENIED + audited with a verdict).
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _no_bridge_grant(monkeypatch):
+    """Fail-closed default: no MSB_MCP_GRANTED_CAPABILITIES set."""
+    monkeypatch.delenv("MSB_MCP_GRANTED_CAPABILITIES", raising=False)
+    monkeypatch.setattr(mcp_bridge, "_MCP_GRANTED_CAPABILITIES", frozenset(), raising=False)
+
+
+def test_vault_write_without_grant_is_denied_and_audited(client, tmp_path, monkeypatch):
+    """An unprivileged MCP caller cannot write the vault — denied by the
+    governed loop, no file created, verdict-bearing audit record."""
+    from msb_v3.core.config import settings
+    from msb_v3.uac.audit_chain import AuditChain
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setattr(settings, "vault_path", str(vault))
+
+    audit = AuditChain(str(tmp_path / "audit.db"), allow_keyless=True)
+    monkeypatch.setattr("msb_v3.uac.chain_anchor.anchored_chain_from_env", lambda: audit)
+
+    r = _post(client, {"tool": "vault_write", "args": {"path": "x.md", "content": "should not write"}})
+    assert r.status_code == 200
+    governed = r.json()["result"]["governed"]
+    assert "[denied]" in governed
+    assert "vault.write" in governed
+    assert not (vault / "x.md").exists()  # no side effect
+
+    records = audit.get_chain(component="tools")
+    assert any(
+        rec.event_type == "tool.vault_write" and rec.payload.get("verdict") == "denied"
+        for rec in records
+    )
+
+
+@pytest.mark.parametrize(
+    "tool,args",
+    [
+        ("vault_append", {"path": "x.md", "content": "more"}),
+        ("vault_patch", {"path": "x.md", "operation": "replace", "target": "a", "content": "b"}),
+        ("vault_delete", {"path": "x.md"}),
+        ("vault_move", {"from_path": "x.md", "to_path": "y.md"}),
+    ],
+)
+def test_all_vault_mutations_without_grant_are_denied(client, tmp_path, monkeypatch, tool, args):
+    """Every vault mutation routes through the governed loop and fails
+    closed without a grant — none of them may execute raw file I/O."""
+    from msb_v3.core.config import settings
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setattr(settings, "vault_path", str(vault))
+    (vault / "x.md").write_text("a")
+
+    r = _post(client, {"tool": tool, "args": args})
+    assert r.status_code == 200
+    governed = r.json()["result"]["governed"]
+    assert "[denied]" in governed
+
+
+def test_vault_write_with_grant_executes_and_audits(client, tmp_path, monkeypatch):
+    """With the operator's explicit grant, the same call executes through
+    the governed loop and is audited as allowed."""
+    from msb_v3.core.config import settings
+    from msb_v3.uac.audit_chain import AuditChain
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setattr(settings, "vault_path", str(vault))
+    monkeypatch.setattr(mcp_bridge, "_MCP_GRANTED_CAPABILITIES", frozenset({"vault.write"}), raising=False)
+
+    audit = AuditChain(str(tmp_path / "audit.db"), allow_keyless=True)
+    monkeypatch.setattr("msb_v3.uac.chain_anchor.anchored_chain_from_env", lambda: audit)
+
+    r = _post(client, {"tool": "vault_write", "args": {"path": "ok.md", "content": "hi"}})
+    assert r.status_code == 200
+    governed = r.json()["result"]["governed"]
+    assert "wrote" in governed
+    assert (vault / "ok.md").exists()
+
+    records = audit.get_chain(component="tools")
+    assert any(
+        rec.event_type == "tool.vault_write" and rec.payload.get("verdict") == "allowed"
+        for rec in records
+    )
+
+
+@pytest.mark.parametrize(
+    "tool,args,assert_body",
+    [
+        ("vault_append", {"path": "log.md", "content": "line2"}, lambda body: "appended" in body and "log.md" in body),
+        ("vault_patch", {"path": "x.md", "operation": "replace", "target": "a", "content": "z"}, lambda body: "patched" in body and "x.md" in body),
+        ("vault_delete", {"path": "x.md"}, lambda body: "deleted" in body),
+        ("vault_move", {"from_path": "x.md", "to_path": "moved/y.md"}, lambda body: "moved" in body),
+    ],
+)
+def test_vault_mutations_execute_with_grant(client, tmp_path, monkeypatch, tool, args, assert_body):
+    """With the operator's explicit grant each vault mutation executes
+    through the governed loop and lands inside the vault root."""
+    from msb_v3.core.config import settings
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setattr(settings, "vault_path", str(vault))
+    (vault / "x.md").write_text("a")
+    (vault / "log.md").write_text("line1\n")
+    monkeypatch.setattr(mcp_bridge, "_MCP_GRANTED_CAPABILITIES", frozenset({"vault.write"}), raising=False)
+
+    r = _post(client, {"tool": tool, "args": args})
+    assert r.status_code == 200
+    governed = r.json()["result"]["governed"]
+    assert assert_body(governed), governed
+
+    # Confinement: everything stays inside the vault root.
+    if tool == "vault_append":
+        assert (vault / "log.md").read_text() == "line1\nline2"
+    elif tool == "vault_patch":
+        assert (vault / "x.md").read_text() == "z"
+    elif tool == "vault_delete":
+        assert not (vault / "x.md").exists()
+    elif tool == "vault_move":
+        assert not (vault / "x.md").exists()
+        assert (vault / "moved" / "y.md").read_text() == "a"
 
 
 def test_mcp_status_requires_auth(client):
@@ -71,12 +204,17 @@ def test_path_traversal_is_rejected(client):
 
 
 def test_vault_write_normalizes_path(client, tmp_path, monkeypatch):
+    """With the vault.write grant, a normalized vault_write executes through
+    the governed loop and lands inside the vault root (M2/P1: mutations are
+    governed; the grant is what makes this allowed)."""
     root = tmp_path / "vault"
-    root.mkdir()
-    monkeypatch.setattr(mcp_bridge, "_VAULT_BASE", root.resolve(), raising=False)
+    (root / "notes").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(settings, "vault_path", str(root))
+    monkeypatch.setattr(mcp_bridge, "_MCP_GRANTED_CAPABILITIES", frozenset({"vault.write"}), raising=False)
 
     response = _post(client, {"tool": "vault_write", "args": {"path": "notes/test.md", "content": "ok"}})
     assert response.status_code == 200
+    assert "wrote" in response.json()["result"]["governed"]
     assert (root / "notes" / "test.md").read_text() == "ok"
 
 
@@ -248,8 +386,13 @@ def test_vault_rejects_sibling_directory_sharing_prefix(client, tmp_path, monkey
     response = _post(client, {"tool": "vault_read", "args": {"path": "../vault2/secret.md"}})
     assert response.status_code == 400
 
+    # M2/P1: vault_write is governed — traversal is denied in the outcome
+    # (never an HTTP 400 and never a file write).
     write_response = _post(client, {"tool": "vault_write", "args": {"path": "../vault2/evil.md", "content": "pwn"}})
-    assert write_response.status_code == 400
+    assert write_response.status_code == 200
+    governed = write_response.json()["result"]["governed"]
+    assert "[denied]" in governed
+    assert not (sibling / "evil.md").exists()
     assert not (sibling / "evil.md").exists()
 
 

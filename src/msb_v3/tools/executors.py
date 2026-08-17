@@ -6,6 +6,13 @@ Every executor here terminates inside a sandbox:
     vault_read    -> FileReader confined to the configured vault root
     vault_write   -> FileWriter confined to the configured vault root
                      (atomic write + hash receipt, reversible via rollback)
+    vault_append  -> append confined to the vault root (atomic via FileWriter)
+    vault_patch   -> replace/regex patch confined to the vault root
+    vault_delete  -> unlink confined to the vault root (symlinks refused)
+    vault_move    -> rename confined to the vault root (parents created)
+
+All four vault mutations require the "vault.write" capability — denied by
+default, exactly like ``vault_write``.
 
 Executors are plain sync functions (the tool loop is sync); the async RAG
 router runs via ``asyncio.run`` in a worker thread so it never collides with
@@ -107,6 +114,118 @@ def vault_write(args: Dict[str, Any], *, tenant: str, session: str) -> str:
     except Exception as exc:
         logger.debug("vault_write failed", exc_info=True)
         return f"[tool-error] vault_write: {type(exc).__name__}: {exc}"
+
+
+def vault_append(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    path = str(args.get("path") or "").strip()
+    content = str(args.get("content") or "")
+    if not path:
+        return "[tool-error] vault_append: path is required"
+    try:
+        writer = FileWriter(_vault_root(), settings.node_max_read_bytes)
+        target = writer._safe_target(path)  # confined; raises CapabilityViolation
+        existing = target.read_bytes() if target.exists() else b""
+        receipt = writer.write(path, existing + content.encode("utf-8"))
+        pub = receipt.public()
+        return f"appended {pub['path']} ({pub['size']} bytes)"
+    except CapabilityViolation as exc:
+        return f"[denied] vault_append: {exc}"
+    except Exception as exc:
+        logger.debug("vault_append failed", exc_info=True)
+        return f"[tool-error] vault_append: {type(exc).__name__}: {exc}"
+
+
+def vault_patch(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    path = str(args.get("path") or "").strip()
+    operation = str(args.get("operation") or "replace").strip()
+    pattern = str(args.get("target") or "")
+    replacement = str(args.get("content") or "")
+    if not path:
+        return "[tool-error] vault_patch: path is required"
+    try:
+        writer = FileWriter(_vault_root(), settings.node_max_read_bytes)
+        target = writer._safe_target(path)
+        if not target.exists():
+            return "[tool-error] vault_patch: file not found"
+        content = target.read_text(encoding="utf-8", errors="replace")
+        if operation == "replace":
+            new_content = content.replace(pattern, replacement)
+        elif operation == "regex":
+            import re as _re
+
+            new_content = _re.sub(pattern, replacement, content, flags=_re.MULTILINE)
+        else:
+            return f"[tool-error] vault_patch: unknown operation {operation!r}"
+        receipt = writer.write(path, new_content.encode("utf-8"))
+        pub = receipt.public()
+        return f"patched {pub['path']} ({pub['size']} bytes)"
+    except CapabilityViolation as exc:
+        return f"[denied] vault_patch: {exc}"
+    except Exception as exc:
+        logger.debug("vault_patch failed", exc_info=True)
+        return f"[tool-error] vault_patch: {type(exc).__name__}: {exc}"
+
+
+def vault_delete(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    path = str(args.get("path") or "").strip()
+    if not path:
+        return "[tool-error] vault_delete: path is required"
+    try:
+        writer = FileWriter(_vault_root(), settings.node_max_read_bytes)
+        target = writer._safe_target(path)
+        if not target.exists():
+            return "[tool-error] vault_delete: file not found"
+        target.unlink()
+        return f"deleted {target.relative_to(_vault_root())}"
+    except CapabilityViolation as exc:
+        return f"[denied] vault_delete: {exc}"
+    except Exception as exc:
+        logger.debug("vault_delete failed", exc_info=True)
+        return f"[tool-error] vault_delete: {type(exc).__name__}: {exc}"
+
+
+def vault_move(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    from_path = str(args.get("from_path") or "").strip()
+    to_path = str(args.get("to_path") or "").strip()
+    if not from_path or not to_path:
+        return "[tool-error] vault_move: from_path and to_path are required"
+    try:
+        writer = FileWriter(_vault_root(), settings.node_max_read_bytes)
+        src = writer._safe_target(from_path)
+        if not src.exists():
+            return "[tool-error] vault_move: source not found"
+        dst = _move_target(_vault_root(), to_path)
+        src.rename(dst)
+        return f"moved {from_path} -> {to_path}"
+    except CapabilityViolation as exc:
+        return f"[denied] vault_move: {exc}"
+    except Exception as exc:
+        logger.debug("vault_move failed", exc_info=True)
+        return f"[tool-error] vault_move: {type(exc).__name__}: {exc}"
+
+
+def _move_target(root: Any, requested: str) -> Any:
+    """Resolve a move destination inside the vault root, creating parents."""
+    from pathlib import Path
+
+    if not requested or "\x00" in requested:
+        raise CapabilityViolation("invalid file path")
+    candidate = Path(requested)
+    candidate = candidate if candidate.is_absolute() else Path(root) / candidate
+    parent = candidate.parent
+    try:
+        parent_resolved = parent.resolve(strict=True)
+        parent_resolved.relative_to(Path(root))
+    except FileNotFoundError:
+        parent_resolved = parent.resolve(strict=False)
+        try:
+            parent_resolved.relative_to(Path(root))
+        except ValueError as exc:
+            raise CapabilityViolation("file path outside capability scope") from exc
+        parent_resolved.mkdir(parents=True, exist_ok=True)
+    except ValueError as exc:
+        raise CapabilityViolation("file path outside capability scope") from exc
+    return parent_resolved / candidate.name
 
 
 # --- Code Graph executors (read-only, spec §4.2.1) ------------------------

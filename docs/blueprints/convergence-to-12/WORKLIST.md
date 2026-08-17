@@ -15,6 +15,7 @@ Legend: ✅ done · 🟡 in progress · 🔴 not started · ⏸ blocked on opera
 | A3 | MCP `chat` surface is governed (not a thin proxy) | VERIFY+WIRE | `tests/api/test_mcp_chat_governance.py` — chat harness registers tools through `register_governed_tools`; denied tool → no side effect; unknown tools never registered | ✅ |
 | A4 | Gate verdict recorded in MCP audit chain | WIRE | `_audit_append` carries explicit `verdict` (allowed/denied/approval-required/unknown/error); asserted in `test_governed_tool_loop.py` + `test_mcp_chat_governance.py` | ✅ |
 | A5 | Live-loop composition test (one request through the whole spine) | WIRE | `tests/live/test_live_loop.py` (3 tests, opt-in `MSB_LIVE_TESTS=1`): auth refusal before anything runs, governed MCP call leaves verdict-bearing audit record, gate denial leaves evidence, replay surface reachable | ✅ |
+| A6 | Vault mutations governed on the MCP surface (live-test follow-on) | WIRE | 2026-08-17 live run proved `vault_write` executed with only auth; the five mutations now route through `_run_governed` (grant + capability + contained executor + verdict audit), `vault_append/patch/delete/move` gained ToolDefs + confined executors; denial + granted-execution + confinement tests in `test_mcp_security.py` | ✅ |
 
 ## B. Convergence (M3 residual)
 

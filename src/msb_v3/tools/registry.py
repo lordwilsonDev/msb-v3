@@ -92,6 +92,85 @@ TOOLS: Dict[str, ToolDef] = {
         mutation_class=MUTATION_WRITE,
         required_capabilities=("vault.write",),
     ),
+    "vault_append": ToolDef(
+        tool_id="vault_append",
+        description=(
+            "Append text to a file inside the vault root (path relative to the "
+            "vault). Creates the file if missing. Mutates the vault and "
+            "requires the 'vault.write' capability — denied by default."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "path relative to the vault root"},
+                "content": {"type": "string", "description": "text to append"},
+            },
+            "required": ["path", "content"],
+        },
+        risk_class=RISK_MEDIUM,
+        mutation_class=MUTATION_WRITE,
+        required_capabilities=("vault.write",),
+    ),
+    "vault_patch": ToolDef(
+        tool_id="vault_patch",
+        description=(
+            "Patch a file inside the vault root with a replace or regex "
+            "operation (path relative to the vault). Mutates the vault and "
+            "requires the 'vault.write' capability — denied by default."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "path relative to the vault root"},
+                "operation": {
+                    "type": "string",
+                    "enum": ["replace", "regex"],
+                    "description": "replace (literal) or regex substitution",
+                },
+                "target": {"type": "string", "description": "pattern to find"},
+                "content": {"type": "string", "description": "replacement text"},
+            },
+            "required": ["path"],
+        },
+        risk_class=RISK_MEDIUM,
+        mutation_class=MUTATION_WRITE,
+        required_capabilities=("vault.write",),
+    ),
+    "vault_delete": ToolDef(
+        tool_id="vault_delete",
+        description=(
+            "Delete a file inside the vault root (path relative to the vault). "
+            "Destructive. Mutates the vault and requires the 'vault.write' "
+            "capability — denied by default."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"path": {"type": "string", "description": "path relative to the vault root"}},
+            "required": ["path"],
+        },
+        risk_class=RISK_MEDIUM,
+        mutation_class=MUTATION_WRITE,
+        required_capabilities=("vault.write",),
+    ),
+    "vault_move": ToolDef(
+        tool_id="vault_move",
+        description=(
+            "Move/rename a file inside the vault root (paths relative to the "
+            "vault). Mutates the vault and requires the 'vault.write' "
+            "capability — denied by default."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "from_path": {"type": "string", "description": "source path relative to the vault root"},
+                "to_path": {"type": "string", "description": "destination path relative to the vault root"},
+            },
+            "required": ["from_path", "to_path"],
+        },
+        risk_class=RISK_MEDIUM,
+        mutation_class=MUTATION_WRITE,
+        required_capabilities=("vault.write",),
+    ),
     # --- Code Graph (sovereign-architecture §4.2.1, P0) ---
     # Repository intelligence: all read-only over the local SQLite graph.
     # The model never touches source directly — it queries the index, which
