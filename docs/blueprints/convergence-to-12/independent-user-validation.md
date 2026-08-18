@@ -35,15 +35,19 @@ Notes (from the 2026-08-17 operator dry-run on a fresh clone):
   (`__MSB_REPO__` placeholder) before bootstrap, so the agent points at THIS
   checkout wherever it lives — a hardcoded machine path made the agent
   un-startable on any other machine (the blocker this dry-run caught).
-- If something else already serves :8766 on your machine, set
-  `MSB_PORT` to a free port in `.env` before `make server-start`
-  (the dry-run used 8767 for this reason).
+- Port collision (dry-run #2 catch, 2026-08-17): if something already serves
+  :8766, set `MSB_PORT` to a free port in `.env` and use that port in the
+  curl below. The launchd LABEL is machine-global, so if another checkout's
+  agent is already loaded, `start.sh` REFUSES to displace it and tells you
+  to run this checkout in standby instead:
+  `MSB_PORT=<free> nohup bash scripts/run.sh &` (the dry-run used 8767).
 
 ### First run (the canonical task)
 
 ```bash
 TOKEN=$(grep '^MSB_OPERATOR_TOKEN=' .env | cut -d= -f2-)
-curl -X POST http://127.0.0.1:8766/agent/handle \
+PORT=${MSB_PORT:-8766}
+curl -X POST http://127.0.0.1:$PORT/agent/handle \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"request":"Search the vault for recent decisions about the sovereign stack and summarize them. Do not write any files."}'
 ```

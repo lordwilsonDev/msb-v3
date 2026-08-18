@@ -1,0 +1,84 @@
+{
+  "benchmark": "MSB-BENCH-001",
+  "generated_at": "2026-08-18T03:59:55.024919+00:00",
+  "meta": {
+    "model": "qwen3:8b",
+    "ollama_version": "0.32.13",
+    "hardware": {
+      "machine": "arm64",
+      "processor": "arm",
+      "system": "Darwin",
+      "python": "3.12.9",
+      "memory_bytes": 17179869184
+    },
+    "prompt_estimate_tokens": 3040,
+    "max_tokens": 32,
+    "n_calls": 6
+  },
+  "calls": [
+    {
+      "index": 0,
+      "wall_ms": 14621.41,
+      "prompt_tokens": 3467,
+      "generated_tokens": 2,
+      "tokens_per_sec": 33.3,
+      "load_duration_ms": 117.17,
+      "cache_state": "cold"
+    },
+    {
+      "index": 1,
+      "wall_ms": 342.72,
+      "prompt_tokens": 3467,
+      "generated_tokens": 2,
+      "tokens_per_sec": 33.6,
+      "load_duration_ms": 88.49,
+      "cache_state": "prefix-cached"
+    },
+    {
+      "index": 2,
+      "wall_ms": 336.95,
+      "prompt_tokens": 3467,
+      "generated_tokens": 2,
+      "tokens_per_sec": 33.3,
+      "load_duration_ms": 84.14,
+      "cache_state": "prefix-cached"
+    },
+    {
+      "index": 3,
+      "wall_ms": 335.9,
+      "prompt_tokens": 3467,
+      "generated_tokens": 2,
+      "tokens_per_sec": 34.2,
+      "load_duration_ms": 84.08,
+      "cache_state": "prefix-cached"
+    },
+    {
+      "index": 4,
+      "wall_ms": 334.39,
+      "prompt_tokens": 3467,
+      "generated_tokens": 2,
+      "tokens_per_sec": 34.6,
+      "load_duration_ms": 83.37,
+      "cache_state": "prefix-cached"
+    },
+    {
+      "index": 5,
+      "wall_ms": 334.5,
+      "prompt_tokens": 3467,
+      "generated_tokens": 2,
+      "tokens_per_sec": 34.6,
+      "load_duration_ms": 83.75,
+      "cache_state": "prefix-cached"
+    }
+  ],
+  "summary": {
+    "cold_wall_ms": 14621.41,
+    "warm_median_wall_ms": 335.9,
+    "prefix_cache_speedup_x": 43.5,
+    "cache_state_counts": {
+      "prefix-cached": 5,
+      "warm": 0,
+      "cold": 1
+    }
+  }
+}
