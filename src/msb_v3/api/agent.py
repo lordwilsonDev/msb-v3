@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -31,6 +32,8 @@ from msb_v3.agent.handle import handle
 from msb_v3.agent.paseo import PaseoMcpError
 from msb_v3.api.auth import require_operator, require_operator_sse
 from msb_v3.core.container import ApplicationContainer, get_container_dep
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["agent"])
 
@@ -310,6 +313,7 @@ async def _observation_stream(task_id: str, initial: Dict[str, Any]):
     reaches a terminal state, and a heartbeat comment every 15s to keep the
     connection alive. Subscriber cleanup is guaranteed on disconnect.
     """
+    from msb_v3.tasks.events import TaskLifecycleError
     from msb_v3.tasks.observations import subscribe, unsubscribe
 
     for obs in initial.get("observations", []) or []:
@@ -327,8 +331,18 @@ async def _observation_stream(task_id: str, initial: Dict[str, Any]):
             # item), so `done` tracks the run's completion closely.
             try:
                 state = _lifecycle().get(task_id)["state"]
+            except TaskLifecycleError:
+                # The task's lifecycle record is gone (e.g. the DB was
+                # cleaned or the task never existed) — the run the client is
+                # watching is over. Close with `done` instead of heartbeating
+                # on a stale state forever.
+                logger.debug("observation stream: task %s left the lifecycle store; closing", task_id)
+                yield _sse("done", {"state": state})
+                break
             except Exception:
-                pass
+                # Transient store error — keep the stream alive and retry on
+                # the next poll, but surface it instead of swallowing it.
+                logger.debug("observation stream: lifecycle lookup failed for %s", task_id, exc_info=True)
             if state in _SSE_TERMINAL:
                 yield _sse("done", {"state": state})
                 break

@@ -23,11 +23,14 @@ contradiction and the evidence chain.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from typing import Any, Optional
 
 from msb_v3.factory.models import BuildResult, Plan, Review, ReviewFinding
 from msb_v3.moie import MoIEController
+
+logger = logging.getLogger(__name__)
 
 # Deterministic coherence scan: a small set of completed-action verb forms
 # the scan looks for in BOTH asserted and negated form inside the same
@@ -179,8 +182,8 @@ def _review_from_decision(
                     findings.append(
                         ReviewFinding("info", f"changed symbol {hit['fq_name']} @ {hit['file']}:{hit['line']} — verify its callers")
                     )
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 — best-effort, but never silent
+            logger.warning("codegraph blast-radius check failed for repo %s: %s", repo, exc)
 
     if any(f.severity == "blocker" for f in findings):
         verdict = "BLOCK"
