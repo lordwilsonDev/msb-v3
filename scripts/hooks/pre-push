@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# pre-push — run the lint + portability gates before any push lands.
+# pre-push — run the lint + policy + portability gates before any push lands.
 #
 # Git invokes this hook for every `git push` (including pushes to scratch
 # remotes). It runs two gates in order:
-#   1. lint  (`make lint`: ruff + mypy) — cheap; blocks type/import regressions
+#   1. lint (`make lint`: ruff + mypy + lock/claim checks + the MoIE policy
+#      drift gate) — cheap; blocks type/import regressions and any policy
+#      edit that drifts detection coverage from the pinned baseline
 #   2. portability (`make portability`): stage the repo to a temp copy, scan
 #      for /Users/... machine literals in live code, and run the full pytest
 #      suite from the foreign path.
@@ -30,10 +32,12 @@ fi
 
 cd "$REPO"
 
-# Fast lint + type gate first (the exact gates CI's lint job runs): cheap,
-# and catches the unused-import / type-error regressions a green test suite
-# cannot see. A red lint job must never be pushed — it would turn CI red.
-echo "[pre-push] lint gate (ruff + mypy)..."
+# Fast lint + type + policy gate first (the exact gates CI's lint job runs):
+# cheap, and catches the unused-import / type-error regressions a green test
+# suite cannot see, plus any MoIE policy edit that drifts detection coverage
+# from its pinned baseline. A red lint job must never be pushed — it would
+# turn CI red.
+echo "[pre-push] lint gate (ruff + mypy + policy drift)..."
 code=0
 if [ -f Makefile ] && make -n lint >/dev/null 2>&1; then
   make lint || code=$?
@@ -44,10 +48,15 @@ else
     # extraction's red state; targeted overrides live in pyproject.toml).
     python3 -m mypy src || code=$?
   fi
+  # No-Makefile fallback (foreign clone) must still run the policy drift
+  # gate — the `make lint` path covers it when a Makefile exists.
+  if [ "$code" -eq 0 ]; then
+    bash scripts/ci-policy-gate.sh || code=$?
+  fi
 fi
 if [ "$code" -ne 0 ]; then
   echo "[pre-push] LINT GATE FAILED — push blocked"
-  echo "[pre-push]   fix the lint/type errors above, then re-push."
+  echo "[pre-push]   fix the lint/type/policy errors above, then re-push."
   echo "[pre-push]   to push anyway: MSB_SKIP_PORTABILITY=1 git push"
   exit "$code"
 fi

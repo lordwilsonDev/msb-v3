@@ -1,0 +1,32 @@
+# MSB MoIE calibration — MSB-CAL-001 (20260817)
+#
+# These numeric constants are VERDICT-INERT: MoIE's BLOCK/CONDITIONAL/
+# APPROVE verdict is a pure function of expert keyword hits. These values
+# shape the *confidence* number and the contradiction report only. They are
+# configurable here (and via MSB_CALIBRATION_PATH) so they are explicit and
+# tunable without a code edit; the gate's actual detection lever is keyword
+# membership in src/msb_v3/moie/experts.py.
+#
+# Every value is clamped to [0,1] on load (confidence_min <= confidence_max).
+# Values below are the current behavior — the calibration harness
+# (experiments/calibrate.py) measures them and reports the verdict-lever
+# findings rather than pretending these numbers move the gate.
+moie:
+  # meta_critic.synthesize: confidence -= contradiction_penalty per material
+  # contradiction, then clamped to [confidence_min, confidence_max].
+  contradiction_penalty: 0.15
+  confidence_min: 0.1
+  confidence_max: 1.0
+
+  # meta_critic.detect_contradictions: a CONCERN-vs-SAFE pair is material
+  # only when the CONCERN side is at least this confident.
+  concern_material_min_confidence: 0.6
+
+  # experts.DomainExpert.analyze:
+  #   confidence = min(cap, base + danger_step*n_danger + concern_step*n_concern)
+  # with expert_no_signal_confidence when there is no signal at all.
+  expert_confidence_base: 0.5
+  expert_confidence_danger_step: 0.15
+  expert_confidence_concern_step: 0.08
+  expert_confidence_cap: 0.95
+  expert_no_signal_confidence: 0.4

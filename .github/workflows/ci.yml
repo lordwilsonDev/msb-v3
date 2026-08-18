@@ -133,6 +133,15 @@ jobs:
       - name: Audit release claims
         run: python scripts/verify-claims.py
 
+      # MoIE detection policy drift gate: config/risk_templates.json must
+      # keep matching the pinned baseline (MSB-GATE-EVAL-001). A policy
+      # edit that changes what the gate blocks (e.g. the Phase-2 keyword
+      # win) fails here until the pins in test_gate_contract.py and
+      # test_phase2_calibration.py are updated IN THE SAME change — no
+      # silent detection drift. Fast, deterministic, no server needed.
+      - name: Run policy drift gate
+        run: bash scripts/ci-policy-gate.sh
+
       # NOTE: there is deliberately no artifact upload here. The old
       # "Upload lint reports" step uploaded .ruff_cache/.mypy_cache under the
       # name lint-reports, but nothing ever consumed the artifact, and

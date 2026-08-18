@@ -7,6 +7,13 @@ interface is the ``Expert`` base — a future LLM-backed domain expert only
 needs to implement ``analyze()``; the controller never depends on the
 keyword machinery.
 
+Detection policy lives in ``config/risk_templates.json`` (the ``keywords``
+entries REPLACE the code defaults; the JSON is the single detection
+surface). The file is load-bearing: a missing, corrupt, or incomplete
+policy makes the module refuse to start (fail-closed), because keywords
+are the verdict (MSB-CAL-001) — an expert with no keywords would silently
+stop detecting. Templates overlay per-key onto the inline prose floor.
+
 Safety floor: security, reliability and adversarial are always-on, so a
 claim that mentions nothing domain-specific still gets inverted from the
 three angles that matter most.
@@ -14,8 +21,14 @@ three angles that matter most.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, cast
 
+from msb_v3.core.calibration import moie_calibration
+from msb_v3.core.config import settings
 from msb_v3.moie.models import Assumption, ExpertReport
 from msb_v3.moie.pipeline import (
     causal_alternatives,
@@ -24,6 +37,8 @@ from msb_v3.moie.pipeline import (
     invert,
     keyword_hits,
 )
+
+logger = logging.getLogger(__name__)
 
 VERDICT_SAFE = "SAFE"
 VERDICT_CONCERN = "CONCERN"
@@ -119,9 +134,15 @@ class DomainExpert(Expert):
             risks.append(f"{len(assumptions)} unverified assumption(s) in the claim need confirmation")
             mitigations.append("verify each extracted assumption against independent evidence")
 
-        confidence = min(0.95, 0.5 + 0.15 * len(danger) + 0.08 * len(concern))
+        confidence = min(
+            moie_calibration.expert_confidence_cap,
+            moie_calibration.expert_confidence_base
+            + moie_calibration.expert_confidence_danger_step * len(danger)
+            + moie_calibration.expert_confidence_concern_step * len(concern),
+        )
         if not danger and not concern and not assumptions:
-            confidence = 0.4  # little signal — say so honestly
+            # little signal — say so honestly
+            confidence = moie_calibration.expert_no_signal_confidence
 
         return ExpertReport(
             expert_id=self.expert_id,
@@ -152,10 +173,7 @@ SECURITY = DomainExpert(
     expert_id="security",
     name="Security Inversion Expert",
     description="Inverts safety assumptions: auth, secrets, injection, exposure.",
-    focus_keywords=("auth", "password", "secret", "token", "key", "shell", "sudo", "network", "firewall", "encrypt", "injection", "expose", "privilege", "permission", "credential", "api key"),
     always_on=True,
-    danger_keywords=("bypass", "disable auth", "privilege escalation", "shell", "eval(", "exec(", "chmod 777", "rm -rf", "sudo", "prompt injection", "sql injection", "0.0.0.0", "unauthenticated", "skip auth"),
-    concern_keywords=("password", "secret", "token", "api key", "credential", "expose", "port", "firewall", "encrypt", "network"),
     risk_templates={
         "bypass": ["auth bypass: the plan assumes attackers cannot reach the bypassed control"],
         "shell": ["shell/exec surface: the plan assumes the executed command is always trusted"],
@@ -176,10 +194,7 @@ RELIABILITY = DomainExpert(
     expert_id="reliability",
     name="Reliability Expert",
     description="Inverts availability assumptions: retries, timeouts, recovery.",
-    focus_keywords=("retry", "timeout", "available", "failure", "crash", "recovery", "idempotent", "outage", "partial failure", "backup", "restore"),
     always_on=True,
-    danger_keywords=(),
-    concern_keywords=("retry", "timeout", "failure", "crash", "recovery", "idempotent", "outage", "backup", "restore", "partial"),
     risk_templates={
         "timeout": ["the plan assumes every call completes within the timeout"],
         "retry": ["the plan assumes retries are safe — a non-idempotent retry doubles effects"],
@@ -198,10 +213,7 @@ ADVERSARIAL = DomainExpert(
     expert_id="adversarial",
     name="Adversarial Expert",
     description="Asks who benefits from breaking this, and how.",
-    focus_keywords=("attacker", "malicious", "untrusted", "spoof", "tamper", "replay", "csrf", "xss", "ssrf", "abuse", "fraud"),
     always_on=True,
-    danger_keywords=("attacker", "malicious", "untrusted", "tamper", "replay", "csrf", "xss", "ssrf", "spoof"),
-    concern_keywords=("abuse", "fraud", "spam", "impersonation", "social engineering"),
     risk_templates={
         "untrusted": ["the plan assumes untrusted input stays within its declared envelope"],
         "tamper": ["the plan assumes artifacts cannot be tampered with in transit or at rest"],
@@ -220,9 +232,6 @@ ARCHITECTURE = DomainExpert(
     expert_id="architecture",
     name="Architecture Inversion Expert",
     description="Inverts structural assumptions: coupling, scale, interfaces.",
-    focus_keywords=("monolith", "couple", "single point", "spof", "scale", "interface", "migration", "rewrite", "tech debt", "bottleneck", "eventual consistency", "race", "schema"),
-    danger_keywords=(),
-    concern_keywords=("monolith", "single point", "spof", "scale", "interface", "migration", "rewrite", "bottleneck", "race", "schema", "tech debt"),
     risk_templates={
         "single point": ["the plan assumes one component cannot become the single point of failure"],
         "migration": ["the plan assumes the migration is reversible and low-risk"],
@@ -243,9 +252,6 @@ ECONOMIC = DomainExpert(
     expert_id="economic",
     name="Economic Inversion Expert",
     description="Inverts cost and incentive assumptions.",
-    focus_keywords=("cost", "budget", "vendor", "license", "pricing", "subscription", "billing", "roi", "rate limit", "quota"),
-    danger_keywords=(),
-    concern_keywords=("cost", "budget", "vendor", "license", "pricing", "subscription", "billing", "quota", "rate limit"),
     risk_templates={
         "cost": ["the plan assumes the cost model holds at the stated scale"],
         "vendor": ["the plan assumes the vendor cannot change terms, pricing or availability"],
@@ -264,9 +270,6 @@ OPERATIONAL = DomainExpert(
     expert_id="operational",
     name="Operational Expert",
     description="Inverts deployment and operations assumptions.",
-    focus_keywords=("deploy", "rollout", "migration", "downtime", "runbook", "oncall", "backup", "restore", "incident", "sla", "release"),
-    danger_keywords=(),
-    concern_keywords=("deploy", "rollout", "downtime", "runbook", "incident", "release", "sla"),
     risk_templates={
         "deploy": ["the plan assumes deployment is low-risk and reversible"],
         "downtime": ["the plan assumes downtime windows are acceptable or zero"],
@@ -285,9 +288,6 @@ GOVERNANCE = DomainExpert(
     expert_id="governance",
     name="Governance Expert",
     description="Inverts policy and approval assumptions.",
-    focus_keywords=("policy", "compliance", "approval", "audit", "regulation", "consent", "review", "gdpr", "pii", "sox", "hipaa"),
-    danger_keywords=("gdpr", "pii", "hipaa", "sox", "consent"),
-    concern_keywords=("policy", "compliance", "approval", "audit", "regulation", "review"),
     risk_templates={
         "pii": ["the plan assumes PII can be handled without a data-protection review"],
         "consent": ["the plan assumes consent is already granted and can never be withdrawn"],
@@ -306,9 +306,6 @@ HUMAN_FACTOR = DomainExpert(
     expert_id="human-factor",
     name="Human-Factor Expert",
     description="Inverts assumptions about the humans operating the system.",
-    focus_keywords=("user", "operator", "ux", "workflow", "training", "documentation", "fatigue", "alert", "dashboard", "manual"),
-    danger_keywords=(),
-    concern_keywords=("user", "operator", "manual", "training", "documentation", "alert", "fatigue"),
     risk_templates={
         "manual": ["the plan assumes a human will reliably perform a manual step every time"],
         "alert": ["the plan assumes alerts will be seen and acted on"],
@@ -327,9 +324,6 @@ DATA_MEMORY = DomainExpert(
     expert_id="data-memory",
     name="Data/Memory Expert",
     description="Inverts data, memory and provenance assumptions.",
-    focus_keywords=("data", "privacy", "retention", "provenance", "memory", "embedding", "vector", "drift", "delete", "export", "cache"),
-    danger_keywords=(),
-    concern_keywords=("privacy", "retention", "provenance", "memory", "embedding", "drift", "delete", "cache", "export"),
     risk_templates={
         "privacy": ["the plan assumes stored data stays private forever"],
         "retention": ["the plan assumes retention limits are enforced, not documented"],
@@ -351,10 +345,7 @@ DATA_MEMORY = DomainExpert(
 DOMAIN = DomainExpert(
     expert_id="domain",
     name="Domain Expert",
-    description="Pluggable domain slot — add focus keywords or a custom analyze() to activate.",
-    focus_keywords=(),
-    danger_keywords=(),
-    concern_keywords=(),
+    description="Pluggable domain slot — add keywords via config/risk_templates.json or a custom analyze() to activate.",
 )
 
 # The canonical set (registration order = router's stable tie-break).
@@ -370,6 +361,86 @@ BUILTIN_EXPERTS: Tuple[Expert, ...] = (
     DATA_MEMORY,
     DOMAIN,
 )
+
+
+def risk_policy_path() -> Path:
+    """The detection policy path: env override, else <msb_home>/config/."""
+    override = os.getenv("MSB_RISK_POLICY_PATH")
+    if override:
+        return Path(override)
+    return Path(settings.msb_home) / "config" / "risk_templates.json"
+
+
+def _load_risk_policy(path: Path) -> Dict[str, Any]:
+    """Read the policy file. Fail-closed: any missing/corrupt file raises."""
+    if not path.is_file():
+        raise RuntimeError(f"MoIE detection policy missing: {path}")
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except Exception as exc:  # noqa: BLE001 - a corrupt policy must never silently disable detection
+        raise RuntimeError(f"MoIE detection policy corrupt: {path} ({exc})") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("experts"), dict):
+        raise RuntimeError(f"MoIE detection policy malformed: {path}")
+    return data
+
+
+def apply_policy_overrides(path: Optional[Path] = None) -> None:
+    """Apply the detection policy (config/risk_templates.json) to the built-ins.
+
+    Keywords REPLACE the code defaults — the JSON is the single detection
+    surface, so the detection policy is code-free. Templates overlay
+    per-key onto the inline prose floor. Fail-closed AND atomic: every
+    built-in expert must carry a valid ``keywords`` entry — a missing
+    entry, missing list, or wrong type raises BEFORE any expert is
+    mutated, because an expert with no keywords would silently stop
+    detecting.
+    """
+    policy = _load_risk_policy(path or risk_policy_path())
+    experts = policy["experts"]
+    by_id = {e.expert_id: e for e in BUILTIN_EXPERTS}
+
+    # Validate everything first — a broken policy must not partially apply.
+    parsed: Dict[str, Dict[str, Any]] = {}
+    for expert in BUILTIN_EXPERTS:
+        entry = experts.get(expert.expert_id)
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"MoIE detection policy: missing entry for expert {expert.expert_id!r}")
+        keywords = entry.get("keywords")
+        if not isinstance(keywords, dict):
+            raise RuntimeError(f"MoIE detection policy: expert {expert.expert_id!r} missing 'keywords'")
+        fields: Dict[str, Any] = {}
+        for field, key in (
+            ("focus_keywords", "focus"),
+            ("danger_keywords", "danger"),
+            ("concern_keywords", "concern"),
+        ):
+            values = keywords.get(key)
+            if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+                raise RuntimeError(
+                    f"MoIE detection policy: {expert.expert_id!r}.keywords.{key} must be a list of strings"
+                )
+            fields[field] = tuple(values)
+        parsed[expert.expert_id] = fields
+
+    # All valid — now apply keywords (replace) and templates (overlay).
+    for expert in BUILTIN_EXPERTS:
+        fields = parsed[expert.expert_id]
+        domain = cast(DomainExpert, expert)
+        domain.focus_keywords = fields["focus_keywords"]
+        domain.danger_keywords = fields["danger_keywords"]
+        domain.concern_keywords = fields["concern_keywords"]
+    for expert_id, overrides in experts.items():
+        target = by_id.get(expert_id)
+        if target is None or not isinstance(overrides, dict):
+            continue
+        for field_name in ("risk_templates", "mitigation_templates"):
+            values = overrides.get(field_name)
+            if isinstance(values, dict):
+                getattr(target, field_name).update(values)
+
+
+apply_policy_overrides()
 
 
 class ExpertRegistry:
