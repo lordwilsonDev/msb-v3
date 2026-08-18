@@ -90,6 +90,26 @@ ACTIONGATE_DECISIONS = Counter(
     "ActionGate verdicts",
     ["verdict"],
 )
+# Evidence-receipt reconciliation counters: the structured audit log
+# (logs/audit.jsonl) carries model_calls and moie_verdict per run, so the
+# Prometheus scrape must expose the same two dimensions or the log and the
+# scrape silently disagree. MODEL_CALLS accumulates the per-run count (a
+# run's receipt states its total; the counter adds them). MOIE_VERDICTS
+# counts the MoIE *pre-filter* verdict, distinct from ACTIONGATE_DECISIONS
+# which counts the authorization verdict downstream — a BLOCK at MoIE vs a
+# BLOCK at the ActionGate are otherwise indistinguishable in Prometheus but
+# distinct in the receipt. Incremented by agent.handle._record_cycle at the
+# same chokepoint that emits the receipt, so the two cannot diverge.
+MODEL_CALLS = Counter(
+    "msb_v3_model_calls_total",
+    "Model calls made per run, accumulated across cycles",
+    ["harness"],
+)
+MOIE_VERDICTS = Counter(
+    "msb_v3_moie_verdicts_total",
+    "MoIE pre-filter verdicts (BLOCK/CONDITIONAL/APPROVE/etc.)",
+    ["verdict"],
+)
 # Executor reliability (M5 core-loop observability, 2026-08-17): a task that
 # needed more than one attempt is a *retry*; a retried task that then
 # succeeded is a *recovery*. Together with the failure matrix's bounded
@@ -115,6 +135,8 @@ try:
     _REGISTRY.register(ACTIONGATE_DECISIONS)
     _REGISTRY.register(TASK_RETRIES)
     _REGISTRY.register(TASK_RECOVERIES)
+    _REGISTRY.register(MODEL_CALLS)
+    _REGISTRY.register(MOIE_VERDICTS)
 except ValueError:
     pass  # already registered
 

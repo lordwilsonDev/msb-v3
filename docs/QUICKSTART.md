@@ -106,7 +106,7 @@ python3 -m msb_ledger.chain_anchor --verify-receipt data/uac/audit_chain.db --re
 ## 6. Run the full gate battery
 
 ```bash
-make test          # full pytest suite (1468+ tests, hermetic)
+make test          # full pytest suite (1642+ tests, hermetic)
 make lint          # ruff + bare mypy + lock check + CLAIMS AUDIT
 make hygiene       # 12/12 offline experiments
 make portability   # full suite from a foreign checkout path (the pre-push gate)
