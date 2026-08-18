@@ -1,4 +1,4 @@
-.PHONY: test lint deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -15,8 +15,22 @@ test:
 	@bash scripts/seed-research-runtime.sh
 	$(PY) -m pytest -q tests/
 
-# Lint + typecheck — the exact gates CI's lint job runs. Cheap; the pre-push
-# hook calls this so a red lint job can never land.
+# MoIE detection policy drift gate — the same gate CI's lint job runs
+# (scripts/ci-policy-gate.sh). Validates config/risk_templates.json with the
+# engine's fail-closed loader and fails if detection coverage drifts from
+# the pinned baseline (MSB-GATE-EVAL-001: 17/8/8/23). A policy edit that
+# changes what the gate blocks must land together with its pin updates in
+# test_gate_contract.py + test_phase2_calibration.py — `make lint` and the
+# pre-push hook enforce that locally, before CI does.
+#   MSB_RISK_POLICY_PATH=<candidate.json> make policy-gate   # diff a candidate
+#   MSB_STRICT=0 make policy-gate                            # dry-run warning
+# Exit: 0 = valid + matches baseline, 1 = validation failure, 2 = drift,
+#       3 = environment/usage error.
+policy-gate:
+	MSB_PYTHON=$(PY) bash scripts/ci-policy-gate.sh
+
+# Lint + typecheck + policy drift gate — the exact gates CI's lint job runs.
+# Cheap; the pre-push hook calls this so a red lint job can never land.
 # Bare mypy (no --ignore-missing-imports): the blanket suppress masked the
 # P4 extraction's red state — sys.modules shim aliases are runtime-only and
 # invisible to static mypy. Targeted overrides live in pyproject.toml.
@@ -25,6 +39,7 @@ lint:
 	$(PY) -m mypy src
 	$(PY) scripts/gen-requirements.py --check
 	$(PY) scripts/verify-claims.py
+	MSB_PYTHON=$(PY) bash scripts/ci-policy-gate.sh
 
 # Regenerate requirements-{runtime,dev}.lock from pyproject.toml (the single
 # source of truth). The .lock files are fully transitive-pinned with

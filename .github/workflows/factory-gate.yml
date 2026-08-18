@@ -95,6 +95,17 @@ jobs:
         if: always()
         run: ruff check .
 
+      # MoIE detection policy drift gate — same contract as the ci.yml
+      # lint job: the committed policy must match the pinned baseline
+      # (MSB-GATE-EVAL-001), so a detection-policy edit can never land
+      # without its pin update in the same change.
+      - name: Policy drift gate
+        if: always()
+        env:
+          MSB_REPO: ${{ github.workspace }}
+          MSB_PYTHON: python
+        run: bash scripts/ci-policy-gate.sh
+
       - name: Hygiene suite (offline experiments)
         if: always()
         env:

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import List
 
+from msb_v3.core.calibration import moie_calibration
 from msb_v3.moie.models import (
     IDS,
     Assumption,
@@ -49,7 +50,7 @@ def detect_contradictions(reports: List[ExpertReport]) -> List[Contradiction]:
                     # Only material when the concern is confident and the
                     # safe side is not (a weak SAFE adds no contradiction).
                     concern = a if a.verdict == "CONCERN" else b
-                    if concern.confidence < 0.6:
+                    if concern.confidence < moie_calibration.concern_material_min_confidence:
                         continue
                 seen.add(key)
                 contradictions.append(
@@ -120,8 +121,11 @@ def synthesize(
         confidence = 0.0
     else:
         confidence = sum(r.confidence for r in reports) / len(reports)
-        confidence -= 0.15 * len(contradictions)
-        confidence = round(max(0.1, min(1.0, confidence)), 2)
+        confidence -= moie_calibration.contradiction_penalty * len(contradictions)
+        confidence = round(
+            max(moie_calibration.confidence_min, min(moie_calibration.confidence_max, confidence)),
+            2,
+        )
 
     assumptions: List[Assumption] = []
     seen: set[str] = set()

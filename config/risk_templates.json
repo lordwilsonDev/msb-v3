@@ -1,0 +1,192 @@
+{
+  "version": "20260818-1",
+  "description": "MoIE detection policy (MSB Phase 2 + keyword externalization). The file is LOAD-BEARING: it carries the full keyword detection policy (focus/danger/concern per expert) plus the risk/mitigation template overlay. The inline expert scaffolding in src/msb_v3/moie/experts.py is NOT a keyword fallback — a missing, corrupt, or incomplete policy file makes the module refuse to start (fail-closed), because keywords are the verdict and an empty policy would silently disable detection. Templates remain an overlay onto the inline prose floor.",
+  "experts": {
+    "security": {
+      "keywords": {
+        "focus": ["auth", "password", "secret", "token", "key", "shell", "sudo", "network", "firewall", "encrypt", "injection", "expose", "privilege", "permission", "credential", "api key"],
+        "danger": ["bypass", "disable auth", "privilege escalation", "shell", "eval(", "exec(", "chmod 777", "rm -rf", "sudo", "prompt injection", "sql injection", "0.0.0.0", "unauthenticated", "skip auth"],
+        "concern": ["password", "secret", "token", "api key", "credential", "expose", "port", "firewall", "encrypt", "network"]
+      },
+      "risk_templates": {
+        "bypass": ["auth bypass: the plan assumes attackers cannot reach the bypassed control"],
+        "shell": ["shell/exec surface: the plan assumes the executed command is always trusted"],
+        "prompt injection": ["prompt injection: the plan assumes model output is never attacker-controlled"],
+        "0.0.0.0": ["binding 0.0.0.0 exposes the service beyond the trusted network"],
+        "unauthenticated": ["an unauthenticated path assumes no hostile caller can reach it"]
+      },
+      "mitigation_templates": {
+        "bypass": ["remove the bypass path or gate it behind a second control"],
+        "shell": ["restrict execution to a fixed allowlist; never interpolate untrusted input"],
+        "prompt injection": ["treat model output as untrusted data; validate before acting"],
+        "0.0.0.0": ["bind to loopback or a scoped interface"],
+        "unauthenticated": ["require authentication on every reachable route"]
+      }
+    },
+    "reliability": {
+      "keywords": {
+        "focus": ["retry", "timeout", "available", "failure", "crash", "recovery", "idempotent", "outage", "partial failure", "backup", "restore"],
+        "danger": [],
+        "concern": ["retry", "timeout", "failure", "crash", "recovery", "idempotent", "outage", "backup", "restore", "partial"]
+      },
+      "risk_templates": {
+        "timeout": ["the plan assumes every call completes within the timeout"],
+        "retry": ["the plan assumes retries are safe — a non-idempotent retry doubles effects"],
+        "idempotent": ["the plan assumes the operation is idempotent without proving it"],
+        "backup": ["the plan assumes backups exist and restore cleanly"]
+      },
+      "mitigation_templates": {
+        "timeout": ["set explicit deadlines; classify timeout vs failure"],
+        "retry": ["make retries idempotent or bound them with backoff + jitter"],
+        "idempotent": ["prove idempotency with a test, not an assertion"],
+        "backup": ["test the restore path, not just the backup path"]
+      }
+    },
+    "adversarial": {
+      "keywords": {
+        "focus": ["attacker", "malicious", "untrusted", "spoof", "tamper", "replay", "csrf", "xss", "ssrf", "abuse", "fraud"],
+        "danger": ["attacker", "malicious", "untrusted", "tamper", "replay", "csrf", "xss", "ssrf", "spoof"],
+        "concern": ["abuse", "fraud", "spam", "impersonation", "social engineering"]
+      },
+      "risk_templates": {
+        "untrusted": ["the plan assumes untrusted input stays within its declared envelope"],
+        "tamper": ["the plan assumes artifacts cannot be tampered with in transit or at rest"],
+        "replay": ["the plan assumes a captured request cannot be replayed"],
+        "abuse": ["the plan assumes the feature cannot be turned against its users"]
+      },
+      "mitigation_templates": {
+        "untrusted": ["validate, normalize and bound every untrusted input"],
+        "tamper": ["sign or hash artifacts; verify before use"],
+        "replay": ["add freshness (nonce/timestamp) and reject repeats"],
+        "abuse": ["add rate limits and abuse telemetry from day one"]
+      }
+    },
+    "architecture": {
+      "keywords": {
+        "focus": ["monolith", "couple", "single point", "spof", "scale", "interface", "migration", "rewrite", "tech debt", "bottleneck", "eventual consistency", "race", "schema"],
+        "danger": [],
+        "concern": ["monolith", "single point", "spof", "scale", "interface", "migration", "rewrite", "bottleneck", "race", "schema", "tech debt"]
+      },
+      "risk_templates": {
+        "single point": ["the plan assumes one component cannot become the single point of failure"],
+        "migration": ["the plan assumes the migration is reversible and low-risk"],
+        "rewrite": ["the plan assumes the rewrite preserves behavior the old system provably had"],
+        "scale": ["the plan assumes the current architecture scales to the stated load"],
+        "schema": ["the plan assumes schema changes are backward-compatible"]
+      },
+      "mitigation_templates": {
+        "single point": ["identify and eliminate single points of failure"],
+        "migration": ["design a rollback path and a canary before migrating"],
+        "rewrite": ["pin current behavior with tests before rewriting"],
+        "scale": ["load-test the stated target before committing"],
+        "schema": ["make schema changes additive and versioned"]
+      }
+    },
+    "economic": {
+      "keywords": {
+        "focus": ["cost", "budget", "vendor", "license", "pricing", "subscription", "billing", "roi", "rate limit", "quota"],
+        "danger": [],
+        "concern": ["cost", "budget", "vendor", "license", "pricing", "subscription", "billing", "quota", "rate limit"]
+      },
+      "risk_templates": {
+        "cost": ["the plan assumes the cost model holds at the stated scale"],
+        "vendor": ["the plan assumes the vendor cannot change terms, pricing or availability"],
+        "license": ["the plan assumes the license permits the intended use"],
+        "rate limit": ["the plan assumes API rate limits will not bind"]
+      },
+      "mitigation_templates": {
+        "cost": ["model cost at peak, not average; set a budget alert"],
+        "vendor": ["treat vendor lock-in as a cost; plan an exit path"],
+        "license": ["verify the license against the actual use case"],
+        "rate limit": ["assume limits bind; build batching and backoff"]
+      }
+    },
+    "operational": {
+      "keywords": {
+        "focus": ["deploy", "rollout", "migration", "downtime", "runbook", "oncall", "backup", "restore", "incident", "sla", "release"],
+        "danger": [],
+        "concern": ["deploy", "rollout", "downtime", "runbook", "incident", "release", "sla"]
+      },
+      "risk_templates": {
+        "deploy": ["the plan assumes deployment is low-risk and reversible"],
+        "downtime": ["the plan assumes downtime windows are acceptable or zero"],
+        "runbook": ["the plan assumes an operator exists who knows how to respond"],
+        "sla": ["the plan assumes the SLA is achievable with current tooling"]
+      },
+      "mitigation_templates": {
+        "deploy": ["deploy in stages with automatic rollback on failure"],
+        "downtime": ["design for zero-downtime or schedule the window explicitly"],
+        "runbook": ["write and drill the runbook before the change goes live"],
+        "sla": ["measure the current SLA before promising a new one"]
+      }
+    },
+    "governance": {
+      "keywords": {
+        "focus": ["policy", "compliance", "approval", "audit", "regulation", "consent", "review", "gdpr", "pii", "sox", "hipaa"],
+        "danger": ["gdpr", "pii", "hipaa", "sox", "consent"],
+        "concern": ["policy", "compliance", "approval", "audit", "regulation", "review"]
+      },
+      "risk_templates": {
+        "pii": ["the plan assumes PII can be handled without a data-protection review"],
+        "consent": ["the plan assumes consent is already granted and can never be withdrawn"],
+        "audit": ["the plan assumes the action is auditable end-to-end"],
+        "approval": ["the plan assumes approval is implied by intent"]
+      },
+      "mitigation_templates": {
+        "pii": ["route through the privacy review before handling PII"],
+        "consent": ["record consent explicitly; honor revocation"],
+        "audit": ["ensure every consequential step lands in the audit trail"],
+        "approval": ["obtain explicit approval before the consequential step"]
+      }
+    },
+    "human-factor": {
+      "keywords": {
+        "focus": ["user", "operator", "ux", "workflow", "training", "documentation", "fatigue", "alert", "dashboard", "manual"],
+        "danger": [],
+        "concern": ["user", "operator", "manual", "training", "documentation", "alert", "fatigue"]
+      },
+      "risk_templates": {
+        "manual": ["the plan assumes a human will reliably perform a manual step every time"],
+        "alert": ["the plan assumes alerts will be seen and acted on"],
+        "training": ["the plan assumes operators are already trained on the new flow"],
+        "documentation": ["the plan assumes the docs describe what was actually built"]
+      },
+      "mitigation_templates": {
+        "manual": ["automate or gate the manual step with a checklist"],
+        "alert": ["route alerts to the people who can act; drill the response"],
+        "training": ["schedule training before the change lands"],
+        "documentation": ["update docs as part of the change, not after"]
+      }
+    },
+    "data-memory": {
+      "keywords": {
+        "focus": ["data", "privacy", "retention", "provenance", "memory", "embedding", "vector", "drift", "delete", "export", "cache"],
+        "danger": [],
+        "concern": ["privacy", "retention", "provenance", "memory", "embedding", "drift", "delete", "cache", "export"]
+      },
+      "risk_templates": {
+        "privacy": ["the plan assumes stored data stays private forever"],
+        "retention": ["the plan assumes retention limits are enforced, not documented"],
+        "provenance": ["the plan assumes every memory/record carries its source"],
+        "drift": ["the plan assumes embeddings/indexes do not drift from the source data"],
+        "delete": ["the plan assumes delete actually deletes everywhere"],
+        "cache": ["the plan assumes cached data cannot go stale"]
+      },
+      "mitigation_templates": {
+        "privacy": ["classify data and encrypt at rest; scope access"],
+        "retention": ["enforce retention with code, not policy documents"],
+        "provenance": ["attach source/tenant/agent to every stored record"],
+        "drift": ["re-index on a schedule and detect drift"],
+        "delete": ["test that delete removes all copies"],
+        "cache": ["set explicit TTLs and invalidate on writes"]
+      }
+    },
+    "domain": {
+      "keywords": {
+        "focus": [],
+        "danger": [],
+        "concern": []
+      }
+    }
+  }
+}
