@@ -40,6 +40,20 @@ from msb_v3.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def _default_spine(injected: Any = None) -> Any:
+    """A usable evidence spine, or None when unavailable (best-effort: a
+    spine outage degrades provenance, never the run)."""
+    if injected is not None:
+        return injected
+    try:
+        from msb_v3.evidence.spine import DecisionEvidenceStore
+
+        return DecisionEvidenceStore()
+    except Exception as exc:  # noqa: BLE001 — provenance must never break the run
+        logger.warning("default evidence spine unavailable: %s", exc)
+        return None
+
 # Max output/artifact bytes captured from a CLI worker (bounded evidence).
 _MAX_OUTPUT_BYTES = 200_000
 _MAX_ARTIFACTS = 20
@@ -116,10 +130,11 @@ class LocalAgentProvider(AgentProvider):
         timeout_s=300.0,
     )
 
-    def __init__(self, *, client: Any = None, provider: Any = None, gate: Any = None) -> None:
+    def __init__(self, *, client: Any = None, provider: Any = None, gate: Any = None, spine: Any = None) -> None:
         self._client = client
         self._provider = provider
         self._gate = gate
+        self._spine = spine
 
     async def execute(
         self,
@@ -137,6 +152,7 @@ class LocalAgentProvider(AgentProvider):
             client=self._client,
             provider=self._provider,
             gate=self._gate,
+            spine=_default_spine(self._spine),
             session=session,
             tenant=context.get("tenant", "wilson-vault"),
             approve=bool(context.get("approve", False)),
@@ -398,8 +414,9 @@ class DeepSeekAgentProvider(AgentProvider):
         timeout_s=300.0,
     )
 
-    def __init__(self, *, client: Any = None) -> None:
+    def __init__(self, *, client: Any = None, spine: Any = None) -> None:
         self._client = client
+        self._spine = spine
 
     def available(self) -> bool:
         if self._client is not None:
@@ -427,6 +444,7 @@ class DeepSeekAgentProvider(AgentProvider):
         result = await handle(
             goal,
             client=client,
+            spine=_default_spine(self._spine),
             session=session,
             tenant=context.get("tenant", "wilson-vault"),
             approve=bool(context.get("approve", False)),

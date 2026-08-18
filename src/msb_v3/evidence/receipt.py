@@ -117,6 +117,13 @@ def build_evidence_receipt(
         else f"MoIE verdict {moie_verdict}; authorization decision {authorization_decision}"
     )
 
+    requested_desc = (
+        "nothing (denied at gate)"
+        if denied
+        else (", ".join(capability_requested) if capability_requested else "not recorded (no spine trail)")
+    )
+    allowed_desc = authorization_decision or ("DENY" if denied else "not recorded")
+
     receipt: Dict[str, Any] = {
         "request_id": run_id,
         "intent": intent,
@@ -132,8 +139,8 @@ def build_evidence_receipt(
         "audit_hash": audit_hash,
         # The one-line reconstruction the receipt exists to answer.
         "reconstruction": (
-            f"request={run_id} requested={capability_requested or 'nothing (denied at gate)'} "
-            f"allowed={authorization_decision} happened={verdict} "
+            f"request={run_id} requested={requested_desc} "
+            f"allowed={allowed_desc} happened={verdict} "
             f"why={why_allowed} succeeded={verdict == 'PASS'}"
         ),
     }
