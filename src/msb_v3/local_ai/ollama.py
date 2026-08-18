@@ -126,10 +126,15 @@ class LocalAIClient:
         max_steps: int = 4,
         max_tokens: int = 2048,
     ) -> LocalAIResponse:
-        """Bounded tool-call loop via /api/generate.
+        """Bounded tool-call loop via /api/chat.
 
         Returns the final assistant text after executing tool calls and feeding
         results back, up to `max_steps`.
+
+        Uses the chat endpoint with the accumulated ``messages`` array — never
+        a flattened string — so Ollama's KV cache reuses the message prefix
+        across steps. The previous flat-string /api/generate path re-encoded
+        the entire history every step (the M1 re-encode tax).
         """
         if not tools:
             return self.generate(query, system=system, max_tokens=max_tokens)
@@ -141,23 +146,8 @@ class LocalAIClient:
 
         final_text = ""
         enforcer = StepEnforcer(required_steps=[], terminal_tools=frozenset([t["name"] for t in (tools or [])]))
-        current_prompt = query
         for step_idx in range(max_steps):
-            if step_idx > 0:
-                history_parts = []
-                for msg in messages:
-                    role = msg["role"]
-                    content = msg.get("content", "")
-                    if role == "tool":
-                        history_parts.append(f"[Tool Result]: {content}")
-                    elif role == "assistant" and msg.get("tool_calls"):
-                        tc_names = ", ".join(tc["function"]["name"] for tc in msg["tool_calls"])
-                        history_parts.append(f"[Assistant called tools: {tc_names}] {content}")
-                    elif role != "system":
-                        history_parts.append(f"[{role.capitalize()}]: {content}")
-                current_prompt = "\n".join(history_parts)
-
-            resp = self.generate(current_prompt, system=system, tools=tools, max_tokens=max_tokens)
+            resp = self.chat(messages, tools=tools, max_tokens=max_tokens)
             final_text = resp.text
             tool_calls = resp.tool_calls
             if not tool_calls:

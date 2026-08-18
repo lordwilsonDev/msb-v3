@@ -233,7 +233,7 @@ def test_governed_tool_run_through_execute_tool_loop(monkeypatch, tmp_path):
     from msb_v3.local_ai.ollama import LocalAIClient
 
     class ToolLoopClient(LocalAIClient):
-        def generate(self, prompt, *, system=None, tools=None, temperature=0.2, max_tokens=2048):
+        def chat(self, messages, *, tools=None, temperature=0.2, max_tokens=2048):
             class Resp:
                 text = ""
                 model = "fake"
