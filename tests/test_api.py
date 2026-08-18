@@ -318,8 +318,8 @@ def test_execute_tool_loop_single_tool():
     class FakeClient(LocalAIClient):
         calls = []
 
-        def generate(self, prompt, *, system=None, tools=None, temperature=0.2, max_tokens=2048):
-            self.calls.append({"prompt": prompt, "tools": tools})
+        def chat(self, messages, *, tools=None, temperature=0.2, max_tokens=2048):
+            self.calls.append({"messages": messages, "tools": tools})
 
             class Resp:
                 text = "[tool-call]"
@@ -346,7 +346,7 @@ def test_execute_tool_loop_runs_tool():
     from msb_v3.local_ai.ollama import LocalAIClient
 
     class ToolLoopClient(LocalAIClient):
-        def generate(self, prompt, *, system=None, tools=None, temperature=0.2, max_tokens=2048):
+        def chat(self, messages, *, tools=None, temperature=0.2, max_tokens=2048):
             class Resp:
                 text = "done"
                 model = "fake"
