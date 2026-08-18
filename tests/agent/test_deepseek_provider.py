@@ -147,6 +147,7 @@ async def test_deepseek_provider_execute_delegates_to_handle(monkeypatch: pytest
     async def fake_handle(request: str, *, client: Any = None, **kwargs: Any) -> SimpleNamespace:
         seen["request"] = request
         seen["client"] = client
+        seen["spine"] = kwargs.get("spine")
         return SimpleNamespace(
             ok=True,
             run_id="run-1",
@@ -164,6 +165,7 @@ async def test_deepseek_provider_execute_delegates_to_handle(monkeypatch: pytest
     assert result.artifacts["deterministic_hash"] == "abc"
     assert seen["request"] == "do a thing"
     assert seen["client"] is client
+    assert seen["spine"] is not None  # the provider wires the evidence spine
 
 
 # ── provider end-to-end: governed + receipt ─────────────────────────────────
