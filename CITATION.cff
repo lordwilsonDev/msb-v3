@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use MSB v3 in your research or build on it, please cite it as below."
+title: "MSB v3"
+abstract: >-
+  A sovereign, local-first, governed agent runtime: FastAPI + SQLite +
+  Qwen3/Ollama + Prometheus. Takes a real task from request to a verified,
+  evidence-backed result — and refuses, records, and recovers when a model,
+  tool, or permission fails.
+version: 0.3.0
+date-released: "2026-08-17"
+authors:
+  - name: "Lord Wilson"
+    website: "https://github.com/lordwilsonDev"
+license: MIT
+keywords:
+  - "agent runtime"
+  - "governance"
+  - "local-first AI"
+  - "tamper-evident audit"
+  - "Mixture of Experts"
+repository-code: "https://github.com/lordwilsonDev/msb-v3"
+url: "https://github.com/lordwilsonDev/msb-v3"
