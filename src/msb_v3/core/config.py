@@ -81,6 +81,12 @@ class Settings:
     # seam is "closed" (router degrades to local) until OPENAI_API_KEY is set.
     openai_frontier_url: str = field(default_factory=lambda: os.getenv("OPENAI_FRONTIER_URL", "http://127.0.0.1:8766/v1"))
     openai_frontier_model: str = field(default_factory=lambda: os.getenv("OPENAI_FRONTIER_MODEL", "frontier"))
+    # DeepSeek native API (OpenAI-compatible) — the first frontier provider
+    # behind the AgentProvider ABC. DEEPSEEK_API_KEY falls back to
+    # OPENAI_API_KEY so the /v1 seam and this provider can share one key.
+    deepseek_api_key: str = field(default_factory=lambda: os.getenv("DEEPSEEK_API_KEY", "") or os.getenv("OPENAI_API_KEY", ""))
+    deepseek_base_url: str = field(default_factory=lambda: os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
+    deepseek_model: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"))
     # /v1/embeddings guards: per-request batch cap (413 when exceeded) and a
     # per-client sliding-window cap on total embedded items (429). A batch of
     # N items consumes N units toward the window cap.
