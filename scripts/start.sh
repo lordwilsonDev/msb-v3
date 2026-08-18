@@ -40,11 +40,33 @@ AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
 
 mkdir -p "$REPO/.artifacts" "$REPO/logs"
 
+# Does the installed plist point at a DIFFERENT checkout than $REPO?
+# Returns 0 (foreign) when the plist exists and embeds a path other than this
+# checkout's; 1 (ours / absent) otherwise.
+plist_foreign_checkout() {
+  [ -f "$AGENT_PLIST" ] || return 1
+  grep -qF "$REPO" "$AGENT_PLIST" && return 1
+  return 0
+}
+
 # Render the repo template into the installed LaunchAgents copy, substituting
 # the actual checkout path. Called before any bootstrap so the agent points
 # at THIS clone regardless of where it lives.
 render_plist() {
   [ -f "$TEMPLATE_PLIST" ] || return 0
+  # The launchd LABEL is machine-global, not checkout-scoped: if the installed
+  # plist belongs to a different checkout AND that agent is still loaded, a
+  # render+bootstrap here would bootout the OTHER instance and hijack the
+  # label (M7 dry-run #2 catch). Changing MSB_PORT does NOT avoid this -- the
+  # collision is the label, not the port. Refuse loudly instead of displacing
+  # a live foreign agent.
+  if plist_foreign_checkout && is_managed; then
+    other=$(grep -oE '<string>[^<]*/scripts/run\.sh</string>' "$AGENT_PLIST" | head -1 | sed -E 's#</?string>##g')
+    log "ERROR: launchd label $AGENT_LABEL is already managed by another checkout ($other)" >&2
+    log "  refusing to displace it. Stop that instance first (its own scripts/start.sh stop)," >&2
+    log "  or run THIS checkout in standby instead: MSB_PORT=<free> nohup bash $SCRIPT &" >&2
+    exit 1
+  fi
   mkdir -p "$HOME/Library/LaunchAgents"
   sed "s|__MSB_REPO__|$REPO|g" "$TEMPLATE_PLIST" > "$AGENT_PLIST"
 }
