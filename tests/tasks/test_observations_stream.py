@@ -136,6 +136,53 @@ def test_observation_stream_live_flow(tmp_path):
     asyncio.run(run())
 
 
+def test_observation_stream_closes_when_task_leaves_store(tmp_path):
+    """If the task's lifecycle record disappears mid-stream, the generator
+    must emit `done` and terminate instead of heartbeating on a stale state
+    forever. Regression for the silent `except Exception: pass` that left the
+    stream hung when the store no longer had the task.
+    """
+
+    async def run():
+        import msb_v3.api.agent as agent_api
+        from msb_v3.api.agent import _observation_stream
+
+        orig_poll = agent_api._STREAM_POLL_S
+        agent_api._STREAM_POLL_S = 0.05
+        try:
+            chain = AuditChain(db_path=str(tmp_path / "audit.db"), allow_keyless=True)
+            lifecycle = TaskLifecycle(db_path=str(tmp_path / "tasks.db"), chain=chain)
+            agent_api._lifecycle = lambda: lifecycle
+            lifecycle.create(UnifiedTask(task_id="t-gone", state="CREATED"))
+            for state in ("PLANNED", "EXECUTING"):
+                lifecycle.transition("t-gone", state)
+
+            gen = _observation_stream("t-gone", {"observations": [], "state": "EXECUTING"})
+            events: list[str] = []
+
+            async def collect():
+                async for chunk in gen:
+                    events.append(chunk)
+
+            collector = asyncio.create_task(collect())
+            await asyncio.sleep(0.05)  # let the generator subscribe
+            assert observations.subscriber_count("t-gone") == 1
+
+            # Simulate the task leaving the store mid-run: point the lookup
+            # at a fresh store that has never seen the task.
+            gone_lifecycle = TaskLifecycle(db_path=str(tmp_path / "tasks-gone.db"), chain=chain)
+            agent_api._lifecycle = lambda: gone_lifecycle
+
+            await asyncio.wait_for(collector, timeout=5.0)
+            kinds = [c.split("\n")[0] for c in events]
+            assert "event: done" in kinds
+            assert observations.subscriber_count("t-gone") == 0  # cleaned up
+        finally:
+            agent_api._STREAM_POLL_S = orig_poll
+
+    asyncio.run(run())
+
+
 # --- HTTP surface ------------------------------------------------------------
 
 
