@@ -16,6 +16,7 @@ gate). No LLM judge anywhere in the verification path.
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -27,6 +28,7 @@ from msb_v3.agent.intent import Intent, interpret_intent
 from msb_v3.agent.planner import plan
 from msb_v3.agent.safety import ActionGate, SafeProvider
 from msb_v3.agent.trace import AgentTrace, build_trace, record_trace
+from msb_v3.evidence.receipt import build_evidence_receipt
 from msb_v3.evidence.spine import (
     KIND_DECISION,
     KIND_EXECUTION,
@@ -38,6 +40,8 @@ from msb_v3.evidence.spine import (
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
+from msb_v3.observability.audit_log import append_receipt
+from msb_v3.observability.metrics import MODEL_CALLS, MOIE_VERDICTS
 from msb_v3.runtime.store import RuntimeStore
 from msb_v3.tasks.lifecycle import EventingProvider, TaskLifecycle
 from msb_v3.tasks.models import UnifiedTask
@@ -256,6 +260,93 @@ async def _delegation_inversion_gate(
             update={"approvals": [approval]},
         )
     return True, "APPROVE", detail
+
+
+async def _quick_reject_gate(
+    request: str,
+    run_id: str,
+    lifecycle: TaskLifecycle | None,
+    *,
+    tenant: str,
+    moie: Any = None,
+    spine: DecisionEvidenceStore | None = None,
+) -> tuple[HandleResult | None, Dict[str, Any] | None]:
+    """Phase 1 quick-reject: a MoIE BLOCK verdict denies the request BEFORE
+    the first model call (interpret_intent), so a prompt-injection or hostile
+    request never pays the intent/plan/tool-loop token spend.
+
+    Thin by design — a pre-filter for the local path. The delegated path
+    keeps its full fail-closed inversion gate (lifecycle ceremony +
+    evidence-spine decision records) in ``_delegation_inversion_gate``;
+    here only a hard BLOCK (a danger keyword in the claim, no high-impact
+    escalation) denies, and CONDITIONAL proceeds — the local path's
+    authorization lives downstream in the ActionGate + A8 taint rules.
+
+    A broken MoIE logs a warning and proceeds (fail-open): this gate is an
+    optimization, not the local path's authorization layer, and a MoIE
+    hiccup must not regress today's behavior into denial-of-service. The
+    BLOCK verdict itself is persisted as a DENIED lifecycle transition
+    (mirrored to the audit chain) AND as a DENY decision vertebra on the
+    Evidence Spine, so a refusal leaves a durable, chain-linked record.
+
+    Returns ``(None, moie_detail)`` to proceed (the detail lets the caller
+    record the MoIE verdict on the executed path — the "why it was allowed"
+    half of the evidence receipt), or ``(HandleResult, moie_detail)`` when
+    the run is denied. On a MoIE outage it returns ``(None, None)``
+    (fail-open, no verdict to record).
+    """
+    try:
+        if moie is None:
+            from msb_v3.moie import MoIEController
+
+            moie = MoIEController(tenant=tenant)
+        decision = await asyncio.to_thread(moie.analyze, request)
+        detail = decision.as_dict()
+        verdict = str(detail.get("verdict") or "")
+        if verdict != "BLOCK":
+            return None, detail
+    except Exception as exc:  # noqa: BLE001 — the gate is best-effort
+        logger.warning("moie quick-reject gate failed for %s: %s", run_id, exc)
+        return None, None
+
+    _lifecycle_emit(
+        lifecycle,
+        run_id,
+        None,
+        state="DENIED",
+        payload={"reason": "MoIE quick-reject blocked request before model", "inversion": detail},
+    )
+    # A denial is itself a governed decision: record it on the Evidence Spine
+    # so the refusal is reconstructable like any executed run (the receipt's
+    # "what was requested -> why it was denied" chain). Best-effort — a spine
+    # outage degrades provenance, never the denial.
+    _spine_append(
+        spine,
+        DecisionEvidence(
+            kind=KIND_DECISION,
+            task_id=run_id,
+            tenant_id=tenant,
+            policy_version=_SPINE_POLICY_VERSION,
+            policy_result="DENY",
+            risk_level="elevated",
+            capability_requested=(),
+            capability_granted=(),
+            selected_action="handle",
+            available_actions=(),
+        ),
+    )
+    reason = detail.get("meta_critique") or "MoIE blocked the request"
+    return (
+        HandleResult(
+            ok=False,
+            run_id=run_id,
+            verdict="BLOCKED",
+            error=reason,
+            trace={"inversion": detail, "gate": "quick-reject"},
+            model_calls=0,
+        ),
+        detail,
+    )
 
 
 async def _run_delegated_agent(
@@ -585,11 +676,39 @@ class HandleResult:
     deterministic_hash: str = ""
     trace: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
+    model_calls: int = 0  # 0 for a quick-reject BLOCK; real count otherwise
 
 
 def _run_id(request: str) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     return f"dbb-{stamp}-{abs(hash(request)) % 100000:05d}"
+
+
+class _ModelCallCounter:
+    """Wraps a model client and counts every model-call entry point so the
+    evidence receipt can state exactly how many model calls a run made — 0
+    for a quick-reject BLOCK, the real count otherwise (intent + plan + every
+    tool-loop step). Pass-through for every other attribute; the pipeline
+    never type-checks the client, so the wrapper is transparent."""
+
+    _CALL_ENTRY_POINTS = frozenset({"generate", "agenerate", "chat", "execute_tool_loop"})
+
+    def __init__(self, client: Any) -> None:
+        self._client = client
+        self.calls = 0
+
+    def _wrap(self, attr: Any) -> Any:
+        def counted(*args: Any, **kwargs: Any) -> Any:
+            self.calls += 1
+            return attr(*args, **kwargs)
+
+        return counted
+
+    def __getattr__(self, name: str) -> Any:
+        attr = getattr(self._client, name)
+        if name in self._CALL_ENTRY_POINTS:
+            return self._wrap(attr)
+        return attr
 
 
 def _lifecycle_emit(lifecycle: TaskLifecycle | None, task_id: str, event_type: str | None, payload: dict | None = None, *, state: str | None = None, update: dict | None = None) -> None:
@@ -613,6 +732,45 @@ def _lifecycle_emit(lifecycle: TaskLifecycle | None, task_id: str, event_type: s
         logger.warning("lifecycle write (%s/%s) failed for %s: %s", event_type, state, task_id, exc)
 
 
+def _record_cycle(result: HandleResult, spine: DecisionEvidenceStore | None) -> None:
+    """Emit exactly one evidence receipt per run to the JSONL audit log and
+    bump the reconciliation counters at the same chokepoint. Best-effort:
+    observability must never break the run it describes (the audit chain is
+    the authoritative record; this stream is a projection)."""
+    if not isinstance(result, HandleResult):
+        return
+    try:
+        receipt = build_evidence_receipt(
+            run_id=result.run_id,
+            verdict=result.verdict,
+            error=result.error,
+            deterministic_hash=result.deterministic_hash,
+            trace=result.trace,
+            model_calls=result.model_calls,
+            spine=spine,
+        )
+        append_receipt(receipt)
+        MODEL_CALLS.labels(harness="handle").inc(result.model_calls)
+        MOIE_VERDICTS.labels(verdict=receipt.get("moie_verdict") or "none").inc()
+    except Exception as exc:
+        logger.warning("evidence receipt emit failed: %s", exc)
+
+
+def _emit_evidence_receipt(func):
+    """Wrap handle() so every cycle emits exactly one receipt, no matter which
+    of its many early-return paths produced the result. The spine is read from
+    the keyword argument, so the decorator needs no signature knowledge."""
+
+    @functools.wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> HandleResult:
+        result = await func(*args, **kwargs)
+        _record_cycle(result, kwargs.get("spine"))
+        return result
+
+    return wrapper
+
+
+@_emit_evidence_receipt
 async def handle(
     request: str,
     *,
@@ -728,11 +886,32 @@ async def handle(
             context_engine=context_engine, memory_fabric=memory_fabric, spine=spine,
         )
 
+    # Model-call counter: the evidence receipt must state how many model
+    # calls a run made (0 for a quick-reject BLOCK). Wrapping at the local
+    # path boundary counts intent + plan + every tool-loop step; the wrapper
+    # is transparent to the pipeline. ``client_any`` is a separate local so
+    # the typed parameter stays untouched (the wrapper is duck-typed).
+    client_any: Any = client
+    if client_any is not None:
+        client_any = _ModelCallCounter(client_any)
+
+    # Quick-reject gate (Phase 1): MoIE BLOCK verdicts deny BEFORE the first
+    # model call. The delegated branch above already returned (it runs its
+    # own full inversion gate); every path reaching here — anonymous or local
+    # agent — gets the fast pre-filter. The gate also returns the MoIE
+    # decision detail so the executed path can record the verdict (the "why
+    # it was allowed" half of the evidence receipt).
+    quick_reject, moie_detail = await _quick_reject_gate(
+        request, run_id, lifecycle, tenant=tenant, moie=moie, spine=spine
+    )
+    if quick_reject is not None:
+        return quick_reject
+
     try:
         # interpret_intent and plan both generate via the client; offload the
         # sync local-model call to a worker thread so the server's event loop
         # stays responsive while a request is in flight (/agent/handle).
-        intent: Intent = await asyncio.to_thread(interpret_intent, request, client=client)
+        intent: Intent = await asyncio.to_thread(interpret_intent, request, client=client_any)
         # Explicit privacy override (Phase 2 live test): the caller may force
         # the intent's privacy flag, which drives the router's privacy floor.
         # privacy=None (the default) lets the interpreted intent decide; the
@@ -746,7 +925,7 @@ async def handle(
             {"summary": intent.as_dict()},
             update={"intent": intent.as_dict(), "capabilities": {"granted": sorted(set(intent.permissions)) if approve else []}},
         )
-        graph = await plan(intent, client=client)
+        graph = await plan(intent, client=client_any)
         _lifecycle_emit(
             lifecycle, run_id, None,  # event comes from the transition below
             state="PLANNED",
@@ -780,7 +959,7 @@ async def handle(
         if gate is None:
             gate = ActionGate(killswitch=KillSwitch())
         if provider is None:
-            provider = BridgeProvider(tenant=tenant, output_dir=output_dir, client=client)
+            provider = BridgeProvider(tenant=tenant, output_dir=output_dir, client=client_any)
 
         # Capability-scoped permissions (§17): an agent does only what its
         # identity was granted. None = no whitelist (legacy behavior).
@@ -812,6 +991,13 @@ async def handle(
 
         trace: AgentTrace = build_trace(run_id, request, intent, graph, report)
         record_trace(trace, store=store)
+        # Attach the MoIE verdict to the returned trace as provenance (it is
+        # intentionally NOT part of the replay hash — the deterministic hash
+        # covers request/intent/graph/execution, and the gate verdict is a
+        # decision record, not evidence of what happened).
+        trace_dict = trace.as_dict()
+        if moie_detail is not None:
+            trace_dict["moie"] = moie_detail
 
         _lifecycle_emit(lifecycle, run_id, None, state="VERIFYING")
         if report.ok:
@@ -851,8 +1037,9 @@ async def handle(
             run_id=run_id,
             verdict=trace.verdict,
             deterministic_hash=trace.deterministic_hash,
-            trace=trace.as_dict(),
+            trace=trace_dict,
             error=report.error,
+            model_calls=client_any.calls if client_any is not None else 0,
         )
     except Exception as exc:  # noqa: BLE001 — the loop must fail with evidence, not crash
         _lifecycle_emit(lifecycle, run_id, None, state="FAILED")
@@ -861,4 +1048,5 @@ async def handle(
             run_id=run_id,
             verdict="ERROR",
             error=f"{type(exc).__name__}: {exc}",
+            model_calls=client_any.calls if client_any is not None else 0,
         )

@@ -313,6 +313,108 @@ def test_bridge_provider_format_sources_and_extract_brief() -> None:
     assert _extract_brief({}) == ""
 
 
+class _FakeDecision:
+    """Canned MoIE decision double."""
+
+    def __init__(self, verdict: str) -> None:
+        self.verdict = verdict
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "claim": "",
+            "verdict": self.verdict,
+            "blocked": self.verdict == "BLOCK",
+            "confidence": 0.9,
+            "meta_critique": "blocked: danger keyword present" if self.verdict == "BLOCK" else "",
+        }
+
+
+class _FakeMoIE:
+    """Sync MoIE double with a canned verdict; records the claims analyzed."""
+
+    def __init__(self, verdict: str = "APPROVE", error: Exception | None = None) -> None:
+        self.verdict = verdict
+        self.error = error
+        self.claims: list[str] = []
+
+    def analyze(self, claim: str, *, context: Dict[str, Any] | None = None):
+        self.claims.append(claim)
+        if self.error is not None:
+            raise self.error
+        return _FakeDecision(self.verdict)
+
+
+class _TrackingClient:
+    """Wraps a SequenceClient and counts generate() calls — proves the intent
+    model is never consulted when the quick-reject gate denies."""
+
+    def __init__(self, inner: SequenceClient) -> None:
+        self._inner = inner
+        self.generate_calls = 0
+
+    def generate(self, prompt, *, system=None, tools=None, temperature=0.2, max_tokens=2048):
+        self.generate_calls += 1
+        return self._inner.generate(prompt, system=system, tools=tools, temperature=temperature, max_tokens=max_tokens)
+
+
+@pytest.mark.asyncio
+async def test_quick_reject_block_denies_before_model(tmp_path: Path) -> None:
+    """Phase 1: a MoIE BLOCK verdict denies the run before the first model
+    call — the intent client is never consulted, and the run lands BLOCKED."""
+    client = _TrackingClient(SequenceClient(_INTENT_WITH_WRITE))
+    moie = _FakeMoIE("BLOCK")
+
+    result = await handle(
+        "rm -rf production",
+        client=client,
+        approve=True,
+        provider=FakeProvider(tmp_path),
+        gate=ActionGate(audit_chain=_Audit()),
+        moie=moie,
+    )
+
+    assert result.ok is False
+    assert result.verdict == "BLOCKED"
+    assert result.error and "blocked" in result.error.lower()
+    assert client.generate_calls == 0  # the intent model was never loaded
+    assert moie.claims == ["rm -rf production"]
+
+
+@pytest.mark.asyncio
+async def test_quick_reject_conditional_and_approve_proceed(tmp_path: Path) -> None:
+    """The gate only denies on a hard BLOCK; CONDITIONAL and APPROVE proceed
+    to the normal intent/plan/tool path (the ActionGate still governs)."""
+    for verdict in ("CONDITIONAL", "APPROVE"):
+        client = SequenceClient(_INTENT_WITH_WRITE)
+        result = await handle(
+            "research the vault and write a client brief",
+            client=client,
+            approve=True,
+            provider=FakeProvider(tmp_path),
+            gate=ActionGate(audit_chain=_Audit()),
+            moie=_FakeMoIE(verdict),
+        )
+        assert result.ok is True
+        assert result.verdict == "PASS"
+
+
+@pytest.mark.asyncio
+async def test_quick_reject_broken_moie_fails_open(tmp_path: Path) -> None:
+    """A MoIE outage must not regress the local path into denial-of-service:
+    the gate logs and proceeds (the ActionGate is the real authorization)."""
+    client = SequenceClient(_INTENT_WITH_WRITE)
+    result = await handle(
+        "research the vault and write a client brief",
+        client=client,
+        approve=True,
+        provider=FakeProvider(tmp_path),
+        gate=ActionGate(audit_chain=_Audit()),
+        moie=_FakeMoIE(error=RuntimeError("registry unavailable")),
+    )
+    assert result.ok is True
+    assert result.verdict == "PASS"
+
+
 def asyncio_run(coro):
     import asyncio
 

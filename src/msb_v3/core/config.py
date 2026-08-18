@@ -33,6 +33,12 @@ class Settings:
     # still overrides.
     db_path: str = field(default_factory=lambda: os.getenv("MSB_DB_PATH") or str(_REPO_ROOT / "data" / "msb_v3.db"))
     log_level: str = field(default_factory=lambda: os.getenv("MSB_LOG_LEVEL", "info"))
+    # Canonical evidence-receipt event stream (one JSON line per handle()
+    # cycle). Absolute by default (msb_home-relative) so the stream lands in
+    # the deployment's logs/, not whatever CWD a script runs from.
+    # MSB_AUDIT_LOG_PATH overrides (the cockpit tail + tests point it at a
+    # temp file).
+    audit_log_path: str = field(default_factory=lambda: os.getenv("MSB_AUDIT_LOG_PATH") or str(_REPO_ROOT / "logs" / "audit.jsonl"))
     cors_origins: str = field(default_factory=lambda: os.getenv("MSB_CORS_ORIGINS", "*"))
     request_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_REQUEST_TIMEOUT_S", "60.0")))
     llama_cpp_url: str = field(default_factory=lambda: os.getenv("LLAMA_CPP_URL", "http://127.0.0.1:8080"))

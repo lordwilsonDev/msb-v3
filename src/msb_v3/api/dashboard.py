@@ -32,6 +32,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 
 from msb_v3.core.config import settings
+from msb_v3.observability.audit_log import audit_log_path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["cockpit"])
@@ -376,6 +377,51 @@ async def cockpit_find(q: str = Query("", max_length=200)) -> dict:
     return result
 
 
+def _audit_stream(
+    limit: int, verdict: Optional[str], moie_verdict: Optional[str], intent: Optional[str]
+) -> Dict[str, Any]:
+    """Tail the structured audit stream (logs/audit.jsonl) with optional
+    filters. Read-only and tolerant: a missing file is an empty stream and a
+    corrupt/partial line is skipped — neither may fail the panel."""
+    path = audit_log_path()
+    receipts: List[Dict[str, Any]] = []
+    if path.exists():
+        try:
+            for line in path.read_text(errors="replace").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if verdict and (rec.get("execution_result") or {}).get("verdict") != verdict:
+                    continue
+                if moie_verdict and rec.get("moie_verdict") != moie_verdict:
+                    continue
+                if intent and intent.lower() not in str(rec.get("intent") or "").lower():
+                    continue
+                receipts.append(rec)
+        except OSError:
+            pass
+    return {
+        "total": len(receipts),
+        "path": str(path),
+        "receipts": receipts[-limit:],
+    }
+
+
+@router.get("/cockpit/audit")
+async def cockpit_audit(
+    limit: int = Query(50, ge=1, le=500),
+    verdict: Optional[str] = Query(None),
+    moie_verdict: Optional[str] = Query(None),
+    intent: Optional[str] = Query(None, max_length=200),
+) -> dict:
+    """The evidence stream: last N receipts with optional verdict / MoIE
+    verdict / intent filters. One JSON line per governed run."""
+    return _audit_stream(limit, verdict, moie_verdict, intent)
+
+
 @router.get("/cockpit", response_class=HTMLResponse, include_in_schema=False)
 async def cockpit_page() -> HTMLResponse:
     return HTMLResponse(content=_PAGE)
@@ -454,6 +500,11 @@ button.active{border-color:var(--green);color:var(--green)}
 .fr .src{color:var(--muted);font-family:var(--mono);font-size:.7rem}
 .fr .sc{color:var(--teal);font-family:var(--mono);font-size:.7rem}
 .empty{color:var(--muted);font-size:.82rem;font-style:italic}
+.efilters{display:flex;gap:6px;margin-bottom:8px}
+.efilters select{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);padding:4px 6px;font-size:.72rem;outline:none}
+.efilters select:focus{border-color:var(--teal)}
+.hash{cursor:pointer;border-bottom:1px dotted var(--muted)}
 footer{margin-top:22px;color:var(--muted);font-size:.72rem;text-align:center}
 a{color:var(--teal);text-decoration:none}
 </style>
@@ -491,6 +542,13 @@ a{color:var(--teal);text-decoration:none}
     <div class="card" data-panel="research"><h2>RESEARCH RUNS</h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="memory"><h2>MEMORY</h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
     <div class="card" data-panel="errors"><h2>RECENT ERRORS <span class="pill" data-pill></span></h2><div class="body"><div class="skel"></div><div class="skel"></div></div></div>
+    <div class="card" data-panel="evidence"><h2>EVIDENCE STREAM <span class="pill" data-pill></span></h2>
+      <div class="efilters">
+        <select id="evVerdict"><option value="">all verdicts</option><option>PASS</option><option>BLOCKED</option><option>ERROR</option><option>FAIL</option><option>REVIEW</option></select>
+        <select id="evMoie"><option value="">all moie</option><option>BLOCK</option><option>APPROVE</option><option>CONDITIONAL</option></select>
+      </div>
+      <div class="body"><div class="skel"></div><div class="skel"></div></div>
+    </div>
   </div>
 
   <footer>read-only cockpit · data via /cockpit/api · control actions live on the API/CLI</footer>
@@ -672,6 +730,40 @@ function renderErrors(d){
     '<div class="ev">' + esc(l.slice(-120)) + '</div>').join('');
 }
 
+let evidenceFilter = { verdict: '', moie: '' };
+async function renderEvidence(){
+  const b = bodyFor('evidence'), p = document.querySelector('[data-panel="evidence"] [data-pill]');
+  try {
+    const qs = new URLSearchParams({ limit: '15' });
+    if (evidenceFilter.verdict) qs.set('verdict', evidenceFilter.verdict);
+    if (evidenceFilter.moie) qs.set('moie_verdict', evidenceFilter.moie);
+    const r = await fetch('/cockpit/audit?' + qs.toString());
+    const d = await r.json();
+    pill(p, d.total > 0 ? 'ok' : 'warn', d.total + ' runs');
+    const rs = d.receipts || [];
+    if (!rs.length) { b.innerHTML = '<span class="empty">no receipts yet — run /agent/handle</span>'; return; }
+    b.innerHTML = rs.slice().reverse().map(rec => {
+      const ev = rec.execution_result || {};
+      const v = ev.verdict || '?';
+      const h = rec.audit_hash || '';
+      const short = h.length > 14 ? h.slice(0,14) + '…' : (h || '—');
+      return '<div class="ev"><span class="vchip ' + (v === 'PASS' ? 'pass' : 'fail') + '">' + esc(v) + '</span> ' +
+        '<span class="vchip">' + esc(rec.moie_verdict || 'no-moie') + '</span> ' +
+        '<b>' + esc(rec.request_id || '') + '</b> · ' + esc((typeof rec.intent === 'string' ? rec.intent : (rec.intent && rec.intent.request) || '').slice(0,40) || '—') +
+        ' · <span style="color:var(--muted)">' + (rec.model_calls ?? 0) + ' calls</span>' +
+        (h ? ' · <a href="#" class="hash" title="' + esc(h) + '">' + esc(short) + '</a>' : '') + '</div>';
+    }).join('');
+    b.querySelectorAll('.hash').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault();
+      const full = a.getAttribute('title') || '';
+      if (navigator.clipboard) navigator.clipboard.writeText(full);
+      const t = a.textContent; a.textContent = 'copied'; setTimeout(() => a.textContent = t, 800);
+    }));
+  } catch (e) {
+    b.innerHTML = '<span class="err">✕ ' + esc(e) + '</span>';
+  }
+}
+
 function renderFocus(d){
   const f = $('#focus');
   const errs = d.errors && !d.errors.error ? (d.errors.count || 0) : 0;
@@ -698,6 +790,7 @@ async function load(){
     $('#updated').textContent = 'updated ' + (d.ts ? d.ts.slice(11,19) + 'Z' : '—');
     for (const [name, fn] of Object.entries(RENDERERS)) fn(d[name] || {});
     renderFocus(d);
+    renderEvidence();
   } catch (e) {
     $('#liveDot').className = 'dot bad';
     $('#updated').textContent = 'load failed: ' + e;
@@ -730,6 +823,8 @@ $('#autoBtn').addEventListener('click', () => {
 });
 $('#findBtn').addEventListener('click', find);
 $('#findInput').addEventListener('keydown', e => { if (e.key === 'Enter') find(); });
+$('#evVerdict').addEventListener('change', () => { evidenceFilter.verdict = $('#evVerdict').value; renderEvidence(); });
+$('#evMoie').addEventListener('change', () => { evidenceFilter.moie = $('#evMoie').value; renderEvidence(); });
 let timer = setInterval(load, 15000);
 load();
 </script>
