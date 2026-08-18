@@ -2,8 +2,8 @@
 
 Base path: `/triumvirate`
 
-## Phase 1 — Meta-Cognitive Planner
-- `POST /triumvirate/plan` — decompose goal into 5-stage plan payload
+## Phase 1 — Intent Pass-Through Planner
+- `POST /triumvirate/plan` — intent echo: deterministic pass-through that returns the goal, a signature, and a single "proceed" action. Real planning is delegated to the model-based `agent.planner` (used by `agent/handle.py`); this endpoint is a diagnostic echo, not a planning engine.
 - `GET  /triumvirate/status` — current mission anchor state
 - `POST /triumvirate/status/lock` — lock a new goal scope
 - `GET  /triumvirate/status/verify` — scope hash verification

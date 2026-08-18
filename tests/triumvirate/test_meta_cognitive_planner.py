@@ -1,4 +1,11 @@
-"""Tests for Triumvirate Phase 1 — MetaCognitivePlanner."""
+"""Tests for the MetaCognitivePlanner — now an honest intent pass-through.
+
+The planner no longer fabricates five static "stages": it echoes the goal,
+signs it, and returns a single "proceed" action. Real planning is delegated
+to ``msb_v3.agent.planner`` (the model-based planner used by ``handle()``).
+These tests pin that contract: deterministic, side-effect-free, no fake
+stage machinery, and nothing written to disk.
+"""
 from __future__ import annotations
 
 import json
@@ -29,19 +36,15 @@ def test_goal_signature_changes_with_parameters():
     assert a != b
 
 
-def test_five_stages_produce_output():
+def test_pass_through_single_stage():
+    """The honest contract: one intent-pass-through stage, not five fakes."""
     planner = MetaCognitivePlanner()
     request = PlanRequest(goal="build sovereign cluster", parameters={"mode": "test"})
     plan = planner.plan(request)
-    assert len(plan.stages) == 5
-    names = [s.name for s in plan.stages]
-    assert names == [
-        "goal-recognition",
-        "inversion-critic",
-        "first-principles",
-        "plan-schema",
-        "action-queue",
-    ]
+    assert len(plan.stages) == 1
+    assert plan.stages[0].name == "intent-pass-through"
+    assert plan.stages[0].output["plan"] == ["proceed"]
+    assert plan.stages[0].output["goal"] == request.goal
 
 
 def test_stage_outputs_serializable():
@@ -74,28 +77,23 @@ def test_star_dag_shape():
     assert len(dag["nodes"]) >= 1
 
 
-def test_inversion_stage_flips_assumptions():
-    planner = MetaCognitivePlanner()
-    request = PlanRequest(goal="anything")
-    plan = planner.plan(request)
-    inv = next(s for s in plan.stages if s.name == "inversion-critic")
-    pairs = inv.output.get("inversions", [])
-    assert len(pairs) >= 1
-    for assumption, inversion in pairs:
-        assert assumption != inversion
-
-
-def test_plan_artifacts_written(tmp_path, monkeypatch):
-    import msb_v3.triumvirate.meta_cognitive_planner as planner_mod
-    monkeypatch.setattr(planner_mod, "_RUNTIME_ROOT", tmp_path / "triumvirate")
-    monkeypatch.setattr(planner_mod, "_PLANNER_STATE_FILE", tmp_path / "triumvirate" / "plan_state.json")
+def test_plan_echoes_goal_and_signature():
     planner = MetaCognitivePlanner()
     request = PlanRequest(goal="persist artifacts", parameters={"mode": "test"})
     plan = planner.plan(request)
-    root = tmp_path / "triumvirate" / plan.slug
-    assert (root / "PLAN.json").exists()
-    assert (root / "stages" / "01-goal-recognition.json").exists()
-    assert (root / "stages" / "05-action-queue.json").exists()
-    state = json.loads((tmp_path / "triumvirate" / "plan_state.json").read_text())
-    assert state["status"] == "completed"
-    assert state["slug"] == plan.slug
+    assert plan.goal == request.goal
+    assert plan.signature == _goal_signature(request.goal, request.parameters)
+    assert plan.slug == _slugify(request.goal)
+
+
+def test_pass_through_writes_nothing(tmp_path):
+    """The old planner wrote five JSON stage files + a plan_state.json per
+    call. The pass-through must be side-effect-free: nothing is written to
+    disk at all — the endpoint is a pure echo.
+    """
+    planner = MetaCognitivePlanner()
+    request = PlanRequest(goal="persist artifacts", parameters={"mode": "test"})
+    plan = planner.plan(request)
+    assert plan.stages[0].name == "intent-pass-through"
+    # No artifact dirs, stage files, or state file may be created.
+    assert list(tmp_path.iterdir()) == []
