@@ -281,6 +281,154 @@ def test_audit_concurrent_appends_keep_chain_valid(tmp_path):
     assert verdict["record_count"] == 400
 
 
+def test_audit_hammered_concurrent_appends_never_fork(tmp_path):
+    """8 threads x 150 appends released through a barrier so every thread
+    hits the tail read at the same instant — the exact shape that forks a
+    hash chain when the write lock is taken AFTER reading the tail.
+
+    Extends the phase-2 finding (BEGIN IMMEDIATE before the tail read): a
+    fork leaves two records sharing one prev_hash (two children of one
+    parent). This test asserts the fork signature directly and pins the
+    append contract with five independent checks, so a regression to the
+    read-then-write race is caught even when the collision does not visibly
+    break verify_chain's count:
+
+      1. seq contiguity (exactly 1..N, no gaps, no duplicates)
+      2. no duplicate prev_hash (the fork signature)
+      3. an independent manual chain walk (not trusting verify_chain)
+      4. verify_chain validity + record count
+      5. payload completeness (every (thread, i) landed exactly once)
+    """
+    chain = AuditChain(db_path=str(tmp_path / "audit.db"))
+    threads_n = 8
+    per_thread = 150
+    total = threads_n * per_thread
+    worker_errors: List[BaseException] = []
+
+    def append_all(thread_id: int, errors: List[BaseException]) -> None:
+        try:
+            for i in range(per_thread):
+                _append_with_retry(chain, "chaos", "fork", {"thread": thread_id, "i": i})
+        except BaseException as exc:  # collected for the main thread to assert
+            errors.append(exc)
+
+    def hammer() -> None:
+        barrier = threading.Barrier(threads_n)
+        threads = []
+        for t in range(threads_n):
+            def run(thread_id: int, bar: threading.Barrier) -> None:
+                bar.wait()  # release all threads onto the tail read together
+                append_all(thread_id, worker_errors)
+
+            th = threading.Thread(target=run, args=(t, barrier))
+            threads.append(th)
+            th.start()
+        for th in threads:
+            th.join()
+
+    run_with_deadlock_guard(hammer, timeout=90)
+
+    assert not worker_errors, f"worker threads failed: {worker_errors!r}"
+
+    records = chain.get_chain()
+    assert len(records) == total
+
+    # 1. seq contiguity: exactly 1..N, no gaps, no duplicates.
+    seqs = [r.seq for r in records]
+    assert seqs == list(range(1, total + 1))
+
+    # 2. No fork signature: every prev_hash must be unique. The genesis hash
+    # belongs to record 1 only; two records sharing a prev_hash means the
+    # chain forked (both read the same tail before either committed).
+    prev_hashes = [r.prev_hash for r in records]
+    assert len(prev_hashes) == len(set(prev_hashes)), "duplicate prev_hash — the chain forked"
+
+    # 3. Independent manual walk: each record chains to the previous record's
+    # hash, without trusting verify_chain()'s own recomputation.
+    for prev, cur in zip(records, records[1:]):
+        assert cur.prev_hash == prev.record_hash
+
+    # 4. verify_chain agrees.
+    verdict = chain.verify_chain()
+    assert verdict["valid"] is True
+    assert verdict["record_count"] == total
+
+    # 5. Payload completeness: every (thread, i) landed exactly once — no
+    # lost or duplicated records under contention.
+    seen = {(r.payload["thread"], r.payload["i"]) for r in records}
+    assert seen == {(t, i) for t in range(threads_n) for i in range(per_thread)}
+
+
+def test_audit_verify_under_concurrent_writes_never_observes_fork(tmp_path):
+    """A reader calling verify_chain() while writers hammer appends must
+    never observe a forked or partial chain.
+
+    Each append is a single write transaction (BEGIN IMMEDIATE -> read tail
+    -> insert -> commit), so every snapshot a concurrent reader sees is a
+    consistent prefix: verify_chain must always report valid, and the
+    observed record count must be monotonic (appends only grow the chain).
+    A regression that broke write serialization surfaces here as an invalid
+    verdict, a crash, or a shrink in the observed count.
+    """
+    chain = AuditChain(db_path=str(tmp_path / "audit.db"))
+    stop = threading.Event()
+    writer_errors: List[BaseException] = []
+    reader_errors: List[BaseException] = []
+    seen_counts: List[int] = []
+
+    def writer(thread_id: int, errors: List[BaseException]) -> None:
+        try:
+            i = 0
+            while not stop.is_set():
+                _append_with_retry(chain, "chaos", "tick", {"thread": thread_id, "i": i})
+                i += 1
+        except BaseException as exc:  # collected for the main thread to assert
+            errors.append(exc)
+
+    def reader(errors: List[BaseException], counts: List[int]) -> None:
+        try:
+            while not stop.is_set():
+                # Bounded lock-contention retry, mirroring _append_with_retry:
+                # a saturated box can hold the RESERVED lock past the busy
+                # timeout; that is contention, not a chain defect.
+                verdict = None
+                for attempt in range(5):
+                    try:
+                        verdict = chain.verify_chain()
+                        break
+                    except sqlite3.OperationalError as exc:
+                        if "locked" not in str(exc).lower():
+                            raise
+                        time.sleep(0.05 * (attempt + 1))
+                assert verdict is not None, "verify_chain stayed locked through retries"
+                assert verdict["valid"] is True, f"reader saw invalid chain: {verdict}"
+                counts.append(verdict["record_count"])
+        except BaseException as exc:  # collected for the main thread to assert
+            errors.append(exc)
+
+    def hammer() -> None:
+        threads = [threading.Thread(target=writer, args=(t, writer_errors)) for t in range(4)]
+        reader_thread = threading.Thread(target=reader, args=(reader_errors, seen_counts))
+        threads.append(reader_thread)
+        for th in threads:
+            th.start()
+        time.sleep(2.0)  # let writers and the reader overlap
+        stop.set()
+        for th in threads:
+            th.join(timeout=30)
+
+    run_with_deadlock_guard(hammer, timeout=60)
+
+    assert not writer_errors, f"writer threads failed: {writer_errors!r}"
+    assert not reader_errors, f"reader failed: {reader_errors!r}"
+    assert seen_counts, "reader never observed any chain state"
+    # Appends only grow the chain and every read is a consistent prefix, so
+    # the observed record count is monotonic non-decreasing.
+    assert seen_counts == sorted(seen_counts)
+    # The chain is still valid and complete after the storm.
+    assert chain.verify_chain()["valid"] is True
+
+
 def test_audit_pathological_payloads_stay_consistent(tmp_path):
     """Unicode, control chars, deep nesting, null bytes, and falsy values
     round-trip through append + verify without corrupting the chain."""
