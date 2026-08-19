@@ -17,12 +17,20 @@ set -euo pipefail
 UID_NUM="$(id -u)"
 STATE="${MSB_WATCHDOG_STATE:-$HOME/.backup-watchdog-state}"
 ALERT_LOG="${MSB_WATCHDOG_LOG:-/Users/lordwilson/msb-v3/logs/backup-watchdog.log}"
+# KeepAlive agents (server/qdrant) never exit 0 while healthy, so their
+# alert can't clear on success; re-arm instead after this many seconds so a
+# later crash alerts again (backup agents clear via exit 0 long before).
+REARM_SECONDS="${MSB_WATCHDOG_REARM:-21600}"
 
 # NB: run under macOS /bin/bash 3.2 — no mapfile, no associative arrays.
 AGENTS=(
   "com.lordwilson.msb-backup|DB backup|msb-v3/logs/backup.err"
   "com.lordwilson.msb-vault-backup|msb-v3 code backup|msb-v3/logs/vault-backup.log"
   "com.lordwilson.dsh-vault-backup|deepseek-harness code backup|deepseek-harness/logs/vault-backup.log"
+  "com.lordwilson.db-restore-drill|DB restore drill|msb-v3/logs/db-restore-drill.err"
+  "com.lordwilson.rotate-logs|log rotation|msb-v3/logs/rotate-logs.err"
+  "com.lordwilson.msb-v3|msb-v3 server|msb-v3/logs/gateway.err.log"
+  "com.lordwilson.qdrant|Qdrant|msb-v3/logs/qdrant.log"
 )
 if [ -n "${MSB_WATCHDOG_AGENTS:-}" ]; then
   AGENTS=()
@@ -56,21 +64,29 @@ for entry in "${AGENTS[@]}"; do
   prev="$(grep "^$label|" "$STATE" || true)"
   prev_runs="$(cut -d'|' -f2 <<<"$prev" || true)"
   prev_alerted="$(cut -d'|' -f4 <<<"$prev" || true)"
+  prev_ts="$(cut -d'|' -f5 <<<"$prev" || true)"
   [ -n "${prev_runs:-}" ] || prev_runs=0
   [ -n "${prev_alerted:-}" ] || prev_alerted=0
+  [ -n "${prev_ts:-}" ] || prev_ts=0
 
   # Only act when a NEW run has completed since the last check.
   if [ "$runs" -gt "$prev_runs" ]; then
-    alerted=0
+    alerted="$prev_alerted"
+    ts="$prev_ts"
     if [ "$exitcode" != "0" ]; then
-      alerted=1
-      if [ "$prev_alerted" != "1" ]; then
+      now="$(date +%s)"
+      if [ "$alerted" != "1" ] || [ "$ts" -eq 0 ] || [ "$(( now - ts ))" -gt "$REARM_SECONDS" ]; then
         alert "$label" "$desc" "$exitcode" "$loghint"
+        alerted=1
+        ts="$now"
       fi
+    else
+      alerted=0
+      ts=0
     fi
     # rewrite this agent's state line (drop old, append new)
     grep -v "^$label|" "$STATE" > "$STATE.tmp" || true
-    printf '%s|%s|%s|%s\n' "$label" "$runs" "$exitcode" "$alerted" >> "$STATE.tmp"
+    printf '%s|%s|%s|%s|%s\n' "$label" "$runs" "$exitcode" "$alerted" "$ts" >> "$STATE.tmp"
     mv "$STATE.tmp" "$STATE"
   fi
 done

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.db-restore-drill</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/db-restore-drill.sh</string>
+  </array>
+
+  <!-- Weekly: Sunday 06:30, after the 05:30 dsh vault backup. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>6</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <!-- The script logs to msb-v3/logs/db-restore-drill.log itself; capture
+       stderr separately (the watchdog cites this path on failure). -->
+  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/db-restore-drill.err</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>

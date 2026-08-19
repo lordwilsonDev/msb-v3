@@ -21,7 +21,16 @@ def run() -> None:
     print(f"{prefix} starting host={settings.host} port={settings.port} model={settings.ollama_model}")
     Metrics.set_ready(True)
     try:
-        uvicorn.run("msb_v3.__main__:app", host=settings.host, port=settings.port, reload=settings.reload)
+        # access_log=False: the per-request access log is 99% /metrics poll
+        # noise (trinity-dashboard polls every 60s) and previously ballooned
+        # gateway.out.log unbounded; real events live in the audit stream.
+        uvicorn.run(
+            "msb_v3.__main__:app",
+            host=settings.host,
+            port=settings.port,
+            reload=settings.reload,
+            access_log=False,
+        )
     finally:
         Metrics.set_ready(False)
         print(f"{prefix} stopped")
