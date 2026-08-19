@@ -21,9 +21,9 @@ as a governed run.
 # List jobs
 python -m msb_v3.cron list
 
-# Add a daily backup at 02:00, keeping 14 backups
+# Add a daily backup at 02:00, keeping 7 backups
 python -m msb_v3.cron add --name "Daily Backup" --schedule "0 2 * * *" \
-    --action backup_spine --param keep=14
+    --action backup_spine --param keep=7
 
 # Run it now (governed) — safe to call from launchd/cron
 python -m msb_v3.cron run daily-backup
