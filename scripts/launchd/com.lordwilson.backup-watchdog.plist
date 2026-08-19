@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.backup-watchdog</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/backup-watchdog.sh</string>
+  </array>
+
+  <!-- Every 15 minutes: cheap, idempotent poll of the backup agents. -->
+  <key>StartInterval</key><integer>900</integer>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>60</integer>
+
+  <!-- Alerts are appended to msb-v3/logs/backup-watchdog.log by the script
+       itself (osascript notification + file); stderr is captured below. -->
+  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/backup-watchdog.err</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>
