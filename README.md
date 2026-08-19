@@ -22,6 +22,28 @@ foundation.
 
 ---
 
+## Access & licensing
+
+This repo is **source-available**: the code is public, but it only *runs*
+under a **source license** signed by the owner's key — a bare pull
+(anonymous clone or API tarball) is inert code. To use it:
+
+1. **Fork the repo** and clone your fork.
+2. Run `bash scripts/request-access.sh` to request a license (it opens a
+   license-request issue naming your fork).
+3. The owner runs `make issue-license HOLDER=<you>` and sends you the
+   license; save it at `~/.msb-v3/source-license`.
+4. `bash scripts/verify-license.sh` → `VALID`, then `bash scripts/start.sh`.
+
+Contributions are fork-based: `main` requires signed commits + PRs, every
+pull/checkout leaves an SSH-signed entry in `~/.msb-v3/pull-signatures.log`
+(verify with `make verify-pull-signatures`), and commits must be signed +
+carry the `Signed-off-by` DCO trailer (`bash scripts/install-hooks.sh` sets
+all of this up in one step). See `docs/pull-signature-and-access.md` for
+the full model.
+
+---
+
 ## What it is
 
 The repo's one-liner is *"FastAPI + SQLite + Qwen3/Ollama + Prometheus."* The

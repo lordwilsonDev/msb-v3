@@ -16,8 +16,48 @@ from msb_v3.observability.metrics import Metrics
 app = create_app()
 
 
+def _check_source_license() -> None:
+    """Fail-closed source-license gate.
+
+    Single source of truth is scripts/verify-license.sh, which verifies the
+    license at ~/.msb-v3/source-license against the committed
+    config/license-authorized-keys (owner-signed, SSH signatures). This
+    applies to every start path — run.sh, `make server`, `python -m
+    msb_v3`, and the console script — so a bare pull (anonymous clone or
+    API tarball) is inert code until a license is obtained.
+    """
+    import os
+    import subprocess
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[2]
+    verify = repo / "scripts" / "verify-license.sh"
+    if not verify.is_file():
+        raise SystemExit(
+            "ERROR: source-license gate missing (scripts/verify-license.sh) — "
+            "this code runs only under a license signed by the owner; fork the "
+            "repo and request one: bash scripts/request-access.sh"
+        )
+    proc = subprocess.run(
+        ["bash", str(verify)],
+        capture_output=True,
+        text=True,
+        env=dict(os.environ),
+    )
+    if proc.returncode != 0:
+        detail = (proc.stdout or proc.stderr or "").strip()
+        raise SystemExit(
+            "ERROR: no valid source license — this code runs only under a "
+            "license signed by the owner. Fork the repo and request one: "
+            "bash scripts/request-access.sh"
+            + (("\n" + detail) if detail else "")
+        )
+    print(f"[msb-v3] {proc.stdout.strip()}")
+
+
 def run() -> None:
     prefix = "[msb-v3]"
+    _check_source_license()
     print(f"{prefix} starting host={settings.host} port={settings.port} model={settings.ollama_model}")
     Metrics.set_ready(True)
     try:

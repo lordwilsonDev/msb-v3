@@ -27,6 +27,14 @@ test-ops:
 ops-status:
 	bash scripts/ops-status.sh
 
+# Full ops audit in one command: script regression suite, pull-signature
+# ledger, source license, and live status.
+ops-audit:
+	bash scripts/test-ops.sh
+	bash scripts/verify-pull-signatures.sh
+	bash scripts/verify-license.sh
+	bash scripts/ops-status.sh
+
 # One-time signing + hooks setup for this checkout (signed pull ledger,
 # signed commits, DCO). Run after cloning.
 install-hooks:

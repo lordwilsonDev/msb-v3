@@ -22,6 +22,10 @@ LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/license.sh"
 
 log() { echo "[request-access] $*"; }
 
+# --dry-run prints what would happen without forking or opening an issue.
+DRY=""
+[ "${1:-}" = "--dry-run" ] && { DRY=1; shift; }
+
 # --- current status ----------------------------------------------------------
 set +e
 status="$(license_status)"
@@ -30,12 +34,16 @@ log "license status: $status"
 [ "$status" = "valid" ] && { log "you already have a valid license — nothing to do."; exit 0; }
 
 remote="$(git -C "$REPO" remote get-url origin 2>/dev/null || true)"
-norm="$(printf '%s' "$remote" | sed -E 's#^git@([^:]+):#https://\1/#' | sed -E 's#^https?://##; s#\.git$##')"
+# Normalize any remote spelling to owner/name (strip git@host:, https://,
+# the host itself, and .git).
+norm="$(printf '%s' "$remote" | sed -E 's#^git@[^:]+:##; s#^https?://##; s#^[^/]+/##; s#\.git$##')"
 log "origin: ${remote:-<none>}"
 
 if [ "$norm" = "$CANONICAL" ]; then
   log "this checkout is the canonical repo itself. Fork it first:"
-  if command -v gh >/dev/null 2>&1; then
+  if [ -n "$DRY" ]; then
+    echo "  [dry-run] would run: gh repo fork $CANONICAL --remote=true"
+  elif command -v gh >/dev/null 2>&1; then
     gh repo fork "$CANONICAL" --remote=true 2>&1 | sed 's/^/  /' || true
   else
     echo "  install + auth gh, then: gh repo fork $CANONICAL --remote=true"
@@ -53,7 +61,11 @@ fi
 
 fork_url="https://github.com/$(printf '%s' "$norm" | cut -d/ -f1)/$(printf '%s' "$norm" | cut -d/ -f2)"
 log "requesting a license for '$holder'"
-if command -v gh >/dev/null 2>&1; then
+if [ -n "$DRY" ]; then
+  echo "  [dry-run] would open issue on $CANONICAL:"
+  echo "    title: Source license request: $holder"
+  echo "    body:  fork = $fork_url, requested = $(date +%F)"
+elif command -v gh >/dev/null 2>&1; then
   gh issue create -R "$CANONICAL" \
     --title "Source license request: $holder" \
     --body "Please issue a source license for **$holder**.
