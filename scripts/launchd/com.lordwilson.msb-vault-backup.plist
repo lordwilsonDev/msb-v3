@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.msb-vault-backup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__MSB_REPO__/scripts/vault-backup.sh</string>
+  </array>
+
+  <!-- Weekly: Sunday 04:30, after the 03:00 DB backup (msb-backup). -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>4</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <key>StandardOutPath</key><string>__MSB_REPO__/logs/vault-backup.log</string>
+  <key>StandardErrorPath</key><string>__MSB_REPO__/logs/vault-backup.err</string>
+  <key>WorkingDirectory</key><string>__MSB_REPO__</string>
+</dict>
+</plist>
