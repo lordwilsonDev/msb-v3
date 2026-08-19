@@ -30,6 +30,7 @@ AGENTS=(
   "com.lordwilson.dsh-vault-backup|deepseek-harness code backup|deepseek-harness/logs/vault-backup.log"
   "com.lordwilson.db-restore-drill|DB restore drill|msb-v3/logs/db-restore-drill.err"
   "com.lordwilson.rotate-logs|log rotation|msb-v3/logs/rotate-logs.err"
+  "com.lordwilson.cache-trim|cache trim|msb-v3/logs/cache-trim.err"
   "com.lordwilson.disk-health|disk health check|msb-v3/logs/disk-health.err"
   "com.lordwilson.msb-v3|msb-v3 server|msb-v3/logs/gateway.err.log"
   "com.lordwilson.qdrant|Qdrant|msb-v3/logs/qdrant.log"

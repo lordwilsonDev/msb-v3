@@ -33,6 +33,7 @@ TARGETS=(
   "$REPO/logs/backup-watchdog.log"
   "$REPO/logs/db-restore-drill.log"
   "$REPO/logs/disk-health.log"
+  "$REPO/logs/cache-trim.log"
   "$HOME/deepseek-harness/logs/vault-backup.log"
 )
 
