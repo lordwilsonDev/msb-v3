@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.cache-trim</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/cache-trim.sh</string>
+  </array>
+
+  <!-- Weekly Sunday 06:40 — right before the disk-health check (06:45) so
+       it measures post-trim usage. Clears the regenerable caches that
+       refill the disk ~1G/day. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>6</integer>
+    <key>Minute</key><integer>40</integer>
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/cache-trim.err</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>
