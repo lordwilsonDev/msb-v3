@@ -59,6 +59,25 @@ if [ -z "$(git config --get user.name)" ] || [ -z "$(git config --get user.email
   echo "  git config user.email \"you@example.com\""
 fi
 
+# --- source license ------------------------------------------------------------
+# Only the OWNER's key (the one committed at config/license-authorized-keys)
+# can sign a valid license. On the owner machine this key is the local
+# signing key, so self-issue a license and the server gate keeps working.
+# On any other machine the local key differs -> no license -> the server
+# refuses to start until a license is obtained via request-access.sh.
+AUTH_KEYS="$REPO/config/license-authorized-keys"
+if [ -f "$AUTH_KEYS" ] && grep -qF "$(cut -d' ' -f1,2 "$KEY.pub")" "$AUTH_KEYS"; then
+  owner="$(git config --get user.name 2>/dev/null || echo owner)"
+  if bash "$REPO/scripts/issue-license.sh" "$owner" >/dev/null 2>&1; then
+    echo "[install-hooks] source license issued for '$owner' (owner key)"
+  else
+    echo "[install-hooks] WARNING: could not self-issue source license"
+  fi
+else
+  echo "[install-hooks] NOTE: no source license — the server will not start without one."
+  echo "  Fork the repo and request a license: bash scripts/request-access.sh"
+fi
+
 # --- summary -------------------------------------------------------------------
 echo
 echo "[install-hooks] done. From now on:"

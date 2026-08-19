@@ -36,6 +36,26 @@ export MCP_BRIDGE_SECRET="${MCP_BRIDGE_SECRET:-}"
 
 log() { echo "[msb-v3] $*"; }
 
+# --- source-license gate ------------------------------------------------------
+# The repo is source-available: the server refuses to start without a
+# license signed by the owner's key (scripts/lib/license.sh + docs/
+# pull-signature-and-access.md). An anonymous pull is inert code — to run
+# it you must fork the repo and obtain a license
+# (scripts/request-access.sh).
+# shellcheck source=lib/license.sh
+. "$REPO/scripts/lib/license.sh"
+set +e
+lstatus="$(license_status)"
+lrc=$?
+set -e
+if [ "$lrc" -ne 0 ] || [ "$lstatus" != "valid" ]; then
+  log "ERROR: no valid source license ($lstatus)."
+  log "  This code runs only under a license signed by the owner. Fork the repo"
+  log "  and request one: bash scripts/request-access.sh"
+  exit 1
+fi
+log "source license valid"
+
 log "starting msb-v3 host=$MSB_HOST port=$MSB_PORT model=$OLLAMA_MODEL"
 
 # PM2-style single-process supervisor: restart on non-zero exit.
