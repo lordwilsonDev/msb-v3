@@ -15,6 +15,11 @@ set -euo pipefail
 # (server/qdrant) are always "running", so for them the last completed
 # exit code is exactly the signal and is processed normally.
 #
+# An agent that is NOT loaded at all (plist removed / booted out) is the
+# worst failure mode — its backups silently stop. The watchdog treats a
+# missing agent as a failure episode (alert once, re-arm on the KeepAlive
+# timer) and clears it when the agent is loaded again.
+#
 # Driven every 15 minutes by com.lordwilson.backup-watchdog
 # (template: scripts/launchd/com.lordwilson.backup-watchdog.plist).
 #
@@ -71,7 +76,29 @@ for entry in "${AGENTS[@]}"; do
   desc="${rest%%|*}"
   loghint="${rest#*|}"
 
-  printout="$(launchctl print "gui/$UID_NUM/$label" 2>/dev/null)" || continue
+  # NB: `|| true` — a missing agent makes launchctl exit non-zero, which
+  # would kill the script under `set -e` before the branch below can alert.
+  printout="$(launchctl print "gui/$UID_NUM/$label" 2>/dev/null)" || true
+  if [ -z "$printout" ]; then
+    # Agent not loaded — backups silently stop. Alert once per episode
+    # (re-arm on the timer, like KeepAlive agents); when the agent is
+    # loaded again, the normal path below clears the episode.
+    now="$(date +%s)"
+    prev="$(grep "^$label|" "$STATE" || true)"
+    prev_runs="$(cut -d'|' -f2 <<<"$prev" || true)"
+    prev_alerted="$(cut -d'|' -f4 <<<"$prev" || true)"
+    prev_ts="$(cut -d'|' -f5 <<<"$prev" || true)"
+    [ -n "${prev_runs:-}" ] || prev_runs=""
+    [ -n "${prev_alerted:-}" ] || prev_alerted=0
+    [ -n "${prev_ts:-}" ] || prev_ts=0
+    if [ "$prev_runs" != "-1" ] || [ "$prev_alerted" != "1" ] || [ "$(( now - prev_ts ))" -gt "$REARM_SECONDS" ]; then
+      alert "$label" "$desc" "not loaded" "$loghint"
+      grep -v "^$label|" "$STATE" > "$STATE.tmp" || true
+      printf '%s|%s|%s|%s|%s\n' "$label" "-1" "missing" "1" "$now" >> "$STATE.tmp"
+      mv "$STATE.tmp" "$STATE"
+    fi
+    continue
+  fi
   state="$(sed -n 's/^\tstate = //p' <<<"$printout" | head -1)"
   runs="$(sed -n 's/^\truns = //p' <<<"$printout" | head -1)"
   exitcode="$(sed -n 's/^\tlast exit code = //p' <<<"$printout" | head -1)"

@@ -42,8 +42,12 @@ The watchdog is the primary alerting path for agent failures: any agent's
 completed run with a non-zero exit triggers one macOS notification
 ("Backup failure") + a line in `logs/backup-watchdog.log`. It is idempotent
 per episode — no repeat alerts until the agent's next run succeeds (or, for
-KeepAlive agents, 6h elapse). `disk-health` alerts separately ("Disk usage
-warning") on its own thresholds and trend.
+KeepAlive agents, 6h elapse). It also alerts if an agent is **not loaded at
+all** (plist removed / booted out — the worst failure mode, where backups
+silently stop) and clears when the agent is loaded again. In-flight runs of
+scheduled agents are skipped so a still-running job never false-alerts.
+`disk-health` alerts separately ("Disk usage warning") on its own
+thresholds and trend.
 
 **Out-of-band channels** (`scripts/lib/alert.sh`, fail-soft — a missing
 channel is logged, never fatal): on audit failure the ops-audit also fires

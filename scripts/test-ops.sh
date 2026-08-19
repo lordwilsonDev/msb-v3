@@ -124,6 +124,7 @@ cat > "$TMP/fakebin/launchctl" <<'EOF'
 # stub for: launchctl print gui/UID/LABEL
 n="$(cat "$FAKE_RUNS" 2>/dev/null || echo 0)"
 st="$(cat "$FAKE_STATE" 2>/dev/null || echo waiting)"
+if [ -f "$FAKE_MISSING" ]; then echo "no such service" >&2; exit 1; fi
 echo -e "\tstate = $st"
 echo -e "\truns = $n"
 if [ -f "$FAKE_FAIL" ]; then echo -e "\tlast exit code = 1"; else echo -e "\tlast exit code = 0"; fi
@@ -166,6 +167,28 @@ if [ "$a5" = 2 ] && [ "$a6" = 2 ] && [ "$a7" = 3 ] \
   ok "in-flight skipped (2), completed success cleared (2), same-run exit change alerted (3)"
 else
   bad "in-flight/exit-change handling wrong: $a5,$a6,$a7 state=$(cat "$W")"
+fi
+# missing agent (launchctl print fails) -> alert once per episode; recovery clears
+wd_missing() { # state log
+  : > "$TMP/missing"
+  rc_of env PATH="$TMP/fakebin:$PATH" FAKE_RUNS=0 FAKE_STATE=waiting FAKE_MISSING="$TMP/missing" \
+    MSB_WATCHDOG_STATE="$1" MSB_WATCHDOG_LOG="$2" \
+    MSB_WATCHDOG_AGENTS="com.lordwilson.fake|fake agent|fake.err" \
+    bash "$ROOT/scripts/backup-watchdog.sh"
+}
+wd_missing "$W" "$WLOG" >/dev/null      # agent gone -> alert
+a8=$(grep -c ALERT "$WLOG" || true)
+wd_missing "$W" "$WLOG" >/dev/null      # same episode -> no re-alert
+a9=$(grep -c ALERT "$WLOG" || true)
+rm -f "$TMP/missing"
+wd 6 ok waiting "$W" "$WLOG" >/dev/null   # agent back -> episode clears
+wd 7 fail waiting "$W" "$WLOG" >/dev/null   # (next real failure still alerts)
+a10=$(grep -c ALERT "$WLOG" || true)
+if [ "$a8" = 4 ] && [ "$a9" = 4 ] && [ "$a10" = 5 ] \
+  && [ "$(cut -d'|' -f2,4 "$W")" = "7|1" ]; then
+  ok "missing agent alerts once (4), recovery clears, next failure alerts (5)"
+else
+  bad "missing-agent handling wrong: $a8,$a9,$a10 state=$(cat "$W")"
 fi
 
 # ---------------------------------------------------------------------------
