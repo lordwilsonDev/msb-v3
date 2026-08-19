@@ -23,12 +23,13 @@ set -euo pipefail
 # Overrides (testing): MSB_DISK_WARN_PCT, MSB_DISK_CRIT_PCT,
 # MSB_DISK_HORIZON_DAYS, MSB_DISK_STATE, MSB_DISK_LOG, MSB_DISK_MOUNT.
 
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WARN="${MSB_DISK_WARN_PCT:-85}"
 CRIT="${MSB_DISK_CRIT_PCT:-92}"
 HORIZON="${MSB_DISK_HORIZON_DAYS:-14}"
 MOUNT="${MSB_DISK_MOUNT:-/System/Volumes/Data}"
 STATE="${MSB_DISK_STATE:-$HOME/.disk-health-state}"
-LOG="${MSB_DISK_LOG:-/Users/lordwilson/msb-v3/logs/disk-health.log}"
+LOG="${MSB_DISK_LOG:-$REPO/logs/disk-health.log}"
 KEEP_SAMPLES=16
 
 mkdir -p "$(dirname "$LOG")"
