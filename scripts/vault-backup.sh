@@ -40,17 +40,22 @@ fi
 # build cache (apps/iphone/.build), no Python caches. .git is excluded too:
 # the snapshot records the source commit in its manifest instead (a nested
 # repo inside the vault's own git repo would only be committed as a gitlink).
+#
+# NOTE: the runtime-state excludes are ANCHORED with a leading slash (repo
+# root only). Unanchored 'runtime/' silently swallowed src/msb_v3/runtime/
+# (the agent runtime store module) and broke restored checkouts with
+# ModuleNotFoundError: msb_v3.runtime — caught by the restore test.
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
-  --exclude='storage/' \
-  --exclude='data/' \
-  --exclude='logs/' \
-  --exclude='var/' \
-  --exclude='runtime/' \
-  --exclude='snapshots/' \
-  --exclude='artifacts/' \
-  --exclude='.artifacts/' \
+  --exclude='/storage/' \
+  --exclude='/data/' \
+  --exclude='/logs/' \
+  --exclude='/var/' \
+  --exclude='/runtime/' \
+  --exclude='/snapshots/' \
+  --exclude='/artifacts/' \
+  --exclude='/.artifacts/' \
   --exclude='apps/iphone/.build/' \
   --exclude='__pycache__/' \
   --exclude='.pytest_cache/' \
@@ -77,6 +82,34 @@ HEAD="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
   echo "\`artifacts/\`, \`apps/iphone/.build/\`, Python caches. Exclude list"
   echo "lives in \`scripts/vault-backup.sh\`."
 } > "$DEST/BACKUP-MANIFEST.md"
+
+# Post-backup integrity check: every snapshot must be structurally complete
+# before it is declared good. The critical guard is src/msb_v3/runtime — an
+# unanchored rsync exclude once silently dropped it and the damage only
+# surfaced on restore (ModuleNotFoundError: msb_v3.runtime). A snapshot that
+# fails is deleted on the spot and the run exits non-zero so the failure is
+# loud, never a quiet broken backup.
+REQUIRED_PATHS=(
+  "src/msb_v3/runtime"     # agent runtime store module (regression guard)
+  "src/msb_v3/api/app.py"  # API entrypoint import chain
+  "BACKUP-MANIFEST.md"     # manifest written alongside the snapshot
+)
+
+verify_snapshot() {
+  local rel missing=()
+  for rel in "${REQUIRED_PATHS[@]}"; do
+    [ -e "$DEST/$rel" ] || missing+=("$rel")
+  done
+  if [ "${#missing[@]}" -gt 0 ]; then
+    log "ERROR: snapshot $DEST failed integrity check — missing: ${missing[*]}"
+    rm -rf "$DEST"
+    log "ERROR: removed invalid snapshot $DEST; backup aborted"
+    return 1
+  fi
+  log "integrity OK: ${#REQUIRED_PATHS[@]} required paths present in $DEST"
+}
+
+verify_snapshot || exit 1
 
 log "backup complete: $DEST (code $CODE, HEAD $HEAD, size $(du -sh "$DEST" | cut -f1))"
 
