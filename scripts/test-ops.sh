@@ -195,6 +195,174 @@ MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-li
 [ "$rc" = 2 ] && ok "missing license -> exit 2" || bad "missing license rc=$rc (want 2)"
 
 # ---------------------------------------------------------------------------
+section "alert channels: email captured, telegram skipped when unconfigured"
+mkdir -p "$TMP/fakemail"
+MAIL_CAPTURE="$TMP/mail-capture"
+cat > "$TMP/fakemail/mail" <<'EOF'
+#!/usr/bin/env bash
+echo "subject=$2" >> "$MAIL_CAPTURE"
+cat >> "$MAIL_CAPTURE"
+EOF
+chmod +x "$TMP/fakemail/mail"
+rm -f "$MAIL_CAPTURE"
+# shellcheck source=../scripts/lib/alert.sh
+REPO="$ROOT" MAIL_CAPTURE="$MAIL_CAPTURE" MSB_ALERT_EMAIL=ops@example.com \
+  MSB_ALERT_LOG="$TMP/alert.log" PATH="$TMP/fakemail:$PATH" bash -c '
+    . "$REPO/scripts/lib/alert.sh"
+    notify_all "TEST TITLE" "test body line"
+  '
+[ -f "$MAIL_CAPTURE" ] && grep -q "subject=TEST TITLE" "$MAIL_CAPTURE" \
+  && ok "email channel delivered (fake mail captured subject + body)" \
+  || bad "email not captured: $(cat "$MAIL_CAPTURE" 2>/dev/null)"
+grep -q "telegram skipped (token=unset chat=unset)" "$TMP/alert.log" \
+  && ok "telegram skipped cleanly when unconfigured" || bad "telegram skip not logged"
+rc=$(rc_of env ROOT="$ROOT" MSB_ALERT_LOG="$TMP/alert2.log" bash -c '
+    . "$ROOT/scripts/lib/alert.sh"; notify_all "x" "y"
+  ')
+[ "$rc" = 0 ] && ok "notify_all fail-soft (rc=0 with no channels)" || bad "notify_all rc=$rc"
+
+# ---------------------------------------------------------------------------
+section "trusted signers: second-witness attribution + coverage"
+ssh-keygen -q -t ed25519 -N "" -C msb-signing-key -f "$TMP/lic/friend-key"
+ssh-keygen -q -t ed25519 -N "" -C msb-signing-key -f "$TMP/lic/rogue-key"
+TRUSTED="$TMP/trusted"
+printf 'msb-signing-key %s\n' "$(cut -d' ' -f1,2 "$TMP/lic/owner-key.pub")" > "$TRUSTED"
+printf 'friend %s\n' "$(cut -d' ' -f1,2 "$TMP/lic/friend-key.pub")" >> "$TRUSTED"
+ALLOWED2="$TMP/allowed2"
+cp "$TRUSTED" "$ALLOWED2"
+E1='2026-08-19T00:00:01Z|owner@host|a..b'
+E2='2026-08-19T00:00:02Z|friend@host|b..c'
+E3='2026-08-19T00:00:03Z|rogue@host|c..d'
+sig_of() { printf '%s' "$1" | ssh-keygen -Y sign -f "$2" -n msb-v3-pull 2>/dev/null | base64 | tr -d '\n'; }
+LEDGER2="$TMP/ledger2"
+{
+  printf '%s|SIG:%s\n' "$E1" "$(sig_of "$E1" "$TMP/lic/owner-key")"
+  printf '%s|SIG:%s\n' "$E2" "$(sig_of "$E2" "$TMP/lic/friend-key")"
+  printf '%s|SIG:%s\n' "$E3" "$(sig_of "$E3" "$TMP/lic/rogue-key")"
+} > "$LEDGER2"
+rc=0
+OUT=$(env MSB_PULL_LEDGER="$LEDGER2" MSB_PULL_ALLOWED="$ALLOWED2" \
+  bash "$ROOT/scripts/verify-pull-signatures.sh" 2>&1) || rc=$?
+if [ "${rc:-0}" != 0 ] \
+  && echo "$OUT" | grep -q "signed by msb-signing-key" \
+  && echo "$OUT" | grep -q "signed by friend" \
+  && echo "$OUT" | grep -q "INVALID (no trusted witness)"; then
+  ok "entries attributed per witness; untrusted signer rejected (rc=${rc:-0})"
+else
+  bad "attribution failed: rc=${rc:-0} out=$OUT"
+fi
+LEDGER3="$TMP/ledger3"
+{
+  printf '%s|SIG:%s\n' "$E1" "$(sig_of "$E1" "$TMP/lic/owner-key")"
+  printf '%s|SIG:%s\n' "$E2" "$(sig_of "$E2" "$TMP/lic/friend-key")"
+} > "$LEDGER3"
+OUT=$(env MSB_PULL_LEDGER="$LEDGER3" MSB_PULL_ALLOWED="$ALLOWED2" \
+  bash "$ROOT/scripts/verify-pull-signatures.sh" 2>&1) && rc=0 || rc=$?
+[ "$rc" = 0 ] && echo "$OUT" | grep -q "2 of 2 trusted witness(es)" \
+  && ok "two-witness trail verifies (rc=0, coverage 2/2)" \
+  || bad "two-witness verify rc=$rc out=$OUT"
+env MSB_TRUSTED_KEYS="$TRUSTED" MSB_PULL_ALLOWED="$ALLOWED2" \
+  bash "$ROOT/scripts/add-trusted-signer.sh" "$TMP/lic/rogue-key.pub" rogue >/dev/null
+if grep -q "^rogue " "$TRUSTED" && grep -q "^rogue " "$ALLOWED2"; then
+  ok "add-trusted-signer appended + re-seeded allowed_signers"
+else
+  bad "add-trusted-signer did not append"
+fi
+OUT=$(env MSB_PULL_LEDGER="$LEDGER2" MSB_PULL_ALLOWED="$ALLOWED2" \
+  bash "$ROOT/scripts/verify-pull-signatures.sh" 2>&1) && rc=0 || rc=$?
+[ "$rc" = 0 ] && echo "$OUT" | grep -q "3 of 3 trusted witness(es)" \
+  && ok "added witness now verifies (coverage 3/3)" \
+  || bad "post-add verify rc=$rc out=$OUT"
+
+# ---------------------------------------------------------------------------
+section "ops-audit: failure path alerts via email/telegram wiring, success stays quiet"
+AUD_LOG="$TMP/aud.log"
+AUD_ALERT="$TMP/aud-alert.log"
+printf '2026-08-19T00:00:00Z|tester@host|a..b|SIG:AAAA\n' > "$TMP/aud-ledger-bad"
+printf 'msb-signing-key %s\n' "$(cut -d' ' -f1,2 "$TMP/lic/owner-key.pub")" > "$TMP/aud-allowed"
+rm -f "$MAIL_CAPTURE"
+rc=0
+env MSB_AUDIT_SKIP_SUITE=1 MSB_PULL_LEDGER="$TMP/aud-ledger-bad" MSB_PULL_ALLOWED="$TMP/aud-allowed" \
+  MSB_LICENSE_FILE="$TMP/lic/lic" MSB_LICENSE_AUTHORIZED="$LA" \
+  MSB_ALERT_EMAIL=ops@example.com MSB_ALERT_LOG="$AUD_ALERT" MSB_OPS_AUDIT_LOG="$AUD_LOG" \
+  MAIL_CAPTURE="$MAIL_CAPTURE" PATH="$TMP/fakemail:$PATH" \
+  bash "$ROOT/scripts/ops-audit.sh" >/dev/null 2>&1 || rc=$?
+if [ "$rc" != 0 ] && grep -q "AUDIT-FAIL" "$AUD_LOG" \
+  && [ -f "$MAIL_CAPTURE" ] && grep -q "OPS AUDIT FAILED" "$MAIL_CAPTURE" \
+  && grep -q "email sent" "$AUD_ALERT" && grep -q "telegram skipped" "$AUD_ALERT"; then
+  ok "audit failure -> exit $rc, email fired, telegram skipped cleanly"
+else
+  bad "failure path wrong: rc=$rc capture=$(cat "$MAIL_CAPTURE" 2>/dev/null)"
+fi
+# success path: valid ledger + valid license, no alert sent
+LEDGER_OK="$TMP/aud-ledger-ok"
+printf '%s|SIG:%s\n' "$E1" "$(sig_of "$E1" "$TMP/lic/owner-key")" > "$LEDGER_OK"
+rm -f "$MAIL_CAPTURE" "$AUD_LOG"
+rc=0
+env MSB_AUDIT_SKIP_SUITE=1 MSB_PULL_LEDGER="$LEDGER_OK" MSB_PULL_ALLOWED="$TMP/aud-allowed" \
+  MSB_LICENSE_FILE="$TMP/lic/lic" MSB_LICENSE_AUTHORIZED="$LA" \
+  MSB_ALERT_EMAIL=ops@example.com MSB_ALERT_LOG="$AUD_ALERT" MSB_OPS_AUDIT_LOG="$AUD_LOG" \
+  PATH="$TMP/fakemail:$PATH" bash "$ROOT/scripts/ops-audit.sh" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && grep -q "AUDIT-OK" "$AUD_LOG" && [ ! -f "$MAIL_CAPTURE" ]; then
+  ok "audit success quiet (rc=0, no alert sent)"
+else
+  bad "success path wrong: rc=$rc capture=$(cat "$MAIL_CAPTURE" 2>/dev/null)"
+fi
+
+# ---------------------------------------------------------------------------
+section "publish-audit: report written, dry-run touches no git"
+PUBDIR="$TMP/pub"
+rc=0
+env MSB_AUDIT_DIR="$PUBDIR" MSB_AUDIT_SUMMARY="suite=pass ledger=pass license=valid" \
+  bash "$ROOT/scripts/publish-audit.sh" --dry-run >/dev/null 2>&1 || rc=$?
+REPORT="$PUBDIR/$(date '+%Y-%m-%d')_audit.md"
+if [ "$rc" = 0 ] && [ -f "$REPORT" ] && grep -q "suite=pass" "$REPORT"; then
+  ok "publish --dry-run wrote report (rc=0, no git)"
+else
+  bad "dry-run publish rc=$rc report=$REPORT"
+fi
+
+# ---------------------------------------------------------------------------
+section "heartbeat: off-machine copy on volume, graceful skip without"
+mkdir -p "$TMP/hb-vol"
+rc=0
+env MSB_HEARTBEAT_DIR="$TMP/hb-vol" MSB_HEARTBEAT_LOG="$TMP/hb.log" \
+  bash "$ROOT/scripts/heartbeat.sh" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && [ -f "$TMP/hb-vol/msb-v3/heartbeat.log" ] \
+  && [ -f "$TMP/hb-vol/msb-v3/snapshot-latest.md" ] \
+  && [ -f "$TMP/hb-vol/msb-v3/audit/README.md" ]; then
+  ok "heartbeat recorded liveness + snapshot + audit copy"
+else
+  bad "heartbeat rc=$rc files missing: $(ls "$TMP/hb-vol/msb-v3" 2>/dev/null)"
+fi
+rc=0
+env MSB_HEARTBEAT_LOG="$TMP/hb2.log" bash "$ROOT/scripts/heartbeat.sh" >/dev/null 2>&1 || rc=$?
+[ "$rc" = 0 ] && grep -q "no heartbeat volume" "$TMP/hb2.log" \
+  && ok "heartbeat skips cleanly without volume (rc=0)" \
+  || bad "heartbeat no-volume rc=$rc log=$(cat "$TMP/hb2.log" 2>/dev/null)"
+
+# ---------------------------------------------------------------------------
+section "replicate: local mirror, graceful skip, loud unreachable"
+mkdir -p "$TMP/rep-dst"
+rc=0
+env MSB_REPLICATION_TARGET="$TMP/rep-dst" MSB_REPLICATION_LOG="$TMP/rep.log" \
+  bash "$ROOT/scripts/replicate-to-secondary.sh" >/dev/null 2>&1 || rc=$?
+[ "$rc" = 0 ] && [ -f "$TMP/rep-dst/README.md" ] \
+  && ok "replicated to local target (README.md mirrored)" \
+  || bad "local replicate rc=$rc"
+rc=0
+env MSB_REPLICATION_LOG="$TMP/rep2.log" bash "$ROOT/scripts/replicate-to-secondary.sh" >/dev/null 2>&1 || rc=$?
+[ "$rc" = 0 ] && grep -q "no replication target" "$TMP/rep2.log" \
+  && ok "replicate skips cleanly without target (rc=0)" \
+  || bad "replicate no-target rc=$rc"
+rc=0
+env MSB_REPLICATION_TARGET="nobody@127.0.0.1:/tmp/rep-nowhere" MSB_REPLICATION_LOG="$TMP/rep3.log" \
+  bash "$ROOT/scripts/replicate-to-secondary.sh" >/dev/null 2>&1 || rc=$?
+[ "$rc" != 0 ] && grep -q "FAIL" "$TMP/rep3.log" \
+  && ok "unreachable secondary is loud (rc=$rc)" \
+  || bad "unreachable replicate rc=$rc log=$(cat "$TMP/rep3.log" 2>/dev/null)"
+
+# ---------------------------------------------------------------------------
 echo
 echo "=== result: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1

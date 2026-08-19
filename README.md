@@ -39,8 +39,19 @@ Contributions are fork-based: `main` requires signed commits + PRs, every
 pull/checkout leaves an SSH-signed entry in `~/.msb-v3/pull-signatures.log`
 (verify with `make verify-pull-signatures`), and commits must be signed +
 carry the `Signed-off-by` DCO trailer (`bash scripts/install-hooks.sh` sets
-all of this up in one step). See `docs/pull-signature-and-access.md` for
-the full model.
+all of this up in one step). The trail is **two-witness**: add a second
+signer with `make add-trusted-signer ARGS="<pubkey-file> <label>"` — every
+audit attributes each entry to the witness who signed it.
+See `docs/pull-signature-and-access.md` for the full model.
+
+**Ops resilience** (`docs/ops-runbook.md`): the weekly self-audit
+(`make ops-audit`) runs the regression suite + signature ledger + license,
+alerts on failure via the watchdog plus optional email/Telegram
+(`MSB_ALERT_EMAIL`, `MSB_TELEGRAM_BOT_TOKEN`/`MSB_TELEGRAM_CHAT_ID`), and
+publishes a dated audit report to `audit/` on origin (self-publishing
+evidence). A daily heartbeat mirrors the trail to an external volume
+(`MSB_HEARTBEAT_DIR`) and a Sunday replication job mirrors the repo to a
+secondary node (`MSB_REPLICATION_TARGET`) — no single point of failure.
 
 ---
 

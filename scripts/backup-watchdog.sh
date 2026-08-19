@@ -33,6 +33,8 @@ AGENTS=(
   "com.lordwilson.cache-trim|cache trim|msb-v3/logs/cache-trim.err"
   "com.lordwilson.disk-health|disk health check|msb-v3/logs/disk-health.err"
   "com.lordwilson.ops-audit|ops audit|msb-v3/logs/ops-audit.err"
+  "com.lordwilson.heartbeat|heartbeat (off-machine copy)|msb-v3/logs/heartbeat.err"
+  "com.lordwilson.replicate|secondary replication|msb-v3/logs/replicate.err"
   "com.lordwilson.msb-v3|msb-v3 server|msb-v3/logs/gateway.err.log"
   "com.lordwilson.qdrant|Qdrant|msb-v3/logs/qdrant.log"
 )

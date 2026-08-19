@@ -1,4 +1,4 @@
-.PHONY: test test-ops ops-status install-hooks verify-pull-signatures lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -29,14 +29,35 @@ ops-status:
 
 # Full ops audit in one command: script regression suite, pull-signature
 # ledger, source license, and live status. Non-zero exit on any failure
-# (the weekly agent com.lordwilson.ops-audit alerts via the watchdog).
+# (the weekly agent com.lordwilson.ops-audit alerts via the watchdog, plus
+# email/Telegram when configured). With MSB_PUBLISH_AUDIT=1 the dated
+# report is committed + pushed to origin (self-publishing evidence).
 ops-audit:
 	bash scripts/ops-audit.sh
+
+# Write today's audit report to audit/ and (with MSB_PUBLISH_AUDIT=1)
+# commit + push it. --dry-run writes the report without touching git.
+#   make publish-audit ARGS=--dry-run
+publish-audit:
+	bash scripts/publish-audit.sh $(ARGS)
+
+# Heartbeat + off-machine copy of the ops trail (needs MSB_HEARTBEAT_DIR).
+heartbeat:
+	bash scripts/heartbeat.sh
+
+# Mirror the repo to a secondary node (needs MSB_REPLICATION_TARGET).
+replicate:
+	bash scripts/replicate-to-secondary.sh
 
 # One-time signing + hooks setup for this checkout (signed pull ledger,
 # signed commits, DCO). Run after cloning.
 install-hooks:
 	bash scripts/install-hooks.sh
+
+# Add a second witness to the pull-signature trust.
+#   make add-trusted-signer ARGS="~/Downloads/friend.pub friend"
+add-trusted-signer:
+	bash scripts/add-trusted-signer.sh $(ARGS)
 
 # Verify every signed entry in the pull ledger.
 verify-pull-signatures:
