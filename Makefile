@@ -2,6 +2,8 @@
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
+HOLDER ?= $(shell git config user.name 2>/dev/null)
+SCOPE ?= full
 
 export VIRTUAL_ENV :=
 export PATH := /opt/homebrew/Caskroom/miniforge/base/bin:$(PATH)
@@ -33,6 +35,15 @@ install-hooks:
 # Verify every signed entry in the pull ledger.
 verify-pull-signatures:
 	bash scripts/verify-pull-signatures.sh
+
+# Source-license status (the server gate refuses to start without a valid
+# license signed by the owner's key).
+license-status:
+	bash scripts/verify-license.sh
+
+# Owner tool: issue a source license. make issue-license HOLDER=jane SCOPE=demo
+issue-license:
+	bash scripts/issue-license.sh "$(HOLDER)" "$(SCOPE)"
 
 # MoIE detection policy drift gate — the same gate CI's lint job runs
 # (scripts/ci-policy-gate.sh). Validates config/risk_templates.json with the

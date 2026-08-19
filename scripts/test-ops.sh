@@ -168,6 +168,32 @@ rl >/dev/null
 [ -f "$f" ] && [ "$(stat -f%z "$f")" -lt 1048576 ] && ok "live file capped" || bad "live file not capped"
 
 # ---------------------------------------------------------------------------
+section "license: issue, verify, tamper, wrong-key, missing"
+mkdir -p "$TMP/lic"
+ssh-keygen -q -t ed25519 -N "" -C msb-signing-key -f "$TMP/lic/owner-key"
+printf 'msb-signing-key %s\n' "$(cut -d' ' -f1,2 "$TMP/lic/owner-key.pub")" > "$TMP/lic/authorized"
+LK="$TMP/lic/owner-key" LA="$TMP/lic/authorized"
+# issue + verify with the authorized key
+MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" MSB_LICENSE_FILE="$TMP/lic/lic" \
+  bash "$ROOT/scripts/issue-license.sh" tester >/dev/null 2>&1
+[ -f "$TMP/lic/lic" ] && ok "license issued" || bad "issue-license failed"
+MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/lic" >/dev/null 2>&1 \
+  && ok "license verifies (rc=0)" || bad "valid license rejected"
+# tampered license must be rejected
+sed 's/|SIG:/|SIG:AAAA/' "$TMP/lic/lic" > "$TMP/lic/tampered"
+MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/tampered" >/dev/null 2>&1 \
+  && bad "tampered license accepted" || ok "tampered license rejected"
+# a license self-issued with a DIFFERENT key must be rejected (no self-issue)
+ssh-keygen -q -t ed25519 -N "" -C msb-signing-key -f "$TMP/lic/other-key"
+MSB_LICENSE_KEY="$TMP/lic/other-key" MSB_LICENSE_AUTHORIZED="$LA" \
+  MSB_LICENSE_FILE="$TMP/lic/fake" bash "$ROOT/scripts/issue-license.sh" attacker >/dev/null 2>&1
+MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/fake" >/dev/null 2>&1 \
+  && bad "wrong-key license accepted" || ok "wrong-key (self-issued) license rejected"
+# missing license -> exit 2
+MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/none" >/dev/null 2>&1; rc=$?
+[ "$rc" = 2 ] && ok "missing license -> exit 2" || bad "missing license rc=$rc (want 2)"
+
+# ---------------------------------------------------------------------------
 echo
 echo "=== result: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1

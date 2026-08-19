@@ -86,6 +86,11 @@ if [ -f "$VAULT/Backups/.backup-index" ]; then
 fi
 
 echo
+echo "LICENSE:"
+"$REPO/scripts/verify-license.sh" 2>&1 | sed 's/^/  /' || true
+
+
+echo
 echo "LOGS (last line):"
 for f in disk-health backup-watchdog cache-trim rotate-logs db-restore-drill vault-backup; do
   logf="$REPO/logs/$f.log"

@@ -73,3 +73,47 @@ too (anonymous API/clone access), the only lever is making the repo
 collaborators. That flip is a one-command change (`gh repo edit
 --visibility private`) but affects every current reader and any public
 integrations — deliberate before doing it.
+
+## 3. The source-license gate: anonymous pulls are inert
+
+Because GitHub cannot block anonymous pulls on a public repo, the repo is
+**source-available**: the code is public, but the server refuses to start
+without a **source license** — a single signed line:
+
+```
+holder=<name>|granted=<YYYY-MM-DD>|scope=<full|demo>|repo=lordwilsonDev/msb-v3|SIG:<base64 ssh signature>
+```
+
+signed by the owner's key (the public half is committed at
+`config/license-authorized-keys`) over the namespace
+`msb-v3-source-license`. Verification reuses the same machinery as the
+pull ledger (`ssh-keygen -Y verify`, stdin message — the macOS quirk).
+
+- `scripts/run.sh` (the launchd supervisor) **refuses to start the server
+  without a valid license** — an anonymous clone or API tarball is inert
+  code.
+- The owner's machine self-issues a license during
+  `scripts/install-hooks.sh` (only when the local key matches the
+  committed authorized key — nobody else can self-issue).
+- Everyone else follows the intended path: **fork the repo → request a
+  license → the owner signs one for you.**
+
+### The flow
+
+```bash
+# contributor (after forking + cloning their fork)
+bash scripts/request-access.sh          # opens a license-request issue, names your fork
+
+# owner (after the request lands)
+make issue-license HOLDER=jane          # or: bash scripts/issue-license.sh jane
+# send ~/.msb-v3/source-license (or the printed file) back to jane
+
+# contributor (after saving the license at ~/.msb-v3/source-license)
+bash scripts/verify-license.sh          # -> VALID holder=jane scope=full ...
+bash scripts/start.sh                   # server starts
+```
+
+`make license-status` / `bash scripts/verify-license.sh` report validity;
+`ops-status` includes it. Tampered, wrong-key, or missing licenses are
+rejected (exit 1/2). `issue-license.sh` accepts `full` (default) or
+`demo` scope for a restricted tier if you ever want one.
