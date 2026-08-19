@@ -22,7 +22,9 @@
   <key>KeepAlive</key><false/>
   <key>ThrottleInterval</key><integer>600</integer>
 
-  <key>StandardOutPath</key><string>__MSB_REPO__/logs/vault-backup.log</string>
+  <!-- No StandardOutPath: the script's log() already appends to the log
+       file (tee -a), so redirecting stdout here too would duplicate every
+       line in vault-backup.log. Raw stderr is still captured below. -->
   <key>StandardErrorPath</key><string>__MSB_REPO__/logs/vault-backup.err</string>
   <key>WorkingDirectory</key><string>__MSB_REPO__</string>
 </dict>
