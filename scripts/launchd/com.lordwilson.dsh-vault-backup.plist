@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.dsh-vault-backup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/vault-backup.sh</string>
+  </array>
+
+  <!-- Weekly: Sunday 05:30, after the 03:00 DB backup and the 04:30
+       msb-v3 vault backup (each runs ~2 min incl. restore verification). -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>5</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MSB_BACKUP_SRC</key><string>/Users/lordwilson/deepseek-harness</string>
+    <key>MSB_BACKUP_LABEL</key><string>dsh</string>
+    <key>MSB_BACKUP_KEEP</key><string>4</string>
+    <!-- Restore verify: install deps + run the unit suite in the extracted
+         copy (excludes env-sensitive files; see vault-verify-dsh.sh). -->
+    <key>MSB_BACKUP_VERIFY_CMD</key><string>/Users/lordwilson/msb-v3/scripts/vault-verify-dsh.sh</string>
+    <key>MSB_BACKUP_INTEGRITY_PATHS</key><string>package.json pnpm-lock.yaml vitest.config.ts packages</string>
+    <key>MSB_BACKUP_LOG</key><string>/Users/lordwilson/deepseek-harness/logs/vault-backup.log</string>
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <!-- No StandardOutPath: the script's log() already appends to the log
+       file (tee -a); raw stderr is captured separately. -->
+  <key>StandardErrorPath</key><string>/Users/lordwilson/deepseek-harness/logs/vault-backup.err</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>
