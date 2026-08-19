@@ -9,12 +9,13 @@ set -euo pipefail
 # live file in place; older copies shift up. Keeps SIZE_CAP of history per
 # file, drops the rest. Driven daily (06:00) by com.lordwilson.rotate-logs.
 #
-# Overrides: MSB_ROTATE_CAP (bytes, default 5M), MSB_ROTATE_KEEP (copies, 3)
+# Overrides: MSB_ROTATE_CAP (bytes, default 5M), MSB_ROTATE_KEEP (copies, 3),
+#            MSB_ROTATE_TARGETS (newline-separated paths, for testing)
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CAP="${MSB_ROTATE_CAP:-$((5 * 1024 * 1024))}"
 KEEP="${MSB_ROTATE_KEEP:-3}"
-LOG="$REPO/logs/rotate-logs.log"
+LOG="${MSB_ROTATE_LOG:-$REPO/logs/rotate-logs.log}"
 mkdir -p "$(dirname "$LOG")"
 log() { echo "[rotate-logs] $(date '+%F %T') $*" | tee -a "$LOG"; }
 
@@ -36,6 +37,13 @@ TARGETS=(
   "$REPO/logs/cache-trim.log"
   "$HOME/deepseek-harness/logs/vault-backup.log"
 )
+if [ -n "${MSB_ROTATE_TARGETS:-}" ]; then
+  TARGETS=()
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    TARGETS+=("$line")
+  done <<<"$MSB_ROTATE_TARGETS"
+fi
 
 rotated=0
 for f in "${TARGETS[@]}"; do
