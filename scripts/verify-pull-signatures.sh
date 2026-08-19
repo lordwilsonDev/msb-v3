@@ -18,7 +18,7 @@ ALLOWED="${MSB_PULL_ALLOWED:-$HOME/.msb-v3/allowed_signers}"
 IDENTITY="msb-signing-key"
 NAMESPACE="msb-v3-pull"
 
-[ -f "$LEDGER" ] || { echo "no ledger at $LEDGER"; exit 1; }
+[ -f "$LEDGER" ] || { echo "no pull ledger yet at $LEDGER — no pulls/checkouts recorded on this machine (not an error; the first pull seeds it)"; exit 0; }
 [ -f "$ALLOWED" ] || { echo "no allowed_signers at $ALLOWED — run scripts/install-hooks.sh"; exit 1; }
 
 tmp="$(mktemp -d /tmp/pull-sig-verify-XXXXXX)"

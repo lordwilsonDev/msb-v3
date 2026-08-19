@@ -189,8 +189,9 @@ MSB_LICENSE_KEY="$TMP/lic/other-key" MSB_LICENSE_AUTHORIZED="$LA" \
   MSB_LICENSE_FILE="$TMP/lic/fake" bash "$ROOT/scripts/issue-license.sh" attacker >/dev/null 2>&1
 MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/fake" >/dev/null 2>&1 \
   && bad "wrong-key license accepted" || ok "wrong-key (self-issued) license rejected"
-# missing license -> exit 2
-MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/none" >/dev/null 2>&1; rc=$?
+# missing license -> exit 2 (guard the failing call: set -e would kill us)
+rc=0
+MSB_LICENSE_KEY="$LK" MSB_LICENSE_AUTHORIZED="$LA" bash "$ROOT/scripts/verify-license.sh" "$TMP/lic/none" >/dev/null 2>&1 || rc=$?
 [ "$rc" = 2 ] && ok "missing license -> exit 2" || bad "missing license rc=$rc (want 2)"
 
 # ---------------------------------------------------------------------------
