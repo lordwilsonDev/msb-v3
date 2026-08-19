@@ -125,7 +125,11 @@ def test_calibration_path_resolves_to_repo_config() -> None:
 def test_calibration_loads_yaml_values() -> None:
     assert CALIBRATED_YAML.is_file()
     cal = load_moie_calibration()
-    assert cal.source == str(CALIBRATED_YAML)
+    # Canonical comparison: cal.source derives from settings.msb_home (the
+    # env as given, possibly via the /tmp symlink), CALIBRATED_YAML from
+    # Path(__file__).resolve(). Resolving both sides keeps this green from a
+    # foreign checkout path (macOS /tmp -> /private/tmp).
+    assert Path(cal.source).resolve() == CALIBRATED_YAML
     assert cal.contradiction_penalty == 0.15
     assert cal.confidence_min == 0.1
     assert cal.confidence_max == 1.0
