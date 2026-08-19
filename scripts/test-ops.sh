@@ -123,6 +123,8 @@ cat > "$TMP/fakebin/launchctl" <<'EOF'
 #!/usr/bin/env bash
 # stub for: launchctl print gui/UID/LABEL
 n="$(cat "$FAKE_RUNS" 2>/dev/null || echo 0)"
+st="$(cat "$FAKE_STATE" 2>/dev/null || echo waiting)"
+echo -e "\tstate = $st"
 echo -e "\truns = $n"
 if [ -f "$FAKE_FAIL" ]; then echo -e "\tlast exit code = 1"; else echo -e "\tlast exit code = 0"; fi
 EOF
@@ -130,25 +132,41 @@ chmod +x "$TMP/fakebin/launchctl"
 wd() { # runs fail-file state log -> exit code
   echo "$1" > "$TMP/runs"
   if [ "$2" = fail ]; then : > "$TMP/fail"; else rm -f "$TMP/fail"; fi
+  echo "${3:-waiting}" > "$TMP/fstate"
   rc_of env PATH="$TMP/fakebin:$PATH" FAKE_RUNS="$TMP/runs" FAKE_FAIL="$TMP/fail" \
-    MSB_WATCHDOG_STATE="$3" MSB_WATCHDOG_LOG="$4" \
+    FAKE_STATE="$TMP/fstate" MSB_WATCHDOG_STATE="$4" MSB_WATCHDOG_LOG="$5" \
     MSB_WATCHDOG_AGENTS="com.lordwilson.fake|fake agent|fake.err" \
     bash "$ROOT/scripts/backup-watchdog.sh"
 }
 W="$TMP/wd-state"
 WLOG="$TMP/wd.log"
-wd 1 fail "$W" "$WLOG" >/dev/null     # new failed run -> alert
+wd 1 fail waiting "$W" "$WLOG" >/dev/null     # new failed run -> alert
 a1=$(grep -c ALERT "$WLOG" || true)
-wd 1 fail "$W" "$WLOG" >/dev/null     # same run, no new -> no alert
+wd 1 fail waiting "$W" "$WLOG" >/dev/null     # same run, no new -> no alert
 a2=$(grep -c ALERT "$WLOG" || true)
-wd 2 fail "$W" "$WLOG" >/dev/null     # new failed run, already alerted -> no alert
+wd 2 fail waiting "$W" "$WLOG" >/dev/null     # new failed run, already alerted -> no alert
 a3=$(grep -c ALERT "$WLOG" || true)
-wd 3 ok "$W" "$WLOG" >/dev/null       # success -> episode clears
-wd 4 fail "$W" "$WLOG" >/dev/null     # new failure after recovery -> alert again
+wd 3 ok waiting "$W" "$WLOG" >/dev/null       # success -> episode clears
+wd 4 fail waiting "$W" "$WLOG" >/dev/null     # new failure after recovery -> alert again
 a4=$(grep -c ALERT "$WLOG" || true)
 [ "$a1" = 1 ] && [ "$a2" = 1 ] && [ "$a3" = 1 ] && [ "$a4" = 2 ] \
   && ok "alert state machine correct (1,1,1,2)" \
   || bad "alert counts wrong: $a1,$a2,$a3,$a4"
+# in-flight scheduled run (state=running, stale prev exit) must NOT alert
+wd 5 fail running "$W" "$WLOG" >/dev/null
+a5=$(grep -c ALERT "$WLOG" || true)
+# completed success for the same run count clears any stale alert
+wd 5 ok waiting "$W" "$WLOG" >/dev/null
+a6=$(grep -c ALERT "$WLOG" || true)
+# exit-code change on the SAME run count (0 -> 1) is a real event -> alert
+wd 5 fail waiting "$W" "$WLOG" >/dev/null
+a7=$(grep -c ALERT "$WLOG" || true)
+if [ "$a5" = 2 ] && [ "$a6" = 2 ] && [ "$a7" = 3 ] \
+  && [ "$(cut -d'|' -f3,4 "$W")" = "1|1" ]; then
+  ok "in-flight skipped (2), completed success cleared (2), same-run exit change alerted (3)"
+else
+  bad "in-flight/exit-change handling wrong: $a5,$a6,$a7 state=$(cat "$W")"
+fi
 
 # ---------------------------------------------------------------------------
 section "rotate-logs: cap + shift with scratch targets"
