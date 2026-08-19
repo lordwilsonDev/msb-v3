@@ -1,32 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Weekly snapshot of the msb-v3 code into Wilson's Obsidian vault:
-#   ~/Documents/Vault/Backups/msb-v3-<CODE>/
+# Weekly snapshot of a repo into Wilson's Obsidian vault:
+#   ~/Documents/Vault/Backups/<LABEL>-<CODE>/
 # Each run generates a FRESH backup code (11 uppercase alphanumerics, same
 # shape as the manual fasfa-HEA71PXTGSX3 backup), copies the working tree
 # (runtime state, secrets, and caches excluded; git history recorded in the
 # manifest instead), writes a BACKUP-MANIFEST.md, verifies the snapshot is
-# structurally complete AND restorable (full test suite from an extracted
-# copy), then prunes old snapshots past MSB_BACKUP_KEEP.
+# structurally complete AND restorable (verify command run from an extracted
+# copy), then prunes this label's old snapshots past MSB_BACKUP_KEEP.
 #
-# Driven weekly by the LaunchAgent com.lordwilson.msb-vault-backup
-# (template: scripts/launchd/com.lordwilson.msb-vault-backup.plist).
+# Driven weekly by LaunchAgents (templates in scripts/launchd/):
+#   com.lordwilson.msb-vault-backup      -> msb-v3 (defaults below)
+#   com.lordwilson.dsh-vault-backup      -> deepseek-harness (overrides)
 #
-# Overrides: MSB_VAULT, MSB_BACKUP_LABEL, MSB_BACKUP_KEEP,
+# Overrides: MSB_BACKUP_SRC, MSB_VAULT, MSB_BACKUP_LABEL, MSB_BACKUP_KEEP,
 #            MSB_BACKUP_VERIFY (0 disables restore verification),
-#            MSB_PYTHON (interpreter for the restore-verify test run)
+#            MSB_BACKUP_VERIFY_CMD (verify command run in the extracted
+#              copy; default: pytest), MSB_BACKUP_INTEGRITY_PATHS
+#              (space-separated required paths), MSB_PYTHON, MSB_BACKUP_LOG
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC="${MSB_BACKUP_SRC:-$REPO}"
 VAULT="${MSB_VAULT:-$HOME/Documents/Vault}"
 BACKUPS_DIR="$VAULT/Backups"
 LABEL="${MSB_BACKUP_LABEL:-msb-v3}"
 KEEP="${MSB_BACKUP_KEEP:-8}"
 VERIFY="${MSB_BACKUP_VERIFY:-1}"
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
-LOG="$REPO/logs/vault-backup.log"
+VERIFY_CMD="${MSB_BACKUP_VERIFY_CMD:-$PY -m pytest -q tests/}"
+LOG="${MSB_BACKUP_LOG:-$REPO/logs/vault-backup.log}"
 
-mkdir -p "$BACKUPS_DIR" "$REPO/logs"
+mkdir -p "$BACKUPS_DIR" "$(dirname "$LOG")"
 
 log() { echo "[vault-backup] $(date '+%F %T') $*" | tee -a "$LOG"; }
 
@@ -70,15 +75,16 @@ rsync -a \
   --exclude='.coverage' \
   --exclude='.venv/' \
   --exclude='*.pyc' \
-  "$REPO/" "$DEST/"
+  --exclude='/node_modules/' \
+  "$SRC/" "$DEST/"
 
-HEAD="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+HEAD="$(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 {
   echo "# Code Backup — $LABEL · $CODE"
   echo
   echo "- **Backup code:** $CODE"
   echo "- **Label:** $LABEL"
-  echo "- **Source:** $REPO"
+  echo "- **Source:** $SRC"
   echo "- **Backed up:** $(date '+%Y-%m-%d')"
   echo "- **Source git HEAD:** \`$HEAD\`"
   echo
@@ -94,12 +100,11 @@ HEAD="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 # unanchored rsync exclude once silently dropped it and the damage only
 # surfaced on restore (ModuleNotFoundError: msb_v3.runtime). A snapshot that
 # fails is deleted on the spot and the run exits non-zero so the failure is
-# loud, never a quiet broken backup.
-REQUIRED_PATHS=(
-  "src/msb_v3/runtime"     # agent runtime store module (regression guard)
-  "src/msb_v3/api/app.py"  # API entrypoint import chain
-  "BACKUP-MANIFEST.md"     # manifest written alongside the snapshot
-)
+# loud, never a quiet broken backup. Required paths come from
+# MSB_BACKUP_INTEGRITY_PATHS (space-separated, repo-relative); the manifest
+# is always required.
+read -ra REQUIRED_PATHS <<< "${MSB_BACKUP_INTEGRITY_PATHS:-src/msb_v3/runtime src/msb_v3/api/app.py}"
+REQUIRED_PATHS+=("BACKUP-MANIFEST.md")
 
 verify_snapshot() {
   local rel missing=()
@@ -125,21 +130,22 @@ verify_snapshot || exit 1
 # Skip with MSB_BACKUP_VERIFY=0 (e.g. a quick manual snapshot).
 verify_restore() {
   local tmp out rc
-  tmp="$(mktemp -d /tmp/msb-v3-restore-XXXXXX)" || {
+  tmp="$(mktemp -d /tmp/vault-restore-XXXXXX)" || {
     log "ERROR: restore check: could not create temp dir"; return 1; }
-  out="$tmp/pytest.out"
+  out="$tmp/verify.out"
   cp -a "$DEST/." "$tmp/" 2>/dev/null || {
     log "ERROR: restore check: could not extract $DEST"; rm -rf "$tmp"; return 1; }
   # launchd runs with a minimal PATH (/usr/bin:/bin:...), so subprocesses
   # that resolve `python3` (the fake-secenclave tool's shebang, the CLI
   # receipt roundtrip) would hit the system Python and miss cryptography /
-  # msb_ledger. Prepend the interpreter's own bin dir so the verify run
-  # sees the same environment the suite is meant to run in.
-  if (cd "$tmp" && MSB_HOME="$tmp" PATH="$(dirname "$PY"):$PATH" "$PY" -m pytest -q tests/ >"$out" 2>&1); then
+  # msb_ledger. Prepend the interpreter's own bin dir so the default pytest
+  # run sees the same environment the suite is meant to run in (custom
+  # MSB_BACKUP_VERIFY_CMD scripts set their own PATH, e.g. pnpm/node).
+  if (cd "$tmp" && MSB_HOME="$tmp" PATH="$(dirname "$PY"):$PATH" bash -c "$VERIFY_CMD" >"$out" 2>&1); then
     rc=0
   else
     rc=1
-    log "ERROR: restore check FAILED for $DEST — test suite not green from restored copy; tail:"
+    log "ERROR: restore check FAILED for $DEST — verify command not green from restored copy; tail:"
     tail -6 "$out" | while IFS= read -r l; do log "  $l"; done
   fi
   rm -rf "$tmp"
@@ -173,26 +179,44 @@ INDEX="$BACKUPS_DIR/.backup-index"
 
 prune_retention() {
   [ -f "$INDEX" ] || : > "$INDEX"
-  local -a entries=()
-  local line path i total
+  local -a all=() mine=() prune_list=()
+  local line path p i n
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     path="${line%%|*}"
     [ -d "$path" ] || continue   # drop stale entries for deleted snapshots
-    entries+=("$line")
+    all+=("$line")
+    # Per-label retention: the index is shared across labels (msb-v3, dsh,
+    # fasfa), so only entries for THIS label are eligible for pruning — but
+    # other labels' entries must be preserved in the rewritten index.
+    [[ "$path" == */"$LABEL-"* ]] && mine+=("$line")
   done < "$INDEX"
-  entries+=("$DEST|$(date '+%F %T')")
-  total=${#entries[@]}
-  for ((i = 0; i < total - KEEP; i++)); do
-    old="${entries[$i]%%|*}"
-    log "pruning $old"
-    rm -rf "$old" || log "WARN: could not prune $old"
+  all+=("$DEST|$(date '+%F %T')")
+  mine+=("$DEST|$(date '+%F %T')")
+  n=${#mine[@]}
+  for ((i = 0; i < n - KEEP; i++)); do
+    prune_list+=("${mine[$i]%%|*}")
   done
-  if [ "$total" -gt "$KEEP" ]; then
-    printf '%s\n' "${entries[@]:$((total - KEEP))}" > "$INDEX.tmp"
-  else
-    printf '%s\n' "${entries[@]}" > "$INDEX.tmp"
+  # Guard the empty-array case: under macOS /bin/bash (3.2) + set -u,
+  # expanding ${arr[@]} on an empty array is 'unbound variable' — a crash
+  # after 'backup complete' that orphaned the snapshot from the index.
+  if (( ${#prune_list[@]} )); then
+    for p in "${prune_list[@]}"; do
+      log "pruning $p"
+      rm -rf "$p" || log "WARN: could not prune $p"
+    done
   fi
+  : > "$INDEX.tmp"
+  for line in "${all[@]}"; do
+    path="${line%%|*}"
+    [ -d "$path" ] || continue
+    if (( ${#prune_list[@]} )); then
+      for p in "${prune_list[@]}"; do
+        [ "$path" = "$p" ] && continue 2
+      done
+    fi
+    printf '%s\n' "$line" >> "$INDEX.tmp"
+  done
   mv "$INDEX.tmp" "$INDEX"
 }
 
