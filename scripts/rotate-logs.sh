@@ -11,26 +11,29 @@ set -euo pipefail
 #
 # Overrides: MSB_ROTATE_CAP (bytes, default 5M), MSB_ROTATE_KEEP (copies, 3)
 
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CAP="${MSB_ROTATE_CAP:-$((5 * 1024 * 1024))}"
 KEEP="${MSB_ROTATE_KEEP:-3}"
-LOG="/Users/lordwilson/msb-v3/logs/rotate-logs.log"
+LOG="$REPO/logs/rotate-logs.log"
 mkdir -p "$(dirname "$LOG")"
 log() { echo "[rotate-logs] $(date '+%F %T') $*" | tee -a "$LOG"; }
 
 # Long-lived logs across the agents (vault-backup logs are tiny; include
-# them anyway so they never become a problem).
+# them anyway so they never become a problem). Repo-relative paths keep
+# this portable; the dsh log lives in a sibling repo under $HOME.
 TARGETS=(
-  /Users/lordwilson/msb-v3/logs/gateway.out.log
-  /Users/lordwilson/msb-v3/logs/gateway.err.log
-  /Users/lordwilson/msb-v3/logs/qdrant.log
-  /Users/lordwilson/msb-v3/logs/qdrant-launchd.out.log
-  /Users/lordwilson/msb-v3/logs/audit.jsonl
-  /Users/lordwilson/msb-v3/logs/backup.log
-  /Users/lordwilson/msb-v3/logs/backup.err
-  /Users/lordwilson/msb-v3/logs/vault-backup.log
-  /Users/lordwilson/msb-v3/logs/backup-watchdog.log
-  /Users/lordwilson/msb-v3/logs/db-restore-drill.log
-  /Users/lordwilson/deepseek-harness/logs/vault-backup.log
+  "$REPO/logs/gateway.out.log"
+  "$REPO/logs/gateway.err.log"
+  "$REPO/logs/qdrant.log"
+  "$REPO/logs/qdrant-launchd.out.log"
+  "$REPO/logs/audit.jsonl"
+  "$REPO/logs/backup.log"
+  "$REPO/logs/backup.err"
+  "$REPO/logs/vault-backup.log"
+  "$REPO/logs/backup-watchdog.log"
+  "$REPO/logs/db-restore-drill.log"
+  "$REPO/logs/disk-health.log"
+  "$HOME/deepseek-harness/logs/vault-backup.log"
 )
 
 rotated=0

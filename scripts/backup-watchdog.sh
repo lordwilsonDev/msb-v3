@@ -14,9 +14,10 @@ set -euo pipefail
 # Overrides (testing): MSB_WATCHDOG_STATE, MSB_WATCHDOG_LOG,
 # MSB_WATCHDOG_AGENTS (newline-separated "label|description|log-hint").
 
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UID_NUM="$(id -u)"
 STATE="${MSB_WATCHDOG_STATE:-$HOME/.backup-watchdog-state}"
-ALERT_LOG="${MSB_WATCHDOG_LOG:-/Users/lordwilson/msb-v3/logs/backup-watchdog.log}"
+ALERT_LOG="${MSB_WATCHDOG_LOG:-$REPO/logs/backup-watchdog.log}"
 # KeepAlive agents (server/qdrant) never exit 0 while healthy, so their
 # alert can't clear on success; re-arm instead after this many seconds so a
 # later crash alerts again (backup agents clear via exit 0 long before).
