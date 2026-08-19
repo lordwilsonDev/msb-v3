@@ -6,6 +6,29 @@ Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https:/
 ## [Unreleased]
 
 ### Added
+- **Cron scheduler — the heartbeat** (`src/msb_v3/cron/`, `api/cron.py`,
+  `tests/cron/`): scheduled governed jobs turn the reactive runtime
+  proactive. Durable job definitions + run history in
+  `data/runtime/cron.db` (derived projection; the audit chain stays the
+  record), a hand-rolled 5-field cron parser (`* */15 0 2 …`, Vixie
+  dom/dow OR semantics; validated at the boundary so a bad schedule can
+  never be stored), six built-in actions (`health_check`,
+  `audit_chain_verify`, `backup_spine`, `metric_export`, `log_rotation`,
+  `http_call` — localhost-only by default via the fail-closed
+  `MSB_CRON_HTTP_HOSTS` allowlist), an in-process asyncio loop started by
+  the FastAPI lifespan when `MSB_CRON_ENABLED=1` (default), an
+  operator-gated `/cron` REST surface (`/cron/jobs` CRUD, `…/run`,
+  `…/history`, `/cron/status`), and a CLI
+  (`python -m msb_v3.cron list|add|remove|run|history`). Every execution
+  is governed like a run: kill-switch fail-closed (BLOCKED, never silent),
+  overlap guard, bounded retries + async timeout, `requires_approval` jobs
+  parked for operator-triggered runs only, one evidence receipt per run on
+  `logs/audit.jsonl` (`basis: "rerun"`) plus a `cron.<status>` UAC
+  chain record (best-effort mirror), in-flight runs recovered as
+  INTERRUPTED on restart, history pruned to `MSB_CRON_HISTORY_KEEP`.
+  Tests: 57 cases (parser semantics, store lifecycle, scheduler
+  governance/retries/timeout/kill-switch/overlap, all six actions,
+  API auth + CRUD + run).
 - **External chain-tip anchor closes the T7 gap**
   (`src/msb_v3/uac/chain_anchor.py`, `tests/uac/test_chain_anchor.py`): a
   hash chain proves non-modification of the records you still have, not that

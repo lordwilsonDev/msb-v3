@@ -42,9 +42,13 @@ and a **memory** (Hippocampus) — the *Triumvirate*. No actor writes durable
 state directly. Three verdicts come out of the ActionGate: `SAFE` / `REVIEW` /
 `BLOCK` (plus `FAIL`).
 
-> **New here?** Start with [docs/QUICKSTART.md](docs/QUICKSTART.md) — the
-> canonical governed path, the three verdict cases, and the full gate battery.
-> The release contract and honest limitations live in
+> **New here?** Start with [docs/canonical-journey.md](docs/canonical-journey.md) —
+> the five stages (request → authorization → execution → verification →
+> evidence), what each leaves behind, and how to inspect it. Then run the
+> five-minute demo, `python scripts/demo_governed_loop.py`, which blocks a
+> dangerous action, allows a safe one, and prints a verifiable receipt for
+> both. [docs/QUICKSTART.md](docs/QUICKSTART.md) has the full gate battery,
+> and the release contract + honest limitations live in
 > [docs/releases/MSB-v3-RELEASE.md](docs/releases/MSB-v3-RELEASE.md).
 
 ## The safety model, stated honestly
@@ -62,11 +66,36 @@ state directly. Three verdicts come out of the ActionGate: `SAFE` / `REVIEW` /
 - **Every run leaves an evidence receipt** — request → intent → MoIE verdict →
   authorization decision → capability → result → verification → timestamps →
   model calls → audit hash — one JSON line per cycle in `logs/audit.jsonl`.
+- **The receipt is honest about how it verified**: a `verification` section
+  distinguishes what was **directly rerun** (grounded checks against ground
+  truth + the hash recomputed from the trace — `basis: "rerun"`) from what
+  was **inferred from logs** (state/decision-trail reconstruction via the
+  replay engine, always labeled `inferred-from-logs`). A denial says
+  `decision-only` — nothing was rerun, the DENY vertebra is the evidence.
 - **Governance brakes**: kill switch, budget caps, owner-approval queue.
   Fail-closed everywhere.
 
 The property that matters: *MoIE can fail without becoming a safety failure* —
 the authorization layer still catches what the pre-filter misses.
+
+## The heartbeat (cron)
+
+MSB is reactive by default; the cron scheduler makes it proactive. Durable
+jobs + run history in SQLite, a 5-field cron parser, six built-in actions
+(`health_check`, `audit_chain_verify`, `backup_spine`, `metric_export`,
+`log_rotation`, `http_call`), an in-process async loop, a `/cron` REST API,
+and a CLI. Every execution is governed like a run: kill switch, retries,
+timeout, overlap guard, evidence receipt + audit-chain record. `http_call`
+is localhost-only by default (fail-closed allowlist).
+
+```bash
+python -m msb_v3.cron list
+python -m msb_v3.cron add --name "Daily Backup" --schedule "0 2 * * *" --action backup_spine
+python -m msb_v3.cron run daily-backup
+python -m msb_v3.cron history daily-backup
+```
+
+See [docs/cron-scheduler.md](docs/cron-scheduler.md).
 
 ## Observability
 
@@ -80,6 +109,13 @@ the authorization layer still catches what the pre-filter misses.
 
 ```bash
 bash scripts/start.sh
+```
+
+Five-minute demo (no model, no network, no vault — canned tool outputs):
+
+```bash
+python scripts/demo_governed_loop.py          # blocks a dangerous action, allows a safe one
+python scripts/demo_governed_loop.py --persist  # …and append the receipts to the live Evidence Stream
 ```
 
 ## Test
@@ -109,6 +145,7 @@ path) before every push, blocking on failure. Bypass explicitly with
 - `/metrics/` — JSON metrics summary
 - `/metrics/prometheus` — Prometheus scrape
 - `/system/health` — deep health check
+- `/cron/jobs` — scheduled governed jobs (operator-gated; see [docs/cron-scheduler.md](docs/cron-scheduler.md))
 - `/system/config` — runtime config, secrets masked
 - `/system/routes` — live route registry
 - `/status` — service/version/model/ready

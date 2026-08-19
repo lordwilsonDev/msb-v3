@@ -27,3 +27,15 @@ def _isolate_default_spine(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     provider/container constructing DecisionEvidenceStore() with no explicit
     path never touches data/evidence/decision_spine.db during tests."""
     monkeypatch.setattr(settings, "decision_spine_db_path", str(tmp_path / "evidence" / "decision_spine.db"))
+
+
+@pytest.fixture(autouse=True)
+def _disable_cron_scheduler(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never spawn the cron heartbeat loop during tests: the FastAPI lifespan
+    starts it when settings.cron_enabled, and an unattended background loop
+    could fire real jobs (backups, exports) against the live deployment.
+    Tests that exercise the scheduler drive it explicitly. Also points the
+    default cron DB at the per-test scratch dir so any CronStore() without an
+    explicit path never touches data/runtime/cron.db."""
+    monkeypatch.setattr(settings, "cron_enabled", False)
+    monkeypatch.setattr(settings, "cron_db_path", str(tmp_path / "cron.db"))
