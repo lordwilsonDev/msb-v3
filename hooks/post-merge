@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# post-merge — record a signed entry for every merge pull (git pull with a
+# merge; rebase pulls fire post-checkout instead). Best-effort: never fails
+# the pull.
+set -u
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/signature.sh
+. "$HOOK_DIR/lib/signature.sh"
+prev="$(git rev-parse HEAD@{1} 2>/dev/null || echo init)"
+cur="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+record_pull "$prev" "$cur"
+exit 0

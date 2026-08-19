@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# pre-push — delegate to the repo's push gate (scripts/hooks/pre-push:
+# lint + policy + portability). Machines that activate the committed hooks/
+# pack via core.hooksPath (scripts/install-hooks.sh) need the gate here
+# too — git ignores .git/hooks/ once hooksPath is set, so without this the
+# push gate would silently stop running.
+set -euo pipefail
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+GATE="$REPO/scripts/hooks/pre-push"
+if [ ! -x "$GATE" ]; then
+  echo "ERROR: push gate missing: $GATE — run: make hooks-install" >&2
+  exit 1
+fi
+exec env MSB_REPO="$REPO" bash "$GATE" "$@"

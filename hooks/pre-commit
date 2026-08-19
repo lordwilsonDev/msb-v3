@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# pre-commit — this repo requires cryptographically signed commits.
+# Refuses to commit unless signing is configured (set up by
+# scripts/install-hooks.sh, which generates an SSH signing key and sets
+# commit.gpgsign + user.signingkey). GitHub additionally enforces valid
+# signatures on main via branch protection.
+set -u
+fail() {
+  echo "ERROR: unsigned commits are not allowed in this repo." >&2
+  echo "  Run:  bash scripts/install-hooks.sh   (one-time setup)" >&2
+  echo "  Then: git commit -S                    (or rely on commit.gpgsign)" >&2
+  exit 1
+}
+[ "$(git config --get commit.gpgsign)" = "true" ] || fail
+[ -n "$(git config --get user.signingkey)" ] || fail
+exit 0
