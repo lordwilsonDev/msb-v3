@@ -21,11 +21,26 @@ the decision vertebra's content hash.
 
 The receipt is a pure composition function: it never writes anything itself.
 Callers decide where to persist it (JSONL audit log, API response, ...).
+
+Evidence language: every report distinguishes what was DIRECTLY RERUN from
+what was INFERRED FROM LOGS. The ``verification`` section carries both
+honestly:
+
+- ``basis: "rerun"`` — grounded verification checks executed against ground
+  truth (file exists, search returned hits, synthesis non-empty) and a
+  deterministic hash recomputed from the recorded trace. These claims are
+  re-derivable: a verifier can re-execute the checks and recompute the hash.
+- ``basis: "decision-only"`` — denied before execution; nothing was rerun
+  and the DENY decision vertebra is the evidence.
+- ``log_inference`` — always present but explicitly labeled: state
+  derivation, transition legality, projection consistency, and the decision
+  trail are reconstructed from the event log (the replay engine's job, at
+  /agent/tasks/{run_id}/replay), never claimed as re-execution.
 '''
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from msb_v3.evidence.spine import DecisionEvidenceStore
 
@@ -48,6 +63,50 @@ def _moie_verdict(trace: Dict[str, Any]) -> Optional[str]:
         if verdict:
             return str(verdict)
     return None
+
+
+def _grounded_checks(trace: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The per-task grounded verification receipts recorded on the trace.
+
+    Each one is a deterministic check against ground truth (search returned
+    hits, synthesis non-empty, file written) — the claims that were directly
+    rerun at execution time and can be re-executed by a verifier.
+    """
+    checks: List[Dict[str, Any]] = []
+    for entry in trace.get("execution") or []:
+        if not isinstance(entry, dict):
+            continue
+        verification = entry.get("verification")
+        if isinstance(verification, dict) and verification.get("kind") == "grounded":
+            checks.append(
+                {
+                    "task_id": entry.get("task_id"),
+                    "check": verification.get("check"),
+                    "verdict": verification.get("verdict"),
+                    "trust": verification.get("trust"),
+                }
+            )
+    return checks
+
+
+def _hash_recomputed(trace: Dict[str, Any], recorded: str) -> Optional[bool]:
+    """Recompute the deterministic hash from the recorded trace and say
+    whether it matches the recorded hash.
+
+    The hash is a pure function of the trace (request/intent/plan/execution/
+    verdict), so recomputing it is itself a rerun — a verifier can do the
+    same from the stored trace. Returns None when there is no recorded hash
+    to check (a denial or an error before execution) or the recompute cannot
+    run.
+    """
+    if not recorded:
+        return None
+    try:
+        from msb_v3.agent.trace import compute_deterministic_hash
+
+        return compute_deterministic_hash(trace) == recorded
+    except Exception:  # noqa: BLE001 — provenance must never break the receipt
+        return None
 
 
 def build_evidence_receipt(
@@ -124,6 +183,47 @@ def build_evidence_receipt(
     )
     allowed_desc = authorization_decision or ("DENY" if denied else "not recorded")
 
+    # Evidence language: what was directly rerun vs what was inferred from
+    # logs (see the module docstring). Executed runs (PASS/FAIL) carry the
+    # grounded checks executed against ground truth plus the hash recomputed
+    # from the recorded trace (basis="rerun"); a quick-reject denial has
+    # nothing to rerun (basis="decision-only" — the DENY vertebra is the
+    # evidence); an error before execution has neither. The log-inference
+    # surface is always labeled separately: state derivation and the decision
+    # trail are reconstructed in the replay engine from the event log — never
+    # claimed here as re-execution.
+    executed = verdict in ("PASS", "FAIL")
+    if executed:
+        basis = "rerun"
+        grounded_checks = _grounded_checks(trace)
+        hash_recomputed = _hash_recomputed(trace, deterministic_hash)
+        note = (
+            "grounded checks were executed against ground truth and the deterministic hash "
+            "recomputes from the recorded trace — these claims are rerun, not inferred"
+        )
+    elif denied:
+        basis = "decision-only"
+        grounded_checks = []
+        hash_recomputed = None
+        note = "denied before execution — no grounded checks to rerun; the DENY decision vertebra is the evidence"
+    else:
+        basis = "none"
+        grounded_checks = []
+        hash_recomputed = None
+        note = "no execution occurred — nothing to rerun or infer"
+
+    verification_section: Dict[str, Any] = {
+        "basis": basis,
+        "hash_recomputed": hash_recomputed,
+        "grounded_checks": grounded_checks,
+        "note": note,
+        "log_inference": {
+            "basis": "inferred-from-logs",
+            "covers": ["derived state", "transition legality", "projection consistency", "decision trail"],
+            "where": f"/agent/tasks/{run_id}/replay",
+        },
+    }
+
     receipt: Dict[str, Any] = {
         "request_id": run_id,
         "intent": intent,
@@ -134,6 +234,8 @@ def build_evidence_receipt(
         "capability_granted": capability_granted,
         "execution_result": {"ok": verdict == "PASS", "verdict": verdict, "error": error},
         "verification_result": deterministic_hash or None,
+        # What was directly rerun vs inferred from logs (see module docstring).
+        "verification": verification_section,
         "timestamps": timestamps,
         "model_calls": model_calls,
         "audit_hash": audit_hash,
@@ -141,7 +243,8 @@ def build_evidence_receipt(
         "reconstruction": (
             f"request={run_id} requested={requested_desc} "
             f"allowed={allowed_desc} happened={verdict} "
-            f"why={why_allowed} succeeded={verdict == 'PASS'}"
+            f"why={why_allowed} succeeded={verdict == 'PASS'} "
+            f"verified={basis}"
         ),
     }
     return receipt

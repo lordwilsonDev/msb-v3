@@ -77,6 +77,14 @@ async def test_receipt_for_denied_request_is_reconstructable(tmp_path: Path) -> 
     assert receipt["timestamps"]["decision"] == decision.evidence.timestamp
     assert "why=MoIE quick-reject BLOCK" in receipt["reconstruction"]
     assert "succeeded=False" in receipt["reconstruction"]
+    # Evidence language: denied runs are decision-only — nothing was rerun,
+    # and the report says so rather than implying a re-execution.
+    assert receipt["verification"]["basis"] == "decision-only"
+    assert receipt["verification"]["hash_recomputed"] is None
+    assert receipt["verification"]["grounded_checks"] == []
+    assert receipt["verification"]["log_inference"]["basis"] == "inferred-from-logs"
+    assert receipt["verification"]["log_inference"]["where"] == f"/agent/tasks/{result.run_id}/replay"
+    assert "verified=decision-only" in receipt["reconstruction"]
 
 
 @pytest.mark.asyncio
@@ -123,6 +131,19 @@ async def test_receipt_for_executed_request_is_reconstructable(tmp_path: Path) -
     assert receipt["timestamps"]["verification"] == trail[2].evidence.timestamp
     assert "happened=PASS" in receipt["reconstruction"]
     assert "succeeded=True" in receipt["reconstruction"]
+    # Evidence language: executed runs are rerun — the grounded checks were
+    # executed against ground truth and the hash recomputes from the trace.
+    assert receipt["verification"]["basis"] == "rerun"
+    assert receipt["verification"]["hash_recomputed"] is True
+    checks = receipt["verification"]["grounded_checks"]
+    assert {c["check"] for c in checks} == {
+        "search_returned_hits",
+        "synthesis_nonempty",
+        "file_written_with_heading",
+    }
+    assert all(c["trust"] == "high" for c in checks)
+    assert all(c["verdict"] == "pass" for c in checks)
+    assert "verified=rerun" in receipt["reconstruction"]
 
 
 @pytest.mark.asyncio
@@ -153,3 +174,4 @@ async def test_receipt_without_spine_falls_back_honestly(tmp_path: Path) -> None
     assert receipt["model_calls"] == 0
     assert receipt["audit_hash"] is None  # no spine record to link
     assert receipt["timestamps"]["decision"] is None
+    assert receipt["verification"]["basis"] == "decision-only"  # denied: nothing to rerun

@@ -749,6 +749,7 @@ async function renderEvidence(){
       const short = h.length > 14 ? h.slice(0,14) + '…' : (h || '—');
       return '<div class="ev"><span class="vchip ' + (v === 'PASS' ? 'pass' : 'fail') + '">' + esc(v) + '</span> ' +
         '<span class="vchip">' + esc(rec.moie_verdict || 'no-moie') + '</span> ' +
+        (rec.verification && rec.verification.basis ? '<span class="vchip">' + esc(rec.verification.basis) + '</span> ' : '') +
         '<b>' + esc(rec.request_id || '') + '</b> · ' + esc((typeof rec.intent === 'string' ? rec.intent : (rec.intent && rec.intent.request) || '').slice(0,40) || '—') +
         ' · <span style="color:var(--muted)">' + (rec.model_calls ?? 0) + ' calls</span>' +
         (h ? ' · <a href="#" class="hash" title="' + esc(h) + '">' + esc(short) + '</a>' : '') + '</div>';

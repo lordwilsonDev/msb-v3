@@ -75,6 +75,13 @@ _CONSOLE_HTML = """<!doctype html>
   #status { margin-top:10px; font-size:0.85rem; }
   .metrics-strip { display:flex; gap:8px; flex-wrap:wrap; align-items:center;
                    margin:0 0 12px; font-size:0.82rem; }
+  .journey { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:10px; }
+  .jstep { background:#0b0d12; border:1px solid #1e2430; border-radius:8px; padding:8px 10px;
+           font-size:0.78rem; line-height:1.5; }
+  .jstep b.stage { display:block; color:#8b95a5; font-size:0.66rem; letter-spacing:.08em; margin-bottom:4px; }
+  .jstep .jv { color:#e6e8eb; word-break:break-word; }
+  .jstep code { font-size:0.72rem; word-break:break-all; }
+  .jok { color:#4ade80; } .jbad { color:#f87171; } .jwarn { color:#fbbf24; }
   .chip { background:#0b0d12; border:1px solid #1e2430; border-radius:999px;
           padding:3px 10px; display:inline-flex; gap:6px; align-items:center; }
   .chip b { font-variant-numeric:tabular-nums; }
@@ -112,6 +119,12 @@ _CONSOLE_HTML = """<!doctype html>
 <div class="card" id="result-card" hidden>
   <h2 style="margin:0 0 10px;font-size:1rem;">Run result</h2>
   <div id="result"></div>
+</div>
+
+<div class="card" id="journey-card" hidden>
+  <h2 style="margin:0 0 4px;font-size:1rem;">Canonical journey</h2>
+  <p class="muted" style="margin:0;">request → authorization → execution → verification → evidence. <code>verified=rerun</code> means the checks were executed against ground truth (and the hash recomputes); log-derived reconstruction lives on the replay card below.</p>
+  <div class="journey" id="journey"></div>
 </div>
 
 <div class="card" id="replay-card" hidden>
@@ -235,6 +248,45 @@ function renderRun(payload) {
   $("result").innerHTML = html + `<pre>${fmt(payload.trace || {})}</pre>`;
 }
 
+function renderJourney(p, req) {
+  // The canonical five stages, rendered from the /agent/handle payload alone
+  // (no extra endpoints): request -> authorization -> execution -> verification
+  // -> evidence. "verified=rerun" on the receipt means the checks were executed
+  // against ground truth; the replay card is the inferred-from-logs half.
+  const trace = p.trace || {};
+  const intent = trace.intent || {};
+  const moie = (trace.moie && trace.moie.verdict) || (trace.inversion && trace.inversion.verdict) || "—";
+  const v = p.verdict || "ERROR";
+  let decision = "—", dcls = "jv";
+  if (v === "BLOCKED") { decision = "DENY · before execution"; dcls = "jbad"; }
+  else if (v === "PASS" || v === "FAIL") { decision = "ALLOW"; dcls = "jok"; }
+  else if (v === "REVIEW") { decision = "REVIEW · approval required"; dcls = "jwarn"; }
+  else if (v === "ERROR") { decision = "no decision · error"; dcls = "jwarn"; }
+  const tasks = Array.isArray(trace.tasks) ? trace.tasks : [];
+  const exec = Array.isArray(trace.execution) ? trace.execution : [];
+  const execLine = tasks.length
+    ? tasks.map(t => t.task_id || "?").join(" → ")
+    : (v === "BLOCKED" ? "none — denied at the gate" : "—");
+  const execOk = exec.filter(e => e.ok).length + "/" + exec.length;
+  const checks = exec.map(e => {
+    const vf = e.verification || {};
+    const ok = vf.verdict === "pass";
+    return "<span class=\"" + (ok ? "jok" : "jbad") + "\">" + esc(vf.check || "?") + ":" + esc(vf.verdict || "?") + "</span>";
+  }).join(" · ") || (v === "BLOCKED" ? "<span class=\"jv\">decision-only — nothing rerun</span>" : "<span class=\"jv\">—</span>");
+  const hash = p.deterministic_hash || "—";
+  const evLine = "<span class=\"muted\">run_id</span> <code>" + esc(p.run_id || "") + "</code><br>" +
+    "<span class=\"muted\">hash</span> <code>" + esc(hash) + "</code><br>" +
+    "<a href=\"/cockpit/audit\" target=\"_blank\" rel=\"noopener\">evidence stream ↗</a>";
+  const step = (label, body) => "<div class=\"jstep\"><b class=\"stage\">" + label + "</b>" + body + "</div>";
+  $("journey-card").hidden = false;
+  $("journey").innerHTML =
+    step("1 · REQUEST", "<span class=\"jv\">" + esc((req || "").slice(0, 60) || "—") + "</span>") +
+    step("2 · AUTHORIZATION", "<span class=\"jv\">MoIE <b>" + esc(moie) + "</b></span><br><span class=\"" + dcls + "\">" + esc(decision) + "</span>") +
+    step("3 · EXECUTION", "<span class=\"jv\">" + esc(execLine) + "</span>" + (exec.length ? "<br><span class=\"muted\">" + execOk + " tasks verified</span>" : "")) +
+    step("4 · VERIFICATION", "<span class=\"jv\">" + checks + "</span>") +
+    step("5 · EVIDENCE", "<span class=\"jv\">" + evLine + "</span>");
+}
+
 function renderReplay(data) {
   $("replay-card").hidden = false;
   let html = "";
@@ -295,6 +347,7 @@ $("run").onclick = async () => {
       }),
     });
     renderRun(payload);
+    renderJourney(payload, req);
     $("status").textContent = "";
     if (payload.run_id) {
       try { renderReplay(await api("/agent/tasks/" + encodeURIComponent(payload.run_id) + "/replay")); }
