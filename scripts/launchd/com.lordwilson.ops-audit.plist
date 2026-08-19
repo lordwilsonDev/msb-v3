@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.ops-audit</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/ops-audit.sh</string>
+  </array>
+
+  <!-- Weekly Sunday 06:50 — the last step of the Sunday cascade (after
+       disk-health 06:45). Full ops self-audit; a non-zero exit alerts via
+       the backup watchdog. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>6</integer>
+    <key>Minute</key><integer>50</integer>
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/ops-audit.err</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>
