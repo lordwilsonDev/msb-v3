@@ -89,6 +89,35 @@ echo
 echo "LICENSE:"
 "$REPO/scripts/verify-license.sh" 2>&1 | sed 's/^/  /' || true
 
+echo
+echo "ALERTS & PUBLISH:"
+aud_plist="$HOME/Library/LaunchAgents/com.lordwilson.ops-audit.plist"
+if [ -f "$aud_plist" ]; then
+  aenv="$(plutil -p "$aud_plist" 2>/dev/null)"
+  email=off telegram=off publish=off
+  if echo "$aenv" | grep -q '"MSB_ALERT_EMAIL"'; then
+    email="on ($(echo "$aenv" | sed -n 's/.*"MSB_ALERT_EMAIL" => "\([^"]*\)".*/\1/p'))"
+  fi
+  if echo "$aenv" | grep -q '"MSB_TELEGRAM_BOT_TOKEN"' && echo "$aenv" | grep -q '"MSB_TELEGRAM_CHAT_ID"'; then
+    telegram=on
+  fi
+  if echo "$aenv" | grep -q '"MSB_PUBLISH_AUDIT" => "1"'; then
+    publish=on
+  fi
+  echo "  ops-audit agent: email=$email telegram=$telegram publish=$publish (weekly report -> origin)"
+fi
+if [ -f "$HOME/Library/LaunchAgents/com.lordwilson.heartbeat.plist" ] \
+  && plutil -p "$HOME/Library/LaunchAgents/com.lordwilson.heartbeat.plist" 2>/dev/null | grep -q '"MSB_HEARTBEAT_DIR"'; then
+  echo "  heartbeat volume: configured (off-machine copy active)"
+else
+  echo "  heartbeat volume: unset (off-machine copy inactive)"
+fi
+if [ -f "$HOME/Library/LaunchAgents/com.lordwilson.replicate.plist" ] \
+  && plutil -p "$HOME/Library/LaunchAgents/com.lordwilson.replicate.plist" 2>/dev/null | grep -q '"MSB_REPLICATION_TARGET"'; then
+  echo "  replication target: configured (unreachable = alert)"
+else
+  echo "  replication target: unset (skip mode)"
+fi
 
 echo
 echo "LOGS (last line):"

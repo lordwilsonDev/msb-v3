@@ -36,8 +36,12 @@ TARGETS=(
   "$REPO/logs/disk-health.log"
   "$REPO/logs/cache-trim.log"
   "$REPO/logs/ops-audit.log"
+  "$REPO/logs/ops-audit.err"
+  "$REPO/logs/ops-alerts.log"
   "$REPO/logs/heartbeat.log"
+  "$REPO/logs/heartbeat.err"
   "$REPO/logs/replicate.log"
+  "$REPO/logs/replicate.err"
   "$HOME/deepseek-harness/logs/vault-backup.log"
 )
 if [ -n "${MSB_ROTATE_TARGETS:-}" ]; then
