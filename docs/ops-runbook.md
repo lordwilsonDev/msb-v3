@@ -23,12 +23,14 @@ make test-ops     # regression suite for the ops scripts (bash 3.2, scratch dirs
 | `com.lordwilson.rotate-logs` | daily 06:00 | Copy-truncate rotates launchd-captured logs past a 5M cap, keeping 3 copies | `logs/rotate-logs.log` |
 | `com.lordwilson.cache-trim` | Sun 06:40 | Clears the regenerable caches that refill the disk ~1G/day (Google, hermit, Citro Labs, SiriTTS, pnpm, ollama; ≥10M floor; pnpm prune = orphans only) | `logs/cache-trim.log` |
 | `com.lordwilson.disk-health` | Sun 06:45 | Alerts when used% ≥ 85 (warn) / 92 (crit), or when the free-space trend projects full within 14 days | `logs/disk-health.log` |
+| `com.lordwilson.ops-audit` | Sun 06:50 | Full ops self-audit: regression suite + pull-signature ledger + source license; non-zero exit alerts via the watchdog | `logs/ops-audit.log` |
 | `com.lordwilson.backup-watchdog` | every 15 min | Polls all agents' last exit code; fires a notification once per failure episode (re-arms on success; KeepAlive agents re-arm on a 6h timer) | `logs/backup-watchdog.log` |
 | `com.lordwilson.msb-v3` | KeepAlive | The API server | `logs/gateway.out.log`, `gateway.err.log` |
 | `com.lordwilson.qdrant` | KeepAlive | Qdrant vector store | `logs/qdrant.log` |
 
 Sunday cascade: **04:30** msb code → **05:30** dsh code → **06:30** DB drill →
-**06:40** cache trim → **06:45** disk-health (measures post-trim usage).
+**06:40** cache trim → **06:45** disk-health (post-trim) → **06:50** ops
+self-audit (any regression alerts via the watchdog).
 
 ## Failure alert flow
 
@@ -42,10 +44,11 @@ warning") on its own thresholds and trend.
 State files: `~/.backup-watchdog-state`, `~/.disk-health-state` (safe to
 delete; they rebuild on the next run).
 
-## Testing
+## Testing & audit
 
 ```bash
-make test-ops          # or: bash scripts/test-ops.sh
+make test-ops          # regression suite (or: bash scripts/test-ops.sh)
+make ops-audit         # full audit: suite + ledger + license (or: bash scripts/ops-audit.sh)
 ```
 
 Runs the regression suite under macOS `/bin/bash` (3.2 — the interpreter
