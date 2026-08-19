@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from contextlib import asynccontextmanager
 
@@ -16,6 +17,7 @@ from msb_v3.api.codegraph import router as codegraph_router
 from msb_v3.api.console import router as console_router
 from msb_v3.api.context import router as context_router
 from msb_v3.api.conversation import router as conversation_router
+from msb_v3.api.cron import router as cron_router
 from msb_v3.api.dashboard import router as dashboard_router
 from msb_v3.api.evolution import router as evolution_router
 from msb_v3.api.factory import router as factory_router
@@ -54,7 +56,26 @@ from msb_v3.vesta.api import router as vesta_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
+    # The heartbeat: an in-process cron scheduler (MSB_CRON_ENABLED=0 turns
+    # it off; the CLI still runs jobs on demand). Started only when enabled
+    # so tests (which disable it via the autouse conftest fixture) and
+    # focused deployments never spawn a background loop they didn't ask for.
+    scheduler_task = None
+    if settings.cron_enabled:
+        from msb_v3.cron.scheduler import CronScheduler
+
+        # Runs until cancelled (the loop sleeps between ticks); shutdown
+        # cancels it and waits for the current tick to unwind.
+        scheduler_task = asyncio.create_task(CronScheduler().run_loop())
+    try:
+        yield
+    finally:
+        if scheduler_task is not None:
+            scheduler_task.cancel()
+            try:
+                await scheduler_task
+            except asyncio.CancelledError:
+                pass
 
 
 _RUN_RATE_LIMIT_WINDOW_S = 60
@@ -142,6 +163,7 @@ def create_app() -> FastAPI:
     app.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
     app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
     app.include_router(openai_compat_router, prefix="/v1", tags=["openai"])
+    app.include_router(cron_router, prefix="/cron", tags=["cron"])
     app.include_router(agent_router, prefix="/agent", tags=["agent"])
     app.include_router(node_router, prefix="/node/v1", tags=["sovereign-node"])
     app.include_router(vesta_router, prefix="/vesta", tags=["vesta"])

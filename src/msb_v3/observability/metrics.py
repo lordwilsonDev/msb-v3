@@ -124,6 +124,14 @@ TASK_RECOVERIES = Counter(
     "Tasks that succeeded after at least one retry",
     ["harness"],
 )
+# Cron scheduler runs (the heartbeat): one increment per finished run, by
+# outcome. Incremented by cron.scheduler at the same chokepoint that writes
+# the run row, so Prometheus and the cron_runs projection cannot diverge.
+CRON_RUNS = Counter(
+    "msb_v3_cron_runs_total",
+    "Cron job executions, by outcome status",
+    ["status"],
+)
 from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
 
 # Explicit registration: prometheus_client counters are lazy (they only enter
@@ -137,6 +145,7 @@ try:
     _REGISTRY.register(TASK_RECOVERIES)
     _REGISTRY.register(MODEL_CALLS)
     _REGISTRY.register(MOIE_VERDICTS)
+    _REGISTRY.register(CRON_RUNS)
 except ValueError:
     pass  # already registered
 

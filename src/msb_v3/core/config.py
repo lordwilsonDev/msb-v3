@@ -129,6 +129,24 @@ class Settings:
     gov_governor_novelty_min: float = field(default_factory=lambda: float(os.getenv("GOV_GOVERNOR_NOVELTY_MIN", "0.05")))
     gov_governor_dup_ratio_halt: float = field(default_factory=lambda: float(os.getenv("GOV_GOVERNOR_DUP_RATIO_HALT", "0.5")))
     gov_governor_history: int = field(default_factory=lambda: int(os.getenv("GOV_GOVERNOR_HISTORY", "20")))
+    # --- Cron scheduler (the heartbeat) ---
+    # In-process scheduler: the FastAPI lifespan starts a background loop
+    # when enabled (MSB_CRON_ENABLED=0 disables; the CLI still runs jobs on
+    # demand). Tests disable it via the suite-wide autouse fixture.
+    cron_enabled: bool = field(default_factory=lambda: os.getenv("MSB_CRON_ENABLED", "1") == "1")
+    # Durable job definitions + run history, following the runtime-store
+    # convention (beside runtime.db / tasks.db under data/runtime/). Empty =
+    # derive from settings.db_path at use-site (MSB_DB_PATH moves them
+    # together); MSB_CRON_DB_PATH still overrides.
+    cron_db_path: str = field(default_factory=lambda: os.getenv("MSB_CRON_DB_PATH", ""))
+    # How often the scheduler loop wakes to check for due jobs.
+    cron_tick_s: int = field(default_factory=lambda: int(os.getenv("MSB_CRON_TICK_S", "15")))
+    # Run history retained per job (older rows pruned on each run).
+    cron_history_keep: int = field(default_factory=lambda: int(os.getenv("MSB_CRON_HISTORY_KEEP", "100")))
+    # Host allowlist for the http_call action — fail-closed: a URL whose host
+    # is not on this list is refused. Defaults to loopback only; widen by
+    # adding hosts (comma-separated, no scheme/port).
+    cron_http_hosts: str = field(default_factory=lambda: os.getenv("MSB_CRON_HTTP_HOSTS", "127.0.0.1,localhost,::1"))
     _active_backend: str = field(default_factory=lambda: os.getenv("MSB_ACTIVE_BACKEND", "ollama"))
 
 
