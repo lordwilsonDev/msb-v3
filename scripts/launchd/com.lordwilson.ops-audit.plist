@@ -20,6 +20,19 @@
     <key>Minute</key><integer>50</integer>
   </dict>
 
+  <!-- Self-publish the dated audit report (audit/<date>_audit.md) to
+       origin each Sunday. Set MSB_ALERT_EMAIL / MSB_TELEGRAM_BOT_TOKEN /
+       MSB_TELEGRAM_CHAT_ID to also alert on failure via email/Telegram.
+       NOTE: deliberately NOT KeepAlive — this is a weekly scheduled job;
+       KeepAlive would relaunch it in an endless loop. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MSB_PUBLISH_AUDIT</key><string>1</string>
+    <!-- <key>MSB_ALERT_EMAIL</key><string>you@example.com</string> -->
+    <!-- <key>MSB_TELEGRAM_BOT_TOKEN</key><string>123456:ABC-DEF</string> -->
+    <!-- <key>MSB_TELEGRAM_CHAT_ID</key><string>123456789</string> -->
+  </dict>
+
   <key>RunAtLoad</key><false/>
   <key>KeepAlive</key><false/>
   <key>ThrottleInterval</key><integer>600</integer>

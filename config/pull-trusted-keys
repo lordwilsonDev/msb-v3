@@ -1,0 +1,18 @@
+# Trusted pull-signature signers ("witnesses") for the msb-v3 repo.
+#
+# Format (same as ssh allowed_signers):  <principal> <keytype> <base64 key>
+# The principal is the label shown in verification output ("signed by X").
+#
+# install-hooks.sh seeds ~/.msb-v3/allowed_signers from this file, so every
+# checkout can verify entries from ANY trusted witness — and
+# verify-pull-signatures.sh attributes each ledger entry to the signer whose
+# key actually made it, reporting signer coverage on every audit.
+#
+# To add a second witness (recommended — the owner should not be the only
+# one who can vouch for the pull trail):
+#   bash scripts/add-trusted-signer.sh ~/Downloads/friend.pub friend
+# The owner key below is the baseline witness (principal msb-signing-key —
+# keep that principal name; existing ledger entries and the license identity
+# depend on it).
+
+msb-signing-key ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE8lAHbBgdGnonbDmyMhfT4Hbz1lXf+FeNvrJUjsr6Lt

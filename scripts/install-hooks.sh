@@ -38,13 +38,32 @@ else
 fi
 
 # --- 3. allowed_signers (for ledger verification) ------------------------------
+# Seed from the committed trusted signers (config/pull-trusted-keys — the
+# owner baseline plus any added second witness) merged with the local key.
+# Merge, never drop: existing lines stay, new trusted keys are appended.
+mkdir -p "$(dirname "$ALLOWED")"
+tmp_allowed="$(mktemp /tmp/allowed-seed-XXXXXX)"
+[ -f "$ALLOWED" ] && cp "$ALLOWED" "$tmp_allowed" || : > "$tmp_allowed"
+# local key under the canonical identity (existing ledger entries depend on it)
 PUB="$(cut -d' ' -f1,2 < "$KEY.pub")"
-if [ -f "$ALLOWED" ] && grep -q "$PUB" "$ALLOWED" 2>/dev/null; then
-  echo "[install-hooks] allowed_signers up to date"
-else
-  printf '%s %s\n' "$IDENTITY" "$PUB" >> "$ALLOWED"
-  echo "[install-hooks] wrote $ALLOWED"
+grep -qF "$PUB" "$tmp_allowed" 2>/dev/null || printf '%s %s\n' "$IDENTITY" "$PUB" >> "$tmp_allowed"
+# committed trusted witnesses
+TRUSTED="$REPO/config/pull-trusted-keys"
+if [ -f "$TRUSTED" ]; then
+  while read -r princ kt key; do
+    [ -n "$princ" ] || continue
+    case "$princ" in \#*) continue;; esac
+    [ -n "$kt" ] && [ -n "$key" ] || continue
+    grep -qF "$kt $key" "$tmp_allowed" 2>/dev/null || printf '%s %s %s\n' "$princ" "$kt" "$key" >> "$tmp_allowed"
+  done < "$TRUSTED"
 fi
+if [ -f "$ALLOWED" ] && diff -q "$ALLOWED" "$tmp_allowed" >/dev/null 2>&1; then
+  echo "[install-hooks] allowed_signers up to date ($(grep -cE 'ssh-' "$ALLOWED" || true) trusted key(s))"
+else
+  cp "$tmp_allowed" "$ALLOWED"
+  echo "[install-hooks] wrote $ALLOWED ($(grep -cE 'ssh-' "$ALLOWED" || true) trusted key(s))"
+fi
+rm -f "$tmp_allowed"
 
 # --- 4. git signing config (only where unset — never override) -----------------
 git config --get commit.gpgsign >/dev/null 2>&1 || git config commit.gpgsign true

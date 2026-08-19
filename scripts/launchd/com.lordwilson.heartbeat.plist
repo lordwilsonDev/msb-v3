@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.heartbeat</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/heartbeat.sh</string>
+  </array>
+
+  <!-- Daily 12:00 — liveness + off-machine copy of the ops trail. Set
+       MSB_HEARTBEAT_DIR to an external volume mount (e.g. /Volumes/BackupDrive)
+       in EnvironmentVariables to activate; absent volume = graceful skip. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>12</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- <key>MSB_HEARTBEAT_DIR</key><string>/Volumes/BackupDrive</string> -->
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/heartbeat.err</string>
+  <key>StandardOutPath</key><string>/Users/lordwilson/msb-v3/logs/heartbeat.log</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>

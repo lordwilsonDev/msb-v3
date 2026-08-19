@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.lordwilson.replicate</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lordwilson/msb-v3/scripts/replicate-to-secondary.sh</string>
+  </array>
+
+  <!-- Sunday 07:05 — after the ops self-audit (06:50). Mirrors the repo
+       (signed history + audit trail) to a secondary node. Set
+       MSB_REPLICATION_TARGET (user@host:/path or /local/path) in
+       EnvironmentVariables to activate; unset = graceful skip, and once
+       set, an unreachable secondary alerts via the watchdog. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>7</integer>
+    <key>Minute</key><integer>5</integer>
+  </dict>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- <key>MSB_REPLICATION_TARGET</key><string>user@secondary.local:/home/user/msb-v3</string> -->
+  </dict>
+
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ThrottleInterval</key><integer>600</integer>
+
+  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/replicate.err</string>
+  <key>StandardOutPath</key><string>/Users/lordwilson/msb-v3/logs/replicate.log</string>
+  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+</dict>
+</plist>
