@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# post-checkout — record a signed entry on clone (flag 1) and branch
+# switches / rebase checkouts (flag 0). Best-effort: never fails the
+# checkout. $1=prev HEAD, $2=new HEAD, $3=1 on clone.
+set -u
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/signature.sh
+. "$HOOK_DIR/lib/signature.sh"
+record_pull "${1:-init}" "${2:-unknown}"
+exit 0

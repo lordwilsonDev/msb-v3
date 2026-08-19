@@ -1,4 +1,4 @@
-.PHONY: test test-ops ops-status lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-ops ops-status install-hooks verify-pull-signatures lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -24,6 +24,15 @@ test-ops:
 # One-glance status of the ops layer: agents, disk, backups, log tails.
 ops-status:
 	bash scripts/ops-status.sh
+
+# One-time signing + hooks setup for this checkout (signed pull ledger,
+# signed commits, DCO). Run after cloning.
+install-hooks:
+	bash scripts/install-hooks.sh
+
+# Verify every signed entry in the pull ledger.
+verify-pull-signatures:
+	bash scripts/verify-pull-signatures.sh
 
 # MoIE detection policy drift gate — the same gate CI's lint job runs
 # (scripts/ci-policy-gate.sh). Validates config/risk_templates.json with the

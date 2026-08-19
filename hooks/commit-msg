@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# commit-msg — require a Signed-off-by trailer (Developer Certificate of
+# Origin): the author's name + email as a digital acknowledgment of the
+# contribution. This is the same DCO convention used by the Linux kernel.
+set -u
+MSG_FILE="$1"
+if ! grep -q "^Signed-off-by: " "$MSG_FILE"; then
+  echo "ERROR: commits must carry a Signed-off-by trailer (DCO)." >&2
+  echo "  Add this line to the commit message:" >&2
+  echo "  Signed-off-by: $(git config --get user.name) <$(git config --get user.email)>" >&2
+  echo "  or commit with: git commit -s" >&2
+  exit 1
+fi
+exit 0
