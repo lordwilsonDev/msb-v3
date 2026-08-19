@@ -280,13 +280,24 @@ AUD_LOG="$TMP/aud.log"
 AUD_ALERT="$TMP/aud-alert.log"
 printf '2026-08-19T00:00:00Z|tester@host|a..b|SIG:AAAA\n' > "$TMP/aud-ledger-bad"
 printf 'msb-signing-key %s\n' "$(cut -d' ' -f1,2 "$TMP/lic/owner-key.pub")" > "$TMP/aud-allowed"
+# Isolation guard: these audits must NEVER publish. When the real agent runs
+# (MSB_PUBLISH_AUDIT=1 in its env), the suite's audits here would INHERIT it
+# and commit+push reports — that race corrupted the first live audit run. We
+# simulate the agent env (export) and strip it before the audit (env -u); the
+# HEAD/audit-dir assertions below fail if the leak ever returns.
+HEAD_BEFORE=$(git -C "$ROOT" rev-parse HEAD)
+AUDIT_BEFORE=$(ls "$ROOT/audit")
 rm -f "$MAIL_CAPTURE"
 rc=0
-env MSB_AUDIT_SKIP_SUITE=1 MSB_PULL_LEDGER="$TMP/aud-ledger-bad" MSB_PULL_ALLOWED="$TMP/aud-allowed" \
-  MSB_LICENSE_FILE="$TMP/lic/lic" MSB_LICENSE_AUTHORIZED="$LA" \
-  MSB_ALERT_EMAIL=ops@example.com MSB_ALERT_LOG="$AUD_ALERT" MSB_OPS_AUDIT_LOG="$AUD_LOG" \
-  MAIL_CAPTURE="$MAIL_CAPTURE" PATH="$TMP/fakemail:$PATH" \
-  bash "$ROOT/scripts/ops-audit.sh" >/dev/null 2>&1 || rc=$?
+(
+  export MSB_PUBLISH_AUDIT=1
+  env -u MSB_PUBLISH_AUDIT -u MSB_AUDIT_DIR MSB_AUDIT_SKIP_SUITE=1 \
+    MSB_PULL_LEDGER="$TMP/aud-ledger-bad" MSB_PULL_ALLOWED="$TMP/aud-allowed" \
+    MSB_LICENSE_FILE="$TMP/lic/lic" MSB_LICENSE_AUTHORIZED="$LA" \
+    MSB_ALERT_EMAIL=ops@example.com MSB_ALERT_LOG="$AUD_ALERT" MSB_OPS_AUDIT_LOG="$AUD_LOG" \
+    MAIL_CAPTURE="$MAIL_CAPTURE" PATH="$TMP/fakemail:$PATH" \
+    bash "$ROOT/scripts/ops-audit.sh" >/dev/null 2>&1
+) || rc=$?
 if [ "$rc" != 0 ] && grep -q "AUDIT-FAIL" "$AUD_LOG" \
   && [ -f "$MAIL_CAPTURE" ] && grep -q "OPS AUDIT FAILED" "$MAIL_CAPTURE" \
   && grep -q "email sent" "$AUD_ALERT" && grep -q "telegram skipped" "$AUD_ALERT"; then
@@ -299,14 +310,25 @@ LEDGER_OK="$TMP/aud-ledger-ok"
 printf '%s|SIG:%s\n' "$E1" "$(sig_of "$E1" "$TMP/lic/owner-key")" > "$LEDGER_OK"
 rm -f "$MAIL_CAPTURE" "$AUD_LOG"
 rc=0
-env MSB_AUDIT_SKIP_SUITE=1 MSB_PULL_LEDGER="$LEDGER_OK" MSB_PULL_ALLOWED="$TMP/aud-allowed" \
-  MSB_LICENSE_FILE="$TMP/lic/lic" MSB_LICENSE_AUTHORIZED="$LA" \
-  MSB_ALERT_EMAIL=ops@example.com MSB_ALERT_LOG="$AUD_ALERT" MSB_OPS_AUDIT_LOG="$AUD_LOG" \
-  PATH="$TMP/fakemail:$PATH" bash "$ROOT/scripts/ops-audit.sh" >/dev/null 2>&1 || rc=$?
+(
+  export MSB_PUBLISH_AUDIT=1
+  env -u MSB_PUBLISH_AUDIT -u MSB_AUDIT_DIR MSB_AUDIT_SKIP_SUITE=1 \
+    MSB_PULL_LEDGER="$LEDGER_OK" MSB_PULL_ALLOWED="$TMP/aud-allowed" \
+    MSB_LICENSE_FILE="$TMP/lic/lic" MSB_LICENSE_AUTHORIZED="$LA" \
+    MSB_ALERT_EMAIL=ops@example.com MSB_ALERT_LOG="$AUD_ALERT" MSB_OPS_AUDIT_LOG="$AUD_LOG" \
+    PATH="$TMP/fakemail:$PATH" bash "$ROOT/scripts/ops-audit.sh" >/dev/null 2>&1
+) || rc=$?
 if [ "$rc" = 0 ] && grep -q "AUDIT-OK" "$AUD_LOG" && [ ! -f "$MAIL_CAPTURE" ]; then
   ok "audit success quiet (rc=0, no alert sent)"
 else
   bad "success path wrong: rc=$rc capture=$(cat "$MAIL_CAPTURE" 2>/dev/null)"
+fi
+HEAD_AFTER=$(git -C "$ROOT" rev-parse HEAD)
+AUDIT_AFTER=$(ls "$ROOT/audit")
+if [ "$HEAD_BEFORE" = "$HEAD_AFTER" ] && [ "$AUDIT_BEFORE" = "$AUDIT_AFTER" ]; then
+  ok "test audits isolated from publish (HEAD + audit/ unchanged despite MSB_PUBLISH_AUDIT=1)"
+else
+  bad "publish leak: HEAD or audit/ changed during test audits"
 fi
 
 # ---------------------------------------------------------------------------

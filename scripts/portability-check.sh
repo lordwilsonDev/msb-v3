@@ -77,7 +77,12 @@ echo "[portability] staging copy: $DEST"
   if [ "${PORTABILITY_FAIL_ON_DRIFT:-0}" = "1" ]; then
     DRIFT_ARGS=(--fail)
   fi
-  if ! bash "$REPO/scripts/check-env-drift.sh" "${DRIFT_ARGS[@]}"; then
+  # NB: ${arr[@]+...} — the bash 3.2-safe empty-array expansion. Plain
+  # "${DRIFT_ARGS[@]}" with an empty array errors under `set -u` on the
+  # system /bin/bash 3.2 (launchd runs gates with PATH=/usr/bin:/bin),
+  # which silently degraded this guard to warn-only. The guard form expands
+  # to nothing on 3.2 and to the args cleanly on bash 5.
+  if ! bash "$REPO/scripts/check-env-drift.sh" ${DRIFT_ARGS[@]+"${DRIFT_ARGS[@]}"}; then
     echo "[portability] FAIL: .env drifts from the locked .env.example (see above)"
     exit 1
   fi
@@ -86,7 +91,8 @@ RSYNC_DELETE=()
 if [ "$DEST_AUTO" = "1" ]; then
   RSYNC_DELETE=(--delete)
 fi
-rsync -a "${RSYNC_DELETE[@]}" "${EXCLUDES[@]}" "$REPO/" "$DEST/"
+# bash 3.2-safe empty-array expansions (see DRIFT_ARGS above).
+rsync -a ${RSYNC_DELETE[@]+"${RSYNC_DELETE[@]}"} ${EXCLUDES[@]+"${EXCLUDES[@]}"} "$REPO/" "$DEST/"
 
 # Fail loudly if the copy is incomplete — a broken stage must not masquerade
 # as a passing gate.

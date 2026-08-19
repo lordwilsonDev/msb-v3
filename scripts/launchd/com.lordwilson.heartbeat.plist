@@ -28,8 +28,9 @@
   <key>KeepAlive</key><false/>
   <key>ThrottleInterval</key><integer>600</integer>
 
+  <!-- The script tee's its own log; StandardErrorPath only (matching the
+       other agents) so launchd does not double-write. -->
   <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/heartbeat.err</string>
-  <key>StandardOutPath</key><string>/Users/lordwilson/msb-v3/logs/heartbeat.log</string>
   <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
 </dict>
 </plist>
