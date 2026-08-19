@@ -5,9 +5,10 @@ set -euo pipefail
 #
 # Restores the newest ~/msb-backups/msb-v3 snapshot into a temp dir (via the
 # same restore_backup path a real recovery would use), checksum-verifies it,
-# and runs PRAGMA integrity_check on every restored SQLite db. Any failure
-# exits non-zero so the backup watchdog alerts. Driven weekly (Sunday 06:30)
-# by com.lordwilson.db-restore-drill.
+# runs PRAGMA integrity_check on every restored SQLite db, and asserts the
+# restored Qdrant storage is structurally sound (collections with segments).
+# Any failure exits non-zero so the backup watchdog alerts. Driven weekly
+# (Sunday 06:30) by com.lordwilson.db-restore-drill.
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
@@ -53,7 +54,21 @@ for db in dbs:
         print(f"integrity failure: {db}", file=sys.stderr)
         sys.exit(4)
 
-print(f"RESTORE-DRILL-OK src={latest.name} dbs={len(dbs)} storage_files={sum(1 for _ in (tmp / 'storage').rglob('*') if _.is_file())}")
+# Qdrant storage: live-copy snapshots can be torn; the checksum proves file
+# integrity but not structure. Assert the restored storage has collections
+# with segments — an empty/broken storage dir fails the drill loudly.
+coll_dir = tmp / "storage" / "collections"
+colls = [c for c in coll_dir.iterdir() if c.is_dir()] if coll_dir.is_dir() else []
+segments = 0
+for c in colls:
+    for shard in c.iterdir():
+        if shard.is_dir() and (shard / "segments").is_dir():
+            segments += sum(1 for _ in (shard / "segments").iterdir())
+if not colls or segments == 0:
+    print(f"storage failure: restored storage has {len(colls)} collection(s), {segments} segment(s)", file=sys.stderr)
+    sys.exit(5)
+
+print(f"RESTORE-DRILL-OK src={latest.name} dbs={len(dbs)} storage_files={sum(1 for _ in (tmp / 'storage').rglob('*') if _.is_file())} collections={len(colls)} segments={segments}")
 PYEOF
 then
   log "OK"

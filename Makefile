@@ -1,4 +1,4 @@
-.PHONY: test lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-ops ops-status lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -14,6 +14,16 @@ export MSB_PORT ?= 8766
 test:
 	@bash scripts/seed-research-runtime.sh
 	$(PY) -m pytest -q tests/
+
+# Ops-script regression suite (vault-backup, disk-health, cache-trim,
+# backup-watchdog, rotate-logs) — runs under macOS /bin/bash 3.2 against
+# scratch dirs only; never touches real vault/caches/state/agents.
+test-ops:
+	bash scripts/test-ops.sh
+
+# One-glance status of the ops layer: agents, disk, backups, log tails.
+ops-status:
+	bash scripts/ops-status.sh
 
 # MoIE detection policy drift gate — the same gate CI's lint job runs
 # (scripts/ci-policy-gate.sh). Validates config/risk_templates.json with the
