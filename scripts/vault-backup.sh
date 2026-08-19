@@ -4,20 +4,26 @@ set -euo pipefail
 # Weekly snapshot of the msb-v3 code into Wilson's Obsidian vault:
 #   ~/Documents/Vault/Backups/msb-v3-<CODE>/
 # Each run generates a FRESH backup code (11 uppercase alphanumerics, same
-# shape as the manual fasfa-HEA71PXTGSX3 backup), copies the working tree +
-# git history (runtime state, secrets, and caches excluded), writes a
-# BACKUP-MANIFEST.md, then prunes old snapshots past MSB_BACKUP_KEEP.
+# shape as the manual fasfa-HEA71PXTGSX3 backup), copies the working tree
+# (runtime state, secrets, and caches excluded; git history recorded in the
+# manifest instead), writes a BACKUP-MANIFEST.md, verifies the snapshot is
+# structurally complete AND restorable (full test suite from an extracted
+# copy), then prunes old snapshots past MSB_BACKUP_KEEP.
 #
 # Driven weekly by the LaunchAgent com.lordwilson.msb-vault-backup
 # (template: scripts/launchd/com.lordwilson.msb-vault-backup.plist).
 #
-# Overrides: MSB_VAULT, MSB_BACKUP_LABEL, MSB_BACKUP_KEEP
+# Overrides: MSB_VAULT, MSB_BACKUP_LABEL, MSB_BACKUP_KEEP,
+#            MSB_BACKUP_VERIFY (0 disables restore verification),
+#            MSB_PYTHON (interpreter for the restore-verify test run)
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VAULT="${MSB_VAULT:-$HOME/Documents/Vault}"
 BACKUPS_DIR="$VAULT/Backups"
 LABEL="${MSB_BACKUP_LABEL:-msb-v3}"
 KEEP="${MSB_BACKUP_KEEP:-8}"
+VERIFY="${MSB_BACKUP_VERIFY:-1}"
+PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 LOG="$REPO/logs/vault-backup.log"
 
 mkdir -p "$BACKUPS_DIR" "$REPO/logs"
@@ -110,6 +116,44 @@ verify_snapshot() {
 }
 
 verify_snapshot || exit 1
+
+# Restore verification: extract the snapshot to a temp dir and run the full
+# test suite from it — the definitive proof the backup is restorable. The
+# unanchored-exclude bug only surfaced when a restored copy was imported, so
+# structure checks alone are not enough. A failing restore deletes the
+# snapshot and aborts the run (never ship a backup that can't come back).
+# Skip with MSB_BACKUP_VERIFY=0 (e.g. a quick manual snapshot).
+verify_restore() {
+  local tmp out rc
+  tmp="$(mktemp -d /tmp/msb-v3-restore-XXXXXX)" || {
+    log "ERROR: restore check: could not create temp dir"; return 1; }
+  out="$tmp/pytest.out"
+  cp -a "$DEST/." "$tmp/" 2>/dev/null || {
+    log "ERROR: restore check: could not extract $DEST"; rm -rf "$tmp"; return 1; }
+  # launchd runs with a minimal PATH (/usr/bin:/bin:...), so subprocesses
+  # that resolve `python3` (the fake-secenclave tool's shebang, the CLI
+  # receipt roundtrip) would hit the system Python and miss cryptography /
+  # msb_ledger. Prepend the interpreter's own bin dir so the verify run
+  # sees the same environment the suite is meant to run in.
+  if (cd "$tmp" && MSB_HOME="$tmp" PATH="$(dirname "$PY"):$PATH" "$PY" -m pytest -q tests/ >"$out" 2>&1); then
+    rc=0
+  else
+    rc=1
+    log "ERROR: restore check FAILED for $DEST — test suite not green from restored copy; tail:"
+    tail -6 "$out" | while IFS= read -r l; do log "  $l"; done
+  fi
+  rm -rf "$tmp"
+  return "$rc"
+}
+
+if [ "$VERIFY" = "1" ]; then
+  verify_restore || {
+    rm -rf "$DEST"
+    log "ERROR: removed invalid snapshot $DEST; backup aborted"
+    exit 1
+  }
+  log "restore OK: test suite green from restored copy of $DEST"
+fi
 
 log "backup complete: $DEST (code $CODE, HEAD $HEAD, size $(du -sh "$DEST" | cut -f1))"
 
