@@ -33,10 +33,27 @@ asserted.
 bash scripts/install-hooks.sh     # or: make install-hooks
 ```
 
-Generates the signing key if absent, writes `~/.msb-v3/allowed_signers`,
-and sets `commit.gpgsign` / `gpg.format ssh` / `user.signingkey` (never
-overriding existing config). To show commits as **Verified** on GitHub,
-register the printed public key as a *Signing* SSH key in account settings.
+Generates the signing key if absent, seeds `~/.msb-v3/allowed_signers`
+from the committed trusted-signers file, and sets `commit.gpgsign` /
+`gpg.format ssh` / `user.signingkey` (never overriding existing config). To
+show commits as **Verified** on GitHub, register the printed public key as a
+*Signing* SSH key in account settings.
+
+### Two-witness trust (second signature)
+
+The trail is not owner-only. `config/pull-trusted-keys` lists every trusted
+witness; `install-hooks.sh` seeds `allowed_signers` from it, so a checkout
+can verify entries from any witness. Add a second signer (recommended — the
+owner should not be the only one who can vouch for the trail):
+
+```bash
+make add-trusted-signer ARGS="~/Downloads/friend.pub friend"
+# or: bash scripts/add-trusted-signer.sh "friend <keytype> <base64>"
+```
+
+This appends the key to the committed trusted file and re-seeds
+`allowed_signers` on this machine. Commit and push the `config/` change so
+every checkout trusts the new witness.
 
 ### Verification
 
@@ -44,11 +61,16 @@ register the printed public key as a *Signing* SSH key in account settings.
 bash scripts/verify-pull-signatures.sh    # or: make verify-pull-signatures
 ```
 
-Re-verifies every entry in the ledger against `allowed_signers`; exits
-non-zero if any entry fails. Recorded pulls are best-effort by design — the
-audit trail must never break a checkout — but commits are **hard-gated**:
-unsigned commits or missing `Signed-off-by` are rejected client-side, and
-GitHub branch protection independently requires valid signatures on `main`.
+Re-verifies every entry in the ledger against the trusted signers — each
+entry is **attributed to the witness whose key actually signed it** (e.g.
+`ok (signed by friend): ...`), and the run ends with a coverage report
+listing each trusted witness's entry count. A witness with zero entries is
+flagged as not-yet-active (informational, not an error); entries signed by
+no trusted key are INVALID and the script exits non-zero. Recorded pulls
+are best-effort by design — the audit trail must never break a checkout —
+but commits are **hard-gated**: unsigned commits or missing `Signed-off-by`
+are rejected client-side, and GitHub branch protection independently
+requires valid signatures on `main`.
 
 ## 2. Access model: fork to contribute
 
@@ -117,3 +139,23 @@ bash scripts/start.sh                   # server starts
 `ops-status` includes it. Tampered, wrong-key, or missing licenses are
 rejected (exit 1/2). `issue-license.sh` accepts `full` (default) or
 `demo` scope for a restricted tier if you ever want one.
+
+## 4. The ops layer: alerts, self-publishing evidence, redundancy
+
+The verification above is not just manual. The weekly self-audit agent
+(`com.lordwilson.ops-audit`, Sun 06:50 — see `docs/ops-runbook.md`) runs the
+full stack — regression suite, pull-signature ledger with per-witness
+coverage, source license — and:
+
+- **Alerts on failure**: non-zero exit reaches the watchdog (macOS
+  notification) and, when configured, out-of-band channels — email
+  (`MSB_ALERT_EMAIL`) and Telegram (`MSB_TELEGRAM_BOT_TOKEN` +
+  `MSB_TELEGRAM_CHAT_ID`), all fail-soft via `scripts/lib/alert.sh`.
+- **Self-publishes its evidence**: with `MSB_PUBLISH_AUDIT=1` (set in the
+  agent's plist) the dated report is committed (signed + DCO) and pushed to
+  `audit/` on origin — the record of what passed/failed lives in the
+  repository itself, not just on this machine.
+- **Survives the machine**: a daily heartbeat mirrors the trail (liveness
+  line, state snapshot, `audit/`) to an external volume
+  (`MSB_HEARTBEAT_DIR`), and a Sunday job replicates the repo to a
+  secondary node (`MSB_REPLICATION_TARGET`) — no single point of failure.
