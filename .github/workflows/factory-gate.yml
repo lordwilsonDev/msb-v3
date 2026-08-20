@@ -35,7 +35,7 @@ jobs:
       - name: Install (editable + dev extras + gate tools)
         run: |
           pip install --upgrade pip
-          pip install -e ".[dev]" pytest-cov mypy ruff
+          pip install -e ".[dev]" pytest-cov mypy ruff pip-audit
 
       # Note: bare `pytest` follows pyproject testpaths = tests +
       # the chaos suite (358 tests). The factory gate artifact
@@ -192,6 +192,9 @@ jobs:
         if: always()
         env:
           MSB_CLOSE_OUT_SKIP: pytest
+          # The gate script defaults to the owner's macOS conda python; on a
+          # hosted runner MSB_PYTHON must point at the venv python.
+          MSB_PYTHON: python
         run: bash scripts/close-out-gate.sh
 
       - name: Conversation E2E probe (stub, zero-spend)
