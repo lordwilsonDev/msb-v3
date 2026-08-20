@@ -42,19 +42,29 @@ log() { echo "[msb-v3] $*"; }
 # pull-signature-and-access.md). An anonymous pull is inert code — to run
 # it you must fork the repo and obtain a license
 # (scripts/request-access.sh).
+#
+# Explicit opt-outs for legitimate non-anonymous runs (same contract as
+# msb_v3/__main__.py): MSB_CONTAINER=1 (Docker image, a build artifact of
+# a LICENSED checkout) and MSB_CI=1 (hosted CI runners clone the owner's
+# checkout and have no home-dir license). A bare pull has no license AND
+# neither flag, so the source-distribution path stays inert.
 # shellcheck source=lib/license.sh
-. "$REPO/scripts/lib/license.sh"
-set +e
-lstatus="$(license_status)"
-lrc=$?
-set -e
-if [ "$lrc" -ne 0 ] || [ "$lstatus" != "valid" ]; then
-  log "ERROR: no valid source license ($lstatus)."
-  log "  This code runs only under a license signed by the owner. Fork the repo"
-  log "  and request one: bash scripts/request-access.sh"
-  exit 1
+if [ "${MSB_CONTAINER:-0}" = "1" ] || [ "${MSB_CI:-0}" = "1" ]; then
+  log "source license gate skipped (declared CI/container run)"
+else
+  . "$REPO/scripts/lib/license.sh"
+  set +e
+  lstatus="$(license_status)"
+  lrc=$?
+  set -e
+  if [ "$lrc" -ne 0 ] || [ "$lstatus" != "valid" ]; then
+    log "ERROR: no valid source license ($lstatus)."
+    log "  This code runs only under a license signed by the owner. Fork the repo"
+    log "  and request one: bash scripts/request-access.sh"
+    exit 1
+  fi
+  log "source license valid"
 fi
-log "source license valid"
 
 log "starting msb-v3 host=$MSB_HOST port=$MSB_PORT model=$OLLAMA_MODEL"
 
