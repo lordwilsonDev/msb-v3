@@ -100,9 +100,19 @@ inbox — the exact path GHL/Make/Zapier use. Current unlocks: GoHighLevel
 webhook creation is implemented (`GhlClient.create_webhook`) but the PIT
 token in `.env` returns 404 on every endpoint (dead/revoked — GHL hides all
 errors behind 404; create a fresh PIT in GHL: Settings → Locations → API);
-n8n forwarding (`build_n8n_forwarder_workflow` — Webhook → HTTP Request →
-/hook) is implemented but `N8N_API_KEY` has never been created (n8n UI:
-Settings → API).
+n8n forwarding is implemented and **LIVE-VERIFIED 2026-08-20 with the full
+local circle** — no VPS, no cloud: a real n8n forwarder workflow (Webhook →
+HTTP Request → /hook) was created via the public API and activated, and a
+real msb-v3 cron job (`local-demo`, `*/2 * * * *`, `http_call` POST) fires
+the n8n webhook → the forwarder hands the payload to /hook → it lands in the
+wake inbox → the resident agent processes it. Creating workflows programmatically
+taught three real API-contract lessons (all fixed + tested): the create schema
+rejects `tags`/`meta` (strip them), activation is `POST /workflows/{id}/activate`
+(not PATCH-active), and a Webhook node needs a `webhookId` for its production
+URL to register. The API key itself was created the way n8n itself does it:
+the key is a JWT signed with `sha256(every-2nd-char-of-encryptionKey)`,
+`{sub: <owner id>, iss: 'n8n', aud: 'public-api'}`, stored in the
+`user_api_keys` table — no UI needed.
 
 **Stage 4 — self-maintenance.** Every wake cycle also runs `automation/audit.py`:
 provider seams configured or blocked (and why), brain budget vs cap, dead
