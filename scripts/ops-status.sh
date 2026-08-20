@@ -107,10 +107,13 @@ if [ -f "$aud_plist" ]; then
   echo "  ops-audit agent: email=$email telegram=$telegram publish=$publish (weekly report -> origin)"
 fi
 if [ -f "$HOME/Library/LaunchAgents/com.lordwilson.heartbeat.plist" ] \
+  && plutil -p "$HOME/Library/LaunchAgents/com.lordwilson.heartbeat.plist" 2>/dev/null | grep -q '"MSB_HEARTBEAT_RCLONE_REMOTE"'; then
+  echo "  heartbeat rclone: configured (off-machine copy -> gdrive)"
+elif [ -f "$HOME/Library/LaunchAgents/com.lordwilson.heartbeat.plist" ] \
   && plutil -p "$HOME/Library/LaunchAgents/com.lordwilson.heartbeat.plist" 2>/dev/null | grep -q '"MSB_HEARTBEAT_DIR"'; then
   echo "  heartbeat volume: configured (off-machine copy active)"
 else
-  echo "  heartbeat volume: unset (off-machine copy inactive)"
+  echo "  heartbeat sink: unset (off-machine copy inactive)"
 fi
 if [ -f "$HOME/Library/LaunchAgents/com.lordwilson.replicate.plist" ] \
   && plutil -p "$HOME/Library/LaunchAgents/com.lordwilson.replicate.plist" 2>/dev/null | grep -q '"MSB_REPLICATION_TARGET"'; then

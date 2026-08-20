@@ -56,6 +56,12 @@ fi
   echo
   echo "- Regression suite + ledger + license verdicts: \`$SUMMARY\`"
   echo
+  echo "## Pull-signature ledger (witness coverage)"
+  echo
+  echo '```'
+  bash "$REPO/scripts/verify-pull-signatures.sh" 2>&1 | tail -12 || echo "(ledger verification unavailable)"
+  echo '```'
+  echo
   echo "## Live ops status"
   echo
   echo '```'
