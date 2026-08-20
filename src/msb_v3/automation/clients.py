@@ -34,6 +34,52 @@ def _safe_name(name: str, fallback: str = "msb-automation") -> str:
     return "".join(c if c.isalnum() or c in "-_ " else " " for c in (name or "").strip())[:80] or fallback
 
 
+def build_n8n_forwarder_workflow(hook_url: str, name: str = "msb-hook-forwarder", path: Optional[str] = None) -> Dict[str, Any]:
+    """A real n8n workflow that POINTS at the perceiver: Webhook trigger →
+    HTTP Request forwards the payload to ``hook_url`` (msb-v3's /hook). This
+    is the 'platform as a pointer' primitive — n8n receives on its webhook
+    URL and hands the signal to the resident agent, which decides what it
+    means."""
+    path = (path or f"msb-fwd-{uuid.uuid4().hex[:8]}").strip("/")
+    return {
+        "name": _safe_name(name),
+        "nodes": [
+            {
+                "parameters": {
+                    "httpMethod": "POST",
+                    "path": path,
+                    "responseMode": "onReceived",
+                    "options": {},
+                },
+                "id": uuid.uuid4().hex[:16],
+                "name": "Webhook",
+                "type": "n8n-nodes-base.webhook",
+                "typeVersion": 1.1,
+                "position": [0, 0],
+            },
+            {
+                "parameters": {
+                    "method": "POST",
+                    "url": hook_url,
+                    "sendBody": True,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify($json) }}",
+                    "options": {},
+                },
+                "id": uuid.uuid4().hex[:16],
+                "name": "Forward to msb-v3",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position": [220, 0],
+            },
+        ],
+        "connections": {"Webhook": {"main": [[{"node": "Forward to msb-v3", "type": "main", "index": 0}]]}},
+        "settings": {"executionOrder": "v1"},
+        "tags": [{"name": "msb-v3"}],
+        "meta": {"description": "Forwards webhook payloads to the msb-v3 perceiver (/hook) for the resident agent."},
+    }
+
+
 def build_n8n_webhook_workflow(name: str, description: str, path: Optional[str] = None) -> Dict[str, Any]:
     """A real, activatable n8n workflow: Webhook (POST) → Respond to Webhook
     echoing the payload. The webhook URL is ``<n8n>/webhook/<path>``."""
@@ -199,12 +245,33 @@ class GhlClient:
     def unavailable_reason(self) -> str:
         return "MSB_GHL_API_KEY not set"
 
-    def create_workflow(self, name: str, description: str) -> Dict[str, Any]:
-        headers = {
+    def _headers(self) -> Dict[str, str]:
+        return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "Version": "2021-07-28",
         }
+
+    def create_webhook(self, url: str, events: List[str], name: str = "msb-perceiver") -> Dict[str, Any]:
+        """Register an outbound webhook on the location — the perceiver's
+        reach primitive: GHL fires these events at ``url`` (msb-v3's /hook),
+        and the resident agent decides what they mean on the next wake."""
+        if not url or not events:
+            raise ValueError("create_webhook requires url and events")
+        body: Dict[str, Any] = {
+            "url": url,
+            "events": [str(e).strip() for e in events if str(e).strip()],
+            "name": _safe_name(name),
+        }
+        if self.location_id:
+            body["locationId"] = self.location_id
+        with httpx.Client(timeout=self.timeout_s, transport=self._transport) as client:
+            resp = client.post(f"{self.base_url}/v1/webhooks", json=body, headers=self._headers())
+            resp.raise_for_status()
+            return resp.json()
+
+    def create_workflow(self, name: str, description: str) -> Dict[str, Any]:
+        headers = self._headers()
         body: Dict[str, Any] = {"name": _safe_name(name), "description": (description or "")[:300], "type": 0}
         if self.location_id:
             body["locationId"] = self.location_id

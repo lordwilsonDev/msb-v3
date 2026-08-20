@@ -17,6 +17,7 @@ from msb_v3.automation.clients import (
     MakeClient,
     N8nClient,
     ZapierClient,
+    build_n8n_forwarder_workflow,
     build_n8n_webhook_workflow,
     get_client,
     provider_status,
@@ -71,9 +72,60 @@ def test_n8n_set_active_contract() -> None:
     assert captured["body"] == {"active": True}
 
 
+def test_n8n_forwarder_workflow_points_at_hook() -> None:
+    """The platform-as-pointer primitive: Webhook trigger → HTTP Request
+    forwarding the payload to msb-v3's /hook."""
+    wf = build_n8n_forwarder_workflow("http://127.0.0.1:8766/hook/auto-abc", path="msb-fwd")
+    nodes = {n["name"]: n for n in wf["nodes"]}
+    webhook = nodes["Webhook"]
+    forward = nodes["Forward to msb-v3"]
+    assert webhook["parameters"]["path"] == "msb-fwd"
+    assert forward["parameters"]["method"] == "POST"
+    assert forward["parameters"]["url"] == "http://127.0.0.1:8766/hook/auto-abc"
+    assert forward["parameters"]["jsonBody"] == "={{ JSON.stringify($json) }}"
+    assert wf["connections"]["Webhook"]["main"][0][0]["node"] == "Forward to msb-v3"
+
+
 def test_n8n_webhook_url() -> None:
     client = N8nClient(base_url="http://127.0.0.1:5678", api_key="k")
     assert client.webhook_url("echo-bot") == "http://127.0.0.1:5678/webhook/echo-bot"
+
+
+def test_ghl_create_webhook_contract() -> None:
+    """The perceiver's GHL reach primitive: register an outbound webhook at
+    the location so GHL fires events at msb-v3's /hook."""
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["method"] = request.method
+        captured["path"] = request.url.path
+        captured["auth"] = request.headers.get("Authorization")
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"webhookId": "wh-1"})
+
+    transport = httpx.MockTransport(handler)
+    client = GhlClient(
+        api_key="ghl-key",
+        location_id="loc-1",
+        base_url="https://services.leadconnectorhq.com",
+        transport=transport,
+    )
+    result = client.create_webhook("https://public.example.com/hook/ghl-abc", ["ContactCreate", "FormSubmit"])
+    assert result["webhookId"] == "wh-1"
+    assert captured["method"] == "POST"
+    assert captured["path"] == "/v1/webhooks"
+    assert captured["auth"] == "Bearer ghl-key"
+    assert captured["body"]["url"] == "https://public.example.com/hook/ghl-abc"
+    assert captured["body"]["events"] == ["ContactCreate", "FormSubmit"]
+    assert captured["body"]["locationId"] == "loc-1"
+
+
+def test_ghl_create_webhook_requires_url_and_events() -> None:
+    client = GhlClient(api_key="k", base_url="https://services.leadconnectorhq.com")
+    with pytest.raises(ValueError):
+        client.create_webhook("", ["ContactCreate"])
+    with pytest.raises(ValueError):
+        client.create_webhook("https://x.example.com/hook", [])
 
 
 def test_ghl_create_workflow_contract() -> None:
