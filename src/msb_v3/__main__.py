@@ -26,18 +26,23 @@ def _check_source_license() -> None:
     msb_v3`, and the console script — so a bare pull (anonymous clone or
     API tarball) is inert code until a license is obtained.
 
-    Explicit container opt-out: the Docker image (Dockerfile sets
-    MSB_CONTAINER=1) is a build artifact of a LICENSED checkout, and
-    close-out FR-1.2 forbids baking the license (host state) into the
-    image — so the container skips this gate by declaration, not by
-    accident. The gate still protects the source distribution path: a bare
-    pull has no license AND no MSB_CONTAINER.
+    Explicit opt-outs for legitimate non-anonymous runs:
+
+    - MSB_CONTAINER=1: the Docker image (Dockerfile sets it) is a build
+      artifact of a LICENSED checkout, and close-out FR-1.2 forbids baking
+      the license (host state) into the image.
+    - MSB_CI=1: the hosted CI runners (ci.yml / factory-gate.yml set it)
+      clone the OWNER's checkout — not an anonymous pull — and have no
+      home-dir license to verify.
+
+    The gate still protects the source distribution path: a bare pull has
+    no license AND neither flag.
     """
     import os
     import subprocess
     from pathlib import Path
 
-    if os.environ.get("MSB_CONTAINER") == "1":
+    if os.environ.get("MSB_CONTAINER") == "1" or os.environ.get("MSB_CI") == "1":
         return
 
     repo = Path(__file__).resolve().parents[2]
