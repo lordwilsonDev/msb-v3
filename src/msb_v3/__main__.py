@@ -25,10 +25,20 @@ def _check_source_license() -> None:
     applies to every start path — run.sh, `make server`, `python -m
     msb_v3`, and the console script — so a bare pull (anonymous clone or
     API tarball) is inert code until a license is obtained.
+
+    Explicit container opt-out: the Docker image (Dockerfile sets
+    MSB_CONTAINER=1) is a build artifact of a LICENSED checkout, and
+    close-out FR-1.2 forbids baking the license (host state) into the
+    image — so the container skips this gate by declaration, not by
+    accident. The gate still protects the source distribution path: a bare
+    pull has no license AND no MSB_CONTAINER.
     """
     import os
     import subprocess
     from pathlib import Path
+
+    if os.environ.get("MSB_CONTAINER") == "1":
+        return
 
     repo = Path(__file__).resolve().parents[2]
     verify = repo / "scripts" / "verify-license.sh"
