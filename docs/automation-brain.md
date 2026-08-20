@@ -84,7 +84,25 @@ requests.
 payload lands in the wake inbox tagged with the automation id. The platform's
 only job is pointing here; the resident agent decides what the payload means
 on its next wake. Edge: optional shared secret (`MSB_AUTOMATION_HOOK_SECRET`,
-constant-time) + bounded payloads.
+constant-time) + bounded payloads. The `automation_id` in the path doubles
+as a capability token — only a caller who knows the full URL can queue a
+signal; use a random value (e.g. `ghl-$(openssl rand -hex 6)`).
+
+**Pointing a real platform at /hook** — the only hard requirement is a
+public URL that reaches msb-v3 (cloud platforms cannot reach `127.0.0.1`).
+A Cloudflare quick tunnel (`cloudflared tunnel --url http://127.0.0.1:8766`)
+works with zero accounts. Once you have it, `scripts/wire-hook-forwarders.sh
+<public-url>` wires every configured platform in one shot and verifies each
+with a real POST. LIVE-VERIFIED 2026-08-20: a real GitHub webhook on
+lordwilsonDev/msb-v3 (hook id 668321218) firing push events at
+`<public>/hook/gh-…` delivered its payload through the tunnel into the wake
+inbox — the exact path GHL/Make/Zapier use. Current unlocks: GoHighLevel
+webhook creation is implemented (`GhlClient.create_webhook`) but the PIT
+token in `.env` returns 404 on every endpoint (dead/revoked — GHL hides all
+errors behind 404; create a fresh PIT in GHL: Settings → Locations → API);
+n8n forwarding (`build_n8n_forwarder_workflow` — Webhook → HTTP Request →
+/hook) is implemented but `N8N_API_KEY` has never been created (n8n UI:
+Settings → API).
 
 **Stage 4 — self-maintenance.** Every wake cycle also runs `automation/audit.py`:
 provider seams configured or blocked (and why), brain budget vs cap, dead
