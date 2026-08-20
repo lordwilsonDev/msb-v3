@@ -1,4 +1,4 @@
-.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -104,6 +104,9 @@ lint:
 # Docker image is reproducible. The transient .in files are written and removed
 # here (committing them tripped Dependabot's pip-compile detection). `make
 # lint` and CI run --check so a stale lock can't ship.
+doctor:  ## Check every prerequisite for running msb-v3 (docs/PREREQUISITES.md)
+	bash scripts/prereq-check.sh
+
 deps:
 	$(PY) scripts/gen-requirements.py
 

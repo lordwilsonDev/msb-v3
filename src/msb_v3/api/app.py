@@ -12,6 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from msb_v3 import __version__
 from msb_v3.api.agent import router as agent_router
+from msb_v3.api.automation import router as automation_router
 from msb_v3.api.chat import router as chat_router
 from msb_v3.api.codegraph import router as codegraph_router
 from msb_v3.api.console import router as console_router
@@ -26,6 +27,7 @@ from msb_v3.api.governance import router as governance_router
 from msb_v3.api.graph import router as graph_router
 from msb_v3.api.health import router as health_router
 from msb_v3.api.home import router as home_router
+from msb_v3.api.hook import router as hook_router
 from msb_v3.api.knowledge import router as knowledge_router
 from msb_v3.api.mcp_bridge import router as mcp_router
 from msb_v3.api.memory import router as memory_router
@@ -44,6 +46,7 @@ from msb_v3.api.studio import router as studio_router
 from msb_v3.api.system import router as system_router
 from msb_v3.api.tenants import router as tenants_router
 from msb_v3.api.triumvirate import router as triumvirate_router
+from msb_v3.api.wake import router as wake_router
 from msb_v3.api.workflow import router as workflow_router
 from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
@@ -67,6 +70,12 @@ async def lifespan(app: FastAPI):
         # Runs until cancelled (the loop sleeps between ticks); shutdown
         # cancels it and waits for the current tick to unwind.
         scheduler_task = asyncio.create_task(CronScheduler().run_loop())
+        # The 5-minute resident agent: seed the wake-agent cron job so the
+        # loop exists by default (idempotent — only created when missing).
+        if settings.wake_enabled:
+            from msb_v3.wake.runner import ensure_wake_job
+
+            ensure_wake_job()
     try:
         yield
     finally:
@@ -164,6 +173,9 @@ def create_app() -> FastAPI:
     app.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
     app.include_router(openai_compat_router, prefix="/v1", tags=["openai"])
     app.include_router(cron_router, prefix="/cron", tags=["cron"])
+    app.include_router(wake_router, prefix="/wake", tags=["wake"])
+    app.include_router(automation_router, prefix="/automation", tags=["automation"])
+    app.include_router(hook_router, prefix="/hook", tags=["hook"])
     app.include_router(agent_router, prefix="/agent", tags=["agent"])
     app.include_router(node_router, prefix="/node/v1", tags=["sovereign-node"])
     app.include_router(vesta_router, prefix="/vesta", tags=["vesta"])
