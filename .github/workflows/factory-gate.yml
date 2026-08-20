@@ -56,6 +56,9 @@ jobs:
           # research-runtime fixtures below so they RUN (runtime/ is
           # gitignored machine state on a fresh checkout).
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
+          # Hosted runners have no home-dir source license — owner checkout,
+          # so the entry point skips the license gate (msb_v3/__main__.py).
+          MSB_CI: 1
         run: |
           set -euo pipefail
           bash scripts/seed-research-runtime.sh
@@ -121,6 +124,7 @@ jobs:
           # the runners both read this env and match. It gates a throwaway
           # CI test server, not a real control surface.
           MSB_OPERATOR_TOKEN: ci-operator-token
+          MSB_CI: 1
         run: |
           set -euo pipefail
           # h01-h10 (except h07) probe the live API on :8766, and h02
@@ -146,6 +150,7 @@ jobs:
         env:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
+          MSB_CI: 1
         run: |
           set -euo pipefail
           : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"
@@ -201,6 +206,7 @@ jobs:
           MSB_CONVERSATION_MODEL: stub
           MSB_CONVERSATION_LEDGER_DIR: ${{ runner.temp }}/msb-conversation-ledger
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
+          MSB_CI: 1
         run: |
           set -euo pipefail
           : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"

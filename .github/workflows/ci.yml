@@ -41,6 +41,10 @@ jobs:
         env:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
           MSB_SKILLS_DIR: ${{ github.workspace }}/tests/fixtures/skills
+          # Hosted runners have no home-dir source license; this is the
+          # owner's checkout (not an anonymous pull), so the entry point
+          # skips the license gate (see msb_v3/__main__.py).
+          MSB_CI: 1
         run: |
           set -euo pipefail
           # The triumvirate/harness/skill-router suites are LIVE integration
