@@ -56,20 +56,24 @@ def test_n8n_create_workflow_contract() -> None:
 
 
 def test_n8n_set_active_contract() -> None:
+    """The public API v1 contract: POST /workflows/{id}/activate (the UI's
+    PATCH-active is not part of the public API — live-verified 2026-08-20)."""
     captured: dict = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["method"] = request.method
         captured["path"] = request.url.path
-        captured["body"] = json.loads(request.content)
         return httpx.Response(200, json={"id": "wf-42", "active": True})
 
     transport = httpx.MockTransport(handler)
     client = N8nClient(base_url="http://127.0.0.1:5678", api_key="k", transport=transport)
     client.set_active("wf-42", active=True)
-    assert captured["method"] == "PATCH"
-    assert captured["path"] == "/api/v1/workflows/wf-42"
-    assert captured["body"] == {"active": True}
+    assert captured["method"] == "POST"
+    assert captured["path"] == "/api/v1/workflows/wf-42/activate"
+
+    captured.clear()
+    client.set_active("wf-42", active=False)
+    assert captured["path"] == "/api/v1/workflows/wf-42/deactivate"
 
 
 def test_n8n_forwarder_workflow_points_at_hook() -> None:

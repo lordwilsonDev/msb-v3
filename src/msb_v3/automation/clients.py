@@ -55,6 +55,7 @@ def build_n8n_forwarder_workflow(hook_url: str, name: str = "msb-hook-forwarder"
                 "name": "Webhook",
                 "type": "n8n-nodes-base.webhook",
                 "typeVersion": 1.1,
+                "webhookId": uuid.uuid4().hex,
                 "position": [0, 0],
             },
             {
@@ -75,8 +76,6 @@ def build_n8n_forwarder_workflow(hook_url: str, name: str = "msb-hook-forwarder"
         ],
         "connections": {"Webhook": {"main": [[{"node": "Forward to msb-v3", "type": "main", "index": 0}]]}},
         "settings": {"executionOrder": "v1"},
-        "tags": [{"name": "msb-v3"}],
-        "meta": {"description": "Forwards webhook payloads to the msb-v3 perceiver (/hook) for the resident agent."},
     }
 
 
@@ -98,6 +97,7 @@ def build_n8n_webhook_workflow(name: str, description: str, path: Optional[str] 
                 "name": "Webhook",
                 "type": "n8n-nodes-base.webhook",
                 "typeVersion": 1.1,
+                "webhookId": uuid.uuid4().hex,
                 "position": [0, 0],
             },
             {
@@ -115,8 +115,6 @@ def build_n8n_webhook_workflow(name: str, description: str, path: Optional[str] 
         ],
         "connections": {"Webhook": {"main": [[{"node": "Respond", "type": "main", "index": 0}]]}},
         "settings": {"executionOrder": "v1"},
-        "tags": [{"name": "msb-v3"}],
-        "meta": {"description": (description or "")[:300]},
     }
 
 
@@ -156,7 +154,11 @@ class N8nClient:
         return self._request("POST", "/api/v1/workflows", json=workflow)
 
     def set_active(self, workflow_id: str, active: bool = True) -> Dict[str, Any]:
-        return self._request("PATCH", f"/api/v1/workflows/{workflow_id}", json={"active": active})
+        """Activate/deactivate via the public API v1 contract
+        (POST /workflows/{id}/activate — the UI's PATCH-active is not part
+        of the public API)."""
+        action = "activate" if active else "deactivate"
+        return self._request("POST", f"/api/v1/workflows/{workflow_id}/{action}")
 
     def webhook_url(self, path: str) -> str:
         return f"{self.base_url}/webhook/{path.strip('/')}"
