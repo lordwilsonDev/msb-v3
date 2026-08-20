@@ -10,9 +10,11 @@
     <string>/Users/lordwilson/msb-v3/scripts/heartbeat.sh</string>
   </array>
 
-  <!-- Daily 12:00 — liveness + off-machine copy of the ops trail. Set
-       MSB_HEARTBEAT_DIR to an external volume mount (e.g. /Volumes/BackupDrive)
-       in EnvironmentVariables to activate; absent volume = graceful skip. -->
+  <!-- Daily 12:00 — liveness + off-machine copy of the ops trail. Active
+       sink: MSB_HEARTBEAT_RCLONE_REMOTE (rclone remote dir, pushed via
+       rclone copy). Optional second sink: MSB_HEARTBEAT_DIR (external
+       volume mount). No sink = graceful skip; configured-but-failed rclone
+       push = loud (exit 1, watchdog alerts). -->
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key><integer>12</integer>
@@ -21,6 +23,7 @@
 
   <key>EnvironmentVariables</key>
   <dict>
+    <key>MSB_HEARTBEAT_RCLONE_REMOTE</key><string>gdrive:msb-v3/heartbeat</string>
     <!-- <key>MSB_HEARTBEAT_DIR</key><string>/Volumes/BackupDrive</string> -->
   </dict>
 

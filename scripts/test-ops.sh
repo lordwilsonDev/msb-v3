@@ -400,9 +400,9 @@ else
 fi
 rc=0
 env MSB_HEARTBEAT_LOG="$TMP/hb2.log" bash "$ROOT/scripts/heartbeat.sh" >/dev/null 2>&1 || rc=$?
-[ "$rc" = 0 ] && grep -q "no heartbeat volume" "$TMP/hb2.log" \
-  && ok "heartbeat skips cleanly without volume (rc=0)" \
-  || bad "heartbeat no-volume rc=$rc log=$(cat "$TMP/hb2.log" 2>/dev/null)"
+[ "$rc" = 0 ] && grep -q "no heartbeat sink" "$TMP/hb2.log" \
+  && ok "heartbeat skips cleanly without a sink (rc=0)" \
+  || bad "heartbeat no-sink rc=$rc log=$(cat "$TMP/hb2.log" 2>/dev/null)"
 
 # ---------------------------------------------------------------------------
 section "replicate: local mirror, graceful skip, loud unreachable"
