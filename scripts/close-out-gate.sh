@@ -90,6 +90,12 @@ else
 fi
 
 # --- 3. pip-audit: blocking CVE scan ----------------------------------------
+# Audits the HASH-LOCKED requirement files (requirements-{runtime,dev}.lock —
+# the declared, reproducible dependency contract the Docker image installs),
+# not the live environment: conda-installed packages can carry URL metadata
+# that breaks pip's resolver (observed with aiofiles in 2026-08), and the
+# lock files are what actually ships. --disable-pip is safe here because the
+# locks are fully pinned + hashed (--require-hashes).
 if skip pip-audit; then
   echo "[close-out] SKIP  pip-audit (MSB_CLOSE_OUT_SKIP)"
   SKIPPED=$((SKIPPED + 1))
@@ -97,8 +103,8 @@ elif ! command -v pip-audit >/dev/null 2>&1; then
   echo "[close-out] FAIL  pip-audit (pip-audit not installed — pip install pip-audit)"
   leg pip-audit 1
 else
-  pip freeze --exclude-editable >/tmp/close-out-audit-requirements.txt 2>/dev/null
-  pip-audit -r /tmp/close-out-audit-requirements.txt --strict >/tmp/close-out-audit.log 2>&1
+  pip-audit -r requirements-runtime.lock --strict --disable-pip >/tmp/close-out-audit.log 2>&1 \
+    && pip-audit -r requirements-dev.lock --strict --disable-pip >>/tmp/close-out-audit.log 2>&1
   leg pip-audit $?
 fi
 

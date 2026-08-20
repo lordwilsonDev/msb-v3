@@ -35,7 +35,13 @@ ENV PYTHONPATH=/app/src \
     MSB_ACTIVE_BACKEND=ollama \
     OLLAMA_URL=http://host.docker.internal:11434 \
     QDRANT_HOST=localhost \
-    QDRANT_PORT=6333
+    QDRANT_PORT=6333 \
+    # The image is a build artifact of a LICENSED checkout; FR-1.2 forbids
+    # baking the source license (host state) into the image, so the
+    # container declares this and the entry point skips the source-license
+    # gate (see msb_v3/__main__.py). The gate still protects bare source
+    # pulls, which have neither a license nor this flag.
+    MSB_CONTAINER=1
 
 EXPOSE 8766
 
