@@ -114,12 +114,17 @@ the authorization layer still catches what the pre-filter misses.
 ## The heartbeat (cron)
 
 MSB is reactive by default; the cron scheduler makes it proactive. Durable
-jobs + run history in SQLite, a 5-field cron parser, six built-in actions
+jobs + run history in SQLite, a 5-field cron parser, seven built-in actions
 (`health_check`, `audit_chain_verify`, `backup_spine`, `metric_export`,
-`log_rotation`, `http_call`), an in-process async loop, a `/cron` REST API,
-and a CLI. Every execution is governed like a run: kill switch, retries,
-timeout, overlap guard, evidence receipt + audit-chain record. `http_call`
-is localhost-only by default (fail-closed allowlist).
+`log_rotation`, `http_call`, `wake_agent`), an in-process async loop, a
+`/cron` REST API, and a CLI. Every execution is governed like a run: kill
+switch, retries, timeout, overlap guard, evidence receipt + audit-chain
+record. `http_call` is localhost-only by default (fail-closed allowlist).
+
+The **wake loop** rides the scheduler: a `wake-agent` job (default `*/5 * * * *`)
+wakes the resident agent to answer messages left from any session via
+`POST /wake`, replying into an outbox — and routes automation requests to the
+automation brain. See [docs/wake-loop.md](docs/wake-loop.md).
 
 ```bash
 python -m msb_v3.cron list
@@ -141,6 +146,7 @@ See [docs/cron-scheduler.md](docs/cron-scheduler.md).
 ## Run
 
 ```bash
+make doctor   # checks every prerequisite (docs/PREREQUISITES.md)
 bash scripts/start.sh
 ```
 
@@ -179,6 +185,8 @@ path) before every push, blocking on failure. Bypass explicitly with
 - `/metrics/prometheus` — Prometheus scrape
 - `/system/health` — deep health check
 - `/cron/jobs` — scheduled governed jobs (operator-gated; see [docs/cron-scheduler.md](docs/cron-scheduler.md))
+- `/wake` — leave a message for the resident agent; `/wake/outbox` reads its replies; `/wake/status` (operator-gated; see [docs/wake-loop.md](docs/wake-loop.md))
+- `/automation/create` — plan + create automations (n8n/Make/Zapier/GHL); `/automation/manifest` the ledger; `/automation/status` budget + providers (operator-gated; see [docs/automation-brain.md](docs/automation-brain.md))
 - `/system/config` — runtime config, secrets masked
 - `/system/routes` — live route registry
 - `/status` — service/version/model/ready

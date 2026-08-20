@@ -39,3 +39,14 @@ def _disable_cron_scheduler(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     explicit path never touches data/runtime/cron.db."""
     monkeypatch.setattr(settings, "cron_enabled", False)
     monkeypatch.setattr(settings, "cron_db_path", str(tmp_path / "cron.db"))
+
+
+@pytest.fixture(autouse=True)
+def _isolate_wake_and_automation(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the wake inbox/outbox store and the automation manifest/budget
+    at per-test scratch files so no test touches data/runtime/wake.db or
+    data/runtime/automation/. The automation budget path derives from the
+    manifest path's parent, so both land under tmp_path."""
+    monkeypatch.setattr(settings, "wake_db_path", str(tmp_path / "runtime" / "wake.db"))
+    monkeypatch.setattr(settings, "automation_manifest_path", str(tmp_path / "runtime" / "automation" / "manifest.jsonl"))
+    monkeypatch.setattr(settings, "automation_dry_run", True)

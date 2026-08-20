@@ -279,6 +279,24 @@ def action_http_call(params: Dict[str, Any]) -> Dict[str, Any]:
         return _fail(f"http_call failed: {exc.__class__.__name__}: {exc}", url=url)
 
 
+# --- wake_agent -----------------------------------------------------------
+
+def action_wake_agent(params: Dict[str, Any]) -> Dict[str, Any]:
+    """The resident agent's 5-minute wake cycle: process pending wake-inbox
+    messages (bounded by MSB_WAKE_MAX_PER_RUN, overridable via params) and
+    write responses to the outbox. Runs under the scheduler's kill switch /
+    retries / timeout / receipts like every other action. An empty inbox is
+    a successful no-op — the loop exists to stay warm, not to churn."""
+    from msb_v3.wake.runner import run_wake_cycle
+
+    max_items = params.get("max_items")
+    try:
+        max_items = int(max_items) if max_items is not None else None
+    except (TypeError, ValueError):
+        return _fail("wake_agent max_items must be an integer")
+    return run_wake_cycle(max_items=max_items)
+
+
 # --- registry --------------------------------------------------------------
 
 ACTIONS: Dict[str, ActionFn] = {
@@ -288,6 +306,7 @@ ACTIONS: Dict[str, ActionFn] = {
     "metric_export": action_metric_export,
     "log_rotation": action_log_rotation,
     "http_call": action_http_call,
+    "wake_agent": action_wake_agent,
 }
 
 

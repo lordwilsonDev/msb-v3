@@ -147,6 +147,53 @@ class Settings:
     # is not on this list is refused. Defaults to loopback only; widen by
     # adding hosts (comma-separated, no scheme/port).
     cron_http_hosts: str = field(default_factory=lambda: os.getenv("MSB_CRON_HTTP_HOSTS", "127.0.0.1,localhost,::1"))
+    # --- Wake loop (the 5-minute resident agent) ---
+    # A cron job (wake-agent, schedule below) wakes the resident agent to
+    # process messages left in the wake inbox from any session; responses
+    # land in the outbox (see api/wake.py + docs/wake-loop.md). Enabled by
+    # default; the job is seeded on server start (app.py lifespan) when both
+    # this and cron_enabled are true.
+    wake_enabled: bool = field(default_factory=lambda: os.getenv("MSB_WAKE_ENABLED", "1") == "1")
+    # Durable inbox/outbox store, following the runtime-store convention
+    # (beside cron.db under data/runtime/). Empty = derive from db_path.
+    wake_db_path: str = field(default_factory=lambda: os.getenv("MSB_WAKE_DB_PATH", ""))
+    # How many pending messages one wake cycle processes (bounded — the
+    # cycle is a governed cron action with a timeout).
+    wake_max_per_run: int = field(default_factory=lambda: int(os.getenv("MSB_WAKE_MAX_PER_RUN", "5")))
+    # The resident cadence.
+    wake_schedule: str = field(default_factory=lambda: os.getenv("MSB_WAKE_SCHEDULE", "*/5 * * * *"))
+    # --- Automation brain (n8n / Make / Zapier / GoHighLevel) ---
+    # The brain (DeepSeek-driven) turns a request into a structured plan and
+    # executes it via the provider clients. Budget cap in USD on the LLM
+    # brain spend (the $10 key); platform per-run costs are the provider's
+    # own billing and are recorded in the manifest when known.
+    automation_budget_usd: float = field(default_factory=lambda: float(os.getenv("MSB_AUTOMATION_BUDGET_USD", "10.0")))
+    # Fail-closed: dry-run by default. Creation with side effects requires
+    # approve=true on the request (operator token = the approval) or this
+    # flipped to 0.
+    automation_dry_run: bool = field(default_factory=lambda: os.getenv("MSB_AUTOMATION_DRY_RUN", "1") == "1")
+    automation_manifest_path: str = field(default_factory=lambda: os.getenv("MSB_AUTOMATION_MANIFEST_PATH", ""))
+    # The /hook sense (Stage 3): optional shared secret for inbound webhook
+    # payloads (x-hook-secret header, constant-time compare). Empty = open
+    # to bounded payloads only — the brain judges, the edge is small.
+    automation_hook_secret: str = field(default_factory=lambda: os.getenv("MSB_AUTOMATION_HOOK_SECRET", ""))
+    # Dispatcher outbound allowlist (Stage 1): hosts living automations may
+    # POST to beyond loopback + the configured providers' own hosts
+    # (comma-separated; empty = loopback + providers only).
+    automation_webhook_hosts: str = field(default_factory=lambda: os.getenv("MSB_AUTOMATION_WEBHOOK_HOSTS", ""))
+    # n8n is the first-class target: self-hosted, free to run, real REST API.
+    # N8N_API_KEY is created in the n8n UI (Settings → API).
+    n8n_api_key: str = field(default_factory=lambda: os.getenv("N8N_API_KEY", ""))
+    n8n_base_url: str = field(default_factory=lambda: os.getenv("N8N_BASE_URL", "http://127.0.0.1:5678"))
+    # Make: the practical integration is a webhook trigger (scenario creation
+    # needs account-level API access). Zapier / GoHighLevel: REST API keys.
+    make_webhook_url: str = field(default_factory=lambda: os.getenv("MSB_MAKE_WEBHOOK_URL", ""))
+    zapier_api_key: str = field(default_factory=lambda: os.getenv("MSB_ZAPIER_API_KEY", ""))
+    ghl_api_key: str = field(default_factory=lambda: os.getenv("MSB_GHL_API_KEY", ""))
+    # GoHighLevel location id — PIT (private integration token) access is
+    # location-scoped; sent as locationId on workflow creation when set.
+    ghl_location_id: str = field(default_factory=lambda: os.getenv("MSB_GHL_LOCATION_ID", ""))
+    ghl_base_url: str = field(default_factory=lambda: os.getenv("MSB_GHL_BASE_URL", "https://services.leadconnectorhq.com"))
     _active_backend: str = field(default_factory=lambda: os.getenv("MSB_ACTIVE_BACKEND", "ollama"))
 
 
