@@ -15,7 +15,7 @@ system depends on. For what the GitHub repo/CI must provide, see
 
 | Field | Value | Source |
 |---|---|---|
-| Name / version | `msb-v3` `0.3.0` | `pyproject.toml` |
+| Name / version | `msb-v3` `0.3.1` | `pyproject.toml` |
 | Python | `>=3.11` (host: `/opt/homebrew/Caskroom/miniforge/base/bin/python`) | `pyproject.toml`, CLAUDE.md |
 | Console script | `msb-v3 = msb_v3.__main__:run` | `pyproject.toml` |
 | ASGI app | `msb_v3.__main__:app` (uvicorn) | `src/msb_v3/__main__.py` |

@@ -1,4 +1,4 @@
-.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -294,4 +294,12 @@ provision-models:
 # Reproducible rebuild from a fresh clone (host path; see MANIFEST.md).
 setup:
 	bash scripts/setup.sh
+
+# Close-out gate (close-out blueprint FR-4.2 / AC-4.1): the definition of
+# done — full suite (coverage>=70 against a booted server) + lint (ruff +
+# mypy all of src + claims + policy drift) + pip-audit + container /health
+# smoke. Red on any single failure. Legs skip only via explicit
+# MSB_CLOSE_OUT_SKIP=<lint,pytest,pip-audit,docker>.
+close-out-gate:
+	bash scripts/close-out-gate.sh
 

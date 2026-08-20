@@ -177,6 +177,18 @@ jobs:
           echo "auth probe: missing=$missing wrong=$wrong correct=$correct (expect 401 401 200)"
           [ "$missing" = "401" ] && [ "$wrong" = "401" ] && [ "$correct" = "200" ]
 
+      # Close-out gate (FR-4.3): the definition of done runs in CI. The
+      # regression step above already ran the full pytest+coverage leg, so
+      # this job runs the gate as the aggregator over the remaining legs
+      # (lint battery + pip-audit + container /health smoke) — every leg of
+      # the close-out gate is exercised by CI on every push, and this job
+      # pins them together so the gate cannot silently regress.
+      - name: Close-out gate (lint + pip-audit + docker smoke)
+        if: always()
+        env:
+          MSB_CLOSE_OUT_SKIP: pytest
+        run: bash scripts/close-out-gate.sh
+
       - name: Conversation E2E probe (stub, zero-spend)
         if: always()
         # The conversation contract is the E2E probe: ask -> retrieve -> input
