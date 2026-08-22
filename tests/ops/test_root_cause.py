@@ -122,7 +122,7 @@ def test_collect_wake_respects_window(wake: WakeStore, iso_engine: dict) -> None
 def test_collect_cron_failures(cron: CronStore, iso_engine: dict) -> None:
     run_id = cron.start_run("local-demo", "schedule")
     cron.finish_run(run_id, "FAILED", error=CIRCUIT_ERR)
-    engine = _engine(iso_engine, wake_db=str(Path("unused.db")), cron_db=str(cron.db_path))
+    engine = _engine(iso_engine, cron_db=str(cron.db_path))
     signals = engine.collect()
     cron_fails = [s for s in signals if s.kind == "task_failure" and s.resource == "cron:local-demo"]
     assert len(cron_fails) == 1
@@ -139,7 +139,7 @@ def test_collect_discrepancies(tmp_path: Path, iso_engine: dict) -> None:
             confidence=1.0, affected_resource="zapier", suggested_action="resolve",
         )
     )
-    engine = _engine(iso_engine, wake_db=str(Path("unused.db")), cron_db=str(Path("unused.db")), discrepancy_store=store)
+    engine = _engine(iso_engine, discrepancy_store=store)
     signals = engine.collect()
     disc = [s for s in signals if s.kind == "discrepancy"]
     assert len(disc) == 1
@@ -149,7 +149,7 @@ def test_collect_discrepancies(tmp_path: Path, iso_engine: dict) -> None:
 def test_collect_boot_restarts(tmp_path: Path, iso_engine: dict) -> None:
     chain = AuditChain(db_path=str(tmp_path / "audit.db"), allow_keyless=True)
     chain.append("boot", "boot.started", {"pid": 1})
-    engine = _engine(iso_engine, wake_db=str(Path("unused.db")), cron_db=str(Path("unused.db")), chain=chain)
+    engine = _engine(iso_engine, chain=chain)
     signals = engine.collect()
     restarts = [s for s in signals if s.kind == "restart"]
     assert len(restarts) == 1
