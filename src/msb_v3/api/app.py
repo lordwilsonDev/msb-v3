@@ -36,6 +36,7 @@ from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.models import router as models_router
 from msb_v3.api.moie import router as moie_router
 from msb_v3.api.notify import router as notify_router
+from msb_v3.integrations.openbot import router as openbot_adapter_router
 from msb_v3.api.openai_compat import router as openai_compat_router
 from msb_v3.api.rag import router as rag_router
 from msb_v3.api.research import router as research_router
@@ -167,6 +168,7 @@ def create_app() -> FastAPI:
     app.include_router(governance_router, prefix="/governance", tags=["governance"])
     app.include_router(safety_router, prefix="/safety", tags=["safety"])
     app.include_router(notify_router, prefix="/notify", tags=["notify"])
+    app.include_router(openbot_adapter_router)
     app.include_router(triumvirate_router, prefix="/triumvirate", tags=["triumvirate"])
     app.include_router(skill_router, prefix="/skills", tags=["skills"])
     app.include_router(models_router, prefix="/models", tags=["models"])
