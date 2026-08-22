@@ -78,6 +78,11 @@ async def ready(response: Response) -> Dict[str, Any]:
         circuit = deepseek_circuit_state()
     except Exception:
         circuit = {"open": False, "reason": "unknown"}
+    try:
+        from msb_v3.local_ai.anthropic import anthropic_circuit_state
+        anthropic_circuit = anthropic_circuit_state()
+    except Exception:
+        anthropic_circuit = {"open": False, "reason": "unknown"}
     ok = all(s == "ok" for s in _COMPONENTS.values())
     status = 200 if ok else 503
     if status == 503:
@@ -86,5 +91,6 @@ async def ready(response: Response) -> Dict[str, Any]:
         "ready": ok,
         "components": _COMPONENTS,
         "deepseek_circuit": circuit,
+        "anthropic_circuit": anthropic_circuit,
         "ts": datetime.now(timezone.utc).isoformat(),
     }

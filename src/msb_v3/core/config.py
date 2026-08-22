@@ -87,6 +87,13 @@ class Settings:
     deepseek_api_key: str = field(default_factory=lambda: os.getenv("DEEPSEEK_API_KEY", "") or os.getenv("OPENAI_API_KEY", ""))
     deepseek_base_url: str = field(default_factory=lambda: os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
     deepseek_model: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"))
+    # Anthropic native Messages API (the api.anthropic provider). Strictly
+    # ANTHROPIC_API_KEY — no fallback to OPENAI_API_KEY: unlike DeepSeek,
+    # Anthropic's wire protocol is not OpenAI-compatible, so sharing the key
+    # would fail confusingly at the HTTP layer, not degrade gracefully.
+    anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
+    anthropic_base_url: str = field(default_factory=lambda: os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"))
+    anthropic_model: str = field(default_factory=lambda: os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5"))
     # /v1/embeddings guards: per-request batch cap (413 when exceeded) and a
     # per-client sliding-window cap on total embedded items (429). A batch of
     # N items consumes N units toward the window cap.
