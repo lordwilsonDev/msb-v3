@@ -271,3 +271,15 @@ def scan_discrepancies() -> Dict[str, Any]:
     from msb_v3.ops.discrepancy import DiscrepancyEngine
 
     return DiscrepancyEngine().scan()
+
+
+@router.post("/diagnose")
+def diagnose(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Root-cause diagnosis (Phase 2): collect telemetry (wake failures, cron
+    failures, open discrepancies, restart events), correlate into causal
+    edges, and rank root-cause hypotheses. Evidence is deterministic; the
+    optional ``window_hours`` bounds the lookback."""
+    from msb_v3.ops.root_cause import RootCauseEngine
+
+    window = float((body or {}).get("window_hours", 24.0))
+    return RootCauseEngine(window_hours=window).diagnose()

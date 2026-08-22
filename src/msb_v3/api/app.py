@@ -59,6 +59,19 @@ from msb_v3.vesta.api import router as vesta_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Record this boot in the audit chain (component=boot) so the
+    # RootCauseEngine can detect restart events — the last link in the
+    # resource-exhaustion chain (provider storm -> OOM restart). Best-effort:
+    # a chain that refuses the append must never block startup.
+    try:
+        from msb_ledger.chain_anchor import anchored_chain_from_env
+
+        anchored_chain_from_env().append(
+            "boot", "boot.started", {"pid": __import__("os").getpid(), "version": __version__}
+        )
+    except Exception:
+        pass
+
     # The heartbeat: an in-process cron scheduler (MSB_CRON_ENABLED=0 turns
     # it off; the CLI still runs jobs on demand). Started only when enabled
     # so tests (which disable it via the autouse conftest fixture) and
