@@ -22,11 +22,11 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/lordwilson/.local/bin/qdrant</string>
+        <string>__MSB_QDRANT_BIN__</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/lordwilson/msb-v3</string>
+    <string>__MSB_REPO__</string>
 
     <key>RunAtLoad</key>
     <true/>

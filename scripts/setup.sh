@@ -25,6 +25,11 @@ echo "[setup] 2/6 installing python deps ($PY)"
 
 echo "[setup] 3/6 launchd agents (msb-v3, qdrant, backup)"
 mkdir -p "$HOME/Library/LaunchAgents"
+# The shipped plists are path-neutral TEMPLATES (__MSB_REPO__ / __MSB_QDRANT_BIN__
+# placeholders) so a fresh clone on any machine installs an agent that points at
+# ITS OWN checkout — never bootstrap an un-rendered template. The qdrant binary
+# is machine-specific (pip/brew), so resolve it once and render it in.
+QDRANT_BIN="${MSB_QDRANT_BIN:-$(command -v qdrant 2>/dev/null || echo /opt/homebrew/bin/qdrant)}"
 for entry in msb-v3:com.lordwilson.msb-v3 qdrant:com.lordwilson.qdrant backup:com.lordwilson.msb-backup; do
   label="${entry%%:*}"
   agent_id="${entry##*:}"
@@ -34,13 +39,15 @@ for entry in msb-v3:com.lordwilson.msb-v3 qdrant:com.lordwilson.qdrant backup:co
     echo "[setup]   - $label: plist $plist missing — skipping (repo may not ship it)"
     continue
   fi
-  cp "$plist" "$dst"
   if launchctl print "gui/$(id -u)/$agent_id" >/dev/null 2>&1; then
-    echo "[setup]   - $label already loaded"
-  elif launchctl bootstrap "gui/$(id -u)" "$dst" 2>/dev/null; then
-    echo "[setup]   - $label bootstrapped"
+    echo "[setup]   - $label already loaded — leaving the installed agent untouched"
+    continue
+  fi
+  sed -e "s|__MSB_REPO__|$REPO|g" -e "s|__MSB_QDRANT_BIN__|$QDRANT_BIN|g" "$plist" > "$dst"
+  if launchctl bootstrap "gui/$(id -u)" "$dst" 2>/dev/null; then
+    echo "[setup]   - $label bootstrapped (rendered for $REPO)"
   else
-    echo "[setup]   - $label WARNING: bootstrap failed (rc=$?) — check the plist" >&2
+    echo "[setup]   - $label WARNING: bootstrap failed (rc=$?) — check $dst" >&2
   fi
 done
 

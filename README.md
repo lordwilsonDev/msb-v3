@@ -3,6 +3,10 @@
 **A sovereign, local-first, governed agent runtime.**
 FastAPI + SQLite + Qwen3/Ollama + Prometheus.
 
+> **New here?** Start with [README-OUTSIDERS.md](README-OUTSIDERS.md) — one
+> screen: what it is, why provable autonomy matters, the 30-second trust
+> model, and how to run it. This file is the full engineering reference.
+
 > A narrow, local-first, governed agent runtime that takes a real task from
 > request to a verified, evidence-backed result — and refuses, records, and
 > recovers when a model, tool, or permission fails.

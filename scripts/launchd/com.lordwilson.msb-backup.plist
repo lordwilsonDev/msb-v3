@@ -6,12 +6,12 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/lordwilson/msb-v3/scripts/backup.sh</string>
+    <string>__MSB_REPO__/scripts/backup.sh</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
-  <key>StandardOutPath</key><string>/Users/lordwilson/msb-v3/logs/backup.log</string>
-  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/backup.err</string>
-  <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
+  <key>StandardOutPath</key><string>__MSB_REPO__/logs/backup.log</string>
+  <key>StandardErrorPath</key><string>__MSB_REPO__/logs/backup.err</string>
+  <key>WorkingDirectory</key><string>__MSB_REPO__</string>
 </dict>
 </plist>
