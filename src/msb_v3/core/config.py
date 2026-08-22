@@ -194,6 +194,15 @@ class Settings:
     # location-scoped; sent as locationId on workflow creation when set.
     ghl_location_id: str = field(default_factory=lambda: os.getenv("MSB_GHL_LOCATION_ID", ""))
     ghl_base_url: str = field(default_factory=lambda: os.getenv("MSB_GHL_BASE_URL", "https://services.leadconnectorhq.com"))
+    # --- Autonomous repair (Phase 4) ---
+    # The bounded self-repair loop (launchd: com.blackswanlabz.msb-v3.auto-repair,
+    # every 10 min): scan → diagnose → propose → execute AUTO plans. Disabled =
+    # the loop exits without proposing or executing (the launchd script and the
+    # loop itself both check this — belt and braces).
+    auto_repair_enabled: bool = field(default_factory=lambda: os.getenv("MSB_AUTO_REPAIR_ENABLED", "1") == "1")
+    # Per-cycle cap on AUTO executions — bounded by construction even when
+    # many plans are open (deferred plans retry on later cycles).
+    auto_repair_max_execute: int = field(default_factory=lambda: int(os.getenv("MSB_AUTO_REPAIR_MAX_EXECUTE", "3")))
     _active_backend: str = field(default_factory=lambda: os.getenv("MSB_ACTIVE_BACKEND", "ollama"))
 
 

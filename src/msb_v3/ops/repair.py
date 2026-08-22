@@ -188,6 +188,20 @@ class RepairStore:
                 (status, decided_by, error[:500], executed_at, plan_id),
             )
 
+    def has_open_plan(self, action: str, params: Dict[str, Any]) -> bool:
+        """True if a non-terminal plan for the same action with an equivalent
+        dedupe key already exists (dedupe for the autonomous loop — one open
+        requeue per provider, one open quarantine/reanchor, never a plan
+        storm)."""
+        open_statuses = (STATUS_PROPOSED, STATUS_AWAITING, STATUS_APPROVED, STATUS_EXECUTING)
+        wanted = dedupe_key(action, params)
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT action, params FROM repair_plans WHERE action=? AND status IN (?,?,?,?)",
+                (action, *open_statuses),
+            ).fetchall()
+        return any(dedupe_key(r["action"], json.loads(r["params"])) == wanted for r in rows)
+
 
 # ---------------------------------------------------------------------------
 # Repair action catalog — deterministic apply / verify / rollback
@@ -374,6 +388,92 @@ REPAIR_ACTIONS: Dict[str, Dict[str, Any]] = {
 PROHIBITED_FOR_AUTO = frozenset({"chain_invalid", "spine_chain_invalid", "projection_divergence", "illegal_transition"})
 
 
+def dedupe_key(action: str, params: Dict[str, Any]) -> str:
+    """The identity two plans share when they represent the same repair.
+    Exact params by default (one requeue per provider); ``quarantine_wake``
+    dedupes on action alone because its ``note`` param is a live backlog
+    count that changes between cycles — the condition is the same even when
+    the note differs."""
+    if action == "quarantine_wake":
+        return action
+    return json.dumps({action: params}, sort_keys=True)
+
+
+def plans_for_diagnosis(
+    diagnosis: Dict[str, Any],
+    *,
+    disc_store: Optional[Any] = None,
+) -> tuple:
+    """Map a diagnosis to candidate ``RepairPlan`` objects (pure — no I/O
+    beyond reading the open-discrepancy set for prohibited-class checks).
+    Shared by ``RepairService.propose`` and the autonomous loop's dry-run."""
+    from msb_v3.ops.discrepancy import DiscrepancyStore
+
+    store = disc_store or DiscrepancyStore()
+    plans: List[RepairPlan] = []
+    skipped: List[str] = []
+    for root in diagnosis.get("roots", []):
+        if root.get("kind") == "provider_outage":
+            root_cause = f"{root['resource']} provider outage (conf {root.get('confidence', 0):.2f})"
+            plans.append(
+                RepairPlan(
+                    plan_id="",
+                    timestamp="",
+                    discrepancy_id="",
+                    root_cause=root_cause,
+                    action="requeue_wake",
+                    params={"provider": root["resource"]},
+                    proposed_changes="",
+                    expected_outcome="",
+                    risk="",
+                    rollback_plan="",
+                    required_authority="",
+                    verification_contract={},
+                )
+            )
+    for signal in diagnosis.get("signals", []):
+        if signal.get("kind") == "queue_backlog" and signal.get("resource") == "wake_inbox":
+            plans.append(
+                RepairPlan(
+                    plan_id="",
+                    timestamp="",
+                    discrepancy_id="",
+                    root_cause=f"wake inbox backlog ({signal.get('meta', {}).get('pending', '?')} pending)",
+                    action="quarantine_wake",
+                    params={"note": signal.get("detail", "")},
+                    proposed_changes="",
+                    expected_outcome="",
+                    risk="",
+                    rollback_plan="",
+                    required_authority="",
+                    verification_contract={},
+                )
+            )
+    for row in store.query(status="open"):
+        dtype = row.get("discrepancy_type", "")
+        if dtype in PROHIBITED_FOR_AUTO:
+            skipped.append(f"{dtype} @ {row.get('affected_resource', '')} — not auto-repairable")
+    return plans, skipped
+
+
+def _finalize_plan(plan: RepairPlan) -> RepairPlan:
+    """Fill the spec-derived fields + authority status for a candidate plan."""
+    spec = REPAIR_ACTIONS[plan.action]
+    plan.plan_id = f"repair-{uuid.uuid4().hex[:12]}"
+    plan.timestamp = _now()
+    plan.proposed_changes = spec["changes"]
+    plan.expected_outcome = spec["outcome"]
+    plan.risk = spec["risk"]
+    plan.rollback_plan = spec["rollback"]
+    plan.required_authority = spec["authority"]
+    plan.verification_contract = spec["contract"]
+    if plan.required_authority == OPERATOR:
+        # OPERATOR plans land in awaiting_approval (approve() only accepts
+        # that state); AUTO plans stay proposed and are directly executable.
+        plan.status = STATUS_AWAITING
+    return plan
+
+
 # ---------------------------------------------------------------------------
 # RepairService — the governed flow
 # ---------------------------------------------------------------------------
@@ -441,9 +541,12 @@ class RepairService:
             verification_contract=spec["contract"],
         )
 
-    def propose(self, diagnosis: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def propose(self, diagnosis: Optional[Dict[str, Any]] = None, *, dedupe: bool = False) -> Dict[str, Any]:
         """Map a RootCauseEngine diagnosis (live if not given) to candidate
-        plans. Prohibited classes are never proposed for repair."""
+        plans. Prohibited classes are never proposed for repair. With
+        ``dedupe=True`` (the autonomous loop), a candidate whose action+params
+        already has an open plan is skipped — one requeue per provider, never
+        a plan storm."""
         if diagnosis is None:
             from msb_v3.ops.root_cause import RootCauseEngine
 
@@ -451,42 +554,18 @@ class RepairService:
         from msb_v3.ops.discrepancy import DiscrepancyStore
 
         disc_store = self._discrepancy_store or DiscrepancyStore()
+        candidates, skipped = plans_for_diagnosis(diagnosis, disc_store=disc_store)
         plans: List[RepairPlan] = []
-        skipped: List[str] = []
-        root_cause = ""
-        for root in diagnosis.get("roots", []):
-            if root.get("kind") == "provider_outage":
-                root_cause = f"{root['resource']} provider outage (conf {root.get('confidence', 0):.2f})"
-                plans.append(
-                    self._make_plan(
-                        "requeue_wake",
-                        params={"provider": root["resource"]},
-                        root_cause=root_cause,
-                    )
-                )
-        for signal in diagnosis.get("signals", []):
-            if signal.get("kind") == "queue_backlog" and signal.get("resource") == "wake_inbox":
-                plans.append(
-                    self._make_plan(
-                        "quarantine_wake",
-                        params={"note": signal.get("detail", "")},
-                        root_cause=f"wake inbox backlog ({signal.get('meta', {}).get('pending', '?')} pending)",
-                    )
-                )
-        for row in disc_store.query(status="open"):
-            dtype = row.get("discrepancy_type", "")
-            if dtype in PROHIBITED_FOR_AUTO:
-                skipped.append(f"{dtype} @ {row.get('affected_resource', '')} — not auto-repairable")
-        for plan in plans:
-            # OPERATOR plans land in awaiting_approval (approve() only accepts
-            # that state); AUTO plans stay proposed and are directly executable.
-            if plan.required_authority == OPERATOR:
-                plan.status = STATUS_AWAITING
+        for plan in candidates:
+            _finalize_plan(plan)
+            if dedupe and self.store.has_open_plan(plan.action, plan.params):
+                continue
             self.store.insert(plan)
             self._audit_append(
                 "repair.proposed",
                 {"plan_id": plan.plan_id, "action": plan.action, "authority": plan.required_authority, "risk": plan.risk},
             )
+            plans.append(plan)
         return {
             "ok": True,
             "ts": _now(),

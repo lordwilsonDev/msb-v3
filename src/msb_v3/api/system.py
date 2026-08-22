@@ -334,3 +334,27 @@ def list_repairs(status: Optional[str] = None, limit: int = 50) -> Dict[str, Any
     from msb_v3.ops.repair import RepairService
 
     return {"repairs": RepairService().store.list(status=status, limit=limit)}
+
+
+@router.post("/auto-repair/run")
+def run_auto_repair(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Run one autonomous repair cycle (Phase 4): scan → diagnose → propose
+    (deduped) → execute AUTO plans only. Body: {dry_run?, max_auto_execute?,
+    requeue_quiet_s?}. OPERATOR plans are proposed but never executed by the
+    loop; the kill switch and verify-before-trust gate every execution."""
+    from msb_v3.ops.auto_repair import AutoRepairLoop
+
+    body = body or {}
+    return AutoRepairLoop().run(
+        dry_run=bool(body.get("dry_run", False)),
+        max_auto_execute=body.get("max_auto_execute"),
+        requeue_quiet_s=float(body.get("requeue_quiet_s", 900.0)),
+    )
+
+
+@router.get("/auto-repair/status")
+def auto_repair_status() -> Dict[str, Any]:
+    """Last autonomous cycle + open plans + schedule (launchd every 10 min)."""
+    from msb_v3.ops.auto_repair import AutoRepairLoop
+
+    return AutoRepairLoop().status()

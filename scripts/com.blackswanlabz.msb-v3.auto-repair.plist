@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.blackswanlabz.msb-v3.auto-repair.plist — Phase 4 bounded autonomous
+  repair loop (user-domain LaunchAgent, no root needed).
+
+  Runs scripts/auto_repair.sh every 10 minutes (StartInterval 600): one cycle
+  of scan (DiscrepancyEngine) → diagnose (RootCauseEngine) → propose
+  (RepairService, deduped) → execute AUTO-authority plans only
+  (requeue_wake, reanchor_chain). OPERATOR plans are proposed and left in
+  awaiting_approval — the loop never approves. The kill switch and
+  verify-before-trust gate every execution; every cycle is audited
+  (auto_repair.cycle on the anchored chain) and persisted
+  (runtime/repairs.db auto_repair_cycles).
+
+  Disable without touching launchd: MSB_AUTO_REPAIR_ENABLED=0 in msb-v3/.env
+
+  Install:
+      cp scripts/com.blackswanlabz.msb-v3.auto-repair.plist ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.auto-repair.plist
+
+  Reload after editing:
+      launchctl bootout gui/$(id -u)/com.blackswanlabz.msb-v3.auto-repair
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.auto-repair.plist
+
+  Remove:
+      launchctl bootout gui/$(id -u)/com.blackswanlabz.msb-v3.auto-repair
+      rm ~/Library/LaunchAgents/com.blackswanlabz.msb-v3.auto-repair.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.blackswanlabz.msb-v3.auto-repair</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lordwilson/msb-v3/scripts/auto_repair.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lordwilson/msb-v3</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/opt/homebrew/Caskroom/miniforge/base/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lordwilson/.trinity/logs/auto_repair.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/lordwilson/.trinity/logs/auto_repair.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

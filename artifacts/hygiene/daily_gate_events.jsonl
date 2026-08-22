@@ -18,3 +18,4 @@
 {"ts": "2026-08-20T11:17:40Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}
 {"ts": "2026-08-21T11:17:50Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
 {"ts": "2026-08-21T11:17:50Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}
+{"ts": "2026-08-22T11:17:53Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
