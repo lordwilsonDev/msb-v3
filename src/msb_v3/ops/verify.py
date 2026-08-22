@@ -168,7 +168,7 @@ class VerificationStore:
             rows = conn.execute(
                 f"SELECT * FROM repair_verifications {where} ORDER BY ts DESC LIMIT ?", params
             ).fetchall()
-        return [self._row(r) for r in rows]
+        return [r for r in (self._row(row) for row in rows) if r is not None]
 
     @staticmethod
     def _row(row: Any) -> Optional[Dict[str, Any]]:
@@ -241,11 +241,13 @@ def _target_resolved(action: str, params: Dict[str, Any], before: Optional[Dict[
 def _new_discrepancies(before: Optional[Dict[str, Any]], after: Optional[Dict[str, Any]]) -> tuple:
     """(new: List[str], assessed: bool) — the roadmap's second question:
     did the repair create a discrepancy that wasn't open before?"""
-    if before is None or before.get("open_fingerprints") is None or (after or {}).get("open_fingerprints") is None:
+    if before is None:
         return [], False
-    before_fps = set(before["open_fingerprints"])
-    after_fps = set(after["open_fingerprints"])
-    return sorted(after_fps - before_fps), True
+    before_fps = before.get("open_fingerprints")
+    after_fps = (after or {}).get("open_fingerprints")
+    if before_fps is None or after_fps is None:
+        return [], False
+    return sorted(set(after_fps) - set(before_fps)), True
 
 
 def compute_verdict(

@@ -319,7 +319,8 @@ class RootCauseEngine:
             return signals
         for r in records:
             ts = getattr(r, "timestamp", None) or _now()
-            if _parse_ts(ts) and _parse_ts(ts) < start:
+            parsed_ts = _parse_ts(ts)
+            if parsed_ts is not None and parsed_ts < start:
                 continue
             signals.append(
                 Signal(
