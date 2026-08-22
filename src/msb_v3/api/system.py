@@ -321,10 +321,43 @@ def approve_repair(plan_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 @router.post("/repairs/{plan_id}/execute")
 def execute_repair(plan_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Execute a repair plan through the governed flow: verify-before-trust →
-    kill-switch gate → apply → verification contract → rollback on failure."""
+    kill-switch gate → apply → verification contract → rollback on failure.
+    Closed loop (Phase 5): the state before execution is snapshotted and the
+    plan is verified after — did it fix the target, did it break something?"""
     from msb_v3.ops.repair import RepairService
+    from msb_v3.ops.verify import VerifyEngine
 
-    return RepairService().execute(plan_id, str(body.get("operator", "system")))
+    service = RepairService()
+    verifier = VerifyEngine(repair_service=service)
+    before = verifier.capture()
+    result = service.execute(plan_id, str(body.get("operator", "system")))
+    verification = None
+    if result.get("status") in ("completed", "rolled_back"):
+        try:
+            verification = verifier.verify_repair(plan_id, before=before)
+        except Exception as exc:  # noqa: BLE001 — the execution result stands on its own
+            verification = {"error": f"{exc.__class__.__name__}: {exc}"}
+    return {"execute": result, "verification": verification}
+
+
+@router.post("/repairs/{plan_id}/verify")
+def verify_repair(plan_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Closed-loop verification for one executed plan (Phase 5): fresh scan +
+    after-snapshot → verdict. Plans executed through /execute are verified
+    automatically; this re-runs verification (history is append-only). Body:
+    {scan?: bool}."""
+    from msb_v3.ops.verify import VerifyEngine
+
+    scan = bool((body or {}).get("scan", True))
+    return VerifyEngine().verify_repair(plan_id, scan=scan)
+
+
+@router.get("/repairs/{plan_id}/verifications")
+def list_verifications(plan_id: str, limit: int = 50) -> Dict[str, Any]:
+    """Verification history for one plan (newest first)."""
+    from msb_v3.ops.verify import VerifyEngine
+
+    return {"verifications": VerifyEngine().store.list(plan_id=plan_id, limit=limit)}
 
 
 @router.get("/repairs")

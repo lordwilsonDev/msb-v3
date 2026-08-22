@@ -141,6 +141,8 @@ def _wake_counts(wake_db: str) -> dict:
 
 
 def _make_loop(iso: dict) -> AutoRepairLoop:
+    from msb_v3.ops.verify import VerificationStore, VerifyEngine
+
     rc = RootCauseEngine(
         wake_db=iso["wake_db"],
         cron_db=iso["cron_db"],
@@ -153,6 +155,14 @@ def _make_loop(iso: dict) -> AutoRepairLoop:
         kill_switch=iso["kill"],
         discrepancy_store=iso["disc"],
     )
+    verify = VerifyEngine(
+        store=VerificationStore(db_path=str(Path(iso["repairs"].db_path))),
+        repair_service=service,
+        discrepancy_engine=_StubDiscEngine(),
+        discrepancy_store=iso["disc"],
+        chain=iso["audit"],
+        wake_db=iso["wake_db"],
+    )
     return AutoRepairLoop(
         service=service,
         store=iso["cycles"],
@@ -161,6 +171,7 @@ def _make_loop(iso: dict) -> AutoRepairLoop:
         discrepancy_store=iso["disc"],
         chain=iso["audit"],
         kill_switch=iso["kill"],
+        verify_engine=verify,
     )
 
 
@@ -218,6 +229,12 @@ def test_provider_outage_requeue_auto_executes(iso: dict) -> None:
     requeue = [p for p in plans if p["action"] == "requeue_wake"]
     assert len(requeue) == 1
     assert requeue[0]["status"] == STATUS_COMPLETED
+
+    # closed loop (Phase 5): the executed repair was verified — target
+    # resolved (failed → 0), no new discrepancies
+    assert len(report["verifications"]) == 1
+    assert report["verifications"][0]["plan_id"] == requeue[0]["plan_id"]
+    assert report["verifications"][0]["verdict"] == "verified"
 
 
 def test_fresh_failures_defer_requeue(iso: dict) -> None:

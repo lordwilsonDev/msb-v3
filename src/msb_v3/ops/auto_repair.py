@@ -162,6 +162,7 @@ class AutoRepairLoop:
         discrepancy_store: Optional[Any] = None,
         chain: Optional[Any] = None,
         kill_switch: Optional[Any] = None,
+        verify_engine: Optional[Any] = None,
     ) -> None:
         from msb_v3.ops.repair import RepairService
 
@@ -172,6 +173,7 @@ class AutoRepairLoop:
         self._discrepancy_store = discrepancy_store
         self._chain = chain
         self._kill_switch = kill_switch
+        self._verify_engine = verify_engine
         self._lock_fh: Any = None
 
     # -- dependency resolution (lazy, like RepairService) -------------------
@@ -210,6 +212,14 @@ class AutoRepairLoop:
 
             self._kill_switch = KillSwitch()
         return self._kill_switch
+
+    def _verify(self) -> Any:
+        """Phase 5 closed-loop verification (lazy)."""
+        if self._verify_engine is None:
+            from msb_v3.ops.verify import VerifyEngine
+
+            self._verify_engine = VerifyEngine()
+        return self._verify_engine
 
     def _audit_append(self, event_type: str, payload: Dict[str, Any]) -> None:
         try:
@@ -381,6 +391,7 @@ class AutoRepairLoop:
         executed: List[Dict[str, Any]] = []
         deferred: List[Dict[str, Any]] = []
         failed: List[Dict[str, Any]] = []
+        verifications: List[Dict[str, Any]] = []
         for plan in open_auto:
             if len(executed) >= max_exec:
                 deferred.append({"plan_id": plan["plan_id"], "reason": f"cap {max_exec} reached"})
@@ -389,6 +400,12 @@ class AutoRepairLoop:
             if not ready:
                 deferred.append({"plan_id": plan["plan_id"], "reason": reason})
                 continue
+            # Closed loop (Phase 5): capture the before state, execute, then
+            # verify — did it fix the target, and did it break something?
+            try:
+                before = self._verify().capture()
+            except Exception as exc:  # noqa: BLE001
+                before = {"ts": _now(), "error": f"{exc.__class__.__name__}: {exc}"}
             try:
                 result = self._service.execute(plan["plan_id"], operator="auto-repair")
             except Exception as exc:  # noqa: BLE001
@@ -398,6 +415,14 @@ class AutoRepairLoop:
                 executed.append({"plan_id": plan["plan_id"], "action": plan["action"], "apply": result.get("apply")})
             else:
                 failed.append({"plan_id": plan["plan_id"], "status": result.get("status"), "error": result.get("error")})
+            if result.get("status") in (STATUS_COMPLETED, STATUS_ROLLED_BACK):
+                try:
+                    v = self._verify().verify_repair(plan["plan_id"], before=before)
+                    verifications.append(
+                        {"plan_id": plan["plan_id"], "verification_id": v["verification_id"], "verdict": v["verdict"]}
+                    )
+                except Exception as exc:  # noqa: BLE001 — a failed verification is a finding, not a crash
+                    verifications.append({"plan_id": plan["plan_id"], "error": f"{exc.__class__.__name__}: {exc}"})
 
         return self._finish(
             cycle_id,
@@ -412,6 +437,7 @@ class AutoRepairLoop:
                 "executed": executed,
                 "deferred": deferred,
                 "failed": failed,
+                "verifications": verifications,
                 "prohibited": prohibited,
             },
         )
@@ -439,6 +465,7 @@ class AutoRepairLoop:
                 "executed": len(report.get("executed", [])),
                 "deferred": len(report.get("deferred", [])),
                 "failed": len(report.get("failed", [])),
+                "verified": len(report.get("verifications", [])),
                 "dry_run": status == "dry_run",
             },
         )
