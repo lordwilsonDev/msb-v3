@@ -210,6 +210,11 @@ class DiscrepancyStore:
             out.append(d)
         return out
 
+    def set_status(self, discrepancy_id: str, status: str) -> None:
+        """Move one discrepancy to a new status (open/acknowledged/resolved)."""
+        with self._connect() as conn:
+            conn.execute("UPDATE discrepancies SET status=? WHERE id=?", (status, discrepancy_id))
+
     def counts(self) -> Dict[str, Any]:
         with self._connect() as conn:
             by_status = {

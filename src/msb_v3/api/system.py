@@ -283,3 +283,54 @@ def diagnose(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
 
     window = float((body or {}).get("window_hours", 24.0))
     return RootCauseEngine(window_hours=window).diagnose()
+
+
+@router.post("/repairs/propose")
+def propose_repairs(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Propose governed repair plans from a live RootCauseEngine diagnosis.
+    Prohibited classes (chain_invalid, projection_divergence, ...) are never
+    proposed — tamper evidence is human-investigated."""
+    from msb_v3.ops.repair import RepairService
+
+    return RepairService().propose()
+
+
+@router.post("/repairs")
+def submit_repair(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Submit a manual repair plan (validated against the action catalog).
+    Body: {action, params?, discrepancy_id?, root_cause?}. OPERATOR-authority
+    plans land in awaiting_approval; AUTO plans are ready to execute."""
+    from msb_v3.ops.repair import RepairService
+
+    return RepairService().submit(
+        body["action"],
+        params=body.get("params", {}),
+        discrepancy_id=body.get("discrepancy_id", ""),
+        root_cause=body.get("root_cause", ""),
+    )
+
+
+@router.post("/repairs/{plan_id}/approve")
+def approve_repair(plan_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Approve an awaiting repair plan. Body: {operator}."""
+    from msb_v3.ops.repair import RepairService
+
+    return RepairService().approve(plan_id, str(body.get("operator", "operator")))
+
+
+@router.post("/repairs/{plan_id}/execute")
+def execute_repair(plan_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a repair plan through the governed flow: verify-before-trust →
+    kill-switch gate → apply → verification contract → rollback on failure."""
+    from msb_v3.ops.repair import RepairService
+
+    return RepairService().execute(plan_id, str(body.get("operator", "system")))
+
+
+@router.get("/repairs")
+def list_repairs(status: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    """List repair plans (filter by status: proposed/awaiting_approval/
+    approved/completed/failed/rolled_back)."""
+    from msb_v3.ops.repair import RepairService
+
+    return {"repairs": RepairService().store.list(status=status, limit=limit)}
