@@ -1,4 +1,4 @@
-"""RootCauseEngine — Phase 2: correlate discrepancies into causal graphs.
+"""RootCauseEngine — correlate discrepancies into causal graphs.
 
 The DiscrepancyEngine (Phase 1) normalizes *what is wrong*; this engine adds
 *why*. It collects live telemetry (wake failures, cron run history, open

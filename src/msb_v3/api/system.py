@@ -275,7 +275,7 @@ def scan_discrepancies() -> Dict[str, Any]:
 
 @router.post("/diagnose")
 def diagnose(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Root-cause diagnosis (Phase 2): collect telemetry (wake failures, cron
+    """Root-cause diagnosis: collect telemetry (wake failures, cron
     failures, open discrepancies, restart events), correlate into causal
     edges, and rank root-cause hypotheses. Evidence is deterministic; the
     optional ``window_hours`` bounds the lookback."""

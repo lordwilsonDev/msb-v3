@@ -142,7 +142,7 @@ class VestaMSBAdapter:
             },
         )
         event_ids.append(decision_audit.seq)
-        # Evidence spine (Phase 2): one structured decision record per
+        # Evidence spine: one structured decision record per
         # governed action, cross-linked to the audit event that recorded it
         # (audit_seq) so the WHO/WHAT/WHEN/WHY chain can be reconstructed
         # independently of the audit chain. The decision record is the

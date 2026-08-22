@@ -2,8 +2,8 @@
 
 The Dream Big Blue vertical slice (intent → plan → execute → verify →
 evidence) runs end-to-end in this process via ``agent.handle.handle()``.
-Phase 2 live test: a caller can drive a real router decision (R score,
-frontier vs local) inside the server process, so the decision lands in
+A caller can drive a real router decision (R score, frontier vs local)
+inside the server process, so the decision lands in
 this server's Prometheus registry (/metrics/prometheus) — the slice was
 previously only reachable from standalone scripts, whose in-process
 metrics never appeared on the live server.

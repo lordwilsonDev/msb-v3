@@ -1,4 +1,4 @@
-"""Retrieval domains (spec §3/§6 Phase 2, blueprint §4).
+"""Retrieval domains (spec §3/§6, blueprint §4).
 
 The blueprint's retrieval fabric is not one big vector DB — it's *domains*
 (semantic memory, episodic memory, knowledge) behind a router. The existing
@@ -16,8 +16,8 @@ Domains:
 Domain selection is deterministic (cue-based, zero LLM), same philosophy as
 `retrieval.planner`. A task declares which domain it needs; the router
 returns ranked, provenance-annotated matches, and any route that fails is
-recorded (route_errors) without crashing the query (Phase 2 acceptance:
-\"multi-word semantic query returns ranked grounded snippets\").
+recorded (route_errors) without crashing the query (acceptance: a
+multi-word semantic query returns ranked grounded snippets).
 """
 
 from __future__ import annotations

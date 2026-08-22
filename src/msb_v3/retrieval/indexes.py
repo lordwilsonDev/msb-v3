@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 import threading
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 
 _FILTER_PATTERN = re.compile(r"\b(tag|tags|folder|author|category|type)\s*[:=]\s*([a-z0-9_\-/.]+)", re.IGNORECASE)
@@ -90,18 +91,19 @@ def _temporal_cutoff(query: str) -> float:
     return (datetime.now(timezone.utc) - timedelta(days=days)).timestamp()
 
 
-class _QdrantBase:
+class _QdrantBase(ABC):
     """Lazy client/embedding access over msb_v3.api.rag.
 
-    Declares the adapter interface (search) so consumers type-check against
-    the base class; concrete index routes override it.
+    Abstract search contract — concrete index routes (VectorIndex,
+    StructuralIndex, TemporalIndex) override it.
     """
 
     def __init__(self, tenant_id: str = "default"):
         self.tenant_id = tenant_id
 
+    @abstractmethod
     async def search(self, query: str, top_k: int = 5, **_kw) -> list[dict]:
-        raise NotImplementedError  # overridden by VectorIndex/StructuralIndex/TemporalIndex
+        """Route a query through this index."""
 
     def _qdrant(self):
         return _client()

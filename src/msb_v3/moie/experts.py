@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
@@ -45,9 +46,9 @@ VERDICT_CONCERN = "CONCERN"
 VERDICT_BLOCK = "BLOCK"
 
 
-class Expert:
-    """One inversion expert. Implement ``analyze``; the controller only
-    depends on this interface."""
+class Expert(ABC):
+    """One inversion expert — the abstract contract. Implement ``analyze``;
+    the controller only depends on this interface."""
 
     expert_id: str = ""
     name: str = ""
@@ -55,8 +56,9 @@ class Expert:
     focus_keywords: Tuple[str, ...] = ()
     always_on: bool = False
 
+    @abstractmethod
     def analyze(self, claim: str, context: Optional[Dict[str, Any]] = None) -> ExpertReport:
-        raise NotImplementedError
+        """Invert the claim through this expert's lens."""
 
 
 class DomainExpert(Expert):

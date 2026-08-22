@@ -1,4 +1,4 @@
-"""Context builder (spec §3 Phase 2, blueprint §4 — \"Context Builder\").
+"""Context builder (spec §3, blueprint §4 — \"Context Builder\").
 
 Assembles the model-visible context for a task under a hard token budget,
 with deterministic eviction — the inversion map's omission #5 (context as a

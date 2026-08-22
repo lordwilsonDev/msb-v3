@@ -95,7 +95,7 @@ def _extract_matches(inputs: Dict[str, Any], *, snippet_chars: int = 300) -> lis
 class BridgeProvider:
     """ToolProvider over the live msb-v3 surfaces.
 
-    Phase 2: search goes through the fabric retrieval domains router
+    Search goes through the fabric retrieval domains router
     (semantic/episodic/knowledge) and synthesis through the hybrid model
     router (frontier seam when configured, local otherwise). Both are
     injectable so tests stay hermetic and deterministic.
@@ -138,8 +138,8 @@ class BridgeProvider:
     def _synthesize(self, task: Task, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Synthesize via the routed client over token-budgeted context.
 
-        Phase 2: retrieval hits are assembled by the ContextBuilder under a
-        hard token budget (score-ordered eviction). The eviction ledger rides
+        Retrieval hits are assembled by the ContextBuilder under a hard
+        token budget (score-ordered eviction). The eviction ledger rides
         the task output so the trace can show what fit, what was evicted, and
         why the context looks the way it does (inversion omission #5).
         Returns text + token usage + context_ledger.

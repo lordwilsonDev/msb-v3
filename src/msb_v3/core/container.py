@@ -104,7 +104,7 @@ class ApplicationContainer:
 
     @property
     def spine(self) -> DecisionEvidenceStore:
-        """The one shared Evidence Spine store (completion blueprint Phase 2).
+        """The one shared Evidence Spine store.
 
         Lazily built on first access and reused by both the Vesta perimeter and
         the agent handle path, so every governed decision in the process lands

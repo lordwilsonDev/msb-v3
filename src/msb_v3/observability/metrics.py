@@ -67,7 +67,7 @@ RATE_LIMIT_REJECTIONS = Counter(
     "Requests refused by the rate/batch guards, by limiter and reason",
     ["limiter", "reason"],
 )
-# Hybrid model router decisions (Phase 2). Defined here so the metric family
+# Hybrid model router decisions. Defined here so the metric family
 # is registered in the default Prometheus registry as soon as the app imports
 # observability — the server's /metrics/prometheus lists it before the first
 # router decision. Incremented by fabric.model_router.ModelRouter.decide().

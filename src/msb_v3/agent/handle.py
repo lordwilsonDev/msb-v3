@@ -410,7 +410,7 @@ async def _run_delegated_agent(
         moie=moie,
     )
 
-    # Evidence spine (Phase 2.3): the MoIE inversion gate is the governed
+    # Evidence spine: the MoIE inversion gate is the governed
     # decision for a delegated worker. The decision vertebra records the
     # verdict even when the delegation is denied, so a refusal leaves a
     # durable decision record rather than an absent execution.
@@ -794,8 +794,7 @@ async def handle(
 ) -> HandleResult:
     """Run the slice end-to-end. Returns the HandleResult (ok + evidence).
 
-    Phase 2 (unified-architecture §27-28): every run becomes a unified task
-    with an event-sourced lifecycle — TASK_CREATED, INTENT_INTERPRETED,
+    Every run becomes a unified task with an event-sourced lifecycle — TASK_CREATED, INTENT_INTERPRETED,
     PLAN_CREATED, tool events (TOOL_REQUESTED/TOOL_EXECUTED/MUTATION_COMMITTED),
     VERIFICATION_*, EVIDENCE_RECORDED, TASK_COMPLETED/FAILED — mirrored to the
     AuditChain. All lifecycle writes are best-effort: a store or chain outage
@@ -912,7 +911,7 @@ async def handle(
         # sync local-model call to a worker thread so the server's event loop
         # stays responsive while a request is in flight (/agent/handle).
         intent: Intent = await asyncio.to_thread(interpret_intent, request, client=client_any)
-        # Explicit privacy override (Phase 2 live test): the caller may force
+        # Explicit privacy override: the caller may force
         # the intent's privacy flag, which drives the router's privacy floor.
         # privacy=None (the default) lets the interpreted intent decide; the
         # model's word is final otherwise.
@@ -936,7 +935,7 @@ async def handle(
         # permissions (default: none — tainted writes then require review).
         approved = set(intent.permissions) if approve else set()
 
-        # Evidence spine (Phase 2.2): the plan-approval decision is the anchor
+        # Evidence spine: the plan-approval decision is the anchor
         # vertebra for this run's causal chain. Best-effort — a spine outage
         # degrades provenance, never the run.
         decision_record = _spine_append(

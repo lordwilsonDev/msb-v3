@@ -30,6 +30,7 @@ import logging
 import os
 import sqlite3
 import uuid
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,35 +91,43 @@ def _now_ts() -> float:
     return datetime.now(timezone.utc).timestamp()
 
 
-class VectorStore:
-    """Backend-agnostic contract (Phase 1.2).
+class VectorStore(ABC):
+    """Backend-agnostic abstract contract.
 
     All methods are async because the default embedder is an HTTP call;
     callers that pass precomputed embeddings still pay only the local cost.
+    Concrete backends (QdrantVectorStore, SQLiteVectorStore) implement every
+    method — the abstract base is the interface, never a stub.
     """
 
+    @abstractmethod
     async def index(self, documents: Iterable[VectorDocument]) -> int:
-        raise NotImplementedError
+        """Index documents; returns the number stored."""
 
+    @abstractmethod
     async def search(
         self,
         query: str = "",
         limit: int = 5,
         query_embedding: list[float] | None = None,
     ) -> list[VectorHit]:
-        raise NotImplementedError
+        """Ranked hits for the query or precomputed embedding."""
 
+    @abstractmethod
     async def delete(self, ids: list[str]) -> int:
-        raise NotImplementedError
+        """Delete by id; returns the number removed."""
 
+    @abstractmethod
     async def update(self, documents: Iterable[VectorDocument]) -> int:
-        raise NotImplementedError
+        """Update existing documents; returns the number updated."""
 
+    @abstractmethod
     async def health(self) -> dict:
-        raise NotImplementedError
+        """Backend health/readiness probe."""
 
+    @abstractmethod
     def snapshot(self) -> dict:
-        raise NotImplementedError
+        """Point-in-time backend summary (counts, tenant, backend name)."""
 
 
 class _EmbeddingMixin:

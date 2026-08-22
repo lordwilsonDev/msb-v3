@@ -13,8 +13,8 @@ pluggable interface. Two chargers:
 
 The paper scanner is a pluggable PaperScanner with two implementations:
 
-- TavilyScanner — the real feed (Phase 2b): queries Tavily restricted to
-  arxiv.org and returns actual papers (title/url/content/score) plus
+- TavilyScanner — the real feed: queries Tavily restricted to arxiv.org
+  and returns actual papers (title/url/content/score) plus
   next-problem candidates. Missing key or feed outage degrades to an
   honest papers_scanned: 0 note — it never fabricates a scan.
 - StubScanner — deterministic offline fallback: reports papers_scanned: 0
@@ -121,7 +121,7 @@ def _merge_candidates(paper_titles: List[str], uim: Dict[str, Any], cap: int = 3
 
 
 class TavilyScanner:
-    """Real paper feed (Phase 2b): Tavily web search restricted to arxiv.org.
+    """Real paper feed: Tavily web search restricted to arxiv.org.
 
     Composes the shared TavilyResearchBackend (the repo's one Tavily client,
     also used by Stage 0). A missing key or a feed outage degrades to an

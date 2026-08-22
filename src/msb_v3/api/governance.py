@@ -207,7 +207,7 @@ async def approvals_cancel(item_id: str, body: dict) -> dict:
 async def check(body: dict) -> dict:
     """Drill endpoint — run the same gate the flywheel calls, see the verdict.
 
-    Lets an operator (or a test, or the Phase 2 loop) prove the brakes
+    Lets an operator (or a test, or the autonomous loop) prove the brakes
     halt work without executing anything. Mirrors Guard.check_run's
     arguments: action, kind, budget_units, approval_id, signal.
     Protected (Phase 3): check_run spends budget units and audits refusals,

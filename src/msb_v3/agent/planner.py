@@ -6,8 +6,8 @@ verification method, timeout, retry policy), the parser validates each one,
 and any failure degrades to the template DAG rather than an error. The loop
 can therefore always proceed to execution.
 
-Async by design (Phase 2 follow-up): planning can route through the /v1
-frontier seam (FrontierClient.agenerate), and even a sync local client is
+Async by design: planning can route through the /v1 frontier seam
+(FrontierClient.agenerate), and even a sync local client is
 offloaded via asyncio.to_thread — so plan() never blocks the server's event
 loop when called from /agent/handle.
 
@@ -228,8 +228,8 @@ async def plan(
 ) -> TaskGraph:
     """Build a task DAG for an Intent. LLM-first, template fallback.
 
-    Phase 2: planning is a frontier-default task (A5 fix) — the hybrid model
-    router decides which client plans (frontier via /v1 when configured,
+    Planning is a frontier-default task (A5 fix) — the hybrid model router
+    decides which client plans (frontier via /v1 when configured,
     local otherwise). An injected `client` wins over the router, so existing
     tests and callers keep full control.
 

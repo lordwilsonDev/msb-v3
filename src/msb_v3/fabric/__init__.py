@@ -1,4 +1,4 @@
-"""Intelligence Fabric (spec §3 Layer 2, Phase 2).
+"""Intelligence Fabric (spec §3 Layer 2).
 
 The hybrid routing + retrieval + context layer that makes the slice's brain
 and grounding composable:

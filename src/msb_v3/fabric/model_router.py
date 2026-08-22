@@ -1,4 +1,4 @@
-"""Hybrid model router (spec §3.5 Router Decision, Phase 2 acceptance).
+"""Hybrid model router (spec §3.5 Router Decision).
 
 Decides which tier — local (Ollama/llama.cpp) or frontier (the /v1 seam) —
 handles a given task, scored on the blueprint's R score:
@@ -32,7 +32,7 @@ import httpx
 from msb_v3.core.config import settings
 from msb_v3.observability.metrics import ROUTER_DECISIONS
 
-# --- Observability (Phase 2: router decisions are visible) ---
+# --- Observability (router decisions are visible) ---
 # The counter is defined in observability/metrics.py so it registers in the
 # default Prometheus registry at app startup (the server lists the metric
 # family before any decision).
@@ -235,7 +235,7 @@ class FrontierClient:
     """Minimal OpenAI-compatible client over the /v1 seam (same interface as
     the local clients: generate() -> LocalAIResponse). Lazy: only touches the
     network when called. On failure it raises so the caller can degrade to
-    local and record the reason (Phase 2 acceptance: never fake the tier).
+    local and record the reason (acceptance: never fake the tier).
 
     Async-first: the /v1 seam is used from the server's event loop
     (/agent/handle), where a synchronous httpx call would block the whole
@@ -359,7 +359,7 @@ def resolve_client(
     router: Optional[ModelRouter] = None,
     privacy_scoped: bool = False,
 ) -> tuple[Any, RouterDecision | None]:
-    """Pick the client for a task through the router (Phase 2 wiring).
+    """Pick the client for a task through the router.
 
     An injected `client` wins (tests and callers that already resolved a
     client); otherwise the router decides and returns (client, decision).

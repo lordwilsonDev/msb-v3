@@ -87,7 +87,7 @@ def build_trace(
             "verification": result.verification,
             "error": result.error,
         }
-        # Phase 2: the context builder's eviction ledger is evidence — carry
+        # The context builder's eviction ledger is evidence — carry
         # it (when the chat tool produced one) so the trace answers "why does
         # the context look like this". It participates in the replay hash
         # (execution is hashed), so it is tamper-evident like the rest.

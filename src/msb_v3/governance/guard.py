@@ -12,9 +12,12 @@ honor the verdict. Checks, in order:
    ratio) feed Ouroboros; HALT surfaces, SLOW permits at reduced pace.
 
 Every refusal is written to the UAC audit chain (governance.blocked) so a
-stopped loop is explainable, not a black box. ``record_action`` is the
-thin helper the loop uses to audit the actions it *does* execute (wired
-to the real loop in Phase 2; the audit surface exists now).
+stopped loop is explainable, not a black box. ``check_run`` is wired to the
+flywheel engine (every stage transition) and the autonomous repair loop's
+cycle respects the same kill switch. ``record_action`` is parked: no
+consumer loop calls it yet (blocked_on: a governed loop that audits
+executed actions through it — the flywheel audits via check_run verdicts
+and the AutoRepairLoop audits via repair.* events on the same chain).
 """
 
 from __future__ import annotations
@@ -129,5 +132,6 @@ class Guard:
         return GuardVerdict(False, action, reason, detail)
 
     def record_action(self, component: str, event_type: str, payload: Dict[str, Any]) -> None:
-        """Audit an executed autonomous action (Phase 2 loop wires this)."""
+        """Audit an executed autonomous action — parked: no caller yet
+        (blocked_on: a governed loop that consumes this helper)."""
         self._audit.append(component, event_type, payload)
