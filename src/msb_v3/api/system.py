@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Request
 
@@ -242,3 +242,32 @@ def system_config() -> Dict[str, Any]:
         **guard_config(),
         "ready": Metrics._ready,
     }
+
+
+@router.get("/discrepancies")
+def list_discrepancies(
+    subsystem: Optional[str] = None,
+    severity: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    """Query the DiscrepancyEngine store (normalized findings from every
+    detector). Filters: subsystem / severity / status; limit caps rows."""
+    from msb_v3.ops.discrepancy import DiscrepancyStore
+
+    store = DiscrepancyStore()
+    return {
+        "discrepancies": store.query(
+            subsystem=subsystem, severity=severity, status=status, limit=limit
+        ),
+        "counts": store.counts(),
+    }
+
+
+@router.post("/discrepancies/scan")
+def scan_discrepancies() -> Dict[str, Any]:
+    """Run every wired detector (chain, spine, replay, watchdog, automation
+    audit), persist new discrepancies, and return the report."""
+    from msb_v3.ops.discrepancy import DiscrepancyEngine
+
+    return DiscrepancyEngine().scan()
