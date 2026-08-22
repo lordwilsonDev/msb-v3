@@ -24,7 +24,9 @@
 
   <key>EnvironmentVariables</key>
   <dict>
-    <!-- <key>MSB_REPLICATION_TARGET</key><string>user@secondary.local:/home/user/msb-v3</string> -->
+    <!-- Local smoke-test target (same boot disk). For off-machine
+         redundancy, replace with user@secondary.local:/path. -->
+    <key>MSB_REPLICATION_TARGET</key><string>/Users/lordwilson/msb-replica</string>
   </dict>
 
   <key>RunAtLoad</key><false/>

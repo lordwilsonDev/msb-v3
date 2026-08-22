@@ -23,6 +23,8 @@
   <!-- Self-publish the dated audit report (audit/<date>_audit.md) to
        origin each Sunday. Set MSB_ALERT_EMAIL / MSB_TELEGRAM_BOT_TOKEN /
        MSB_TELEGRAM_CHAT_ID to also alert on failure via email/Telegram.
+       The bot token is a SECRET (see scripts/check-env-drift.sh) — set it
+       in the INSTALLED copy only (~/Library/LaunchAgents/), never here.
        NOTE: deliberately NOT KeepAlive — this is a weekly scheduled job;
        KeepAlive would relaunch it in an endless loop. -->
   <key>EnvironmentVariables</key>

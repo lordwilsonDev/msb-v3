@@ -64,7 +64,7 @@ SQLite (append-only triggers + hash chain) · `msb_ledger` standalone library (z
 
 ## 12. Models
 
-Qwen3 8B via Ollama (served) · gemma-4-12b-it 6.9G weights present but **not served** (llama.cpp alt backend, intentional — top move-to-external-drive candidate). Frontier/cloud seam implemented, live use unverified. (`OBSERVED`)
+Qwen3 8B + nomic-embed-text via Ollama (served, ~5.2G) · gemma-4-12b-it weights **removed** (no longer on disk; llama.cpp alt backend unused) · LM Studio running (serves Qwen3-1.7B-MLX on :1234; ~5.2G app + data — separate from the msb-v3 path, not a reclaim candidate while running). Frontier/cloud seam implemented, live use unverified. (`OBSERVED`)
 
 ## 13. Agents
 
@@ -88,7 +88,7 @@ Weekly self-audit: regression suite + pull-signature ledger + source license →
 
 ## 18. Known gaps
 
-Dormant resilience slots (all config-driven, one line each): second witness not added · email/Telegram alerts off · heartbeat volume + replication target unset · disk at ~98% (≈5.5Gi free, ENOSPC previously hit) · `~/models` (6.9G) + Docker image (7.5G) are the durable headroom candidates, both need hardware. (`OBSERVED`)
+Dormant resilience slots (all config-driven, one line each): second witness added (`tempo-key`, 2/2 signing) · Telegram alerts wired (bot token + chat ID in installed ops-audit plist, proven via `notify_telegram` → ops-alerts.log) · heartbeat→gdrive live · replication pipeline proven locally (same-disk @ ~/msb-replica via launchd `com.lordwilson.replicate`, 8,266 files mirrored; off-machine secondary still needed) · disk at ~98% (~5.4Gi free after a 2026-08-21 cache reclaim; ENOSPC previously hit) · `~/models` is already empty (the 6.9G gemma weights were removed) · durable headroom is now bound by the Docker Desktop VM (8.7G, open-webui live) and Ollama models (5.2G, live); LM Studio (~5.2G) is running but separate from the msb-v3 path — real headroom needs an external drive or an explicit keep/prune decision. (`OBSERVED`)
 
 ## 19. Technical debt (prioritized — Impact × Probability × Irreversibility)
 
@@ -160,6 +160,6 @@ The project does **not** occupy one phase — the ops layer is a quarter turn ah
 
 **VERDICT: YES — continue hardening operations; MEASURE before any scale decision.**
 
-- **Next lifecycle gate:** close the single-point-of-failure gate — activate the three dormant resilience slots (second witness, out-of-band alerts, off-machine redundancy) and get durable disk headroom (move `~/models` or the Docker image to external storage). None of these need new architecture; all are config or hardware.
+- **Next lifecycle gate:** close the single-point-of-failure gate — activate the three dormant resilience slots (second witness, out-of-band alerts, off-machine redundancy) and get durable disk headroom (relocate the Docker Desktop disk image to external storage — `~/models` is already empty; LM Studio is separate and running). None of these need new architecture; all are config or hardware.
 - **What moving to OPERATE→SCALE requires:** workload evidence that distribution is warranted (the distributed-systems role must *not* be activated merely because a second node exists).
-- **DoD for the ops layer to be READY for the redundancy gate:** second witness signing ≥1 ledger entry · one out-of-band alert channel firing on a real failure · heartbeat + replication each proven once · disk ≥15% free sustained.
+- **DoD for the ops layer to be READY for the redundancy gate:** second witness signing ≥1 ledger entry · one out-of-band alert channel firing on a real failure (✅ Telegram wired + proven) · heartbeat (✅ gdrive live) + replication (✅ pipeline proven same-disk; off-machine secondary still needed) each proven once · disk ≥15% free sustained.

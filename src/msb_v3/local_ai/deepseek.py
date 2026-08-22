@@ -7,11 +7,20 @@ the missing half of the ``LocalAIClient`` contract: a ``chat(messages)`` method
 plus a bounded ``execute_tool_loop``, so it can drive a full governed
 ``agent.handle()`` run (intent -> plan -> gated tool loop) instead of a single
 completion.
+
+Circuit breaker (Phase 0 — stabilize the organism): a 402 (Payment Required)
+or 429 (rate limit) from the API opens a circuit that short-circuits all
+calls for a cooldown period. Without this, the wake agent's 5-minute cron
+job hammers a dead API key every cycle, each call blocking a worker thread
+for up to ``timeout_s`` seconds and contributing to memory pressure / OOM
+restarts. The circuit is process-local (not durable) — a restart clears it,
+which is correct: the operator may have topped up the account.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Any, Callable, Dict, List
 
@@ -21,6 +30,50 @@ from msb_v3.core.config import settings
 from msb_v3.fabric.model_router import FrontierClient
 from msb_v3.guardrails.fold import StepEnforcer
 from msb_v3.local_ai.ollama import LocalAIResponse
+
+logger = logging.getLogger(__name__)
+
+# Circuit breaker for the DeepSeek API. Opens on 402/429 (payment/rate-limit)
+# and stays open for the cooldown, during which all calls raise immediately
+# without touching the network. This prevents a dead API key from starving
+# the server's thread pool. A process restart clears the circuit (the
+# operator may have topped up the account between restarts).
+_circuit_open_at: float = 0.0
+_circuit_reason: str = ""
+_CIRCUIT_COOLDOWN_S = 300.0  # 5 minutes — one wake cycle
+
+
+def _circuit_is_open() -> bool:
+    """True when the circuit is open and the cooldown hasn't elapsed."""
+    global _circuit_open_at
+    if _circuit_open_at == 0.0:
+        return False
+    elapsed = time.monotonic() - _circuit_open_at
+    if elapsed >= _CIRCUIT_COOLDOWN_S:
+        _circuit_open_at = 0.0
+        return False
+    return True
+
+
+def _open_circuit(reason: str) -> None:
+    """Open the circuit — subsequent calls short-circuit until the cooldown
+    elapses or the process restarts."""
+    global _circuit_open_at, _circuit_reason
+    if _circuit_open_at == 0.0:
+        logger.warning("deepseek circuit opened: %s (cooldown %ss)", reason, _CIRCUIT_COOLDOWN_S)
+    _circuit_open_at = time.monotonic()
+    _circuit_reason = reason
+
+
+def deepseek_circuit_state() -> Dict[str, Any]:
+    """Read-only circuit state for observability (cockpit / health)."""
+    open_ = _circuit_is_open()
+    return {
+        "open": open_,
+        "reason": _circuit_reason if open_ else "",
+        "cooldown_s": _CIRCUIT_COOLDOWN_S,
+        "elapsed_s": round(time.monotonic() - _circuit_open_at, 1) if open_ else 0.0,
+    }
 
 
 def _tool_arguments(tool_call: Dict[str, Any]) -> Dict[str, Any]:
@@ -86,9 +139,21 @@ class DeepSeekClient(FrontierClient):
             return f"[tool-error] {name}: {exc}"
 
     def _post_chat(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """POST one OpenAI-compatible chat completion (sync)."""
+        """POST one OpenAI-compatible chat completion (sync).
+
+        Circuit breaker: a 402 (Payment Required) or 429 (rate limit) opens
+        the circuit — subsequent calls raise immediately without touching the
+        network for the cooldown period. This prevents a dead API key from
+        starving the server's thread pool (the wake agent's 5-minute cron was
+        blocking a worker for up to 45s per call on every cycle).
+        """
         if not self.api_key:
             raise RuntimeError("deepseek seam closed: DEEPSEEK_API_KEY not set")
+        if _circuit_is_open():
+            raise ConnectionError(
+                f"deepseek circuit open: {_circuit_reason} "
+                               f"(cooldown {_CIRCUIT_COOLDOWN_S}s)"
+            )
         try:
             with httpx.Client(timeout=self.timeout_s, transport=self._transport) as client:
                 resp = client.post(
@@ -96,6 +161,13 @@ class DeepSeekClient(FrontierClient):
                     json=payload,
                     headers={"Authorization": f"Bearer {self.api_key}"},
                 )
+                # Circuit breaker: 402/429 are not transient — retrying every
+                # 5 minutes wastes a worker thread and contributes to OOM.
+                # Open the circuit so the wake agent short-circuits instead.
+                if resp.status_code in (402, 429):
+                    reason = f"HTTP {resp.status_code} ({'payment required' if resp.status_code == 402 else 'rate limit'})"
+                    _open_circuit(reason)
+                    raise ConnectionError(f"deepseek {reason}: {self.base_url}")
                 resp.raise_for_status()
                 return resp.json()
         except httpx.HTTPError as exc:

@@ -72,3 +72,9 @@ artifacts/harness-evidence-report.json
 # never committed to the source repository.
 /runtime/vesta-evidence/
 .superpowers/
+
+# Replication target is external scaffolding, NOT project source. The live
+# same-disk smoke-test replica lives OUTSIDE this repo at ~/msb-replica (a
+# sibling directory). Git can't track a sibling, so this guards against a
+# replica dir ever appearing *inside* the repo and being committed.
+msb-replica/

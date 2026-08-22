@@ -49,7 +49,7 @@ system depends on. For what the GitHub repo/CI must provide, see
 | **msb-v3** (this app) | `8766` | uvicorn | launchd `com.lordwilson.msb-v3` (KeepAlive) | ✅ up (HTTP 200) |
 | **Ollama** (LLM + embeddings) | `11434` | `/opt/homebrew/bin/ollama` | manual / brew service | ✅ up |
 | **Qdrant** (vector store) | `6333` | `/Users/lordwilson/.local/bin/qdrant` | launchd `com.lordwilson.qdrant` (KeepAlive) | ✅ up — collection `tenant_wilson-vault` |
-| **llama.cpp** (alt backend) | `8080` | `/opt/homebrew/bin/llama-server` | manual (provisioned 2026-08-15: `gemma-4-12b-it` Q4_K_M) | ✅ weights provisioned; not the active backend (`MSB_ACTIVE_BACKEND=ollama`) |
+| **llama.cpp** (alt backend) | `8080` | `/opt/homebrew/bin/llama-server` | manual | ⚠️ weights provisioned 2026-08-15 then removed from disk (alt backend unused; `MSB_ACTIVE_BACKEND=ollama`) |
 
 **Qdrant footgun (from CLAUDE.md):** must be launched from repo root — this
 build has no `--storage-path`; it resolves `./storage` relative to cwd.
@@ -63,7 +63,7 @@ Launching elsewhere silently creates empty storage. Recovery: `scripts/start-qdr
 |---|---|---|---|
 | Default chat (config) | `qwen3:8b` (5.2 GB) | Ollama | ✅ default now resolves to an installed model (was `deepseek-r1:1.5b`, fixed 2026-08-11) |
 | Embeddings | `nomic-embed-text:latest` (274 MB) | Ollama | ✅ present |
-| llama.cpp weights | `~/models/gemma-4-12b-it/gemma-4-12b-it-q4_k_m.gguf` (7.4 GB) | disk | ✅ provisioned 2026-08-15 (lmstudio-community/gemma-4-12B-it-GGUF Q4_K_M) |
+| llama.cpp weights | `~/models/gemma-4-12b-it/gemma-4-12b-it-q4_k_m.gguf` (7.4 GB) | disk | ⚠️ provisioned 2026-08-15, not on disk as of 2026-08-21 (lmstudio-community/gemma-4-12B-it-GGUF Q4_K_M) |
 
 > Resolved: default is `qwen3:8b`, and `.env.example` aligned to the same (was `qwen3:latest`, also not pulled).
 
@@ -89,8 +89,8 @@ keys (Open WebUI / storage / RAG) marked *(ext)*.
 | `MSB_LOG_LEVEL` | `info` | log level |
 | `MSB_CORS_ORIGINS` | `*` | CORS allowlist |
 | `MSB_REQUEST_TIMEOUT_S` | `60.0` | upstream request timeout |
-| `LLAMA_CPP_URL` | `http://127.0.0.1:8080` | llama.cpp endpoint (alt backend; ✅ provisioned) |
-| `LLAMA_CPP_MODEL` | `~/models/gemma-4-12b-it/...q4_k_m.gguf` | llama.cpp weights (alt backend; ✅ provisioned) |
+| `LLAMA_CPP_URL` | `http://127.0.0.1:8080` | llama.cpp endpoint (alt backend; weights ⚠️ not on disk) |
+| `LLAMA_CPP_MODEL` | `~/models/gemma-4-12b-it/...q4_k_m.gguf` | llama.cpp weights (alt backend; ⚠️ not on disk) |
 | `NOTEBOOKLM_ACTIVE_INDEX` | `~/notebooklm-library-deep-dive/active-index.json` | NotebookLM cluster index |
 | `TAVILY_API_KEY` | `""` | ✅ web search — powers the flywheel's arxiv paper feed (Phase 2b, set in `.env`) |
 | `MSB_OPERATOR_TOKEN` | `""` | ✅ operator bearer token — gates the /governance + /flywheel control endpoints (Phase 3, set in `.env` via `scripts/set-operator-token.sh`) |
@@ -142,7 +142,7 @@ keys (Open WebUI / storage / RAG) marked *(ext)*.
 Honest ledger; these are why v3 is operational-for-you but not walk-away-done:
 
 1. ✅ ~~Default model missing~~ — **fixed 2026-08-11**: default is now `qwen3:8b` (installed); `.env.example` aligned.
-2. ✅ ~~llama.cpp weights missing~~ — **fixed 2026-08-15 (Phase 2)**: `gemma-4-12b-it` Q4_K_M (7.4 GB) provisioned at `~/models/gemma-4-12b-it/`; the `/system/health` deep check now probes the real backend and reports green only when weights exist AND llama-server answers JSON on `:8080`.
+2. ✅ ~~llama.cpp weights missing~~ — **fixed 2026-08-15 (Phase 2)**: `gemma-4-12b-it` Q4_K_M (7.4 GB) provisioned at `~/models/gemma-4-12b-it/`; the `/system/health` deep check now probes the real backend and reports green only when weights exist AND llama-server answers JSON on `:8080`. **Regressed 2026-08-21**: weights again absent from disk (alt backend unused — re-provisioning is a fresh GGUF download, not `make provision-models`, which is Ollama-only).
 3. ✅ ~~One secret unset~~ — **fixed 2026-08-14**: `OPENAI_API_KEY` is now set (the `/v1` frontier seam is configured — see §5), so the adapter no longer fails closed with 503. `TAVILY_API_KEY` set (flywheel feed), `MSB_OPERATOR_TOKEN` set (control-surface auth).
 4. ✅ ~~Dead dep~~ — **fixed 2026-08-11**: `pydantic-settings` removed (imported nowhere).
 5. ✅ ~~No `Dockerfile`~~ — **fixed 2026-08-15 (Phase 1)**: real root `Dockerfile` + `docker-compose.yml` (msb_v3 + Qdrant volumes), CI docker job active, `docker/sovereign` ceremony containers removed. Fresh-clone container path verified (AC-1.1/1.2).
