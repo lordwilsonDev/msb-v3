@@ -36,7 +36,6 @@ from msb_v3.api.metrics import router as metrics_router
 from msb_v3.api.models import router as models_router
 from msb_v3.api.moie import router as moie_router
 from msb_v3.api.notify import router as notify_router
-from msb_v3.integrations.openbot import router as openbot_adapter_router
 from msb_v3.api.openai_compat import router as openai_compat_router
 from msb_v3.api.rag import router as rag_router
 from msb_v3.api.research import router as research_router
@@ -53,6 +52,7 @@ from msb_v3.business.registry import router as business_router
 from msb_v3.core.config import settings
 from msb_v3.core.container import get_container
 from msb_v3.core.rate_limit import RateLimiter
+from msb_v3.integrations.openbot import router as openbot_adapter_router
 from msb_v3.node.api import router as node_router
 from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
 from msb_v3.vesta.api import router as vesta_router

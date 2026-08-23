@@ -465,8 +465,8 @@ def _cli() -> None:
     v = sub.add_parser("verify", help="run closed-loop verification for one executed plan")
     v.add_argument("plan_id")
     v.add_argument("--no-scan", action="store_true", help="skip the fresh detector scan")
-    l = sub.add_parser("list", help="verification history")
-    l.add_argument("--plan", default=None)
+    lst = sub.add_parser("list", help="verification history")
+    lst.add_argument("--plan", default=None)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.WARNING)
