@@ -61,6 +61,7 @@ subpackage is unclassified (AC-3.1).
 | `api/workflow.py` | OPTIONAL | Workflow surface; off canonical path. |
 | `msb_v3/node/api.py` (router) | OPTIONAL | Sovereign Node `/node/v1/*` — first slice (scoped FILE_READ) is INTEGRATE phase (project-map). |
 | `msb_v3/vesta/api.py` (router) | LOAD-BEARING | Vesta trust perimeter — `/vesta/*` signed-device approval paths, adversarially tested (13 bypass invariants). |
+| `msb_v3/plei/api.py` (router) | OPTIONAL | PLEI project lifecycle intelligence — `/plei/*` ingestion and classification; Phase 1 (project twin). |
 
 ## Subpackages (`src/msb_v3/`)
 
@@ -91,6 +92,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/node` | OPTIONAL | Sovereign Node enrollment/engage — INTEGRATE phase, first slice FILE_READ. |
 | `msb_v3/observability` | LOAD-BEARING | Prometheus metrics — `/metrics`, cockpit, console all read it. |
 | `msb_v3/ops` | LOAD-BEARING | Ops module (backup/restore) — `make backup` / `make restore` targets. |
+| `msb_v3/plei` | OPTIONAL | PLEI project lifecycle intelligence — Phase 1: project twin (ingestion + lifecycle classification). |
 | `msb_v3/replay` | FROZEN | Replay engine — release-declared frozen. |
 | `msb_v3/retrieval` | LOAD-BEARING | RAG/vector retrieval — `/rag` + flywheel novelty scan depend on it. |
 | `msb_v3/runtime` | LOAD-BEARING | Runtime supervision (scripts/run.sh restart-on-exit); harness-gate depends on it. |

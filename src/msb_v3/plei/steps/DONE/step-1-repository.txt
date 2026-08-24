@@ -1,0 +1,2 @@
+Step 1: Ingest repository — git state, commit history, branches
+Started: 2026-08-24

@@ -55,6 +55,7 @@ from msb_v3.core.rate_limit import RateLimiter
 from msb_v3.integrations.openbot import router as openbot_adapter_router
 from msb_v3.node.api import router as node_router
 from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+from msb_v3.plei.api import plei_router
 from msb_v3.vesta.api import router as vesta_router
 
 
@@ -194,5 +195,6 @@ def create_app() -> FastAPI:
     app.include_router(agent_router, prefix="/agent", tags=["agent"])
     app.include_router(node_router, prefix="/node/v1", tags=["sovereign-node"])
     app.include_router(vesta_router, prefix="/vesta", tags=["vesta"])
+    app.include_router(plei_router, tags=["plei"])
 
     return app
