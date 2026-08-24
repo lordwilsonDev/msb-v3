@@ -94,6 +94,14 @@ class Settings:
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
     anthropic_base_url: str = field(default_factory=lambda: os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"))
     anthropic_model: str = field(default_factory=lambda: os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5"))
+    # DeepSeek Harness (dsh) — the plugin-based agent harness from DeepSeek AI,
+    # governed as a bounded subprocess behind DshAgentProvider (kind "dsh").
+    # DSH_BINARY may be a single executable ("dsh") or a space-separated prefix
+    # ("npx @deepseek-ai/dsh"); it is resolved with shlex, so quoting works.
+    # Unset or unresolvable = provider unavailable (fail-closed).
+    dsh_binary: str = field(default_factory=lambda: os.getenv("DSH_BINARY", "dsh"))
+    dsh_profile: str = field(default_factory=lambda: os.getenv("DSH_PROFILE", "headless"))
+    dsh_timeout_s: float = field(default_factory=lambda: float(os.getenv("DSH_TIMEOUT_S", "600")))
     # /v1/embeddings guards: per-request batch cap (413 when exceeded) and a
     # per-client sliding-window cap on total embedded items (429). A batch of
     # N items consumes N units toward the window cap.
