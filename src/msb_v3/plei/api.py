@@ -53,3 +53,28 @@ async def project_lifecycle(project_root: str = Query(default=_DEFAULT_ROOT, des
     twin = ingest_all(project_root)
     lc = classify_lifecycle(twin)
     return lifecycle_as_dict(lc)
+
+
+@plei_router.get("/gaps", summary="Capability gaps for current lifecycle stage")
+async def project_gaps(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Detect capability gaps: what the project needs vs what's available."""
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    twin = ingest_all(project_root)
+    report = detect_gaps(twin)
+    return gap_report_as_dict(report)
+
+
+@plei_router.get("/capabilities", summary="Capability graph for the project's lifecycle")
+async def project_capabilities(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """What capabilities does this lifecycle stage require, and which skills provide them?"""
+    from msb_v3.plei.engineering.capability_graph import graph_summary
+    twin = ingest_all(project_root)
+    lc = classify_lifecycle(twin)
+    return graph_summary(lc.stage)
+
+
+@plei_router.get("/skills", summary="Skill taxonomy — all installed skills")
+async def skill_taxonomy():
+    """Catalog of every installed skill with its capability bindings."""
+    from msb_v3.plei.engineering.skill_taxonomy import taxonomy_summary
+    return taxonomy_summary()

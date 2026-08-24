@@ -72,6 +72,36 @@ def main() -> None:
         _print_section("MISSING CAPABILITIES")
         print(f"  {caps}")
 
+    gaps_data = summary.get("gaps", {})
+    if gaps_data:
+        _print_section("CAPABILITY GAPS")
+        coverage_pct = (
+            int(gaps_data["covered"] / gaps_data["total_capabilities_required"] * 100)
+            if gaps_data.get("total_capabilities_required")
+            else 0
+        )
+        print(f"  Coverage: {gaps_data['covered']}/{gaps_data['total_capabilities_required']} "
+              f"({coverage_pct}%)  "
+              f"Partial: {gaps_data['partial']}  Missing: {gaps_data['missing']}")
+        for g in gaps_data.get("gaps", [])[:8]:
+            if g.get("status") != "COVERED":
+                print(f"  [{g['criticality']}/10] {g['status']}: {g['capability']}")
+                print(f"    → {g['recommendation']}")
+
+        # Next actions
+        na = gaps_data.get("next_actions", [])
+        if na:
+            _print_section("NEXT ACTIONS")
+            for a in na[:3]:
+                print(f"  • {a}")
+
+        # Required roles
+        roles = gaps_data.get("required_roles", [])
+        if roles:
+            _print_section("REQUIRED ROLES")
+            for r in roles:
+                print(f"  [{r['discipline']}] {r['name']}: {r['description']}")
+
     print()
 
 

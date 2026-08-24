@@ -162,7 +162,11 @@ def ingest_all(project_root: str | Path) -> ProjectTwin:
 
 def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
     """Produce the canonical summary — what ``plei analyze .`` prints."""
+    from msb_v3.plei.engineering.capability_graph import graph_summary as cap_summary
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    from msb_v3.plei.engineering.skill_taxonomy import taxonomy_summary
     lc = classify_lifecycle(twin)
+    gaps = detect_gaps(twin)
     return {
         "project": twin.identity.name.value,
         "version": twin.identity.version.value,
@@ -181,6 +185,9 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
         "risks": twin.health.risks.value,
         "missing_capabilities": twin.health.missing_capabilities.value,
         "debt": _truncate(twin.health.debt.value, 500),
+        "gaps": gap_report_as_dict(gaps),
+        "capability_graph": cap_summary(lc.stage),
+        "skill_taxonomy": taxonomy_summary(),
     }
 
 
