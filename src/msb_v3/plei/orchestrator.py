@@ -170,6 +170,7 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
     gaps = detect_gaps(twin)
     risk = analyze_risk(twin)
     risk_dict = risk_report_as_dict(risk)
+    gap_dict = gap_report_as_dict(gaps)
     return {
         "project": twin.identity.name.value,
         "version": twin.identity.version.value,
@@ -188,11 +189,12 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
         "risks": twin.health.risks.value,
         "missing_capabilities": twin.health.missing_capabilities.value,
         "debt": _truncate(twin.health.debt.value, 500),
-        "gaps": gap_report_as_dict(gaps),
+        "gaps": gap_dict,
         "capability_graph": cap_summary(lc.stage),
         "skill_taxonomy": taxonomy_summary(),
         "risk": risk_dict,
         "simulation": _simulation_section(risk_dict, gaps),
+        "decisions": _decision_section(gap_dict, risk_dict),
     }
 
 
@@ -283,4 +285,70 @@ def _simulation_section(
     return {
         "monte_carlo": monte_carlo_as_dict(mc_result),
         "forecast": forecast_as_dict(forecast),
+    }
+
+
+def _decision_section(
+    gap_dict: dict[str, Any],
+    risk_dict: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the decision section for twin_summary.
+
+    Runs prioritization, tradeoffs, next-best-action, and provider
+    selection — the complete Phase 5 decision pipeline.
+    """
+    from msb_v3.plei.decisions.next_action import (
+        next_action_as_dict,
+        select_next_action,
+    )
+    from msb_v3.plei.decisions.prioritization import (
+        prioritization_as_dict,
+        prioritize,
+    )
+    from msb_v3.plei.decisions.provider_selection import (
+        ProviderReport,
+        build_profiles,
+        provider_report_as_dict,
+        select_provider_for_task,
+    )
+    from msb_v3.plei.decisions.tradeoffs import (
+        compare_tradeoffs,
+        tradeoff_as_dict,
+    )
+
+    # Prioritize actions from gaps + risks
+    prio = prioritize(gap_dict, risk_dict)
+
+    # Tradeoff comparison
+    tradeoffs = compare_tradeoffs(gap_dict, risk_dict)
+
+    # Next-best-action with provider routing
+    profiles = build_profiles()
+    prov_avail: dict[str, bool] = {}
+    for p in profiles:
+        prov_avail[p.provider_id] = p.available
+
+    next_action_report = select_next_action(prio, prov_avail)
+
+    # Provider selection for the top action
+    top_na = next_action_report.primary if next_action_report else None
+    provider_sel = None
+    if top_na and top_na.action:
+        provider_sel = select_provider_for_task(
+            task_description=top_na.action.description,
+            required_capabilities=top_na.action.recommended_providers,
+            max_risk_tier=4,
+            profiles=profiles,
+        )
+
+    return {
+        "prioritization": prioritization_as_dict(prio),
+        "tradeoffs": tradeoff_as_dict(tradeoffs),
+        "next_action": next_action_as_dict(next_action_report),
+        "providers": provider_report_as_dict(ProviderReport(
+            profiles=profiles,
+            available_count=sum(1 for p in profiles if p.available),
+            total_count=len(profiles),
+            selections=[provider_sel] if provider_sel else [],
+        )),
     }

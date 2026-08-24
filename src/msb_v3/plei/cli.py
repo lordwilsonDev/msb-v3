@@ -101,6 +101,28 @@ def main() -> None:
             for r in roles:
                 print(f"  [{r['discipline']}] {r['name']}: {r['description']}")
 
+    sim_data = summary.get("simulation", {})
+    if sim_data:
+        mc = sim_data.get("monte_carlo", {})
+        fc = sim_data.get("forecast", {})
+        dur = mc.get("duration", {})
+        fc_dur = fc.get("duration", {})
+        unc = fc.get("uncertainty", {})
+        if dur:
+            _print_section("MONTE CARLO SIMULATION")
+            print(f"  Trials: {mc['trial_count']}  (seed {mc['seed']}, {mc['elapsed_s']}s)")
+            print(f"  Duration:  P50={dur['p50']:.0f}d  P80={dur['p80']:.0f}d  P95={dur['p95']:.0f}d")
+            print(f"             mean={dur['mean']:.0f}d  stdev={dur['stdev']:.0f}d  CV={dur['coefficient_of_variation']}")
+        if fc_dur:
+            print(f"  Forecast:  {fc_dur['range']}  (uncertainty: {unc.get('level', 'unknown')})")
+        print(f"  Failure:   {mc['failure_probability']:.1%} probability  ({mc['avg_failure_count']:.1f} avg/trial)")
+        traj = fc.get("trajectory", "")
+        rec = fc.get("recommendation", "")
+        if traj:
+            print(f"\n  {traj}")
+        if rec:
+            print(f"\n  {rec}")
+
     risk_data = summary.get("risk", {})
     if risk_data:
         _print_section("RISK OVERVIEW")
@@ -124,6 +146,35 @@ def main() -> None:
             print("  Bottlenecks:")
             for bn in bns[:3]:
                 print(f"    {bn['module']} (fan-in: {bn['fan_in']})")
+
+    decisions_data = summary.get("decisions", {})
+    if decisions_data:
+        na = decisions_data.get("next_action", {})
+        primary = na.get("primary", {})
+        if primary and primary.get("description") and primary.get("description") != "no actions available":
+            _print_section("NEXT-BEST-ACTION")
+            print(f"  #{primary.get('rank', 1)}: {primary.get('description', '')}")
+            print(f"  Score: {primary.get('score', 0)}  Category: {primary.get('category', '')}")
+            print(f"  Reversibility: {primary.get('reversibility', 0):.0%}")
+            print(f"  Provider: {'available' if primary.get('provider_available') else 'MISSING'} ({primary.get('provider_id', 'n/a')})")
+            print(f"  Expected: {primary.get('expected_outcome', '')}")
+            alt = na.get("alternatives", [])
+            if alt:
+                print(f"  Fallbacks: {', '.join(a.get('description', '')[:50] for a in alt[:2])}")
+
+        to = decisions_data.get("tradeoffs", {})
+        rec = to.get("recommendation", "")
+        if rec:
+            _print_section("TRADEOFF RECOMMENDATION")
+            print(f"  {rec}")
+
+        prov = decisions_data.get("providers", {})
+        sel = prov.get("selections", [])
+        if sel:
+            s = sel[0]
+            if s.get("rationale"):
+                _print_section("PROVIDER ROUTING")
+                print(f"  {s['rationale']}")
 
     print()
 

@@ -199,3 +199,79 @@ async def project_sensitivity():
 
     report = analyze_sensitivity(config, seed=42, trial_count=2000)
     return sensitivity_as_dict(report)
+
+@plei_router.get("/decide", summary="Full decision pipeline — prioritize, tradeoffs, next action, provider routing")
+async def project_decide(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Run the complete Phase 5 decision engine."""
+    from msb_v3.plei.decisions.next_action import (
+        next_action_as_dict,
+        select_next_action,
+    )
+    from msb_v3.plei.decisions.prioritization import (
+        prioritization_as_dict,
+        prioritize,
+    )
+    from msb_v3.plei.decisions.provider_selection import (
+        ProviderReport,
+        build_profiles,
+        provider_report_as_dict,
+        select_provider_for_task,
+    )
+    from msb_v3.plei.decisions.tradeoffs import (
+        compare_tradeoffs,
+        tradeoff_as_dict,
+    )
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
+
+    twin = ingest_all(project_root)
+    risk_dict = risk_report_as_dict(analyze_risk(twin))
+    gaps = detect_gaps(twin)
+    gap_dict = gap_report_as_dict(gaps)
+
+    prio = prioritize(gap_dict, risk_dict)
+    tradeoffs = compare_tradeoffs(gap_dict, risk_dict)
+
+    profiles = build_profiles()
+    prov_avail: dict[str, bool] = {p.provider_id: p.available for p in profiles}
+
+    next_report = select_next_action(prio, prov_avail)
+    top_na = next_report.primary if next_report else None
+
+    provider_sel = None
+    if top_na and top_na.action:
+        provider_sel = select_provider_for_task(
+            task_description=top_na.action.description,
+            required_capabilities=top_na.action.recommended_providers,
+            max_risk_tier=4,
+            profiles=profiles,
+        )
+
+    return {
+        "prioritization": prioritization_as_dict(prio),
+        "tradeoffs": tradeoff_as_dict(tradeoffs),
+        "next_action": next_action_as_dict(next_report),
+        "providers": provider_report_as_dict(ProviderReport(
+            profiles=profiles,
+            available_count=sum(1 for p in profiles if p.available),
+            total_count=len(profiles),
+            selections=[provider_sel] if provider_sel else [],
+        )),
+    }
+
+
+@plei_router.get("/providers", summary="Provider profiles and selection intelligence")
+async def project_providers():
+    """Live provider profiles with success rate, latency, and specialization estimates."""
+    from msb_v3.plei.decisions.provider_selection import (
+        ProviderReport,
+        build_profiles,
+        provider_report_as_dict,
+    )
+    profiles = build_profiles()
+    report = ProviderReport(
+        profiles=profiles,
+        available_count=sum(1 for p in profiles if p.available),
+        total_count=len(profiles),
+    )
+    return provider_report_as_dict(report)
