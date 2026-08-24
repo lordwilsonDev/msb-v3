@@ -275,3 +275,167 @@ async def project_providers():
         total_count=len(profiles),
     )
     return provider_report_as_dict(report)
+
+
+@plei_router.post("/execute", summary="Execute the top PLEI recommendation through governed harness")
+async def plei_execute(
+    project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"),
+    session: str = Query(default="plei-default", description="Execution session ID"),
+):
+    """Run PLEI's top recommendation through the governed harness bridge.
+
+    This is the Phase 6 endpoint — it:
+    1. Runs the full PLEI analysis (ingest + twin + lifecycle + decide)
+    2. Converts the top NextAction into a WorkPlan
+    3. Gates every step through the ActionGate
+    4. Executes through the 10-provider seam with fallback chain
+    5. Verifies claims through MoIE
+    6. Logs evidence into the spine
+    7. Closes the evidence loop — updates twin, re-classifies lifecycle
+
+    Returns the complete ExecutionReport + LoopResult.
+    """
+    from typing import Any
+
+    from msb_v3.plei.decisions.next_action import (
+        select_next_action,
+    )
+    from msb_v3.plei.decisions.prioritization import prioritize
+    from msb_v3.plei.decisions.provider_selection import (
+        build_profiles,
+        select_provider_for_task,
+    )
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    from msb_v3.plei.harness.bridge import (
+        execute_plan,
+        execution_report_as_dict,
+    )
+    from msb_v3.plei.harness.evidence_loop import (
+        loop_result_as_dict,
+        run_evidence_loop,
+    )
+    from msb_v3.plei.harness.work_plan import build_work_plan
+    from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
+
+    try:
+        root = Path(project_root).resolve()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid project_root: {e}")
+
+    # Step 1: Full PLEI analysis
+    twin = ingest_all(root)
+    lc = classify_lifecycle(twin)
+    gaps = detect_gaps(twin)
+    risk = analyze_risk(twin)
+    gap_dict = gap_report_as_dict(gaps)
+    risk_dict = risk_report_as_dict(risk)
+
+    # Step 2: Decision pipeline
+    prio = prioritize(gap_dict, risk_dict)
+    profiles = build_profiles()
+    prov_avail = {p.provider_id: p.available for p in profiles}
+    next_report = select_next_action(prio, prov_avail)
+
+    top_na = next_report.primary if next_report else None
+    if not top_na or not top_na.action:
+        return {"ok": False, "error": "no actionable recommendation found"}
+
+    # Build provider selection
+    provider_sel = select_provider_for_task(
+        task_description=top_na.action.description,
+        required_capabilities=top_na.action.recommended_providers,
+        max_risk_tier=4,
+        profiles=profiles,
+    )
+
+    # Step 3: Build WorkPlan
+    na_dict = {
+        "action_id": top_na.action.action_id,
+        "description": top_na.action.description,
+        "category": top_na.action.category,
+        "score": top_na.action.score,
+        "expected_outcome": top_na.expected_outcome,
+        "validation_checks": top_na.validation_checks,
+    }
+    prov_dict = None
+    if provider_sel:
+        try:
+            prov_dict = {
+                "primary": {"provider_id": provider_sel.primary.provider_id} if provider_sel.primary else None,
+                "fallbacks": [{"provider_id": f.provider_id} for f in provider_sel.fallbacks],
+                "rationale": provider_sel.rationale,
+            }
+        except Exception:
+            prov_dict = None
+
+    plan = build_work_plan(na_dict, prov_dict)
+
+    # Step 4: Setup governed bridge
+    providers_by_id: dict[str, Any] = {}
+    for p in profiles:
+        if hasattr(p, "_provider"):
+            providers_by_id[p.provider_id] = p._provider  # type: ignore[attr-defined]
+
+    # Fall back to real provider registry if profiles lack _provider handles
+    if not providers_by_id:
+        try:
+            from msb_v3.agent.providers import ProviderRegistry
+
+            reg = ProviderRegistry()
+            real_map: dict[str, Any] = {}
+            for ap in reg.select():
+                if hasattr(ap, "spec"):
+                    real_map[ap.spec.provider_id] = ap
+            providers_by_id = real_map
+        except Exception:
+            pass
+
+    # ActionGate
+    gate = None
+    try:
+        from msb_v3.agent.safety import ActionGate
+        gate = ActionGate()
+    except Exception:
+        pass
+
+    # MoIE
+    moie = None
+    try:
+        from msb_v3.moie.engine import MoIEController
+        moie = MoIEController()
+    except Exception:
+        pass
+
+    # Evidence spine
+    spine = None
+    try:
+        from msb_v3.evidence.spine import DecisionEvidenceStore
+        spine = DecisionEvidenceStore()
+    except Exception:
+        pass
+
+    # Step 5: Execute through harness bridge
+    exec_report: Any = await execute_plan(
+        plan,
+        providers_by_id=providers_by_id,
+        gate=gate,
+        moie=moie,
+        evidence_spine=spine,
+        approved_capabilities=set(),
+        session=session,
+    )
+
+    # Step 6: Evidence loop — close the feedback loop
+    prev_stage = lc.stage.value if hasattr(lc.stage, "value") else str(lc.stage)
+    loop_result = run_evidence_loop(
+        exec_report,
+        twin,
+        previous_stage=prev_stage,
+        previous_confidence=lc.confidence,
+    )
+
+    return {
+        "ok": exec_report.ok,
+        "execution": execution_report_as_dict(exec_report),
+        "evidence_loop": loop_result_as_dict(loop_result),
+    }

@@ -176,6 +176,29 @@ def main() -> None:
                 _print_section("PROVIDER ROUTING")
                 print(f"  {s['rationale']}")
 
+    harness_data = summary.get("harness", {})
+    if harness_data.get("ready"):
+        _print_section("WORK PLAN (Harness Bridge)")
+        print(f"  Plan:       {harness_data['plan_id']}")
+        print(f"  Action:     {harness_data['source_action']}")
+        print(f"  Category:   {harness_data['category']}")
+        print(f"  Steps:      {harness_data['total_steps']}")
+        print(f"  Risk Tier:  {harness_data['max_risk_tier']}/4")
+        print(f"  Providers:  {', '.join(harness_data.get('primary_providers', [])) or 'n/a'}")
+        if harness_data.get("requires_operator_approval"):
+            print("  ⚠️  Operator approval required")
+        steps = harness_data.get("steps", [])
+        if steps:
+            print("\n  STEPS:")
+            for s in steps:
+                gate = "🔒" if s.get("risk_tier", 0) >= 3 else "  "
+                print(f"    {gate} [{s['sequence']}] {s['description'][:80]}")
+                print(f"         Provider: {s.get('preferred_provider_id', 'n/a')}  |  Tier {s.get('risk_tier', 0)}")
+                vc = s.get("verification_claims", [])
+                if vc:
+                    print(f"         Verify: {vc[0][:70]}")
+        print("\n  Run: POST /plei/execute  to execute this plan through the governed bridge")
+
     print()
 
 

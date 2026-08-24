@@ -171,6 +171,7 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
     risk = analyze_risk(twin)
     risk_dict = risk_report_as_dict(risk)
     gap_dict = gap_report_as_dict(gaps)
+    decisions_data = _decision_section(gap_dict, risk_dict)
     return {
         "project": twin.identity.name.value,
         "version": twin.identity.version.value,
@@ -194,7 +195,8 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
         "skill_taxonomy": taxonomy_summary(),
         "risk": risk_dict,
         "simulation": _simulation_section(risk_dict, gaps),
-        "decisions": _decision_section(gap_dict, risk_dict),
+        "decisions": decisions_data,
+        "harness": decisions_data.get("work_plan", {}),
     }
 
 
@@ -351,4 +353,59 @@ def _decision_section(
             total_count=len(profiles),
             selections=[provider_sel] if provider_sel else [],
         )),
+        "work_plan": _harness_section(next_action_report, provider_sel),
+    }
+
+
+def _harness_section(
+    next_action_report: Any,
+    provider_sel: Any,
+) -> dict[str, Any]:
+    """Build the harness work-plan preview from decisions.
+
+    Converts the top NextAction into a WorkPlan and returns the plan
+    summary — this is what ``plei analyze .`` shows under WORK PLAN.
+    """
+    from msb_v3.plei.harness.work_plan import build_work_plan, work_plan_as_dict
+
+    primary = next_action_report.primary if next_action_report else None
+    if primary is None or not primary.action:
+        return {"ready": False, "reason": "no actionable decision"}
+
+    na_dict: dict[str, Any] = {}
+    try:
+        na_dict = {
+            "action_id": primary.action.action_id,
+            "description": primary.action.description,
+            "category": primary.action.category,
+            "score": primary.action.score,
+            "expected_outcome": primary.expected_outcome,
+            "validation_checks": primary.validation_checks,
+        }
+    except Exception:
+        return {"ready": False, "reason": "could not serialize next action"}
+
+    prov_dict: dict[str, Any] | None = None
+    if provider_sel:
+        try:
+            prov_dict = {
+                "primary": {"provider_id": provider_sel.primary.provider_id} if provider_sel.primary else None,
+                "fallbacks": [{"provider_id": f.provider_id} for f in provider_sel.fallbacks],
+                "rationale": provider_sel.rationale,
+            }
+        except Exception:
+            prov_dict = None
+
+    plan = build_work_plan(na_dict, prov_dict)
+
+    return {
+        "ready": True,
+        "plan_id": plan.plan_id,
+        "source_action": plan.source_action_description,
+        "category": plan.category,
+        "total_steps": plan.total_steps,
+        "max_risk_tier": plan.max_risk_tier,
+        "requires_operator_approval": plan.requires_operator_approval,
+        "primary_providers": plan.primary_providers,
+        **work_plan_as_dict(plan),
     }
