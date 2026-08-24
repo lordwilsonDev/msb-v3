@@ -144,7 +144,10 @@ def run_evidence_loop(
     # ── 5. Twin update ──
     delta.twin_updated = True  # The twin has been observed post-execution
 
-    # ── 6. Recommendation ──
+    # ── 6. Auto-record outcome for Phase 7 calibration ──
+    _auto_record_outcome(report, delta)
+
+    # ── 7. Recommendation ──
     total_duration = round(time.perf_counter() - started, 4)
 
     if report.ok and delta.stage_changed:
@@ -182,6 +185,49 @@ def run_evidence_loop(
 
 
 # ── Serialization ─────────────────────────────────────────────────────────
+
+
+def _auto_record_outcome(
+    report: ExecutionReport,
+    delta: TwinDelta,
+) -> None:
+    """Auto-record an Outcome in the calibration store after execution.
+
+    Matches the most recent unmatched prediction and records actual results.
+    """
+    import uuid
+
+    try:
+        from msb_v3.plei.calibration.store import CalibrationStore, Outcome
+
+        store = CalibrationStore()
+        predictions = [p for p in store.predictions()
+                       if p.calibration_status == "predicted"]
+        if not predictions:
+            return  # no unmatched prediction to pair with
+
+        # Match the most recent prediction
+        prediction = predictions[-1]
+
+        actual_duration = report.total_duration_s / 86400  # seconds → days
+        failures = report.failed_steps + report.blocked_steps
+
+        outcome = Outcome(
+            outcome_id=f"outcome:{uuid.uuid4().hex[:12]}",
+            prediction_id=prediction.prediction_id,
+            project="msb-v3",
+            observed_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            actual_duration_days=round(actual_duration, 4),
+            actual_completion=report.ok,
+            failures_encountered=failures,
+            severity="critical" if failures >= 3 else "major" if failures >= 1 else "none",
+            actual_stage=delta.current_stage,
+            step_count=report.total_steps,
+            error_note=report.review_summary[:200] if report.review_summary else "",
+        )
+        store.record_outcome(outcome)
+    except Exception:
+        pass  # calibration recording must never break the evidence loop
 
 
 def loop_result_as_dict(loop: LoopResult) -> dict[str, Any]:

@@ -9,6 +9,7 @@ Endpoints:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -277,6 +278,108 @@ async def project_providers():
     return provider_report_as_dict(report)
 
 
+@plei_router.get("/calibrate", summary="Calibration report — error metrics, reliability, schedule, feedback")
+async def project_calibrate():
+    """Run the full Phase 7 calibration pipeline.
+
+    Reads the calibration store (.plei/calibration.jsonl), computes
+    error metrics (MAPE, Brier, ECE), builds the reliability diagram,
+    checks the scheduler, and produces feedback adjustments.
+    """
+    from msb_v3.plei.calibration.error import (
+        compute_error_metrics,
+        error_metrics_as_dict,
+    )
+    from msb_v3.plei.calibration.feedback import adjustment_as_dict, compute_adjustments
+    from msb_v3.plei.calibration.reliability import (
+        build_reliability_diagram,
+        reliability_as_dict,
+    )
+    from msb_v3.plei.calibration.scheduler import compute_schedule, schedule_as_dict
+    from msb_v3.plei.calibration.store import CalibrationStore
+
+    store = CalibrationStore()
+    pairs = store.pairs()
+    metrics = compute_error_metrics(pairs)
+    reliability = build_reliability_diagram(pairs)
+    schedule = compute_schedule(store)
+    adj = compute_adjustments(metrics)
+
+    return {
+        "total_predictions": store.prediction_count(),
+        "total_outcomes": store.outcome_count(),
+        "total_pairs": len(pairs),
+        "chain_integrity": _check_chain(store),
+        "error": error_metrics_as_dict(metrics),
+        "reliability": reliability_as_dict(reliability),
+        "schedule": schedule_as_dict(schedule),
+        "feedback": adjustment_as_dict(adj),
+    }
+
+
+@plei_router.get("/reliability", summary="Reliability diagram — per-bucket calibration accuracy")
+async def project_reliability():
+    """5-bucket reliability diagram with drift detection."""
+    from msb_v3.plei.calibration.reliability import (
+        build_reliability_diagram,
+        reliability_as_dict,
+    )
+    from msb_v3.plei.calibration.store import CalibrationStore
+
+    store = CalibrationStore()
+    diagram = build_reliability_diagram(store.pairs())
+    return reliability_as_dict(diagram)
+
+
+@plei_router.post("/calibrate/outcome", summary="Record a calibration outcome and trigger re-calibration")
+async def record_outcome(
+    prediction_id: str = Query(..., description="Prediction ID to match"),
+    actual_duration_days: float = Query(..., description="Actual duration in days"),
+    failures_encountered: int = Query(default=0, description="How many failure events fired"),
+    actual_stage: str = Query(default="", description="Current lifecycle stage"),
+    note: str = Query(default="", description="Context note"),
+):
+    """Record an observed outcome and pair it with a prediction.
+
+    This closes the calibration loop — prediction → outcome → error.
+    Automatically triggers re-calibration if threshold met.
+    """
+    import time
+    import uuid
+
+    from msb_v3.plei.calibration.store import CalibrationStore, Outcome
+
+    store = CalibrationStore()
+    outcome = Outcome(
+        outcome_id=f"outcome:{uuid.uuid4().hex[:12]}",
+        prediction_id=prediction_id,
+        project="msb-v3",
+        observed_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        actual_duration_days=actual_duration_days,
+        actual_completion=True,
+        failures_encountered=failures_encountered,
+        severity="critical" if failures_encountered >= 3 else "major" if failures_encountered >= 1 else "none",
+        actual_stage=actual_stage,
+        error_note=note,
+    )
+    store.record_outcome(outcome)
+
+    return {
+        "recorded": True,
+        "outcome_id": outcome.outcome_id,
+        "prediction_id": prediction_id,
+    }
+
+
+def _check_chain(store: Any) -> dict[str, Any]:
+    """Check chain integrity, graceful."""
+    try:
+        ok, msg = store.verify_chain()
+        return {"ok": ok, "message": msg}
+    except Exception:
+        return {"ok": False, "message": "could not verify chain"}
+
+
 @plei_router.post("/execute", summary="Execute the top PLEI recommendation through governed harness")
 async def plei_execute(
     project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"),
@@ -295,7 +398,6 @@ async def plei_execute(
 
     Returns the complete ExecutionReport + LoopResult.
     """
-    from typing import Any
 
     from msb_v3.plei.decisions.next_action import (
         select_next_action,

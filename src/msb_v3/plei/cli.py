@@ -199,6 +199,28 @@ def main() -> None:
                     print(f"         Verify: {vc[0][:70]}")
         print("\n  Run: POST /plei/execute  to execute this plan through the governed bridge")
 
+    cal_data = summary.get("calibration", {})
+    if cal_data:
+        err = cal_data.get("error", {})
+        sched = cal_data.get("schedule", {})
+        fb = cal_data.get("feedback", {})
+        _print_section("CALIBRATION (Phase 7)")
+        print(f"  Pairs:     {cal_data.get('total_pairs', 0)} (predictions: {cal_data.get('total_predictions', 0)}, outcomes: {cal_data.get('total_outcomes', 0)})")
+        if cal_data.get("total_pairs", 0) > 0:
+            print(f"  Status:    {err.get('calibration_status', 'unknown')}")
+            print(f"  MAPE:      {err.get('mape', 0):.1%}  |  Brier: {err.get('brier_score', 0):.3f}  |  ECE: {err.get('calibration_error', 0):.3f}")
+            if err.get("is_overconfident"):
+                print("  ⚠️  OVERCONFIDENT — predictions too narrow")
+            if err.get("is_underconfident"):
+                print("  ⚠️  UNDERCONFIDENT — predictions too wide")
+            print(f"  Bias:      {err.get('bias_days', 0):+.1f}d  |  RMSE: {err.get('rmse_days', 0):.1f}d")
+            if fb.get("description") and fb.get("description") != "no adjustments needed":
+                print(f"  Feedback:  {fb['description']}")
+        else:
+            print("  No calibration pairs yet — run more simulations to accumulate data.")
+        if sched.get("should_calibrate"):
+            print(f"  ⚡ Re-calibrate: {sched.get('reason', '')}")
+
     print()
 
 

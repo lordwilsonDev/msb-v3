@@ -197,7 +197,106 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
         "simulation": _simulation_section(risk_dict, gaps),
         "decisions": decisions_data,
         "harness": decisions_data.get("work_plan", {}),
+        "calibration": _calibration_section(risk_dict),
     }
+
+
+def _calibration_section(
+    risk_dict: dict[str, Any],
+) -> dict[str, Any]:
+    """Build calibration summary — error metrics, reliability, schedule, feedback.
+
+    Reads the calibration store, computes metrics from all pairs,
+    and returns the full Phase 7 calibration report.
+    """
+    from msb_v3.plei.calibration.error import (
+        ErrorMetrics,
+        compute_error_metrics,
+        error_metrics_as_dict,
+    )
+    from msb_v3.plei.calibration.feedback import (
+        CalibrationAdjustment,
+        adjustment_as_dict,
+        compute_adjustments,
+    )
+    from msb_v3.plei.calibration.reliability import (
+        build_reliability_diagram,
+        reliability_as_dict,
+    )
+    from msb_v3.plei.calibration.scheduler import (
+        compute_schedule,
+        schedule_as_dict,
+    )
+    from msb_v3.plei.calibration.store import CalibrationStore
+
+    store = CalibrationStore()
+    pairs = store.pairs()
+    n_pairs = len(pairs)
+
+    # Compute error metrics
+    metrics: ErrorMetrics = compute_error_metrics(pairs)
+
+    # Reliability diagram
+    reliability = build_reliability_diagram(pairs)
+
+    # Schedule check
+    schedule = compute_schedule(store)
+
+    # Feedback adjustments
+    adj: CalibrationAdjustment = compute_adjustments(metrics)
+
+    return {
+        "total_predictions": store.prediction_count(),
+        "total_outcomes": store.outcome_count(),
+        "total_pairs": n_pairs,
+        "error": error_metrics_as_dict(metrics),
+        "reliability": reliability_as_dict(reliability),
+        "schedule": schedule_as_dict(schedule),
+        "feedback": adjustment_as_dict(adj),
+    }
+
+
+def _auto_record_prediction(
+    risk_dict: dict[str, Any],
+    mc_result: Any,
+    forecast: Any,
+    project_name: str = "msb-v3",
+) -> None:
+    """Record a Prediction in the calibration store after each simulation.
+
+    Called automatically from _simulation_section so every ``plei analyze .``
+    adds one prediction to the calibration chain.
+    """
+    import time
+    import uuid
+
+    from msb_v3.plei.calibration.store import CalibrationStore, Prediction
+
+    store = CalibrationStore()
+    # Don't flood — one prediction per hour max
+    hourly_key = f"{project_name}:{int(time.time() // 3600)}"
+    for p in store.predictions():
+        if p.prediction_id and p.prediction_id.startswith(hourly_key):
+            return  # already recorded this hour
+
+    pid = f"{hourly_key}:{uuid.uuid4().hex[:8]}"
+    pred = Prediction(
+        prediction_id=pid,
+        project=project_name,
+        forecast_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        predicted_p50_days=mc_result.p50_duration if mc_result else 0,
+        predicted_p80_days=mc_result.p80_duration if mc_result else 0,
+        predicted_p95_days=mc_result.p95_duration if mc_result else 0,
+        predicted_mean_days=mc_result.mean_duration if mc_result else 0,
+        predicted_stdev_days=mc_result.stdev_duration if mc_result else 0,
+        predicted_failure_probability=mc_result.failure_probability if mc_result else 0,
+        confidence_level=forecast.uncertainty_level if forecast else "",
+        coefficient_of_variation=mc_result.coefficient_of_variation if mc_result else 0,
+        trial_count=mc_result.trial_count if mc_result else 0,
+        seed=mc_result.seed if mc_result else 0,
+        variables_used=len(risk_dict.get("top_risks", [])),
+    )
+    store.record_prediction(pred)
 
 
 # --- Internal helpers ---
@@ -283,6 +382,12 @@ def _simulation_section(
     )
     mc_result = run_monte_carlo(config, seed=42, trial_count=2000)
     forecast = build_forecast(mc_result, project_name="project", target_days=35.0)
+
+    # Auto-record prediction for Phase 7 calibration
+    try:
+        _auto_record_prediction(risk_dict, mc_result, forecast, project_name="msb-v3")
+    except Exception:
+        pass  # calibration recording must never break the analysis
 
     return {
         "monte_carlo": monte_carlo_as_dict(mc_result),
