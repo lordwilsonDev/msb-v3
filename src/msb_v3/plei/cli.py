@@ -95,12 +95,35 @@ def main() -> None:
             for a in na[:3]:
                 print(f"  • {a}")
 
-        # Required roles
         roles = gaps_data.get("required_roles", [])
         if roles:
             _print_section("REQUIRED ROLES")
             for r in roles:
                 print(f"  [{r['discipline']}] {r['name']}: {r['description']}")
+
+    risk_data = summary.get("risk", {})
+    if risk_data:
+        _print_section("RISK OVERVIEW")
+        print(f"  Total risks: {risk_data.get('total_risks', 0)}")
+        print(f"  Dependency risks: {risk_data.get('dependency_risks', 0)}")
+        print(f"  Failure modes: {risk_data.get('failure_modes', 0)}")
+        print(f"  Debt items: {risk_data.get('debt_items', 0)}")
+        tr = risk_data.get("top_risks", [])
+        if tr:
+            print()
+            print("  TOP RISKS")
+            for r in tr[:5]:
+                print(f"  [{r['risk_score']:.1f}] [{r['source']}] {r['description']}")
+        cp = risk_data.get("critical_path", [])
+        if cp:
+            print()
+            print(f"  Critical path: {' → '.join(cp)}")
+        bns = risk_data.get("bottlenecks", [])
+        if bns:
+            print()
+            print("  Bottlenecks:")
+            for bn in bns[:3]:
+                print(f"    {bn['module']} (fan-in: {bn['fan_in']})")
 
     print()
 

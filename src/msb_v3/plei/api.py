@@ -78,3 +78,34 @@ async def skill_taxonomy():
     """Catalog of every installed skill with its capability bindings."""
     from msb_v3.plei.engineering.skill_taxonomy import taxonomy_summary
     return taxonomy_summary()
+
+
+@plei_router.get("/risk", summary="Risk report — dependencies, failure modes, debt")
+async def project_risk(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Unified risk: dependency bottlenecks, failure modes, technical debt."""
+    from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
+    twin = ingest_all(project_root)
+    report = analyze_risk(twin)
+    return risk_report_as_dict(report)
+
+
+@plei_router.get("/debt", summary="Technical debt — ranked by impact × probability × irreversibility")
+async def project_debt():
+    """Ranked technical debt ledger with Monte Carlo-ready scoring."""
+    from msb_v3.plei.risk.debt_model import debt_report_as_dict, score_debt
+    twin = ingest_all()
+    report = score_debt(twin)
+    return debt_report_as_dict(report)
+
+
+@plei_router.get("/dependencies", summary="Dependency graph — critical path, bottlenecks, coupling")
+async def project_dependencies():
+    """Module-level dependency graph with critical path and coupling metrics."""
+    from pathlib import Path
+
+    from msb_v3.plei.dependency.graph import (
+        build_dependency_graph,
+        dependency_graph_as_dict,
+    )
+    graph = build_dependency_graph(Path(__file__).resolve().parents[3])
+    return dependency_graph_as_dict(graph)
