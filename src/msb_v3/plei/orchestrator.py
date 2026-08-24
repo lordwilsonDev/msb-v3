@@ -169,6 +169,7 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
     lc = classify_lifecycle(twin)
     gaps = detect_gaps(twin)
     risk = analyze_risk(twin)
+    risk_dict = risk_report_as_dict(risk)
     return {
         "project": twin.identity.name.value,
         "version": twin.identity.version.value,
@@ -190,7 +191,8 @@ def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
         "gaps": gap_report_as_dict(gaps),
         "capability_graph": cap_summary(lc.stage),
         "skill_taxonomy": taxonomy_summary(),
-        "risk": risk_report_as_dict(risk),
+        "risk": risk_dict,
+        "simulation": _simulation_section(risk_dict, gaps),
     }
 
 
@@ -244,3 +246,41 @@ def _extract_pyproject_version(root: Path) -> str:
     except Exception:
         pass
     return "unknown"
+
+
+def _simulation_section(
+    risk_dict: dict[str, Any],
+    gaps: Any,
+) -> dict[str, Any]:
+    """Build the simulation summary for twin_summary.
+
+    Runs a quick 2,000-trial Monte Carlo from the risk report.
+    """
+    from msb_v3.plei.engineering.gap_detector import gap_report_as_dict
+    from msb_v3.plei.simulation.forecast import build_forecast, forecast_as_dict
+    from msb_v3.plei.simulation.monte_carlo import (
+        SimConfig,
+        monte_carlo_as_dict,
+        run_monte_carlo,
+        variables_from_gaps,
+        variables_from_risk_report,
+    )
+
+    gap_dict = gap_report_as_dict(gaps) if hasattr(gaps, '__dataclass_fields__') else {}
+
+    vars_risk = variables_from_risk_report(risk_dict, base_duration_days=30.0)
+    vars_gaps = variables_from_gaps(gap_dict, base_duration_days=30.0) if gap_dict else []
+
+    config = SimConfig(
+        variables=vars_risk + vars_gaps,
+        trial_count=2000,
+        seed=42,
+        base_duration_days=30.0,
+    )
+    mc_result = run_monte_carlo(config, seed=42, trial_count=2000)
+    forecast = build_forecast(mc_result, project_name="project", target_days=35.0)
+
+    return {
+        "monte_carlo": monte_carlo_as_dict(mc_result),
+        "forecast": forecast_as_dict(forecast),
+    }

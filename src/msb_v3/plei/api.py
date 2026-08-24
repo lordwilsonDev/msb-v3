@@ -109,3 +109,93 @@ async def project_dependencies():
     )
     graph = build_dependency_graph(Path(__file__).resolve().parents[3])
     return dependency_graph_as_dict(graph)
+
+
+@plei_router.get("/simulate", summary="Monte Carlo simulation — probabilistic forecast")
+async def project_simulate(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"), trials: int = Query(default=2000, ge=100, le=50000, description="Number of Monte Carlo trials")):
+    """Run Monte Carlo simulation from risk data and return forecast."""
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
+    from msb_v3.plei.simulation.forecast import build_forecast, forecast_as_dict
+    from msb_v3.plei.simulation.monte_carlo import (
+        SimConfig,
+        monte_carlo_as_dict,
+        run_monte_carlo,
+        variables_from_gaps,
+        variables_from_risk_report,
+    )
+
+    twin = ingest_all(project_root)
+    risk_dict = risk_report_as_dict(analyze_risk(twin))
+    gaps = detect_gaps(twin)
+    gap_dict = gap_report_as_dict(gaps)
+
+    vars_risk = variables_from_risk_report(risk_dict)
+    vars_gaps = variables_from_gaps(gap_dict)
+
+    config = SimConfig(variables=vars_risk + vars_gaps, trial_count=trials, seed=42, base_duration_days=30.0)
+    mc = run_monte_carlo(config, seed=42, trial_count=trials)
+    forecast = build_forecast(mc, project_name=twin.identity.name.value or "project")
+
+    return {
+        "monte_carlo": monte_carlo_as_dict(mc),
+        "forecast": forecast_as_dict(forecast),
+    }
+
+
+@plei_router.get("/what-if", summary="What-if scenarios vs baseline")
+async def project_what_if(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Run what-if scenarios: fix top debt, zero failures, half failures, close gaps, pessimistic."""
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
+    from msb_v3.plei.simulation.monte_carlo import (
+        SimConfig,
+        variables_from_gaps,
+        variables_from_risk_report,
+    )
+    from msb_v3.plei.simulation.scenarios import (
+        run_what_if,
+        scenarios_from_risk,
+        what_if_as_dict,
+    )
+
+    twin = ingest_all(project_root)
+    risk_dict = risk_report_as_dict(analyze_risk(twin))
+    gaps = detect_gaps(twin)
+    gap_dict = gap_report_as_dict(gaps)
+
+    vars_risk = variables_from_risk_report(risk_dict)
+    vars_gaps = variables_from_gaps(gap_dict)
+    config = SimConfig(variables=vars_risk + vars_gaps, trial_count=2000, seed=42, base_duration_days=30.0)
+
+    scenarios = scenarios_from_risk(risk_dict)
+    report = run_what_if(config, scenarios, seed=42, trial_count=2000)
+    return what_if_as_dict(report)
+
+
+@plei_router.get("/sensitivity", summary="Sensitivity analysis — which variables drive uncertainty?")
+async def project_sensitivity():
+    """Tornado analysis: measure each variable's contribution to outcome variance."""
+    from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
+    from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
+    from msb_v3.plei.simulation.monte_carlo import (
+        SimConfig,
+        variables_from_gaps,
+        variables_from_risk_report,
+    )
+    from msb_v3.plei.simulation.sensitivity import (
+        analyze_sensitivity,
+        sensitivity_as_dict,
+    )
+
+    twin = ingest_all()
+    risk_dict = risk_report_as_dict(analyze_risk(twin))
+    gaps = detect_gaps(twin)
+    gap_dict = gap_report_as_dict(gaps)
+
+    vars_risk = variables_from_risk_report(risk_dict)
+    vars_gaps = variables_from_gaps(gap_dict)
+    config = SimConfig(variables=vars_risk + vars_gaps, trial_count=2000, seed=42, base_duration_days=30.0)
+
+    report = analyze_sensitivity(config, seed=42, trial_count=2000)
+    return sensitivity_as_dict(report)
