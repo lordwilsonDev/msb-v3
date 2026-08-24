@@ -10,6 +10,10 @@ plug into. Two kinds today:
                                   OpenCode) run as a bounded subprocess in an
                                   isolated worktree: MSB sends the task, the
                                   agent works, MSB retrieves the result.
+    dsh     DshAgentProvider    — DeepSeek Harness (dsh), DeepSeek AI's
+                                  plugin-based agent harness, run as a bounded
+                                  subprocess (--profile headless) in an
+                                  isolated worktree, same governance as cli.
 
 Every provider declares its capabilities and max risk tier; ``ProviderRegistry``
 selects deterministically (available + capable + within risk tier). Workers are
@@ -27,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import shlex
 import shutil
 import tempfile
 import time
@@ -63,7 +68,7 @@ _MAX_ARTIFACTS = 20
 class ProviderSpec:
     provider_id: str  # "local.slice" | "cli.claude" | "cli.codex" | "cli.opencode"
     display_name: str
-    kind: str  # "local" | "cli"
+    kind: str  # "local" | "cli" | "dsh" | "api" | "paseo"
     command: Tuple[str, ...] = ()  # cli only: the executable + fixed args
     capabilities: Tuple[str, ...] = ()
     max_risk_tier: int = 2
@@ -523,13 +528,188 @@ class DeepSeekAgentProvider(AgentProvider):
         )
 
 
+class DshAgentProvider(AgentProvider):
+    """DeepSeek Harness (dsh) as a governed subprocess worker.
+
+    DeepSeek Harness is DeepSeek AI's open-source plugin-based agent harness
+    (MIT-licensed, ``@deepseek-ai/dsh``). This provider runs it as a bounded
+    subprocess in an isolated worktree — the same governance pattern as
+    ``CliAgentProvider``:
+
+    - ``dsh --profile headless <goal>`` runs the task headlessly (no web UI),
+      persisting the session, then exits with the last assistant message on
+      stdout.
+    - The worktree is isolated (temp dir, ``MSB_WORKTREE`` env var).
+    - Stdout/stderr are captured (bounded).
+    - Timeout kills the process (fail-closed).
+    - Every execution produces an evidence receipt through the existing
+      ``CliAgentProvider`` pattern (goal → subprocess → output → receipt).
+
+    HIGH risk (tier 4) by construction — the subprocess runs with the
+    operator's user account, same as ``CliAgentProvider``. The worktree
+    bounds where it *should* write but is not a sandbox.
+
+    Availability: ``dsh`` or ``npx @deepseek-ai/dsh`` on PATH (resolved from
+    ``DSH_BINARY``, default ``"dsh"``). The provider is honest: if the binary
+    is not resolvable, ``available()`` returns ``False`` and
+    ``unavailable_reason()`` names the missing binary.
+    """
+
+    spec = ProviderSpec(
+        provider_id="dsh.headless",
+        display_name="DeepSeek Harness (dsh headless)",
+        kind="dsh",
+        capabilities=(),
+        max_risk_tier=4,
+        timeout_s=600.0,
+    )
+
+    def __init__(
+        self,
+        *,
+        command: Optional[Tuple[str, ...]] = None,
+        timeout_s: Optional[float] = None,
+    ) -> None:
+        """``command`` override (for tests — inject a fake script).
+        ``timeout_s`` override (default from ``settings.dsh_timeout_s``)."""
+        self._command = command
+        if timeout_s is not None:
+            self.spec = ProviderSpec(
+                provider_id=self.spec.provider_id,
+                display_name=self.spec.display_name,
+                kind=self.spec.kind,
+                capabilities=self.spec.capabilities,
+                max_risk_tier=self.spec.max_risk_tier,
+                timeout_s=timeout_s,
+            )
+
+    def _resolve_command(self) -> Tuple[str, ...]:
+        """Resolve the dsh command from settings or the injected override."""
+        if self._command is not None:
+            return self._command
+        tokens = shlex.split(settings.dsh_binary) if settings.dsh_binary else []
+        return tuple(tokens) if tokens else ("dsh",)
+
+    def available(self) -> bool:
+        tokens = self._resolve_command()
+        if not tokens:
+            return False
+        return shutil.which(tokens[0]) is not None
+
+    def unavailable_reason(self) -> str:
+        if self.available():
+            return ""
+        tokens = self._resolve_command()
+        binary = tokens[0] if tokens else "dsh"
+        return f"{binary} not on PATH (set DSH_BINARY to an executable or npx prefix)"
+
+    async def execute(
+        self,
+        goal: str,
+        *,
+        context: Optional[Dict[str, Any]] = None,
+        session: str = "default",
+    ) -> ProviderResult:
+        if not self.available():
+            return ProviderResult(
+                ok=False,
+                error=f"provider unavailable: {self.unavailable_reason()}",
+            )
+        slug = "".join(c if c.isalnum() or c in "-_." else "_" for c in self.spec.provider_id)
+        worktree = Path(tempfile.mkdtemp(prefix=f"{slug}_"))
+        cmd = list(self._resolve_command())
+        cmd.extend(["--profile", settings.dsh_profile, goal])
+        env = {**os.environ, "MSB_WORKTREE": str(worktree), "MSB_SESSION": session}
+        started = time.perf_counter()
+        context = context or {}
+        on_observation = context.get("observation_sink")
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=str(worktree),
+                env=env,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+        except FileNotFoundError:
+            return ProviderResult(
+                ok=False,
+                error=f"command not found: {cmd[0]}",
+            )
+        chunks: List[str] = []
+        total_len = 0
+        update_count = 0
+
+        async def _drain() -> None:
+            nonlocal total_len, update_count
+            assert proc.stdout is not None
+            while True:
+                raw = await proc.stdout.readline()
+                if not raw:
+                    break
+                line = raw.decode("utf-8", errors="replace")
+                if on_observation is not None and line.strip():
+                    update_count += 1
+                    sample = {
+                        "source": "dsh.output",
+                        "observed_at": datetime.now(timezone.utc).isoformat(),
+                        "update_count": update_count,
+                        "content": line.rstrip(),
+                    }
+                    try:
+                        await on_observation(sample)
+                    except Exception as exc:  # noqa: BLE001 — the sink is best-effort
+                        logger.warning(
+                            "dsh observation sink failed for %s: %s",
+                            self.spec.provider_id,
+                            exc,
+                        )
+                if total_len < _MAX_OUTPUT_BYTES:
+                    chunks.append(line)
+                    total_len += len(line)
+
+        try:
+            await asyncio.wait_for(_drain(), timeout=self.spec.timeout_s)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+                await asyncio.wait_for(proc.wait(), timeout=5.0)
+            except Exception:  # noqa: BLE001 — best-effort cleanup
+                logger.warning(
+                    "failed to kill timed-out provider %s",
+                    self.spec.provider_id,
+                )
+            return ProviderResult(
+                ok=False,
+                error=f"timed out after {self.spec.timeout_s}s",
+                duration_s=round(time.perf_counter() - started, 4),
+            )
+        await proc.wait()
+        duration = round(time.perf_counter() - started, 4)
+        text = "".join(chunks)[:_MAX_OUTPUT_BYTES]
+        artifacts: Dict[str, Any] = {}
+        for p in sorted(worktree.iterdir()):
+            if p.is_file() and len(artifacts) < _MAX_ARTIFACTS:
+                artifacts[p.name] = {"bytes": p.stat().st_size}
+        ok = proc.returncode == 0
+        return ProviderResult(
+            ok=ok,
+            output=text,
+            artifacts=artifacts,
+            error=None if ok else f"exit code {proc.returncode}",
+            duration_s=duration,
+        )
+
+
 def default_providers() -> Tuple[AgentProvider, ...]:
-    """Local slice + the common CLI workers + Paseo-managed agents +
-    the DeepSeek and Anthropic API providers (availability checked lazily)."""
+    """Local slice + the common CLI workers + DeepSeek Harness (dsh) +
+    Paseo-managed agents + the DeepSeek and Anthropic API providers
+    (availability checked lazily)."""
     return (
         LocalAgentProvider(),
         DeepSeekAgentProvider(),
         AnthropicAgentProvider(),
+        DshAgentProvider(),
         CliAgentProvider(("claude", "-p")),
         CliAgentProvider(("codex", "exec")),
         CliAgentProvider(("opencode", "run")),
