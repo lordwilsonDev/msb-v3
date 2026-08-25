@@ -11,11 +11,12 @@ the provider registry (what can execute it).
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SKILLS_HOME = Path.home() / ".agents" / "skills"
+SKILLS_HOME = Path(os.environ.get("MSB_SKILLS_DIR", str(Path.home() / ".agents" / "skills")))
 
 
 @dataclass(slots=True)
