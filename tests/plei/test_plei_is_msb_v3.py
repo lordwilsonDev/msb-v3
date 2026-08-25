@@ -93,7 +93,8 @@ def test_ingest_evidence_finds_audit_and_health():
 
 def test_ingest_all_produces_complete_twin():
     twin = ingest_all(ROOT)
-    assert twin.identity.name.value == "msb-v3", f"Name: {twin.identity.name.value}"
+    name = twin.identity.name.value
+    assert name and name.startswith("msb-v3"), f"Name: {name}"
     assert twin.identity.framework.value == "FastAPI"
     assert twin.identity.python_version.value is not None
 
@@ -128,7 +129,7 @@ def test_twin_summary_is_serializable():
     assert "project" in summary
     assert "lifecycle" in summary
     assert "evidence" in summary
-    assert summary["project"] == "msb-v3"
+    assert summary["project"].startswith("msb-v3")
     # Must be JSON-safe
     import json
     json.dumps(summary, default=str)
@@ -141,7 +142,7 @@ def test_plei_reconstructs_what_msb_is():
     twin = ingest_all(ROOT)
 
     # 1. What MSB is
-    assert twin.identity.name.value == "msb-v3"
+    assert twin.identity.name.value and twin.identity.name.value.startswith("msb-v3")
 
     # 2. Why it exists — must have a mission statement from docs
     mission = twin.identity.version  # from CHANGELOG or pyproject

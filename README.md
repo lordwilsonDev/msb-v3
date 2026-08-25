@@ -139,6 +139,34 @@ python -m msb_v3.cron history daily-backup
 
 See [docs/cron-scheduler.md](docs/cron-scheduler.md).
 
+## PLEI — Project Lifecycle Engineering Intelligence
+
+PLEI is the intelligence layer above the agent harness: it understands where
+a project is in its lifecycle, identifies missing capabilities, models
+uncertainty with Monte Carlo simulation, and recommends the next-best
+engineering action — all backed by evidence.
+
+```bash
+python -m msb_v3.plei.cli analyze .    # full lifecycle report
+```
+
+The seven phases:
+
+| Phase | Engine | What it does |
+|-------|--------|-------------|
+| 1. Project Twin | 7 ingestion layers | Reconstructs the project from source, docs, tests, CI |
+| 2. Capability Graph | Stage→skill→role | Maps what expertise the project needs |
+| 3. Dependency/Risk | Graph + debt model | Finds bottlenecks and technical debt |
+| 4. Monte Carlo | Distributions + forecast | Probabilistic project trajectories |
+| 5. Decision Engine | Prioritization + tradeoffs | Next-best-action with provider routing |
+| 6. Harness Integration | WorkPlan + governed bridge | Executes decisions through MSB's ActionGate |
+| 7. Calibration | Prediction→outcome→error | Measures whether predictions match reality |
+
+PLEI endpoints (`/plei/*`): understand, status, lifecycle, gaps, skills,
+dependencies, risk, simulate, forecast, what-if, recommend, sensitivity,
+decide, execute. The full governed loop: **Understand → Model → Classify →
+Diagnose → Simulate → Decide → Execute → Verify → Observe → Learn → Update ↺**
+
 ## Observability
 
 - **Prometheus** at `/metrics/prometheus` (and a JSON summary at `/metrics`).
@@ -182,6 +210,7 @@ path) before every push, blocking on failure. Bypass explicitly with
 
 ## Endpoints
 
+- `/plei/*` — PLEI lifecycle intelligence: `/plei/understand`, `/plei/status`, `/plei/lifecycle`, `/plei/gaps`, `/plei/skills`, `/plei/dependencies`, `/plei/risk`, `/plei/simulate`, `/plei/forecast`, `/plei/what-if`, `/plei/recommend`, `/plei/sensitivity`, `/plei/decide`, `/plei/execute`
 - `/chat` — POST `{"query": "...", "session": "default", "system": "...", "tools": [...]}`
   Tools are executed bounded (`max_steps=4`) and the response includes `history_count`.
 - `/memory/{session}` — GET recent, POST append, DELETE clear
