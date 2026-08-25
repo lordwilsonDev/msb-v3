@@ -41,7 +41,7 @@ class Settings:
     audit_log_path: str = field(default_factory=lambda: os.getenv("MSB_AUDIT_LOG_PATH") or str(_REPO_ROOT / "logs" / "audit.jsonl"))
     cors_origins: str = field(default_factory=lambda: os.getenv("MSB_CORS_ORIGINS", "*"))
     request_timeout_s: float = field(default_factory=lambda: float(os.getenv("MSB_REQUEST_TIMEOUT_S", "60.0")))
-    llama_cpp_url: str = field(default_factory=lambda: os.getenv("LLAMA_CPP_URL", "http://127.0.0.1:8080"))
+    llama_cpp_url: str = field(default_factory=lambda: os.getenv("LLAMA_CPP_URL", "http://127.0.0.1:8081"))
     # Home-derived (user model files live outside the repo); LLAMA_CPP_MODEL overrides.
     llama_cpp_model: str = field(
         default_factory=lambda: os.getenv("LLAMA_CPP_MODEL", str(Path.home() / "models" / "gemma-4-12b-it" / "gemma-4-12b-it-q4_k_m.gguf"))

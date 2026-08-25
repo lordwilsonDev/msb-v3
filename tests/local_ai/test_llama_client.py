@@ -15,7 +15,7 @@ def test_response_shape():
 
 def test_client_defaults():
     c = LlamaCPPClient()
-    assert "8080" in c.base_url
+    assert "8081" in c.base_url
     assert "gemma-4-12b-it" in c.model
 
 
