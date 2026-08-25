@@ -129,23 +129,30 @@ class CalibrationStore:
         """Append an outcome to the chain."""
         record = self._serialize("OUTCOME", asdict(outcome))
         self._append_and_hash(record)
-
-        # Auto-match to prediction
-        self._match_outcome(outcome)
+        # No in-place mutation — matching is derived from outcome→prediction_id linkage
 
     # ── Read ───────────────────────────────────────────────────────────
 
     def predictions(self) -> list[Prediction]:
-        """All predictions in the store, chronologically."""
+        """All predictions in the store, chronologically.
+
+        calibration_status is derived from whether a matching outcome exists.
+        """
+        matched_ids = {o.prediction_id for o in self.outcomes()}
         results: list[Prediction] = []
         for r in self._read_records():
-            if r.get("type") == "PREDICTION":
-                try:
-                    fields = {k: v for k, v in r.items()
-                             if k in Prediction.__dataclass_fields__}
-                    results.append(Prediction(**fields))  # type: ignore[arg-type]
-                except (TypeError, ValueError):
-                    continue
+            if r.get("type") != "PREDICTION":
+                continue
+            try:
+                fields = {k: v for k, v in r.items()
+                         if k in Prediction.__dataclass_fields__}
+                pred = Prediction(**fields)  # type: ignore[arg-type]
+                if pred.prediction_id in matched_ids:
+                    # Derive status from outcomes rather than stored field
+                    object.__setattr__(pred, "calibration_status", "matched")
+                results.append(pred)
+            except (TypeError, ValueError):
+                continue
         return results
 
     def outcomes(self) -> list[Outcome]:
@@ -191,7 +198,8 @@ class CalibrationStore:
         for i, record in enumerate(records):
             h = record.get("_hash", "")
             prev = records[i - 1].get("_hash", "") if i > 0 else ""
-            expected = self._compute_hash(json.dumps(record["_fields"]), prev)
+            fields_json = json.dumps(record["_fields"], sort_keys=True, default=str)
+            expected = self._compute_hash(fields_json, prev)
             if h and h != expected:
                 return False, f"hash mismatch at record {i}: expected {expected[:12]}, got {h[:12]}"
         return True, "chain intact"
@@ -247,37 +255,12 @@ class CalibrationStore:
         self._prev_hash = records[-1].get("_hash", "") if records else ""
 
     def _match_outcome(self, outcome: Outcome) -> None:
-        """Update the matching prediction's calibration_status to 'matched'."""
-        if not self.path.exists():
-            return
-        lines: list[str] = []
-        changed = False
-        with open(self.path) as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    lines.append(line)
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    lines.append(line)
-                    continue
-                fields = rec.get("_fields", {})
-                if (rec.get("type") == "PREDICTION"
-                        and fields.get("prediction_id") == outcome.prediction_id
-                        and fields.get("calibration_status") == "predicted"):
-                    fields["calibration_status"] = "matched"
-                    fields["matched_outcome_id"] = outcome.outcome_id
-                    new_rec = self._serialize("PREDICTION", fields)
-                    new_rec["_hash"] = rec.get("_hash", "")
-                    lines.append(json.dumps(new_rec))
-                    changed = True
-                else:
-                    lines.append(line)
-        if changed:
-            with open(self.path, "w") as f:
-                f.write("\n".join(lines) + ("\n" if lines else ""))
+        """No-op: matching is derived from outcome→prediction_id linkage at read time.
+
+        Previously this method mutated prediction records in-place, which broke
+        the hash chain (fields changed but hash was preserved). Now the match
+        is purely derived — no file mutation.
+        """
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────

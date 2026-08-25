@@ -32,7 +32,7 @@ from msb_v3.plei.twin import ProjectTwin
 # itself is maintained by the lifecycle orchestrator and changes rarely.
 #
 
-_KNOWN_DEBT = [
+_KNOWN_DEBT: list[dict[str, str | int | float]] = [
     {
         "item": "No DB schema versioning/migrations",
         "class": "Data/Operational",
@@ -144,15 +144,21 @@ def score_debt(twin: ProjectTwin) -> DebtReport:
 
     # Known debt items
     for d in _KNOWN_DEBT:
-        priority = d["impact"] * d["probability"] * d["irreversibility"]
+        item_str: str = str(d["item"])
+        class_str: str = str(d["class"])
+        impact_int: int = int(d["impact"])
+        prob_float: float = float(d["probability"])
+        irrev_int: int = int(d["irreversibility"])
+        note_str: str = str(d["note"])
+        priority = impact_int * prob_float * irrev_int
         items.append(DebtItem(
-            item=d["item"],
-            debt_class=d["class"],
-            impact=d["impact"],
-            probability=d["probability"],
-            irreversibility=d["irreversibility"],
+            item=item_str,
+            debt_class=class_str,
+            impact=impact_int,
+            probability=prob_float,
+            irreversibility=irrev_int,
             priority=round(priority, 1),
-            note=d["note"],
+            note=note_str,
         ))
 
     # Augment from dependency graph (cycles → architecture debt)

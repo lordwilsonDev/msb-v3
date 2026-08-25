@@ -246,15 +246,15 @@ def _critical_path(
                 prev[neighbor] = v
 
     # Find the farthest node
-    end = max(dist, key=dist.get) if dist else ""
+    end = max(dist, key=lambda k: dist.get(k, 0)) if dist else ""
     path_length = dist.get(end, 0)
 
     # Reconstruct path
     path: list[str] = []
-    current = end
+    current: str | None = end
     while current is not None and current in prev:
         path.append(current)
-        current = prev[current]
+        current = prev.get(current)
     path.reverse()
 
     return path, path_length

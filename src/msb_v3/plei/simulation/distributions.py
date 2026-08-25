@@ -90,7 +90,6 @@ class PERT(Dist):
             raise ValueError(f"PERT requires low({self.low}) <= mode({self.mode}) <= high({self.high})")
 
     def sample(self, rng: random.Random | None = None) -> float:
-        r = rng or random
         # PERT mean = (low + 4*mode + high) / 6
         mean = (self.low + 4.0 * self.mode + self.high) / 6.0
         # Shape parameters from mean
@@ -98,8 +97,9 @@ class PERT(Dist):
             return self.low
         alpha = 1.0 + 4.0 * (mean - self.low) / (self.high - self.low)
         beta_val = 1.0 + 4.0 * (self.high - mean) / (self.high - self.low)
-        # Use gamma-based beta sampling
-        x = _beta_sample(alpha, beta_val, r)
+        # Use gamma-based beta sampling (narrow r to Random for mypy)
+        r_beta: random.Random = rng if rng is not None else random.Random()
+        x = _beta_sample(alpha, beta_val, r_beta)
         return self.low + x * (self.high - self.low)
 
     def describe(self) -> str:

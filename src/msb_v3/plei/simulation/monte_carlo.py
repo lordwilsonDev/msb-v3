@@ -126,7 +126,7 @@ def variables_from_risk_report(
                 dist=PERT(low=1.0, mode=mode_mult, high=high_mult),
                 category="debt",
                 is_failure_event=False,
-                description=d.get("note", d.get("item", "")),
+                description=str(d.get("note", d.get("item", ""))),
             ))
 
     failures = risk_data.get("failure_report", {})
