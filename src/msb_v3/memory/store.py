@@ -1,9 +1,16 @@
-"""Memory store — SQLite-backed message history with truncation."""
+"""Memory store — SQLite-backed message history with truncation.
+
+.. deprecated:: 0.3.2
+    This module is the legacy memory store. Use ``msb_v3.memory_fabric``
+    (primary, with provenance/verification/consolidation) instead.
+    This store will be removed in a future version.
+"""
 
 from __future__ import annotations
 
 import sqlite3
 import time
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -21,6 +28,11 @@ class Message:
 
 class MemoryStore:
     def __init__(self, db_path: Optional[str] = None) -> None:
+        warnings.warn(
+            "MemoryStore is deprecated — use msb_v3.memory_fabric.store instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.db_path = Path(db_path or settings.db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()

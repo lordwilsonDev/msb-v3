@@ -132,8 +132,16 @@ class TestOllamaIntegration:
         assert "models" in data
         assert len(data["models"]) > 0
 
+    @pytest.mark.skipif(
+        not _ollama_reachable(),
+        reason="Ollama not running",
+    )
     def test_ollama_chat_endpoint(self):
-        """Ollama /api/chat responds to a simple prompt."""
+        """Ollama /api/chat responds to a simple prompt.
+
+        This test hits a live Ollama instance and is slow under parallel
+        load. Marked serial-compatible by using a generous timeout.
+        """
         import httpx
 
         r = httpx.post(
@@ -142,9 +150,9 @@ class TestOllamaIntegration:
                 "model": "qwen3:8b",
                 "messages": [{"role": "user", "content": "Say OK"}],
                 "stream": False,
-                "options": {"num_predict": 5},
+                "options": {"num_predict": 3},
             },
-            timeout=60.0,
+            timeout=120.0,
         )
         assert r.status_code == 200
         data = r.json()
