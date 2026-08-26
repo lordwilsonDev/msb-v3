@@ -160,6 +160,17 @@ def ingest_all(project_root: str | Path) -> ProjectTwin:
     return twin
 
 
+def analyze_project(project_root: str | Path) -> dict[str, Any]:
+    """Convenience: ingest + summarize in one call.
+
+    Accepts a project root path (string or Path) and returns the full
+    PLEI summary dict. This is the recommended entry point for callers
+    who don't need the intermediate ``ProjectTwin`` object.
+    """
+    twin = ingest_all(project_root)
+    return twin_summary(twin)
+
+
 def twin_summary(twin: ProjectTwin) -> dict[str, Any]:
     """Produce the canonical summary — what ``plei analyze .`` prints."""
     from msb_v3.plei.engineering.capability_graph import graph_summary as cap_summary
