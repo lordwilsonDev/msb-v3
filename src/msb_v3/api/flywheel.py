@@ -23,6 +23,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from msb_v3.api.auth import require_operator
 from msb_v3.core.container import ApplicationContainer, get_container_dep
 from msb_v3.flywheel.engine import FlywheelEngine
+from msb_v3.flywheel.health_bridge import read_flywheel_health
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["flywheel"])
@@ -112,3 +113,26 @@ async def flywheel_resume(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _turn_payload(turn)
+
+
+@router.get("/flywheel/health", summary="Real-time flywheel status for dashboards")
+async def flywheel_health() -> dict:
+    """Return flywheel health status derived from Prometheus metrics.
+
+    Read-only: no side effects, no network calls. All data comes from
+    metrics that are already being collected by the instrumented engine.
+    """
+    health = read_flywheel_health()
+    result = health.to_dict()
+    # Add turn counts from the engine if available
+    try:
+        container = get_container_dep()
+        if container and hasattr(container, "flywheel"):
+            turns = container.flywheel.list()
+            result["total_turns"] = len(turns)
+            result["completed_turns"] = sum(1 for t in turns if t.status == "DONE")
+            result["active_turns_from_db"] = sum(1 for t in turns if t.status == "RUNNING")
+    except Exception:
+        result["total_turns"] = None
+        result["completed_turns"] = None
+    return result
