@@ -146,6 +146,12 @@ jobs:
       - name: Run policy drift gate
         run: bash scripts/ci-policy-gate.sh
 
+      # Closer drift guard: closure-plan.md task statuses must match git log.
+      # Prevents the "lying dashboard" problem where claimed completions
+      # drift from actual commit evidence.
+      - name: Closure drift guard
+        run: python scripts/closure-drift-check.py
+
       # NOTE: there is deliberately no artifact upload here. The old
       # "Upload lint reports" step uploaded .ruff_cache/.mypy_cache under the
       # name lint-reports, but nothing ever consumed the artifact, and
