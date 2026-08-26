@@ -178,10 +178,10 @@ A project is CLOSED when:
 ## Phase 7: Closer Automation (MEDIUM)
 
 ### TASK-021: CI Drift Guard
-- **Status**: PLANNED
+- **Status**: DONE (dffe3e8)
 - **Priority**: MEDIUM
 - **Acceptance**: CI fails if closure-plan.md drifts from git log reality
-- **Verification**: Pre-commit hook or CI step
+- **Verification**: `scripts/closure-drift-check.py` wired into CI lint job
 - **Risk**: LOW
 
 ## Dependency Graph
@@ -207,15 +207,14 @@ TASK-017 (DB Schema) ─ ✅ DONE
 TASK-018 (Logging) ─── ✅ DONE
 TASK-019 (Test Speed) ─ ✅ DONE
 TASK-020 (Recovery) ── ✅ DONE
-TASK-021 (Drift Guard) PLANNED → depends on Phase 0
+TASK-021 (Drift Guard) ✅ DONE (dffe3e8)
 ```
 
 ## Closure Score
 
 ```
 Total Tasks:         21
-Done:                20 (95%)
-Planned:              1 (5%)  — TASK-021 (drift guard)
+Done:                21 (100%)
 Blocked:              1      — TASK-001 (DeepSeek API, needs billing)
 
 Critical Tasks:       4 total, 3 done    →  75%
