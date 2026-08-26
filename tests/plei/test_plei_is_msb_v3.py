@@ -11,8 +11,6 @@ against its own project tree.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from msb_v3.plei.ingestion.configuration import ingest_configuration
 from msb_v3.plei.ingestion.dependencies import ingest_dependencies
 from msb_v3.plei.ingestion.documentation import ingest_documentation
@@ -24,8 +22,7 @@ from msb_v3.plei.lifecycle import classify_lifecycle
 from msb_v3.plei.orchestrator import ingest_all, twin_summary
 from msb_v3.plei.provenance import Provenance
 
-ROOT = Path(__file__).resolve().parents[2]
-
+from .conftest import PLEI_ROOT as ROOT
 
 # --- Layer-by-layer ingestion tests ---
 

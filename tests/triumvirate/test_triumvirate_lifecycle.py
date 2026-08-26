@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 BASE = "http://127.0.0.1:8766"
 
@@ -20,6 +21,7 @@ def _get(path, expected=200):
     return r.json()
 
 
+@pytest.mark.xdist_group("triumvirate")
 def test_triumvirate_plan_lock_verify_cycle():
     goal = "sovereign cluster deploy"
     plan = _post("/triumvirate/plan", {"goal": goal})

@@ -6,8 +6,6 @@ Every assertion is a reconstruction fact PLEI must derive independently.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from msb_v3.plei.engineering.capability_graph import (
     capabilities_for_stage,
     capability_by_name,
@@ -26,8 +24,7 @@ from msb_v3.plei.engineering.skill_taxonomy import (
 )
 from msb_v3.plei.orchestrator import ingest_all
 
-ROOT = Path(__file__).resolve().parents[2]
-
+from .conftest import PLEI_ROOT as ROOT
 
 # --- Capability Graph ---
 

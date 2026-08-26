@@ -5,8 +5,6 @@ Tests the three new modules against msb-v3 as the target project.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from msb_v3.plei.dependency.graph import (
     DependencyGraph,
     build_dependency_graph,
@@ -29,8 +27,7 @@ from msb_v3.plei.risk.report import (
     risk_report_as_dict,
 )
 
-ROOT = Path(__file__).resolve().parents[2]
-
+from .conftest import PLEI_ROOT as ROOT
 
 # --- Dependency Graph ---
 
