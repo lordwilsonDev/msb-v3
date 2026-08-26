@@ -79,6 +79,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/device` | OPTIONAL | Signed-device enrollment support (Vesta path, low volume). |
 | `msb_v3/evidence` | FROZEN | Evidence spine — release-declared frozen. |
 | `msb_v3/fabric` | LOAD-BEARING | Model router + FrontierClient seam — `resolve_client` on the agent path; DeepSeekClient extends FrontierClient. |
+| `msb_v3/energy_matrix` | OPTIONAL | Energy-aware resource scheduling — telemetry + scheduler + governance. |
 | `msb_v3/factory` | FROZEN | The factory pipeline — release-declared frozen (dogfood reached MERGED). |
 | `msb_v3/flywheel` | OPTIONAL | Research→Build loop — operator-driven, behind the brakes (CLAUDE.md Flywheel). |
 | `msb_v3/gateway` | OPTIONAL | Capability Gateway dispatcher (provider-harness plan); no canonical-path caller yet. |
@@ -95,6 +96,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/plei` | OPTIONAL | PLEI project lifecycle intelligence — Phase 1: project twin (ingestion + lifecycle classification). |
 | `msb_v3/replay` | FROZEN | Replay engine — release-declared frozen. |
 | `msb_v3/retrieval` | LOAD-BEARING | RAG/vector retrieval — `/rag` + flywheel novelty scan depend on it. |
+| `msb_v3/speech` | OPTIONAL | Voice pipeline — STT, speaker verify, intent, TTS, voice response loop. |
 | `msb_v3/runtime` | LOAD-BEARING | Runtime supervision (scripts/run.sh restart-on-exit); harness-gate depends on it. |
 | `msb_v3/tasks` | OPTIONAL | Unified task document surface; off canonical path. |
 | `msb_v3/tools` | FROZEN | The governed-tool registry behind the ActionGate — release-declared frozen. |

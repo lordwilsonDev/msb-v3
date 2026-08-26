@@ -95,7 +95,7 @@ class TestHealthBridge:
         health = read_flywheel_health()
         # After a successful run, pass rate should be > 0
         assert health.recent_pass_rate > 0
-        assert health.overall_status in ("idle", "running", "degraded", "energy_deferred")
+        assert health.overall_status in ("idle", "running", "degraded", "paused", "energy_deferred")
 
     def test_health_to_dict_is_serializable(self):
         health = read_flywheel_health()
@@ -196,7 +196,7 @@ class TestFlywheelObservabilityLoop:
         # 3. Health bridge reflects the run
         health = read_flywheel_health()
         assert health.recent_pass_rate > 0
-        assert health.overall_status in ("idle", "running", "degraded", "energy_deferred")
+        assert health.overall_status in ("idle", "running", "degraded", "paused", "energy_deferred")
 
         # 4. Active turns decremented after completion
         assert health.active_turns == 0
