@@ -2,7 +2,7 @@
 
 The flywheel engine runs autonomously through 9 stages. The health bridge
 gives it visibility into the wider system so it can make informed choices:
-- Should it pause new turns? (API error rate too high)
+- Should it pause new turns? (API error rate too high, or system overloaded)
 - Which charger backend should it use? (Ollama healthy → sovereign, else stub)
 - What's the current system health? (for the health endpoint)
 
@@ -10,6 +10,7 @@ This is a read-only bridge — it never modifies system state. It reads from:
 - Prometheus metrics (latency, error rate, active connections)
 - System health endpoint (component status)
 - Flywheel's own metrics (active turns, stage outcomes)
+- EnergyMatrix telemetry (CPU, RAM, disk, thermal)
 """
 
 from __future__ import annotations
@@ -46,6 +47,13 @@ class FlywheelHealth:
     recommended_charger: str = "stub"
     overall_status: str = "unknown"
 
+    # EnergyMatrix integration
+    energy_cpu_percent: float = 0.0
+    energy_ram_percent: float = 0.0
+    energy_disk_percent: float = 0.0
+    energy_action: str = "run"
+    energy_reason: str = ""
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "active_turns": self.active_turns,
@@ -57,6 +65,13 @@ class FlywheelHealth:
             "pause_reason": self.pause_reason,
             "recommended_charger": self.recommended_charger,
             "overall_status": self.overall_status,
+            "energy": {
+                "cpu_percent": round(self.energy_cpu_percent, 1),
+                "ram_percent": round(self.energy_ram_percent, 1),
+                "disk_percent": round(self.energy_disk_percent, 1),
+                "action": self.energy_action,
+                "reason": self.energy_reason,
+            },
         }
 
 
@@ -106,16 +121,22 @@ def read_flywheel_health() -> FlywheelHealth:
     except Exception:
         pass
 
-    # Pause decision
+    # EnergyMatrix telemetry
+    _apply_energy_matrix(health)
+
+    # Pause decision (error rate OR energy)
     if health.recent_error_rate > _ERROR_RATE_THRESHOLD and total >= 5:
         health.should_pause = True
         health.pause_reason = f"error rate {health.recent_error_rate:.1%} > {_ERROR_RATE_THRESHOLD:.0%} threshold"
     elif not health.system_ready and health.active_turns > 0:
         health.should_pause = True
         health.pause_reason = "system not ready but turns are active"
+    elif health.energy_action == "skip":
+        health.should_pause = True
+        health.pause_reason = f"energy: {health.energy_reason}"
 
-    # Charger recommendation
-    if health.system_ready and health.recent_error_rate < 0.3:
+    # Charger recommendation (energy-aware)
+    if health.system_ready and health.recent_error_rate < 0.3 and health.energy_action != "skip":
         health.recommended_charger = "sovereign"
     else:
         health.recommended_charger = "stub"
@@ -125,9 +146,35 @@ def read_flywheel_health() -> FlywheelHealth:
         health.overall_status = "paused"
     elif health.recent_error_rate > 0.2:
         health.overall_status = "degraded"
+    elif health.energy_action == "defer":
+        health.overall_status = "energy_deferred"
     elif health.active_turns > 0:
         health.overall_status = "running"
     else:
         health.overall_status = "idle"
 
     return health
+
+
+def _apply_energy_matrix(health: FlywheelHealth) -> None:
+    """Read EnergyMatrix telemetry and apply to health status.
+
+    This is read-only — it reads system resources and updates the
+    health record with energy-aware data. The scheduler decision
+    (run/defer/skip) is used to influence pause and charger logic above.
+    """
+    try:
+        from msb_v3.energy_matrix.scheduler import decide
+
+        decision = decide()
+        health.energy_action = decision.action
+        health.energy_reason = decision.reason
+
+        if decision.telemetry:
+            health.energy_cpu_percent = decision.telemetry.cpu_percent
+            health.energy_ram_percent = decision.telemetry.ram_percent
+            health.energy_disk_percent = decision.telemetry.disk_percent
+    except Exception:  # noqa: BLE001
+        # EnergyMatrix not available — degrade gracefully
+        health.energy_action = "run"
+        health.energy_reason = "energy matrix unavailable"

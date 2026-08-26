@@ -78,7 +78,7 @@ class TestHealthBridge:
     def test_read_flywheel_health_returns_flywheel_health(self):
         health = read_flywheel_health()
         assert isinstance(health, FlywheelHealth)
-        assert health.overall_status in ("idle", "running", "degraded", "paused", "unknown")
+        assert health.overall_status in ("idle", "running", "degraded", "paused", "energy_deferred", "unknown")
 
     def test_health_reflects_active_turns(self, engine):
         """After starting a turn, health bridge shows active turns."""
@@ -95,7 +95,7 @@ class TestHealthBridge:
         health = read_flywheel_health()
         # After a successful run, pass rate should be > 0
         assert health.recent_pass_rate > 0
-        assert health.overall_status in ("idle", "running", "degraded")
+        assert health.overall_status in ("idle", "running", "degraded", "energy_deferred")
 
     def test_health_to_dict_is_serializable(self):
         health = read_flywheel_health()
@@ -170,7 +170,7 @@ class TestHealthEndpoint:
         from msb_v3.api.app import create_app
         client = TestClient(create_app())
         body = client.get("/flywheel/health").json()
-        assert body["overall_status"] in ("idle", "running", "degraded", "paused", "unknown")
+        assert body["overall_status"] in ("idle", "running", "degraded", "paused", "energy_deferred", "unknown")
 
 
 # --- End-to-end integration test ---
@@ -196,7 +196,7 @@ class TestFlywheelObservabilityLoop:
         # 3. Health bridge reflects the run
         health = read_flywheel_health()
         assert health.recent_pass_rate > 0
-        assert health.overall_status in ("idle", "running", "degraded")
+        assert health.overall_status in ("idle", "running", "degraded", "energy_deferred")
 
         # 4. Active turns decremented after completion
         assert health.active_turns == 0
@@ -224,3 +224,36 @@ class TestFlywheelObservabilityLoop:
 
         health = read_flywheel_health()
         assert health.recent_error_rate > 0
+
+
+class TestEnergyMatrixIntegration:
+    """EnergyMatrix integration in flywheel health bridge."""
+
+    def test_health_has_energy_fields(self) -> None:
+        from msb_v3.flywheel.health_bridge import read_flywheel_health
+
+        health = read_flywheel_health()
+        d = health.to_dict()
+        assert "energy" in d
+        assert "cpu_percent" in d["energy"]
+        assert "ram_percent" in d["energy"]
+        assert "disk_percent" in d["energy"]
+        assert "action" in d["energy"]
+
+    def test_energy_action_is_valid(self) -> None:
+        from msb_v3.flywheel.health_bridge import read_flywheel_health
+
+        health = read_flywheel_health()
+        assert health.energy_action in ("run", "defer", "skip")
+
+    def test_energy_cpu_populated(self) -> None:
+        from msb_v3.flywheel.health_bridge import read_flywheel_health
+
+        health = read_flywheel_health()
+        assert health.energy_cpu_percent >= 0
+
+    def test_energy_ram_populated(self) -> None:
+        from msb_v3.flywheel.health_bridge import read_flywheel_health
+
+        health = read_flywheel_health()
+        assert health.energy_ram_percent > 0
