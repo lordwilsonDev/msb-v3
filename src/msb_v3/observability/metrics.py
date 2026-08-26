@@ -132,6 +132,31 @@ CRON_RUNS = Counter(
     "Cron job executions, by outcome status",
     ["status"],
 )
+# Flywheel observability — stage-level metrics for the 9-stage turn state
+# machine.  Each stage transition emits a latency observation and a result
+# counter; active_turns tracks concurrency; approval_wait captures the
+# human-gate dwell time.
+FLYWHEEL_STAGE_LATENCY = Histogram(
+    "msb_v3_flywheel_stage_seconds",
+    "Flywheel stage duration in seconds",
+    ["stage"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
+)
+FLYWHEEL_STAGE_RESULT = Counter(
+    "msb_v3_flywheel_stage_total",
+    "Flywheel stage outcomes",
+    ["stage", "result"],
+)
+FLYWHEEL_ACTIVE_TURNS = Gauge(
+    "msb_v3_flywheel_active_turns",
+    "Currently running flywheel turns",
+)
+FLYWHEEL_APPROVAL_WAIT = Histogram(
+    "msb_v3_flywheel_approval_wait_seconds",
+    "Time spent waiting for human approval",
+    ["stage"],
+    buckets=(1.0, 5.0, 30.0, 60.0, 300.0, 600.0, 1800.0, 3600.0),
+)
 from prometheus_client import REGISTRY as _REGISTRY  # noqa: E402
 
 # Explicit registration: prometheus_client counters are lazy (they only enter

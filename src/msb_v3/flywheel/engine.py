@@ -15,6 +15,7 @@ import json
 import logging
 import re
 import sqlite3
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +45,11 @@ from msb_v3.governance.budget import BudgetLedger
 from msb_v3.governance.governor import OuroborosGovernor
 from msb_v3.governance.guard import Guard
 from msb_v3.governance.killswitch import KillSwitch
+from msb_v3.observability.metrics import (
+    FLYWHEEL_ACTIVE_TURNS,
+    FLYWHEEL_STAGE_LATENCY,
+    FLYWHEEL_STAGE_RESULT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +217,9 @@ class FlywheelEngine:
             turn.notes.append(f"start refused: {verdict.reason}")
             self._save(turn)
             self._audit("blocked", {"turn_id": tid, "reason": verdict.reason})
+            FLYWHEEL_STAGE_RESULT.labels(stage="start", result="blocked").inc()
             return turn
+        FLYWHEEL_ACTIVE_TURNS.inc()
         self._save(turn)
         self._audit("started", {"turn_id": tid, "problem": problem, "charger": charger})
         return turn
@@ -248,6 +256,8 @@ class FlywheelEngine:
                 turn.status = "DONE"
                 self._save(turn)
                 self._audit("done", {"turn_id": turn_id})
+                FLYWHEEL_ACTIVE_TURNS.dec()
+                FLYWHEEL_STAGE_RESULT.labels(stage="run", result="done").inc()
                 break
 
             approval_kind = APPROVAL_STAGES.get(stage)
@@ -276,6 +286,8 @@ class FlywheelEngine:
                     turn.notes.append(f"{stage} failed: {type(exc).__name__}: {exc}")
                     self._save(turn)
                     self._audit("error", {"turn_id": turn_id, "stage": stage, "error": str(exc)})
+                    FLYWHEEL_ACTIVE_TURNS.dec()
+                    FLYWHEEL_STAGE_RESULT.labels(stage=stage, result="error").inc()
                     break
                 self._audit("stage." + stage, {"turn_id": turn_id, "verdict": verdict.action})
                 self._save(turn)
@@ -305,9 +317,13 @@ class FlywheelEngine:
                 turn.status = "HALTED"
                 turn.notes.append(f"{stage} halted: {verdict.reason}")
                 self._audit("halted", {"turn_id": turn_id, "stage": stage, "reason": verdict.reason})
+                FLYWHEEL_ACTIVE_TURNS.dec()
+                FLYWHEEL_STAGE_RESULT.labels(stage=stage, result="halted").inc()
             else:
                 turn.status = "BLOCKED"
                 turn.notes.append(f"{stage} blocked: {verdict.reason}")
+                FLYWHEEL_ACTIVE_TURNS.dec()
+                FLYWHEEL_STAGE_RESULT.labels(stage=stage, result="blocked").inc()
             self._save(turn)
             break
         return turn
@@ -337,7 +353,11 @@ class FlywheelEngine:
 
     def _exec_stage(self, turn: Turn, stage: str) -> None:
         fn = getattr(self, "_stage_" + stage)
+        t0 = time.monotonic()
         fn(turn)
+        elapsed = time.monotonic() - t0
+        FLYWHEEL_STAGE_LATENCY.labels(stage=stage).observe(elapsed)
+        FLYWHEEL_STAGE_RESULT.labels(stage=stage, result="pass").inc()
 
     def _stage_verify_novelty(self, turn: Turn) -> None:
         novelty = self._novelty_fn(turn.problem)
