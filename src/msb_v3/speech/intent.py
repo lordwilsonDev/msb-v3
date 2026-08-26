@@ -67,7 +67,7 @@ _PATTERNS: List[Tuple[re.Pattern, str, str, Dict[str, Any]]] = [
     # Help
     (
         re.compile(r"(?:help|commands|what can you do)", re.IGNORECASE),
-        None,
+        "",
         "HELP",
         {},
     ),

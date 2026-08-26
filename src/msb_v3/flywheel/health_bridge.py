@@ -115,7 +115,8 @@ def read_flywheel_health() -> FlywheelHealth:
     # but we can read the sum and count to compute average
     try:
         latency_sum = LATENCY.labels(harness="default")._sum.get()
-        latency_count = LATENCY.labels(harness="default")._count.get()
+        # _count is a private attr — access via get() for mypy compat
+        latency_count = int(LATENCY.labels(harness="default")._count.get())  # type: ignore[attr-defined]
         if latency_count > 0:
             health.api_latency_p50 = latency_sum / latency_count
     except Exception:

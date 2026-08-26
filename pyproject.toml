@@ -51,6 +51,23 @@ select = ["E4", "E7", "E9", "F", "I"]
 module = ["asn1crypto.*"]
 ignore_missing_imports = true
 
+# Third-party packages without type stubs — added as new subsystems
+# were introduced (speech, energy_matrix). Pin per-package so a blanket
+# --ignore-missing-imports can't regress the gate silently.
+[[tool.mypy.overrides]]
+module = [
+    "pyaudio.*",
+    "psutil.*",
+    "torchaudio.*",
+    "mlx_whisper.*",
+    "faster_whisper.*",
+    "whisper.*",
+    "resemblyzer.*",
+    "webrtcvad.*",
+    "librosa.*",
+]
+ignore_missing_imports = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

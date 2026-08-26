@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
 from msb_v3.api.auth import require_operator
 from msb_v3.core.container import ApplicationContainer, get_container_dep
@@ -116,7 +116,7 @@ async def flywheel_resume(
 
 
 @router.get("/flywheel/health", summary="Real-time flywheel status for dashboards")
-async def flywheel_health() -> dict:
+async def flywheel_health(request: Request) -> dict:
     """Return flywheel health status derived from Prometheus metrics.
 
     Read-only: no side effects, no network calls. All data comes from
@@ -126,7 +126,7 @@ async def flywheel_health() -> dict:
     result = health.to_dict()
     # Add turn counts from the engine if available
     try:
-        container = get_container_dep()
+        container = get_container_dep(request)
         if container and hasattr(container, "flywheel"):
             turns = container.flywheel.list()
             result["total_turns"] = len(turns)
