@@ -33,7 +33,7 @@ def transcribe(
         audio: The audio to transcribe.
         model_name: Whisper model size (tiny, base, small, medium, large-v3).
         language: Language code (en, es, fr, de, etc.).
-        engine: "mlx", "faster", or "auto" (tries mlx first, falls back to faster).
+        engine: "mlx", "faster", "openai", or "auto".
 
     Returns:
         Transcript with text, confidence, and segment details.
@@ -47,28 +47,28 @@ def transcribe(
         return _transcribe_mlx(audio, model_name, language)
     if engine == "faster":
         return _transcribe_faster(audio, model_name, language)
+    if engine == "openai":
+        return _transcribe_openai(audio, model_name, language)
 
-    raise ValueError(f"Unknown engine: {engine} (use 'mlx', 'faster', or 'auto')")
+    raise ValueError(f"Unknown engine: {engine} (use 'mlx', 'faster', 'openai', or 'auto')")
 
 
 def _transcribe_auto(
     audio: AudioBuffer, model_name: str, language: str
 ) -> Transcript:
-    """Try mlx-whisper first, fall back to faster-whisper."""
-    try:
-        return _transcribe_mlx(audio, model_name, language)
-    except Exception:  # noqa: BLE001
-        pass
+    """Try engines in order: openai → mlx → faster."""
+    for engine_fn in (_transcribe_openai, _transcribe_mlx, _transcribe_faster):
+        try:
+            return engine_fn(audio, model_name, language)
+        except Exception:  # noqa: BLE001
+            pass
 
-    try:
-        return _transcribe_faster(audio, model_name, language)
-    except Exception:  # noqa: BLE001
-        return Transcript(
-            text="",
-            engine="none",
-            confidence=0.0,
-            duration_seconds=audio.duration_seconds,
-        )
+    return Transcript(
+        text="",
+        engine="none",
+        confidence=0.0,
+        duration_seconds=audio.duration_seconds,
+    )
 
 
 def _transcribe_mlx(
@@ -150,6 +150,43 @@ def _transcribe_faster(
         duration_seconds=audio.duration_seconds,
         segments=segments,
         engine="faster-whisper",
+    )
+
+
+def _transcribe_openai(
+    audio: AudioBuffer, model_name: str, language: str
+) -> Transcript:
+    """Transcribe using openai-whisper (reference implementation, CPU)."""
+    import whisper
+
+    model = whisper.load_model(model_name)
+
+    # Write audio to temp WAV
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        save_wav(audio, tmp_path)
+        result = model.transcribe(tmp_path, language=language)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    text = result.get("text", "").strip()
+    segments = [
+        {
+            "start": seg.get("start", 0),
+            "end": seg.get("end", 0),
+            "text": seg.get("text", ""),
+        }
+        for seg in result.get("segments", [])
+    ]
+
+    return Transcript(
+        text=text,
+        language=language or result.get("language", "en"),
+        confidence=_estimate_confidence(segments),
+        duration_seconds=audio.duration_seconds,
+        segments=segments,
+        engine="openai-whisper",
     )
 
 
