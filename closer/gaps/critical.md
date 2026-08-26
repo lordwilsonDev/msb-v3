@@ -1,43 +1,68 @@
 # Critical Gaps — Things That Prevent Correct Functioning
 
-## C1: DeepSeek API Key Exhausted (402)
+## C1: DeepSeek API Key Exhausted (402) — BLOCKED
 **Impact**: BLOCKS the primary provider seam
 **Evidence**: Live test on 2026-08-24 returned 402 on api.deepseek
 **Current state**: Fallback chain caught it (paseo.claude succeeded), but the primary provider is dead
 **Fix**: Refill DeepSeek API credits
 **Verification**: `curl -s https://api.deepseek.com/v1/models` returns 200
+**Status**: BLOCKED — needs user billing action (30 min)
 
-## C2: Disk at 91%
-**Impact**: BLOCKS multimodal, evidence growth, and long-term operation
-**Evidence**: `df -h /` shows 91% on data volume
-**Current state**: Documented as Known Limitation #3 — multimodal parked
-**Fix**: Clean old artifacts, expand storage, or archive evidence
+## C2: Disk at 76% — RESOLVED
+**Impact**: Was BLOCKING multimodal, evidence growth, and long-term operation
+**Evidence**: `df -h /` shows 76% on data volume (down from 91%)
+**Current state**: 5.1GB Ollama models — not blocking current operation
+**Fix**: Already resolved — disk usage dropped from 91% to 76%
 **Verification**: `df -h /` shows <85%
+**Status**: RESOLVED — 2026-08-25
 
-## C3: No DB Schema Versioning
+## C3: No DB Schema Versioning — SHIPPED
 **Impact**: Data corruption risk at scale
 **Evidence**: project-map.md §19, debt_model.py item #1
 **Current state**: SQLite with no migration system
-**Fix**: Add alembic or similar migration framework
-**Verification**: Schema changes apply cleanly to existing databases
+**Fix**: `5589fd6` — feat(v3.1): Tier 1 — DB schema versioning + structured logging
+**Evidence**: `src/msb_v3/db/migrations.py` — 156 lines, migration system with 13 tests
+**Status**: SHIPPED — 2026-08-25
 
-## C4: Pre-Push Gate Passes But CI Last Ran 2026-08-20
+## C4: Pre-Push Gate Passes But CI Last Ran 2026-08-20 — RESOLVED
 **Impact**: 25 commits unverified by actual CI
 **Evidence**: GitHub Actions last successful run was Aug 20
-**Current state**: Local lint/mypy/tests pass, but CI hasn't validated the PLEI subsystem
-**Fix**: Trigger CI run, fix any failures
-**Verification**: GitHub Actions shows green on main
+**Current state**: CI is green on all 3 workflows (msb-v3 CI, harness-gate, factory-gate)
+**Fix**: `f645352` — fix(ci): resolve 5 CI portability failures across 3 workflows
+**Verification**: GitHub Actions shows green on main (8df21ad)
+**Status**: RESOLVED — 2026-08-26
 
-## C5: CLI Provider Is Best-Effort Isolation, Not a Sandbox
+## C5: CLI Provider Is Best-Effort Isolation, Not a Sandbox — OPEN
 **Impact**: Capability escape surface
 **Evidence**: debt_model.py item #2, L9 parked
 **Current state**: Provider runs in same process space
 **Fix**: Process isolation or container-based execution
 **Verification**: Security test confirms no capability escape
+**Status**: OPEN — Phase 2 of the Closer plan
 
-## C6: Port Conflict on :8080
-**Impact**: Blocks llama-server / local AI
-**Evidence**: moie-os process occupies :8080
-**Current state**: settings.llama_cpp_url defaults to :8080
-**Fix**: Move moie-os or change LLAMA_CPP_URL
-**Verification**: `curl http://localhost:8081/health` returns 200 (or whatever port is chosen)
+## C6: Port Conflict on :8080 — RESOLVED
+**Impact**: Was BLOCKING llama-server / local AI
+**Evidence**: moie-os process occupied :8080
+**Current state**: Default changed from :8080 to :8081
+**Fix**: `522e1c9` — feat(closer): closure plan + E2E integration tests + port fix
+**Evidence**: `src/msb_v3/core/config.py` — llama_cpp_url defaults to `http://localhost:8081/v1`
+**Status**: RESOLVED — 2026-08-25
+
+---
+
+## Summary
+
+| Gap | Status | Closed By |
+|-----|--------|-----------|
+| C1 | 🔒 BLOCKED | — (needs billing) |
+| C2 | ✅ RESOLVED | disk dropped to 76% |
+| C3 | ✅ SHIPPED | `5589fd6` |
+| C4 | ✅ RESOLVED | `f645352` |
+| C5 | 🔲 OPEN | — (Phase 2) |
+| C6 | ✅ RESOLVED | `522e1c9` |
+
+**Resolved: 4/6 (67%)**
+**Blocked: 1/6 (17%) — C1 DeepSeek API (needs billing)**
+**Open: 1/6 (17%) — C5 CLI provider sandboxing (Phase 2)**
+
+**Critical count: 6 (not 4 as previously reported)**
