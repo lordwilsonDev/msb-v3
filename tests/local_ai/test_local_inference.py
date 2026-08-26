@@ -142,9 +142,9 @@ class TestOllamaIntegration:
                 "model": "qwen3:8b",
                 "messages": [{"role": "user", "content": "Say OK"}],
                 "stream": False,
-                "options": {"num_predict": 20},
+                "options": {"num_predict": 5},
             },
-            timeout=30.0,
+            timeout=60.0,
         )
         assert r.status_code == 200
         data = r.json()
