@@ -16,7 +16,7 @@
 
 **Phase 1 closure: 100% ✅**
 
-## Phase 2: P1 Speed (IN PROGRESS)
+## Phase 2: P1 Speed (COMPLETE ✅)
 
 | Task | Status | Evidence |
 |------|--------|----------|
@@ -24,11 +24,11 @@
 | TASK-008: Variable-length capture | ✅ VERIFIED | capture_intelligent() |
 | TASK-009: Whisper benchmark | ✅ VERIFIED | tiny=1.0s, base=1.4s, small=1.8s |
 | TASK-010: Tune confidence thresholds | ✅ VERIFIED | Defaults documented |
-| TASK-011: Latency breakdown in VoiceSession | PLANNED | — |
+| TASK-011: Latency breakdown in VoiceSession | ✅ VERIFIED | respond_with_session() + 8 tests |
 
-**Phase 2 closure: 80%**
+**Phase 2 closure: 100% ✅**
 
-## Phase 3: P2 Alive (AFTER P2)
+## Phase 3: P2 Alive (NEXT)
 
 | Task | Status | Depends On | Acceptance |
 |------|--------|------------|------------|
@@ -39,7 +39,7 @@
 
 **Phase 3 closure: 0%**
 
-## Phase 4: P3 Subsystem (AFTER P2)
+## Phase 4: P3 Subsystem (AFTER P3)
 
 | Task | Status | Depends On | Acceptance |
 |------|--------|------------|------------|
@@ -53,7 +53,7 @@
 
 ```
 Total tasks:     18
-Completed:       9 (Phase 1 + Phase 2 partial)
-Remaining:        9 (Phase 2 tail + Phase 3-4)
-Closure:         50%
+Completed:      11 (Phase 1 + Phase 2)
+Remaining:       7 (Phase 3-4)
+Closure:         61%
 ```
