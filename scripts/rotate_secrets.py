@@ -51,26 +51,23 @@ def _rotate() -> list[dict[str, str]]:
 
 
 def _restart_msb() -> None:
-    script = Path("/tmp/run-msb.py")
-    if not script.exists():
-        print("warning: /tmp/run-msb.py not found, restart msb-v3 manually", file=sys.stderr)
+    """Restart only through the owned launchd/service control surface.
+
+    This script must never discover a listener by port and terminate it: the
+    process may belong to another checkout or operator. Set
+    ``MSB_RESTART_COMMAND`` to an explicit, deployment-owned command when
+    rotation needs an immediate restart; otherwise leave restart to the
+    supervisor and report that fact.
+    """
+    command = os.environ.get("MSB_RESTART_COMMAND", "").strip()
+    if not command:
+        print(
+            "warning: secrets rotated; no owned restart command configured; "
+            "restart msb-v3 through its supervisor",
+            file=sys.stderr,
+        )
         return
-    subprocess.run(
-        ["lsof", "-ti:8766"],
-        capture_output=True,
-        text=True,
-    ).stdout.strip().splitlines()
-    # kill old
-    pids = subprocess.run(["lsof", "-ti:8766"], capture_output=True, text=True).stdout.strip()
-    for pid in pids.splitlines():
-        subprocess.run(["kill", "-9", pid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    # restart via wrapper
-    py = os.environ.get("MSB_PYTHON", sys.executable)
-    subprocess.Popen(
-        [py, str(script)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    subprocess.run(["bash", "-lc", command], check=True)
 
 
 def main() -> int:

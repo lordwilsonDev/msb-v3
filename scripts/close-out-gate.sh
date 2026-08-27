@@ -64,29 +64,19 @@ if skip pytest; then
   SKIPPED=$((SKIPPED + 1))
 else
   bash scripts/seed-research-runtime.sh >/tmp/close-out-seed.log 2>&1 || true
-  # Free :8766 for the gate's own server, then boot under the app supervisor
-  # contract so the restart path is the one being exercised.
-  lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
-  "$PY" -m msb_v3 >/tmp/close-out-server.log 2>&1 &
-  SRV=$!
-  trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true' EXIT
-  up=0
-  for _ in $(seq 1 60); do
-    if curl -sf -o /dev/null http://127.0.0.1:8766/health; then up=1; break; fi
-    sleep 1
-  done
-  if [ "$up" != "1" ]; then
-    echo "[close-out] FAIL  pytest (server failed to boot — log follows)"
-    tail -20 /tmp/close-out-server.log
-    leg pytest 1
-  else
+  # Allocate a run-scoped server. The helper records its own PID and
+  # cleanup never touches a developer-owned listener.
+  source scripts/ci-runtime.sh
+  ci_runtime_init
+  if ci_runtime_start_server; then
     "$PY" -m pytest -q tests/ --cov=msb_v3 --cov-report=term --cov-fail-under=70 >/tmp/close-out-pytest.log 2>&1
     leg pytest $?
+  else
+    echo "[close-out] FAIL  pytest (server failed to boot — see runtime log)"
+    leg pytest 1
   fi
-  kill "$SRV" 2>/dev/null || true
-  wait "$SRV" 2>/dev/null || true
+  ci_runtime_cleanup
   trap - EXIT
-  lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
 fi
 
 # --- 3. pip-audit: blocking CVE scan ----------------------------------------
@@ -118,11 +108,11 @@ elif ! command -v docker >/dev/null 2>&1; then
 else
   IMG="msb-v3:close-out-$(date +%s)"
   if docker build -t "$IMG" . >/tmp/close-out-docker-build.log 2>&1; then
-    if docker run -d -p 8766:8766 --name msb-close-out "$IMG" >/dev/null 2>&1; then
+    if docker run -d -p 8767:8766 --name msb-close-out "$IMG" >/dev/null 2>&1; then
       trap 'docker rm -f msb-close-out >/dev/null 2>&1 || true' EXIT
       ok=0
       for _ in $(seq 1 60); do
-        if curl -sf http://127.0.0.1:8766/health >/dev/null 2>&1; then ok=1; break; fi
+        if curl -sf http://127.0.0.1:8767/health >/dev/null 2>&1; then ok=1; break; fi
         if ! docker inspect -f '{{.State.Running}}' msb-close-out 2>/dev/null | grep -q true; then break; fi
         sleep 1
       done
