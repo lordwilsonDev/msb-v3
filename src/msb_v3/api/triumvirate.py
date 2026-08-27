@@ -20,11 +20,11 @@ from msb_v3.observability.metrics import (
     TRIUMVIRATE_SCAN,
 )
 from msb_v3.retrieval.vector_store import VectorDocument
+from msb_v3.speech.response import VoiceResponder
 from msb_v3.triumvirate.hardware_sovereignty import PeerNode
 from msb_v3.triumvirate.meta_cognitive_planner import PlanRequest
 from msb_v3.triumvirate.multimodal_interfaces import (
     HapticHeartbeat,
-    SpeechFunctions,
     VisionClaw,
 )
 
@@ -354,10 +354,15 @@ async def haptic_heartbeat() -> Dict[str, Any]:
 
 @router.post("/multimodal/speech/command")
 async def speech_command(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Speech command — real pipeline: intent → response → TTS.
+
+    Accepts {"transcript": "..."} and runs through VoiceResponder:
+    extract_intent → generate spoken response → TTS output.
+    """
     if _multimodal_disabled():
         raise HTTPException(status_code=503, detail=_MULTIMODAL_DISABLED_DETAIL)
     transcript = body.get("transcript") or ""
-    result = SpeechFunctions().map_command(transcript)
-    if result.get("status") != "parked":  # parked calls are not real work
-        TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
-    return result
+    responder = VoiceResponder(speak_aloud=False)
+    response = responder.respond_to_text(transcript)
+    TRIUMVIRATE_MULTIMODAL.labels(interface="speech").inc()
+    return response.to_dict()
