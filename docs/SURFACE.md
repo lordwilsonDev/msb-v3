@@ -86,6 +86,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/governance` | LOAD-BEARING | The brakes (kill switch, budgets, approvals) — fail-closed everywhere (CLAUDE.md). |
 | `msb_v3/guardrails` | LOAD-BEARING | `fold.StepEnforcer` — wired into the governed tool loops (DeepSeekClient, conversation). |
 | `msb_v3/harnesses` | OPTIONAL | Harness scaffolding; off canonical path. |
+| `msb_v3/infrastructure` | LOAD-BEARING | Centralized environment contracts, including Qdrant preflight consumed by CI harness gates. |
 | `msb_v3/local_ai` | LOAD-BEARING | Ollama + llama + DeepSeek clients — the model layer under `/chat`, `/agent`, `/v1`. |
 | `msb_v3/memory` | LOAD-BEARING | SQLite session/message memory — `/memory` + MCP bridge depend on it. |
 | `msb_v3/memory_fabric` | OPTIONAL | Memory fabric (spec §4.2.2); off canonical path. |
