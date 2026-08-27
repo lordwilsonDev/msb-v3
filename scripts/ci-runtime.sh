@@ -29,7 +29,8 @@ PY
 
 ci_runtime_start_server() {
   : "${CI_RUNTIME_DIR:?call ci_runtime_init first}"
-  : "${CI_SERVER_PYTHON:-${MSB_PYTHON:-python}}"
+  CI_SERVER_PYTHON="${CI_SERVER_PYTHON:-${MSB_PYTHON:-python}}"
+  export CI_SERVER_PYTHON
   "$CI_SERVER_PYTHON" -m msb_v3 >"$CI_RUNTIME_DIR/server.log" 2>&1 &
   CI_SERVER_PID=$!
   printf '%s\n' "$CI_SERVER_PID" >"$CI_RUNTIME_DIR/server.pid"
