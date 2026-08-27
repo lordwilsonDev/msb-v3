@@ -94,7 +94,8 @@ def test_responder_text_kill_switch() -> None:
     result = responder.respond_to_text("Kill the loop")
     assert result.command is not None
     assert "killswitch" in result.command.endpoint
-    assert "halted" in result.response_text.lower()
+    # Safety gate: CRITICAL risk requires confirmation
+    assert "confirm" in result.response_text.lower()
 
 
 def test_responder_text_deploy() -> None:

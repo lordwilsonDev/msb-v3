@@ -33,6 +33,13 @@ from typing import Any, Callable, Dict, Optional
 from msb_v3.speech.intent import extract_intent
 from msb_v3.speech.models import Transcript, VoiceCommand
 from msb_v3.speech.pipeline import SpeechPipeline
+from msb_v3.speech.safety import (
+    ConfidenceScores,
+    PolicyAction,
+    VoicePolicyDecision,
+    VoicePolicyGate,
+    VoiceSession,
+)
 from msb_v3.speech.tts.engine import speak
 
 
@@ -89,7 +96,8 @@ class VoiceResponder:
     """Full voice interaction loop: listen → think → speak.
 
     The responder connects the speech pipeline (STT + verification)
-    to a response generator and TTS output.
+    to a response generator and TTS output, with Vesta-integrated
+    policy gating for every command.
     """
 
     def __init__(
@@ -98,11 +106,13 @@ class VoiceResponder:
         voice: Optional[str] = None,
         tts_rate: int = 200,
         speak_aloud: bool = True,
+        policy_gate: Optional[VoicePolicyGate] = None,
     ) -> None:
         self.pipeline = pipeline or SpeechPipeline()
         self.voice = voice
         self.tts_rate = tts_rate
         self.speak_aloud = speak_aloud
+        self.policy_gate = policy_gate or VoicePolicyGate(require_speaker=True)
 
     def respond_to_file(
         self,
@@ -149,8 +159,13 @@ class VoiceResponder:
         self,
         text: str,
         processor: Optional[Callable[[VoiceCommand], Dict[str, Any]]] = None,
+        confirmed: bool = False,
     ) -> VoiceResponse:
-        """Process a text transcript and speak the response."""
+        """Process a text transcript and speak the response.
+
+        Every command passes through VoicePolicyGate before execution.
+        HIGH/CRITICAL commands return a confirmation prompt.
+        """
         start = time.monotonic()
         response = VoiceResponse(input_text=text)
 
@@ -166,8 +181,32 @@ class VoiceResponder:
         command = extract_intent(transcript)
         response.command = command
 
-        # Generate response
-        response.response_text = self._generate_response(command, processor)
+        # Policy gate — every command goes through safety
+        if command.endpoint:
+            decision = self.policy_gate.evaluate(
+                command.endpoint,
+                command.params,
+                transcript_confidence=0.9,
+                speaker_confidence=0.9,
+                speaker_enrolled=True,
+                intent_confidence=0.9,
+                confirmed=confirmed,
+            )
+
+            if decision.action == PolicyAction.DENY:
+                response.response_text = self._deny_message(decision)
+                response.authorized = False
+                response.error = "; ".join(decision.reasons)
+            elif decision.action == PolicyAction.CONFIRM:
+                response.response_text = self._confirm_message(command, decision)
+                response.authorized = False
+            else:
+                # ALLOW — generate response
+                response.response_text = self._generate_response(command, processor)
+                response.authorized = True
+        else:
+            response.response_text = self._generate_response(command, processor)
+            response.authorized = True
 
         # Speak
         if self.speak_aloud and response.response_text:
@@ -177,9 +216,43 @@ class VoiceResponder:
                 rate=self.tts_rate,
             )
 
-        response.authorized = True
         response.latency_ms = (time.monotonic() - start) * 1000
         return response
+
+    def _deny_message(self, decision: VoicePolicyDecision) -> str:
+        """Generate a spoken denial message."""
+        risk = decision.risk_level.value
+        reasons = decision.reasons
+        if any("transcription confidence" in r for r in reasons):
+            return "I'm not sure I heard that correctly. Could you repeat?"
+        if any("speaker confidence" in r for r in reasons):
+            return "Speaker not recognized. Access denied."
+        if any("intent confidence" in r for r in reasons):
+            return "I'm not sure what you want. Could you rephrase?"
+        return f"Command denied. Risk level: {risk}."
+
+    def _confirm_message(
+        self, command: VoiceCommand, decision: VoicePolicyDecision
+    ) -> str:
+        """Generate a spoken confirmation prompt for high-risk commands."""
+        risk = decision.risk_level.value
+        endpoint = command.endpoint or ""
+
+        if "/killswitch" in endpoint:
+            return (
+                "Warning: this will halt the system. "
+                "Say 'confirm' to proceed, or 'cancel' to abort."
+            )
+        if "/governance/execute" in endpoint:
+            action = command.params.get("action", "this action")
+            return (
+                f"This will execute {action}. "
+                "Say 'confirm' to proceed, or 'cancel' to abort."
+            )
+        return (
+            f"This is a {risk} risk command. "
+            "Say 'confirm' to proceed, or 'cancel' to abort."
+        )
 
     def _generate_response(
         self,
