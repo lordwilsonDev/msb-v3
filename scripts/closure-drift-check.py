@@ -17,6 +17,15 @@ import sys
 from pathlib import Path
 
 
+def is_shallow_clone() -> bool:
+    """Detect if the repo is a shallow clone (insufficient history for SHA validation)."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        capture_output=True, text=True, cwd=Path(__file__).parent.parent
+    )
+    return result.stdout.strip() == "true"
+
+
 def get_git_shas() -> set[str]:
     """Get all commit SHAs in the repo (first 7 chars for short SHA matching)."""
     result = subprocess.run(
@@ -105,6 +114,11 @@ def main() -> int:
 
     print("Closure Drift Guard — checking closure-plan.md against git log")
     print("=" * 60)
+
+    if is_shallow_clone():
+        print("\n❌ ABORT: Shallow clone detected — historical Git validation requires complete history.")
+        print("   Fix: add 'fetch-depth: 0' to the actions/checkout step in CI.")
+        return 1
 
     git_shas = get_git_shas()
     tasks = parse_closure_plan(plan_path)

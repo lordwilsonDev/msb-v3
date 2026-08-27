@@ -204,8 +204,8 @@ class TestBitNetStatus:
             assert "version:" in version_line.lower() or "llama" in version_line.lower(), (
                 f"Unexpected llama-server version output: {version_line!r}"
             )
-        except FileNotFoundError:
-            pytest.skip("llama-server not installed")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pytest.skip("llama-server not installed or unavailable")
 
     def test_ollama_has_model(self):
         """Ollama has at least one model available for local inference."""

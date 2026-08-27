@@ -102,6 +102,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # full history needed for closure-drift-check SHAs
 
       - name: Set up Python
         uses: actions/setup-python@v6

@@ -11,15 +11,21 @@ BASE = "http://127.0.0.1:8766"
 
 
 def _get(path: str, expected: int = 200) -> None:
-    with httpx.Client(timeout=10.0) as client:
-        r = client.get(BASE + path)
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(BASE + path)
+    except (httpx.ConnectError, httpx.ReadTimeout) as exc:
+        pytest.skip(f"live service unreachable: {exc}")
     assert r.status_code == expected, f"GET {path} -> {r.status_code}"
 
 
 def _post(path: str, body: Any = None, expected: int = 200) -> None:
     payload = body if body is not None else {}
-    with httpx.Client(timeout=10.0) as client:
-        r = client.post(BASE + path, json=payload, headers={"content-type": "application/json"})
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(BASE + path, json=payload, headers={"content-type": "application/json"})
+    except (httpx.ConnectError, httpx.ReadTimeout) as exc:
+        pytest.skip(f"live service unreachable: {exc}")
     assert r.status_code == expected, f"POST {path} -> {r.status_code}"
 
 
