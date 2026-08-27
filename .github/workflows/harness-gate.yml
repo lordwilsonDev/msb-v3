@@ -62,32 +62,30 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Ensure Qdrant is up (best-effort, idempotent)
+      - name: Qdrant environment contract preflight
         run: |
-          make qdrant-start || true
-          i=0
-          until curl -fsS -m 2 http://127.0.0.1:6333/healthz >/dev/null; do
-            i=$((i + 1))
-            [ "$i" -ge 10 ] && { echo "qdrant not healthy on :6333 after 10s" >&2; exit 1; }
-            sleep 1
-          done
-          echo "qdrant healthy on :6333"
+          set -euo pipefail
+          MSB_QDRANT_ENABLED=1 python -c 'from msb_v3.infrastructure.qdrant_contract import preflight; r = preflight(); print(r); raise SystemExit(0 if r.ready else 1)'
         env:
           MSB_REPO: ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}/src
 
-      - name: Ensure msb-v3 server is up (best-effort, idempotent)
+      - name: Ensure msb-v3 server is up (declared self-hosted endpoint)
         run: |
-          make server-start || true
-          i=0
-          until curl -fsS -m 2 http://127.0.0.1:8766/health >/dev/null; do
-            i=$((i + 1))
-            [ "$i" -ge 30 ] && { echo "msb-v3 not healthy on :8766 after 30s" >&2; exit 1; }
+          set -euo pipefail
+          : "${MSB_BASE_URL:?MSB_BASE_URL must be declared by the self-hosted runner}"
+          for _ in $(seq 1 30); do
+            curl -fsS -m 2 "$MSB_BASE_URL/health" >/dev/null && exit 0
             sleep 1
           done
-          echo "msb-v3 healthy on :8766"
+          echo "msb-v3 not healthy at $MSB_BASE_URL after 30s" >&2
+          exit 1
         env:
           MSB_REPO: ${{ github.workspace }}
+          MSB_BASE_URL: ${{ vars.MSB_BASE_URL }}
 
       # Self-heal before the evidence gate: if the video-harness evidence is
       # stale (e.g. the daily 06:30 freshen LaunchAgent was missed because

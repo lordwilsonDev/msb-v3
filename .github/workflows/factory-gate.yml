@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
@@ -43,9 +45,8 @@ jobs:
       # the wider net. factory_gate.json is a point-in-time record, not a CI
       # mirror.
       #
-      # 53 of the 253 tests are live integration tests that hit a real server
-      # on 127.0.0.1:8766 (they pass locally only because the dev server is
-      # running). Boot the server here so CI exercises the same contract.
+      # Live integration tests use the run-scoped endpoint allocated by the
+      # CI runtime helper below. They never borrow a developer server.
       - name: Regression suite + coverage gate
         env:
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
@@ -61,20 +62,10 @@ jobs:
           MSB_CI: 1
         run: |
           set -euo pipefail
+          source scripts/ci-runtime.sh
+          ci_runtime_init
           bash scripts/seed-research-runtime.sh
-          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
-          python -m msb_v3 > /tmp/msb-test-server.log 2>&1 &
-          SRV=$!
-          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
-          for _ in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-            echo "server failed to boot — log follows"
-            cat /tmp/msb-test-server.log
-            exit 1
-          fi
+          ci_runtime_start_server
           pytest --cov=msb_v3 --cov-report=term --cov-fail-under=70 -q
 
       # Full scope: types ALL three packages, not just src/msb_v3 — the
@@ -127,22 +118,11 @@ jobs:
           MSB_CI: 1
         run: |
           set -euo pipefail
-          # h01-h10 (except h07) probe the live API on :8766, and h02
-          # deliberately SIGKILLs the listener and requires scripts/run.sh
-          # to respawn it. Boot the server under the repo's own supervisor
-          # so the restart contract is genuinely exercised (not simulated).
-          bash scripts/run.sh > /tmp/msb-hygiene-server.log 2>&1 &
-          SRV=$!
-          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
-          for _ in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-            echo "server failed to boot under supervisor — log follows"
-            cat /tmp/msb-hygiene-server.log
-            exit 1
-          fi
+          # h01-h10 (except h07) probe the isolated run-scoped API. h02
+          # deliberately exercises its own supervisor contract.
+          source scripts/ci-runtime.sh
+          ci_runtime_init
+          ci_runtime_start_server
           python scripts/hygiene/hygiene_runner.py --all
 
       - name: Live auth probe (x-mcp-secret contract)
@@ -154,31 +134,14 @@ jobs:
         run: |
           set -euo pipefail
           : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"
-          # The hygiene step just ran a supervised server on :8766. Make sure
-          # nothing is left bound (an orphaned respawn could collide with this
-          # boot) and wait for the port to actually free.
-          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
-          for _ in $(seq 1 10); do
-            lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | grep -q . || break
-            sleep 1
-          done
-          python -m msb_v3 > /tmp/msb-server.log 2>&1 &
-          SRV=$!
-          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
-          for _ in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-            echo "server failed to boot — log follows"
-            cat /tmp/msb-server.log
-            exit 1
-          fi
+          source scripts/ci-runtime.sh
+          ci_runtime_init
+          ci_runtime_start_server
           # `|| echo 000`: if the server vanishes mid-probe, fail the assertion
           # with a clear value instead of dying with curl's transport exit code.
-          missing=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8766/mcp/tools || echo 000)
-          wrong=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: wrong-secret" http://127.0.0.1:8766/mcp/tools || echo 000)
-          correct=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: $MCP_BRIDGE_SECRET" http://127.0.0.1:8766/mcp/tools || echo 000)
+          missing=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${MSB_PORT}/mcp/tools" || echo 000)
+          wrong=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: wrong-secret" "http://127.0.0.1:${MSB_PORT}/mcp/tools" || echo 000)
+          correct=$(curl -s -o /dev/null -w '%{http_code}' -H "x-mcp-secret: $MCP_BRIDGE_SECRET" "http://127.0.0.1:${MSB_PORT}/mcp/tools" || echo 000)
           echo "auth probe: missing=$missing wrong=$wrong correct=$correct (expect 401 401 200)"
           [ "$missing" = "401" ] && [ "$wrong" = "401" ] && [ "$correct" = "200" ]
 
@@ -213,24 +176,9 @@ jobs:
         run: |
           set -euo pipefail
           : "${MCP_BRIDGE_SECRET:?set repo secret MSB_MCP_SECRET — probe is fail-closed}"
-          # Same boot discipline as the auth probe: clear :8766, boot, poll
-          # health, then run the probe under the SAME ledger env the server
-          # writes to (the probe verifies that ledger, not a copy).
-          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
-          for _ in $(seq 1 10); do
-            lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | grep -q . || break
-            sleep 1
-          done
-          python -m msb_v3 > /tmp/msb-e2e-server.log 2>&1 &
-          SRV=$!
-          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
-          for _ in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-            echo "server failed to boot — log follows"
-            cat /tmp/msb-e2e-server.log
-            exit 1
-          fi
-          python scripts/probe_conversation_e2e.py --mode stub --replay
+          # Run the probe against the same run-scoped server contract used by
+          # the other live legs.
+          source scripts/ci-runtime.sh
+          ci_runtime_init
+          ci_runtime_start_server
+          MSB_BASE="http://127.0.0.1:${MSB_PORT}" MSB_PORT="$MSB_PORT" python scripts/probe_conversation_e2e.py --mode stub --replay

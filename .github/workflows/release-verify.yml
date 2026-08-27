@@ -42,19 +42,23 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      # The full suite's live endpoint tests need the dev server (:8766) —
-      # same best-effort, never-stop policy as harness-gate.
-      - name: Ensure msb-v3 server is up (best-effort, idempotent)
+      # The self-hosted runner must declare the live endpoint explicitly;
+      # this workflow never starts, stops, or borrows a developer service.
+      - name: Ensure msb-v3 server is up (declared self-hosted endpoint)
         run: |
-          make server-start || true
-          i=0
-          until curl -fsS -m 2 http://127.0.0.1:8766/health >/dev/null; do
-            i=$((i + 1))
-            [ "$i" -ge 30 ] && { echo "msb-v3 not healthy on :8766 after 30s" >&2; exit 1; }
+          set -euo pipefail
+          : "${MSB_BASE_URL:?MSB_BASE_URL must be declared by the self-hosted runner}"
+          for _ in $(seq 1 30); do
+            curl -fsS -m 2 "$MSB_BASE_URL/health" >/dev/null && exit 0
             sleep 1
           done
-          echo "msb-v3 healthy on :8766"
+          echo "msb-v3 not healthy at $MSB_BASE_URL after 30s" >&2
+          exit 1
+        env:
+          MSB_BASE_URL: ${{ vars.MSB_BASE_URL }}
 
       - name: Verify release from a virgin clone
         run: bash scripts/verify-release.sh

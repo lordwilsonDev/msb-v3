@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -47,27 +49,13 @@ jobs:
           MSB_CI: 1
         run: |
           set -euo pipefail
-          # The triumvirate/harness/skill-router suites are LIVE integration
-          # tests hitting a real server on 127.0.0.1:8766 — boot it exactly
-          # like the factory gate does, or they fail on every run.
-          # Seed the research-runtime fixtures FIRST so the booted server
-          # serves the harness artifacts (claims/review ledger, ralph
-          # STATUS.json) instead of 404 — runtime/ is gitignored machine
-          # state on a fresh checkout.
+          # The integration suites use a run-scoped server. It allocates a
+          # free port and private database; cleanup can only terminate the PID
+          # this step created.
+          source scripts/ci-runtime.sh
+          ci_runtime_init
           bash scripts/seed-research-runtime.sh
-          lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true
-          python -m msb_v3 > /tmp/msb-ci-test-server.log 2>&1 &
-          SRV=$!
-          trap 'kill $SRV 2>/dev/null || true; lsof -t -iTCP:8766 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null || true' EXIT
-          for _ in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8766/health && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null http://127.0.0.1:8766/health; then
-            echo "server failed to boot — log follows"
-            cat /tmp/msb-ci-test-server.log
-            exit 1
-          fi
+          ci_runtime_start_server
           PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
 
       - name: Upload coverage
@@ -244,7 +232,7 @@ jobs:
 
       - name: Run container smoke test
         run: |
-          docker run -d -p 8766:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
+          docker run -d -p 8767:8766 --name msb-v3-test msb-v3:ci-${{ github.sha }}
           trap 'docker rm -f msb-v3-test >/dev/null 2>&1 || true' EXIT
           # /status does not exist — /health is the app's liveness route, and
           # the image declares its own HEALTHCHECK against it. Wait on

@@ -115,9 +115,11 @@ def test_release_verify_ci_workflow_wired() -> None:
         "verification must run on the sovereign box (live :8766 dev server)"
     )
     steps = job["steps"]
-    assert any("make server-start" in s.get("run", "") for s in steps), (
-        "workflow must ensure the :8766 dev server (suite live tests)"
-    )
+    assert any(
+        "make server-start" in s.get("run", "")
+        or "MSB_BASE_URL" in s.get("run", "")
+        for s in steps
+    ), "workflow must declare and verify the live server endpoint"
     verifier = next(
         (s for s in steps if "verify-release.sh" in s.get("run", "")), None
     )

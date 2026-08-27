@@ -51,14 +51,21 @@ def _seed_run_of_server_boot_step(steps: list[dict]) -> None:
     test, so treat it as coverage of the primary path, not a full audit."""
     step = next(
         s for s in steps
-        if "python -m msb_v3" in s.get("run", "")
-        and ("server.log" in s.get("run", ""))
+        if (
+            ("python -m msb_v3" in s.get("run", "") and "server.log" in s.get("run", ""))
+            or "ci_runtime_start_server" in s.get("run", "")
+        )
     )
     run = step["run"]
     assert "seed-research-runtime.sh" in run, f"server-boot step does not seed: {run!r}"
-    assert run.index("seed-research-runtime.sh") < run.index("python -m msb_v3"), (
-        "seeder must run BEFORE the server boot (server reads runtime/ at request time)"
-    )
+    if "python -m msb_v3" in run:
+        assert run.index("seed-research-runtime.sh") < run.index("python -m msb_v3"), (
+            "seeder must run BEFORE the server boot (server reads runtime/ at request time)"
+        )
+    else:
+        assert run.index("seed-research-runtime.sh") < run.index("ci_runtime_start_server"), (
+            "seeder must run BEFORE the isolated server boot"
+        )
 
 
 def test_fixtures_exist_and_match_live_shape() -> None:
