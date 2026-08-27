@@ -33,6 +33,7 @@ export MSB_PORT="${MSB_PORT:-8766}"
 export MSB_RELOAD="${MSB_RELOAD:-0}"
 export MSB_RAG_API_KEY="${MSB_RAG_API_KEY:-}"
 export MCP_BRIDGE_SECRET="${MCP_BRIDGE_SECRET:-}"
+export MSB_MULTIMODAL_ENABLED="${MSB_MULTIMODAL_ENABLED:-1}"
 
 log() { echo "[msb-v3] $*"; }
 
