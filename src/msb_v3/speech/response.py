@@ -39,6 +39,7 @@ from msb_v3.speech.safety import (
     VoicePolicyDecision,
     VoicePolicyGate,
     VoiceSession,
+    classify_risk,
 )
 from msb_v3.speech.tts.engine import speak
 
@@ -218,6 +219,91 @@ class VoiceResponder:
 
         response.latency_ms = (time.monotonic() - start) * 1000
         return response
+
+    def respond_with_session(
+        self,
+        text: str,
+        confirmed: bool = False,
+    ) -> VoiceSession:
+        """Process text with full per-stage timing in VoiceSession.
+
+        Returns a VoiceSession with latency_breakdown populated.
+        This is the instrumented version for observability.
+        """
+        session = VoiceSession()
+        total_start = time.monotonic()
+
+        # Stage 1: Intent extraction
+        t0 = time.monotonic()
+        transcript = Transcript(text=text, language="en", confidence=0.9, engine="text")
+        command = extract_intent(transcript)
+        session.latency_intent_ms = (time.monotonic() - t0) * 1000
+
+        # Populate session fields
+        session.transcript_text = text
+        session.transcript_engine = "text"
+        session.transcription_confidence = 0.9
+        session.speaker_id = "api"
+        session.speaker_confidence = 0.9
+        session.speaker_enrolled = True
+        session.intent_endpoint = command.endpoint or ""
+        session.intent_params = command.params
+        session.intent_command = command.command
+        session.intent_confidence = 0.9
+
+        # Stage 2: Policy gate
+        t0 = time.monotonic()
+        if command.endpoint:
+            decision = self.policy_gate.evaluate(
+                command.endpoint,
+                command.params,
+                transcript_confidence=0.9,
+                speaker_confidence=0.9,
+                speaker_enrolled=True,
+                intent_confidence=0.9,
+                confirmed=confirmed,
+            )
+        else:
+            decision = None
+        session.latency_policy_ms = (time.monotonic() - t0) * 1000
+
+        # Stage 3: Response generation
+        t0 = time.monotonic()
+        if decision and decision.action == PolicyAction.DENY:
+            session.response_text = self._deny_message(decision)
+            session.risk_level = decision.risk_level.value
+            session.policy_action = decision.action.value
+            session.policy_reasons = decision.reasons
+        elif decision and decision.action == PolicyAction.CONFIRM:
+            session.response_text = self._confirm_message(command, decision)
+            session.risk_level = decision.risk_level.value
+            session.policy_action = decision.action.value
+            session.policy_reasons = decision.reasons
+            session.requires_confirmation = True
+        else:
+            session.response_text = self._generate_response(command, None)
+            session.risk_level = classify_risk(command.endpoint or "").value
+            session.policy_action = "ALLOW"
+            session.executed = True
+        session.latency_execute_ms = (time.monotonic() - t0) * 1000
+
+        # Stage 4: TTS
+        t0 = time.monotonic()
+        if self.speak_aloud and session.response_text:
+            session.spoken = speak(
+                session.response_text,
+                voice=self.voice,
+                rate=self.tts_rate,
+            )
+        session.latency_tts_ms = (time.monotonic() - t0) * 1000
+
+        # Overall confidence
+        session.overall_confidence = 0.9 if session.executed else 0.0
+
+        # Total latency
+        session.latency_total_ms = (time.monotonic() - total_start) * 1000
+
+        return session
 
     def _deny_message(self, decision: VoicePolicyDecision) -> str:
         """Generate a spoken denial message."""
