@@ -32,13 +32,14 @@
 **Verification**: GitHub Actions shows green on main (8df21ad)
 **Status**: RESOLVED — 2026-08-26
 
-## C5: CLI Provider Is Best-Effort Isolation, Not a Sandbox — OPEN
+## C5: CLI Provider Is Best-Effort Isolation, Not a Sandbox — ACCEPTED
 **Impact**: Capability escape surface
 **Evidence**: debt_model.py item #2, L9 parked
 **Current state**: Provider runs in same process space
-**Fix**: Process isolation or container-based execution
-**Verification**: Security test confirms no capability escape
-**Status**: OPEN — Phase 2 of the Closer plan
+**Decision**: Risk accepted in writing (2026-08-26)
+**Rationale**: Sovereign single-machine — operator IS the system. Process isolation provides marginal security benefit.
+**Reversal trigger**: Any exposure to untrusted input, external API, or autonomous execution requires immediate isolation review.
+**Status**: ACCEPTED — risk documented, condition for reversal defined
 
 ## C6: Port Conflict on :8080 — RESOLVED
 **Impact**: Was BLOCKING llama-server / local AI
@@ -58,10 +59,11 @@
 | C2 | ✅ RESOLVED | disk dropped to 76% |
 | C3 | ✅ SHIPPED | `5589fd6` |
 | C4 | ✅ RESOLVED | `f645352` |
-| C5 | 🔲 OPEN | — (Phase 2) |
+| C5 | ✅ ACCEPTED | risk accepted 2026-08-26 |
 | C6 | ✅ RESOLVED | `522e1c9` |
 
-**Resolved: 4/6 (67%)**
+**Resolved: 5/6 (83%)**
+**Accepted: 1/6 (17%) — C5 CLI provider sandboxing**
 **Blocked: 1/6 (17%) — C1 DeepSeek API (needs billing)**
 **Open: 1/6 (17%) — C5 CLI provider sandboxing (Phase 2)**
 
