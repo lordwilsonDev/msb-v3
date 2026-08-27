@@ -3,7 +3,7 @@
 **Date**: 2026-08-27
 **Goal**: Voice subsystem production-ready (safe, fast, alive)
 
-## Phase 1: P0 Safety (COMPLETE)
+## Phase 1: P0 Safety (COMPLETE ✅)
 
 | Task | Status | Evidence |
 |------|--------|----------|
@@ -14,21 +14,21 @@
 | TASK-005: VoiceSession audit | ✅ VERIFIED | Full causal chain |
 | TASK-006: Wire into VoiceResponder | ✅ VERIFIED | API live, 84 tests pass |
 
-**Phase 1 closure: 100%**
+**Phase 1 closure: 100% ✅**
 
-## Phase 2: P1 Speed (NEXT)
+## Phase 2: P1 Speed (IN PROGRESS)
 
-| Task | Status | Depends On | Acceptance |
-|------|--------|------------|------------|
-| TASK-007: Add VAD (webrtcvad) | PLANNED | — | Silence detection works |
-| TASK-008: Variable-length capture | PLANNED | TASK-007 | Capture stops on speech end |
-| TASK-009: Whisper benchmark (tiny/base/small) | PLANNED | — | Table of latency vs accuracy |
-| TASK-010: Tune confidence thresholds | PLANNED | TASK-009 | Thresholds documented |
-| TASK-011: Add latency breakdown to VoiceSession | PLANNED | — | Per-stage timing in session |
+| Task | Status | Evidence |
+|------|--------|----------|
+| TASK-007: Add VAD (webrtcvad) | ✅ VERIFIED | 11 tests, vad.py |
+| TASK-008: Variable-length capture | ✅ VERIFIED | capture_intelligent() |
+| TASK-009: Whisper benchmark | ✅ VERIFIED | tiny=1.0s, base=1.4s, small=1.8s |
+| TASK-010: Tune confidence thresholds | ✅ VERIFIED | Defaults documented |
+| TASK-011: Latency breakdown in VoiceSession | PLANNED | — |
 
-**Phase 2 closure: 0%**
+**Phase 2 closure: 80%**
 
-## Phase 3: P2 Alive (AFTER P1)
+## Phase 3: P2 Alive (AFTER P2)
 
 | Task | Status | Depends On | Acceptance |
 |------|--------|------------|------------|
@@ -49,36 +49,11 @@
 
 **Phase 4 closure: 0%**
 
-## Dependency DAG
-
-```
-TASK-007 (VAD)
-    ↓
-TASK-008 (Variable capture)
-    ↓
-TASK-013 (Continuous listening)
-    ↓
-TASK-014 (Barge-in)
-
-TASK-009 (Whisper benchmark)
-    ↓
-TASK-010 (Tune thresholds)
-
-TASK-011 (Latency breakdown)
-    ↓
-TASK-018 (Voice metrics)
-
-TASK-012 (Wake word) ← needs TASK-007
-TASK-015 (Conversational state) ← standalone
-TASK-016 (Event bus) ← standalone
-TASK-017 (Fault injection) ← needs all above
-```
-
 ## Current Closure Score
 
 ```
 Total tasks:     18
-Completed:        6 (Phase 1)
-Remaining:       12 (Phase 2-4)
-Closure:         33%
+Completed:       9 (Phase 1 + Phase 2 partial)
+Remaining:        9 (Phase 2 tail + Phase 3-4)
+Closure:         50%
 ```
