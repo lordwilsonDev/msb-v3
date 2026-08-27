@@ -205,7 +205,7 @@ class VoiceResponder:
         params = command.params
 
         if "/research" in endpoint:
-            topic = params.get("topic", "your request")
+            topic = params.get("topic", "your request").rstrip(".")
             return f"Starting research on {topic}. I'll have results shortly."
 
         if "/system/health" in endpoint:
