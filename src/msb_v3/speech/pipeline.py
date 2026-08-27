@@ -45,7 +45,7 @@ class SpeechPipeline:
     def __init__(
         self,
         speaker_verifier: Optional[SpeakerVerifier] = None,
-        whisper_model: str = "small",
+        whisper_model: str = "tiny",
         whisper_engine: str = "auto",
         speaker_threshold: float = 0.75,
     ) -> None:
