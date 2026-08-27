@@ -1,6 +1,7 @@
 """Tests for EnergyMatrix telemetry reader."""
 
 from __future__ import annotations
+
 import pytest
 
 pytest.importorskip("psutil", reason="psutil not installed")

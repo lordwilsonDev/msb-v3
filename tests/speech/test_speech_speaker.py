@@ -1,6 +1,7 @@
 """Tests for speaker verification using synthetic audio."""
 
 from __future__ import annotations
+
 import pytest
 
 pytest.importorskip("resemblyzer", reason="resemblyzer not installed")
