@@ -10,16 +10,6 @@ Proves Piece 5d: the full loop works:
 from __future__ import annotations
 
 import pytest
-
-
-def _has_psutil() -> bool:
-    try:
-        import psutil  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
-import pytest
 from fastapi.testclient import TestClient
 
 from msb_v3.flywheel.chargers import StubScanner
@@ -81,6 +71,13 @@ def _drive_with_approvals(eng, turn_id: str):
 
 # --- Health bridge tests ---
 
+
+def _has_psutil() -> bool:
+    try:
+        import psutil  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 class TestHealthBridge:
     """Prove: health bridge reads metrics and returns structured health."""
