@@ -21,14 +21,13 @@ Usage::
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Callable, List, Optional
 
-from msb_v3.speech.models import AudioBuffer, VoiceCommand
 from msb_v3.speech.response import VoiceResponder
 from msb_v3.speech.safety import VoiceSession
 from msb_v3.speech.transcribe import transcribe
-from msb_v3.speech.vad import VoiceDetector, VADConfig, capture_until_silence
+from msb_v3.speech.vad import VADConfig, VoiceDetector, capture_until_silence
 from msb_v3.speech.wakeword import VoiceStreamDetector
 
 
@@ -117,13 +116,11 @@ class VoiceStream:
                 return result
 
             # Transcribe
-            t0 = time.monotonic()
             transcript = transcribe(
                 audio,
                 model_name=self.config.whisper_model,
                 engine="auto",
             )
-            transcribe_ms = (time.monotonic() - t0) * 1000
 
             if not transcript or not transcript.text:
                 result.state = "WAITING"

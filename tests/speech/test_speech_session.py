@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from msb_v3.speech.response import VoiceResponder
-from msb_v3.speech.safety import VoiceSession
 
 
 class TestVoiceSessionLatency:

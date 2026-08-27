@@ -27,7 +27,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from msb_v3.speech.vad import VoiceDetector, VADConfig
+from msb_v3.speech.vad import VADConfig, VoiceDetector
 
 
 @dataclass

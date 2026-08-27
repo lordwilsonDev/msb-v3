@@ -99,7 +99,7 @@ def capture_intelligent(
 
     This reduces latency by not waiting for a fixed 5-second window.
     """
-    from msb_v3.speech.vad import VoiceDetector, VADConfig, capture_until_silence
+    from msb_v3.speech.vad import capture_until_silence
 
     return capture_until_silence(
         duration_seconds=max_duration,

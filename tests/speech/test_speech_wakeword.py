@@ -6,7 +6,6 @@ from msb_v3.speech.wakeword import (
     StreamFrameResult,
     VoiceStreamDetector,
     WakeWordDetector,
-    WakeWordResult,
 )
 
 
@@ -86,7 +85,7 @@ class TestVoiceStreamDetector:
 
     def test_command_collected_after_wake(self):
         self.detector.process_frame("Hey Sovereign")
-        result = self.detector.process_frame("deploy canary")
+        self.detector.process_frame("deploy canary")
         assert self.detector.state == "LISTENING"
 
     def test_silence_completes_command(self):

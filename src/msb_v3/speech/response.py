@@ -34,7 +34,6 @@ from msb_v3.speech.intent import extract_intent
 from msb_v3.speech.models import Transcript, VoiceCommand
 from msb_v3.speech.pipeline import SpeechPipeline
 from msb_v3.speech.safety import (
-    ConfidenceScores,
     PolicyAction,
     VoicePolicyDecision,
     VoicePolicyGate,

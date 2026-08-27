@@ -23,7 +23,6 @@ import re
 from dataclasses import dataclass
 from typing import List, Optional
 
-
 # Wake word patterns (case-insensitive)
 _WAKE_PATTERNS = [
     r"\bhey\s+sovereign\b",
