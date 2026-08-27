@@ -84,6 +84,31 @@ def capture_from_microphone(
     )
 
 
+def capture_intelligent(
+    max_duration: float = 15.0,
+    silence_after: float = 1.0,
+    sample_rate: int = 16000,
+) -> AudioBuffer:
+    """Capture audio using VAD for variable-length recording.
+
+    Unlike capture_from_microphone() which records for a fixed duration,
+    this uses Voice Activity Detection to:
+    - Start recording when speech is detected
+    - Stop recording after silence_after seconds of silence
+    - Return only the speech portion (trimmed)
+
+    This reduces latency by not waiting for a fixed 5-second window.
+    """
+    from msb_v3.speech.vad import VoiceDetector, VADConfig, capture_until_silence
+
+    return capture_until_silence(
+        duration_seconds=max_duration,
+        silence_after=silence_after,
+        sample_rate=sample_rate,
+        max_duration=max_duration,
+    )
+
+
 def save_wav(buffer: AudioBuffer, output_path: str) -> None:
     """Save an AudioBuffer to a WAV file."""
     import struct
