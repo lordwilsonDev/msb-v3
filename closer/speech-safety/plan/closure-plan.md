@@ -28,18 +28,18 @@
 
 **Phase 2 closure: 100% ✅**
 
-## Phase 3: P2 Alive (NEXT)
+## Phase 3: P2 Alive (COMPLETE ✅)
 
-| Task | Status | Depends On | Acceptance |
-|------|--------|------------|------------|
-| TASK-012: Wake word detection | PLANNED | TASK-007 | Responds after wake word |
-| TASK-013: Continuous listening loop | PLANNED | TASK-008 | Always-on microphone |
-| TASK-014: Barge-in (interrupt TTS) | PLANNED | TASK-008 | User can say "stop" |
-| TASK-015: Conversational state | PLANNED | — | Multi-turn dialogue works |
+| Task | Status | Evidence |
+|------|--------|----------|
+| TASK-012: Wake word detection | ✅ VERIFIED | 19 tests, wakeword.py |
+| TASK-013: Continuous listening loop | ✅ VERIFIED | 11 tests, stream.py |
+| TASK-014: Barge-in (interrupt TTS) | ✅ VERIFIED | 9 tests, bargein.py |
+| TASK-015: Conversational state | ✅ VERIFIED | 17 tests, conversation.py |
 
-**Phase 3 closure: 0%**
+**Phase 3 closure: 100% ✅**
 
-## Phase 4: P3 Subsystem (AFTER P3)
+## Phase 4: P3 Subsystem (NEXT)
 
 | Task | Status | Depends On | Acceptance |
 |------|--------|------------|------------|
@@ -53,7 +53,7 @@
 
 ```
 Total tasks:     18
-Completed:      11 (Phase 1 + Phase 2)
-Remaining:       7 (Phase 3-4)
-Closure:         61%
+Completed:      15 (Phase 1-3)
+Remaining:       3 (Phase 4)
+Closure:         83%
 ```
