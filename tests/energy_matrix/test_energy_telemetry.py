@@ -1,6 +1,10 @@
 """Tests for EnergyMatrix telemetry reader."""
 
 from __future__ import annotations
+import pytest
+
+pytest.importorskip("psutil", reason="psutil not installed")
+
 
 from msb_v3.energy_matrix.telemetry import read_telemetry_fast, read_tlemetry
 

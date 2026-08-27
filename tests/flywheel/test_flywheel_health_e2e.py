@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Flywheel health — end-to-end integration test.
 
 Proves Piece 5d: the full loop works:
@@ -6,8 +7,17 @@ Proves Piece 5d: the full loop works:
 3. Health endpoint returns flywheel status
 4. Bridge can pause on degradation
 """
-
 from __future__ import annotations
+
+import pytest
+
+
+def _has_psutil() -> bool:
+    try:
+        import psutil  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 import pytest
 from fastapi.testclient import TestClient
@@ -226,6 +236,10 @@ class TestFlywheelObservabilityLoop:
         assert health.recent_error_rate > 0
 
 
+@pytest.mark.skipif(
+    not _has_psutil(),
+    reason="psutil not installed — energy_matrix unavailable"
+)
 class TestEnergyMatrixIntegration:
     """EnergyMatrix integration in flywheel health bridge."""
 

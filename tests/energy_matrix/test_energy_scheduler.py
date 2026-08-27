@@ -1,6 +1,10 @@
 """Tests for EnergyMatrix scheduler decision logic."""
 
 from __future__ import annotations
+import pytest
+
+pytest.importorskip("psutil", reason="psutil not installed")
+
 
 from msb_v3.energy_matrix.models import EnergyBudget, SystemTelemetry
 from msb_v3.energy_matrix.scheduler import decide, should_run_task
