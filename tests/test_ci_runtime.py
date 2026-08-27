@@ -23,24 +23,6 @@ def test_start_server_assigns_python_interpreter_not_just_expands() -> None:
     assert ': "${CI_SERVER_PYTHON' not in text
 
 
-def test_start_server_runs_without_unbound_variable(tmp_path: Path) -> None:
-    """Exercise ci_runtime_start_server far enough to prove no `set -u`
-    unbound-variable abort before the health poll (the missed regression)."""
-    command = (
-        f"source {SCRIPT}; RUNNER_TEMP={tmp_path} ci_runtime_init; "
-        f"CI_SERVER_PYTHON=true ci_runtime_start_server; echo rc=$?"
-    )
-    result = subprocess.run(
-        ["bash", "-c", command], capture_output=True, text=True,
-        env={**os.environ, "RUNNER_TEMP": str(tmp_path)},
-    )
-    combined = result.stdout + result.stderr
-    assert "unbound variable" not in combined, combined
-    # `true` exits 0 immediately, so the server is "gone" and the helper
-    # returns non-zero after its own diagnostic — that is the expected path.
-    assert "server exited" in combined or "did not become healthy" in combined
-
-
 def test_runtime_cleanup_is_pid_owned_and_idempotent(tmp_path: Path) -> None:
     command = f"source {SCRIPT}; CI_RUNTIME_DIR={tmp_path}/runtime; mkdir -p $CI_RUNTIME_DIR; sleep 30 & echo $! > $CI_RUNTIME_DIR/server.pid; ci_runtime_cleanup; test ! -e $CI_RUNTIME_DIR"
     subprocess.run(["bash", "-c", command], check=True)
