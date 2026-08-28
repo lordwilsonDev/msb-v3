@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -20,7 +21,10 @@ def test_core_config_loads():
     from msb_v3.core.config import settings
 
     assert settings.ollama_model in {"deepseek-r1:1.5b", "qwen3:latest", "qwen3:8b"}
-    assert settings.port == 8766
+    # settings.port follows MSB_PORT (default 8766); the run-scoped CI server
+    # sets a free port in the environment, so assert the configured value.
+    assert isinstance(settings.port, int)
+    assert settings.port == int(os.environ.get("MSB_PORT", "8766"))
 
 
 def test_local_ai_client_construction():
