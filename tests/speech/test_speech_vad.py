@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import struct
 
+import pytest
+
 from msb_v3.speech.models import AudioBuffer
 from msb_v3.speech.vad import VADConfig, VoiceDetector
+
+pytest.importorskip(
+    "webrtcvad",
+    reason="speech VAD is an EXPERIMENTAL extra: pip install -e '.[speech]'",
+)
 
 
 def _make_speech_frame(sample_rate: int = 16000) -> bytes:

@@ -33,6 +33,9 @@ dev = [
   "PyYAML==6.0.3",  # workflow-structure guard tests (tests/test_harness_gate_wiring.py)
   "types-PyYAML==6.0.12.20260724",  # mypy stubs for the PyYAML import
 ]
+speech = [
+  "webrtcvad==2.0.10",  # VAD in msb_v3/speech/vad.py — EXPERIMENTAL subsystem, not in the release contract; tests importorskip when absent
+]
 
 # Ruff gates MUST agree across every invocation: the CI lint job runs plain
 # `ruff check src/ tests/` (default selection) while factory-gate pins
