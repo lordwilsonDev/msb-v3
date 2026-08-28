@@ -6,7 +6,7 @@ import os
 import httpx
 import pytest
 
-BASE = "http://127.0.0.1:8766"
+BASE = os.environ.get("MSB_BASE_URL", "http://127.0.0.1:8766")
 
 
 def _post(path, body, expected=200):
