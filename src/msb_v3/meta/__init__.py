@@ -15,6 +15,9 @@ Invariants (blueprint M1-M15):
 
 from __future__ import annotations
 
+# META-8: Benchmark
+from msb_v3.meta.benchmark import BenchmarkResult, MultiWorkerBenchmark, WorkerBenchmark
+
 # META-0: Contracts
 from msb_v3.meta.contracts import (
     MSL,
@@ -89,4 +92,6 @@ __all__ = [
     "EscalationPolicy", "FailureClass", "FailureClassifier", "RepairPolicy",
     # META-5
     "OutcomeLedger", "PipelineOutcome",
+    # META-8
+    "BenchmarkResult", "MultiWorkerBenchmark", "WorkerBenchmark",
 ]
