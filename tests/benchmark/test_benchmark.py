@@ -21,7 +21,6 @@ from msb_v3.meta.benchmark import (
 from msb_v3.meta.contracts import Complexity, MetaTask
 from msb_v3.meta.outcome.ledger import OutcomeLedger
 
-
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 # Verification command that checks artifact.py is valid Python with answer().
