@@ -56,6 +56,7 @@ from msb_v3.meta.routing import (
     RegisteredSkill,
     RegisteredWorker,
     RouteDecision,
+    SkillBridge,
     SkillRegistry,
     WorkerRegistry,
 )
@@ -81,7 +82,7 @@ __all__ = [
     "TaskTranslator", "ToolPolicy", "WorkerProfile",
     # META-1B
     "CapabilityMatcher", "MatchResult", "RegisteredSkill", "RegisteredWorker",
-    "RouteDecision", "SkillRegistry", "WorkerRegistry",
+    "RouteDecision", "SkillBridge", "SkillRegistry", "WorkerRegistry",
     # META-1C
     "HistoricalPerformance", "RoutingMatrix", "WorkerStats",
     # META-1D

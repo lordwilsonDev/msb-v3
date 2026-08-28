@@ -29,3 +29,5 @@
 {"ts": "2026-08-26T11:18:53Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
 {"ts": "2026-08-26T11:18:53Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}
 {"ts": "2026-08-27T11:30:12Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
+{"ts": "2026-08-27T11:30:12Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}
+{"ts": "2026-08-28T11:25:33Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}

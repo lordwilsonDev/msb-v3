@@ -12,6 +12,7 @@ care which implementation wins.
 
 from msb_v3.meta.routing.capability_matcher import CapabilityMatcher, MatchResult
 from msb_v3.meta.routing.route_decision import RouteDecision
+from msb_v3.meta.routing.skill_bridge import SkillBridge
 from msb_v3.meta.routing.skill_registry import RegisteredSkill, SkillRegistry
 from msb_v3.meta.routing.worker_registry import RegisteredWorker, WorkerRegistry
 
@@ -21,6 +22,7 @@ __all__ = [
     "RegisteredSkill",
     "RegisteredWorker",
     "RouteDecision",
+    "SkillBridge",
     "SkillRegistry",
     "WorkerRegistry",
 ]
