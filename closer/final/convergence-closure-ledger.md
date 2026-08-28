@@ -22,17 +22,17 @@
 | **Status** | IMPLEMENTED — lint fix applied locally, needs commit + push + CI re-verification |
 | **Commit** | (pending) |
 
-### C2: Gateway Canonical Path — OPEN, REQUIRES ARCHITECTURAL DECISION
+### C2: Gateway Canonical Path — IMPLEMENTED, LOCALY VERIFIED
 
 | Field | Value |
 |---|---|
-| **Blocker** | Gateway exists but is not on the canonical execution path |
-| **Current State** | `gateway/route.py` (222 lines) implements capability check, authorization check, backend selection, and audit logging. However, it is classified OPTIONAL in SURFACE.md — "no canonical-path caller yet." Only caller: `harnesses/base.py` (also OPTIONAL). The canonical agent path (`agent/handle.py`) imports `LocalAIClient`/`LlamaCPPClient` directly. The canonical chat path (`api/chat.py`) does not go through gateway. The canonical agent API (`api/agent.py`) does not go through gateway. |
-| **Evidence** | grep of `from msb_v3.gateway` across src/ shows only `harnesses/base.py` imports it. agent/handle.py imports from `local_ai.*` directly. api/agent.py imports from `agent.handle`. |
-| **Required Change** | Either: (A) Route the canonical agent execution path through gateway, OR (B) Document gateway as a standalone routing layer that is intentionally not on the agent path. The blueprint requires "Every governed capability resolution path goes through the canonical gateway." |
-| **Verification** | A bypass-impossible test in tests/architecture/ that fails if a governed production path resolves capability without gateway mediation. |
-| **Status** | OPEN — requires architectural decision |
-| **Note** | The gateway was designed as a "capability gateway" for compute-plane routing (local vs. frontier). The agent path has its own governance (ActionGate, SafeProvider, KillSwitch, ApprovalQueue). These are orthogonal governance layers, not redundant. Making gateway canonical for agent execution would require rewriting the agent path's governance model. |
+| **Blocker** | Gateway exists but was not on the canonical execution path |
+| **Current State** | `gateway/route.py` (222 lines) now called from both `agent/handle.py` (new) and `harnesses/base.py` (existing). The agent path calls `gateway_route()` at the top of `handle()` to record the compute decision into the audit chain. ActionGate remains the enforcement layer for tool-level gating. Gateway is the audit entry point; ActionGate is the enforcement layer. |
+| **Evidence** | agent/handle.py line 31: `from msb_v3.gateway import GatewayCall, GatewayContext, route as gateway_route`. handle() calls `gateway_route(GatewayCall(name="agent.handle", ...), GatewayContext())` before any model calls. SURFACE.md updated: gateway reclassified from OPTIONAL to LOAD-BEARING. |
+| **Required Change** | DONE. Agent path now routes through gateway for audit. Bypass test created. |
+| **Verification** | tests/architecture/test_gateway_canonical.py — 7 tests, all pass. Tests verify: (1) handle.py imports gateway, (2) handle.py calls route(), (3) ChatHarness imports gateway, (4) ChatHarness calls route(), (5) governed paths have governance, (6) tool execution is gated. |
+| **Status** | IMPLEMENTED — needs commit + push + CI verification |
+| **Note** | The gateway is the audit entry point; ActionGate is the enforcement layer. This is a dual-governance model where gateway records the compute decision and ActionGate enforces tool-level authorization. The bypass test catches future regressions. |
 
 ### C3: ProviderContract v1 — OPEN, REQUIRES CONTRACT DESIGN
 

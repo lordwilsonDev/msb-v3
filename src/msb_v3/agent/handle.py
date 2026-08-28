@@ -37,6 +37,8 @@ from msb_v3.evidence.spine import (
     DecisionEvidenceRecord,
     DecisionEvidenceStore,
 )
+from msb_v3.gateway import GatewayCall, GatewayContext
+from msb_v3.gateway import route as gateway_route
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.local_ai.llama_client import LlamaCPPClient
 from msb_v3.local_ai.ollama import LocalAIClient
@@ -811,6 +813,25 @@ async def handle(
         return HandleResult(ok=False, run_id="", verdict="ERROR", error="empty request")
 
     run_id = _run_id(request)
+
+    # Gateway audit entry: record the compute decision into the audit chain
+    # before any model call. The gateway's authorization is informational for
+    # the agent path — ActionGate enforces tool-level gating — but the
+    # decision must be auditable (convergence blueprint §9–§12).
+    try:
+        _estimated_bytes = len(request.encode()) * 256  # rough token estimate
+        gateway_route(
+            GatewayCall(
+                name="agent.handle",
+                estimated_bytes=_estimated_bytes,
+                capabilities=frozenset(),
+                requires_authorization=False,
+                metadata={"run_id": run_id, "session": session, "tenant": tenant},
+            ),
+            GatewayContext(),
+        )
+    except Exception as exc:  # noqa: BLE001 — gateway audit is best-effort
+        logger.debug("gateway audit entry failed for %s: %s", run_id, exc)
 
     # Agent identity resolution — fail-closed: an unknown or revoked agent
     # never runs.

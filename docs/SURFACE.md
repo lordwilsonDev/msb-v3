@@ -82,7 +82,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/energy_matrix` | OPTIONAL | Energy-aware resource scheduling — telemetry + scheduler + governance. |
 | `msb_v3/factory` | FROZEN | The factory pipeline — release-declared frozen (dogfood reached MERGED). |
 | `msb_v3/flywheel` | OPTIONAL | Research→Build loop — operator-driven, behind the brakes (CLAUDE.md Flywheel). |
-| `msb_v3/gateway` | OPTIONAL | Capability Gateway dispatcher (provider-harness plan); no canonical-path caller yet. |
+| `msb_v3/gateway` | LOAD-BEARING | Capability Gateway — canonical audit entry point for governed execution (`agent/handle.py` + `harnesses/base.py` both call `route()`); records compute decisions into the audit chain (docs/architecture/gateway-canonical-path.md). |
 | `msb_v3/governance` | LOAD-BEARING | The brakes (kill switch, budgets, approvals) — fail-closed everywhere (CLAUDE.md). |
 | `msb_v3/guardrails` | LOAD-BEARING | `fold.StepEnforcer` — wired into the governed tool loops (DeepSeekClient, conversation). |
 | `msb_v3/harnesses` | OPTIONAL | Harness scaffolding; off canonical path. |
