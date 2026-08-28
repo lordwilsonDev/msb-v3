@@ -90,6 +90,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/local_ai` | LOAD-BEARING | Ollama + llama + DeepSeek clients — the model layer under `/chat`, `/agent`, `/v1`. |
 | `msb_v3/memory` | LOAD-BEARING | SQLite session/message memory — `/memory` + MCP bridge depend on it. |
 | `msb_v3/memory_fabric` | OPTIONAL | Memory fabric (spec §4.2.2); off canonical path. |
+| `msb_v3/meta` | OPTIONAL | Meta-System project compiler — META-0: contract types only (`MetaTask`/`MSL`/`TaskState`/`ProjectState`/`VerificationResult`/`FailureRecord`/`WorkerResult`), no orchestration. Off canonical path. |
 | `msb_v3/moie` | OPTIONAL | MoIE engine — powers the factory reviewer (release doc: experimental tier, not a general chat path). |
 | `msb_v3/node` | OPTIONAL | Sovereign Node enrollment/engage — INTEGRATE phase, first slice FILE_READ. |
 | `msb_v3/observability` | LOAD-BEARING | Prometheus metrics — `/metrics`, cockpit, console all read it. |
