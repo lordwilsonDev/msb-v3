@@ -68,7 +68,10 @@ jobs:
       - name: Qdrant environment contract preflight
         run: |
           set -euo pipefail
-          MSB_QDRANT_ENABLED=1 python -c 'from msb_v3.infrastructure.qdrant_contract import preflight; r = preflight(); print(r); raise SystemExit(0 if r.ready else 1)'
+          # The self-hosted runner PATH has no bare `python`; resolve the same
+          # interpreter the Makefile uses.
+          PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
+          MSB_QDRANT_ENABLED=1 "$PY" -c 'from msb_v3.infrastructure.qdrant_contract import preflight; r = preflight(); print(r); raise SystemExit(0 if r.ready else 1)'
         env:
           MSB_REPO: ${{ github.workspace }}
           PYTHONPATH: ${{ github.workspace }}/src
