@@ -30,6 +30,12 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
+from msb_v3.speech.audio import (
+    AudioRendererRegistry,
+    RenderContext,
+    RenderStatus,
+    silent_payload,
+)
 from msb_v3.speech.intent import extract_intent
 from msb_v3.speech.models import Transcript, VoiceCommand
 from msb_v3.speech.pipeline import SpeechPipeline
@@ -107,12 +113,14 @@ class VoiceResponder:
         tts_rate: int = 200,
         speak_aloud: bool = True,
         policy_gate: Optional[VoicePolicyGate] = None,
+        audio_registry: Optional[AudioRendererRegistry] = None,
     ) -> None:
         self.pipeline = pipeline or SpeechPipeline()
         self.voice = voice
         self.tts_rate = tts_rate
         self.speak_aloud = speak_aloud
         self.policy_gate = policy_gate or VoicePolicyGate(require_speaker=True)
+        self.audio_registry = audio_registry or AudioRendererRegistry()
 
     def respond_to_file(
         self,
@@ -145,11 +153,7 @@ class VoiceResponder:
 
         # Speak the response
         if self.speak_aloud and response.response_text:
-            response.spoken = speak(
-                response.response_text,
-                voice=self.voice,
-                rate=self.tts_rate,
-            )
+            response.spoken = self._render_response(response.response_text)
 
         response.latency_ms = (time.monotonic() - start) * 1000
         response.timestamp = result.timestamp
@@ -210,11 +214,7 @@ class VoiceResponder:
 
         # Speak
         if self.speak_aloud and response.response_text:
-            response.spoken = speak(
-                response.response_text,
-                voice=self.voice,
-                rate=self.tts_rate,
-            )
+            response.spoken = self._render_response(response.response_text)
 
         response.latency_ms = (time.monotonic() - start) * 1000
         return response
@@ -303,6 +303,22 @@ class VoiceResponder:
         session.latency_total_ms = (time.monotonic() - total_start) * 1000
 
         return session
+
+    def _render_response(self, text: str) -> bool:
+        """Render a response through the injected audio seam.
+
+        The legacy TTS adapter remains the default compatibility path until a
+        renderer is registered; callers can inject a registry for conformance
+        tests or native playback without changing governance.
+        """
+        if self.audio_registry.has_available_renderer(frozenset({"local_playback"})):
+            result = self.audio_registry.render(
+                silent_payload(),
+                RenderContext(),
+                frozenset({"local_playback"}),
+            )
+            return result.status == RenderStatus.PLAYED
+        return speak(text, voice=self.voice, rate=self.tts_rate)
 
     def _deny_message(self, decision: VoicePolicyDecision) -> str:
         """Generate a spoken denial message."""
