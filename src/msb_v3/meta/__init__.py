@@ -39,6 +39,9 @@ from msb_v3.meta.failure import (
     RepairPolicy,
 )
 
+# META-5: Outcome Ledger
+from msb_v3.meta.outcome import OutcomeLedger, PipelineOutcome
+
 # META-1C: Probability Engine
 from msb_v3.meta.probability import (
     HistoricalPerformance,
@@ -83,4 +86,6 @@ __all__ = [
     "HistoricalPerformance", "RoutingMatrix", "WorkerStats",
     # META-1D
     "EscalationPolicy", "FailureClass", "FailureClassifier", "RepairPolicy",
+    # META-5
+    "OutcomeLedger", "PipelineOutcome",
 ]

@@ -46,6 +46,7 @@ from msb_v3.meta.contracts import (
     WorkerResult,
     WorkerStatus,
 )
+from msb_v3.meta.outcome.ledger import OutcomeLedger, PipelineOutcome
 from msb_v3.meta.policy.execution_policy import ExecutionPolicy
 from msb_v3.meta.policy.policy_router import PolicyRouter
 from msb_v3.meta.routing.worker_registry import WorkerRegistry
@@ -144,6 +145,7 @@ class MetaPipeline:
         worker_registry: Optional[WorkerRegistry] = None,
         import_graph: Optional[ImportGraph] = None,
         file_index: Optional[Dict[str, Any]] = None,
+        outcome_ledger: Optional[OutcomeLedger] = None,
     ) -> None:
         self._worker = worker
         self._workdir = workdir or Path("/tmp/meta-pipeline")
@@ -156,6 +158,7 @@ class MetaPipeline:
         )
         self._gate = verification_gate or VerificationGate()
         self._workers = worker_registry
+        self._ledger = outcome_ledger
 
     def run(
         self,
@@ -252,7 +255,7 @@ class MetaPipeline:
             stages.append(stage)
 
             if gate.passed:
-                return FinalResult(
+                result = FinalResult(
                     task_id=task.task_id,
                     gate=gate,
                     policy=policy,
@@ -261,6 +264,8 @@ class MetaPipeline:
                     verification=gate.verification,
                     metadata={"attempts": attempt},
                 )
+                self._record_outcome(task, result, policy, wr, attempt)
+                return result
 
             # Stage 5: RETRY (if allowed).
             if attempt < max_attempts and gate.should_retry:
@@ -275,20 +280,23 @@ class MetaPipeline:
                 break  # don't retry — repair not suggested
 
         # All attempts exhausted.
-        return FinalResult(
+        final_gate = last_gate or GateResult(
             task_id=task.task_id,
-            gate=last_gate or GateResult(
-                task_id=task.task_id,
-                worker_id=worker_id,
-                verdict=Verdict.FAIL,
-                verification=VerificationResult(task_id=task.task_id, verdict=Verdict.FAIL),
-                reason="no attempts produced a result",
-            ),
+            worker_id=worker_id,
+            verdict=Verdict.FAIL,
+            verification=VerificationResult(task_id=task.task_id, verdict=Verdict.FAIL),
+            reason="no attempts produced a result",
+        )
+        result = FinalResult(
+            task_id=task.task_id,
+            gate=final_gate,
             policy=policy,
             stages=stages,
             worker_result=last_worker_result,
             metadata={"attempts": max_attempts, "exhausted": True},
         )
+        self._record_outcome(task, result, policy, last_worker_result, max_attempts)
+        return result
 
     def _build_prompt(self, model_task: Any) -> str:
         """Build a prompt from the translated ModelTask."""
@@ -326,3 +334,36 @@ class MetaPipeline:
                 correction_lines.append(f"- {c.name} failed:\n{c.detail}")
             return base + "\n\n" + "\n".join(correction_lines)
         return base
+
+    def _record_outcome(
+        self,
+        task: MetaTask,
+        result: FinalResult,
+        policy: ExecutionPolicy,
+        worker_result: Optional[WorkerResult],
+        attempts: int,
+    ) -> None:
+        """Feed the outcome to the ledger if one is configured."""
+        if self._ledger is None:
+            return
+
+        # Extract timing from stages.
+        total_ms = sum(s.duration_ms for s in result.stages)
+        v_score = result.gate.confidence
+        if result.gate.checks_run > 0:
+            v_score = result.gate.checks_passed / result.gate.checks_run
+
+        outcome = PipelineOutcome(
+            task_id=task.task_id,
+            task_objective=task.objective[:200],
+            task_type=task.metadata.get("task_type", "unknown"),
+            worker_id=worker_result.worker_id if worker_result else "unknown",
+            execution_mode=policy.mode.value,
+            verdict=result.verdict.value,
+            verification_score=v_score,
+            attempts=attempts,
+            latency_ms=total_ms,
+            failure_class=worker_result.error_class if worker_result else "",
+            failure_message=worker_result.message if worker_result else "",
+        )
+        self._ledger.record(outcome)
