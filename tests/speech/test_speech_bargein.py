@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from msb_v3.speech.bargein import BargeInConfig, BargeInController, TTSInterrupter
+
+pytest.importorskip(
+    "webrtcvad",
+    reason="speech VAD is an EXPERIMENTAL extra: pip install -e '.[speech]'",
+)
 
 
 class TestBargeInConfig:
