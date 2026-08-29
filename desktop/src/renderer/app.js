@@ -115,6 +115,7 @@ async function killswitch(op) {
 // --- rendering ---------------------------------------------------
 
 function render() {
+  window.__runtimeState = state.runtimeState; // dev/smoke visibility
   const root = document.getElementById('root');
   clear(root);
 
@@ -167,18 +168,24 @@ function renderDashboard() {
         `service: ${val(state.identity, 'service')}`,
         `version: ${val(state.identity, 'version')}`,
       ]),
-      statCard(
-        'Runtime Identity',
-        val(state.identity, 'expected') === true ? 'Verified' : 'Unverified',
-        val(state.identity, 'expected') === true ? '#4ade80' : '#f87171',
-        [`model: ${val(state.identity, 'model')}`, `ready: ${val(state.identity, 'ready')}`]
-      ),
-      statCard(
-        'Pending Approvals',
-        String(state.approvals.length),
-        state.approvals.length ? '#fbbf24' : '#4ade80',
-        [state.approvals.length ? 'awaiting operator' : 'all clear']
-      ),
+      (() => {
+        const verified = Boolean(state.identity && state.identity.expected === true);
+        return statCard(
+          'Runtime Identity',
+          verified ? 'Verified' : 'Unverified',
+          verified ? '#4ade80' : '#f87171',
+          [`model: ${val(state.identity, 'model')}`, `ready: ${val(state.identity, 'ready')}`]
+        );
+      })(),
+      (() => {
+        const pending = pendingApprovals().length;
+        return statCard(
+          'Pending Approvals',
+          String(pending),
+          pending ? '#fbbf24' : '#4ade80',
+          [pending ? 'awaiting operator' : 'all clear', `${state.approvals.length} in history`]
+        );
+      })(),
       renderKillswitchCard()
     )
   );
@@ -216,37 +223,55 @@ function renderKillswitchCard() {
   return card;
 }
 
+function pendingApprovals() {
+  return state.approvals.filter((a) => String(a.status || '').toUpperCase() === 'PENDING');
+}
+
+function approvalRow(a, actionable) {
+  const li = el('li', {});
+  li.appendChild(el('span', { class: 'badge kind', text: String(a.kind || 'action') }));
+  li.appendChild(el('strong', { text: ` ${a.title || a.id} ` }));
+  li.appendChild(el('span', { class: 'detail', text: `(${a.status || '?'})` }));
+  if (Array.isArray(a.evidence_refs) && a.evidence_refs.length) {
+    const insp = el('details', { style: 'margin-top:4px' });
+    insp.appendChild(el('summary', { class: 'detail', text: `inspect - ${a.evidence_refs.length} evidence ref(s)` }));
+    for (const ref of a.evidence_refs) insp.appendChild(el('div', { class: 'mono', text: String(ref) }));
+    li.appendChild(insp);
+  }
+  if (actionable && state.operator) {
+    const row = el('div', { style: 'margin-top:6px; display:flex; gap:8px' });
+    row.appendChild(el('button', { class: 'btn', text: 'Approve', onclick: () => decide(a.id, 'approve') }));
+    row.appendChild(el('button', { class: 'btn danger', text: 'Reject', onclick: () => decide(a.id, 'reject') }));
+    li.appendChild(row);
+  }
+  return li;
+}
+
 function renderApprovalsPanel() {
   const card = el('div', { class: 'card', style: 'margin-top:16px' });
   card.appendChild(el('h2', { text: 'Approval Queue' }));
-  if (!state.approvals.length) {
+
+  const pending = pendingApprovals();
+  if (!pending.length) {
     card.appendChild(el('div', { class: 'empty', text: 'Nothing pending.' }));
-    return card;
-  }
-  if (!state.operator) {
-    card.appendChild(el('div', { class: 'detail', text: 'operator token not set - approve/reject disabled' }));
-  }
-  const list = el('ul', { class: 'list' });
-  for (const a of state.approvals) {
-    const li = el('li', {});
-    li.appendChild(el('span', { class: 'badge kind', text: String(a.kind || 'action') }));
-    li.appendChild(el('strong', { text: ` ${a.title || a.id} ` }));
-    li.appendChild(el('span', { class: 'detail', text: `(${a.status || '?'})` }));
-    if (Array.isArray(a.evidence_refs) && a.evidence_refs.length) {
-      const insp = el('details', { style: 'margin-top:4px' });
-      insp.appendChild(el('summary', { class: 'detail', text: `inspect - ${a.evidence_refs.length} evidence ref(s)` }));
-      for (const ref of a.evidence_refs) insp.appendChild(el('div', { class: 'mono', text: String(ref) }));
-      li.appendChild(insp);
+  } else {
+    if (!state.operator) {
+      card.appendChild(el('div', { class: 'detail', text: 'operator token not set - approve/reject disabled' }));
     }
-    if (state.operator) {
-      const row = el('div', { style: 'margin-top:6px; display:flex; gap:8px' });
-      row.appendChild(el('button', { class: 'btn', text: 'Approve', onclick: () => decide(a.id, 'approve') }));
-      row.appendChild(el('button', { class: 'btn danger', text: 'Reject', onclick: () => decide(a.id, 'reject') }));
-      li.appendChild(row);
-    }
-    list.appendChild(li);
+    const list = el('ul', { class: 'list' });
+    for (const a of pending) list.appendChild(approvalRow(a, true));
+    card.appendChild(list);
   }
-  card.appendChild(list);
+
+  const decided = state.approvals.filter((a) => String(a.status || '').toUpperCase() !== 'PENDING');
+  if (decided.length) {
+    const hist = el('details', { style: 'margin-top:12px' });
+    hist.appendChild(el('summary', { class: 'detail', text: `decided - ${decided.length}` }));
+    const list = el('ul', { class: 'list' });
+    for (const a of decided.slice(0, 25)) list.appendChild(approvalRow(a, false));
+    hist.appendChild(list);
+    card.appendChild(hist);
+  }
   return card;
 }
 

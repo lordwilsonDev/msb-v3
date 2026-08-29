@@ -49,6 +49,13 @@ const CSP = [
 
 let mainWindow = null;
 let bridge = null;
+let onWindow = null;
+
+/** Register a callback invoked with the BrowserWindow after it is created.
+ *  Used by dev/smoke scripts; must be called synchronously at require time. */
+function setOnWindow(fn) {
+  onWindow = typeof fn === 'function' ? fn : null;
+}
 
 // --- window --------------------------------------------------------------
 
@@ -81,6 +88,8 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  if (onWindow) onWindow(mainWindow);
 }
 
 /**
@@ -198,4 +207,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-module.exports = { CSP };
+module.exports = { CSP, setOnWindow };
