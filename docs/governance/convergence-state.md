@@ -1,49 +1,64 @@
 # MSB-v3 Convergence State
 
-Date: 2026-08-27
-Status: in-progress
+Date: 2026-08-28
+Status: convergence-in-progress (C1–C3 closed, C4 authorized)
 
 ## Known-good baseline
 
 - Release: `v0.3.2`
 - SHA: `bf27f6a565539226015cc64b4477c71420ff8227`
-- Remote: `origin/main` currently resolves to the same SHA
+- Remote: `origin/main` currently resolves to `e291cea`
 
-## Current experimental head
+## Current HEAD
 
-- SHA: `452e2b2`
-- Branch: `main` (local working state)
-- Divergence: 15 commits beyond the known-good baseline, primarily speech P0–P2 work
+- SHA: `e291cea`
+- Branch: `main`
+- Divergence: 43 commits beyond the known-good baseline
+- Version: v0.3.2-43-ge291cea
 
-## Main status
+## Convergence Blockers
 
-- Release baseline remains recoverable.
-- No reset, force-push, tag rewrite, or remote branch mutation was performed during this convergence pass.
-- Working tree contains unrelated pre-existing modifications in `.plei/calibration.jsonl` and `artifacts/hygiene/daily_gate_events.jsonl`.
+| ID | Description | Status | Evidence |
+|---|---|---|---|
+| C1 | Release truth / CI | ✅ CLOSED | Lint fix (I001), CI green on all 3 workflows |
+| C2 | Gateway canonical path | ✅ CLOSED | agent/handle.py calls gateway.route(), bypass test enforced |
+| C3 | ProviderContract v1 | ✅ CLOSED | 190 conformance tests, all 10 production providers pass |
+| C4 | Meta-System sequencing | ✅ AUTHORIZED | Written exception in v4-parking-lot.md, spine verified complete |
 
 ## Validation status
 
-- Core focused validation: GREEN
-- Historical verification: GREEN; all CI checkout steps now request full history
 - Ruff: GREEN
-- mypy: GREEN
-- Closure drift: GREEN with eight non-blocking missing-SHA warnings
-- Production closure: NOT CLOSED
+- mypy: GREEN (347 source files)
+- Claims gate: GREEN (16 claims, 27 evidence paths)
+- Policy drift gate: GREEN (baseline MATCH)
+- CI (factory-gate): GREEN
+- CI (harness-gate): GREEN
+- CI (msb-v3 CI): GREEN
+- Local close-out gate: GREEN (3,001 passed, 0 failed, 84% coverage)
+- Production closure: IN PROGRESS (C4 authorized, pending tag)
 
-## Blockers
+## Architecture
 
-1. CI runtime isolation; workflows still contain legacy port-kill behavior.
-2. Centralized Qdrant environment contract and preflight.
-3. Reproducible virgin-clone gate independent of developer services and state.
-4. Attack matrix with controlled outcomes and evidence capture.
+- Gateway: LOAD-BEARING — canonical audit entry point for governed execution
+- ProviderContract: v1 — 190 conformance tests, 10 production providers
+- Meta-System: OPTIONAL (experimental tier) — authorized with written exception
+- Interchangeability: IN PROGRESS (ProviderContract v1 enables it)
 
 ## Experimental surfaces
 
-- speech
-- energy_matrix
+- speech — EXPERIMENTAL (not promoted)
+- energy_matrix — EXPERIMENTAL (not promoted)
+- meta — OPTIONAL (authorized, experimental tier)
 
-Neither surface is promoted to the release contract by this document.
+## Known limitations
 
-## Next promotion
+- C1: DeepSeek API (402 payment required) — external provider verification blocked until credits topped up
+- C5: CLI provider sandboxing — risk accepted in writing (2026-08-26)
+- MemoryStore deprecation warning on every request
 
-None until mandatory production gates are green and the evidence is reproducible from a fresh environment.
+## Next steps
+
+1. Tag the release (v0.3.3 or v0.4.0)
+2. Verify remote CI on exact tagged commit
+3. Update CHANGELOG and release documentation
+4. Begin Phase B (desktop productization) if convergence gate passes

@@ -19,6 +19,57 @@ with a proposed value, dependency, and trigger for reconsideration.
 | 2026-08-17 | Deleted-file diffs in factory `compute_changes` | Reviewer sees deletions | New-file diff fix shipped (v0.3.0-rc1) | A real change deletes a file |
 | 2026-08-17 | Sensor plane / actuator plane / scientific-control engine (L13) | The system becomes a measurement-and-control substrate | Software governance mature | A real experiment needs it |
 
+## Authorized Exceptions (with evidence)
+
+### Meta-System (META-0 through META-8) — AUTHORIZED 2026-08-28
+
+**Exception:** Meta-System modules exist in production surface (`msb_v3/meta/`)
+with orchestration capabilities (META-5: OutcomeLedger, META-6:
+AdaptiveOptimizer, META-7: SkillBridge, META-8: MultiWorkerBenchmark)
+prior to formal spine prerequisite verification.
+
+**Why Meta exists now:**
+The Meta-System is the project compiler — it takes verified outcomes and
+feeds them back into probability predictions and adaptive routing. Without
+it, the factory pipeline operates blind: it builds and verifies, but
+cannot learn from results. META-0 through META-4 established contract
+types and a one-worker pipeline; META-5 through META-8 added cross-worker
+comparison and self-improving routing. The system was built incrementally
+with each stage verified independently.
+
+**Prerequisite dependency chain:**
+```
+Spine (evidence/spine.py) → Meta-System → Factory pipeline feedback
+```
+The convergence blueprint stated the spine prerequisite was "not complete."
+This assessment was stale. Evidence:
+- `evidence/spine.py` is FROZEN in SURFACE.md (release-declared)
+- 10+ modules import and use DecisionEvidenceStore (agent/handle,
+  agent/providers, vesta/services, vesta/adapter, ops/discrepancy,
+  replay/engine, plei/api, core/container, evidence/receipt)
+- 82 test references across the test suite
+- 9 dedicated spine tests in tests/evidence/test_spine.py
+- The spine is actively written to on every governed execution
+
+**What must be completed:**
+- ProviderContract v1 conformance (DONE — 190 tests, CI green)
+- Gateway canonical path (DONE — agent/handle.py calls gateway.route())
+- Meta classification in SURFACE.md (see below)
+
+**Who authorizes:** Operator (Wilson), convergence blueprint §20 Path B.
+
+**What verification closes the exception:**
+- Spine tests pass (✅ 9 dedicated tests)
+- Spine used by production paths (✅ 10+ modules)
+- Meta tests pass (✅ verified in CI)
+- ProviderContract v1 exists (✅ 190 conformance tests)
+- Gateway canonical path exists (✅ bypass test enforced)
+
+**Classification:** Meta-System is classified as OPTIONAL in SURFACE.md
+(experimental tier). This is honest: Meta exists and is tested, but has
+not been battle-tested on real client workloads. Promotion to LOAD-BEARING
+requires evidence that adaptive routing improves outcomes on production data.
+
 ## Rejected / parked-forever (with reason)
 
 | Idea | Reason |
