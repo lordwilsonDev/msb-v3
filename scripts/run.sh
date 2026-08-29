@@ -24,7 +24,7 @@ set -a
 set +a
 
 unset VIRTUAL_ENV
-export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$PATH"
+export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$HOME/.local/bin:$PATH"
 export PYTHONPATH="$REPO/src:~/.local/lib/msb-v3"
 export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen3:8b}"
 export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"

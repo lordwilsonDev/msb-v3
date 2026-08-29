@@ -78,3 +78,10 @@ artifacts/harness-evidence-report.json
 # sibling directory). Git can't track a sibling, so this guards against a
 # replica dir ever appearing *inside* the repo and being committed.
 msb-replica/
+
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+desktop/node_modules/
+desktop/dist/
+desktop/smoke.png
