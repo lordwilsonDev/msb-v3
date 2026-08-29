@@ -67,7 +67,7 @@ subpackage is unclassified (AC-3.1).
 
 | Package | Class | Justification (traced) |
 |---|---|---|
-| `msb_v3/agent` | FROZEN | The canonical governed loop — release-declared frozen. |
+| `msb_v3/agent` | LOAD-BEARING | The canonical governed loop — release-declared frozen, but contract.py (ProviderContract v1) added for convergence C3. AgentProvider ABC extended with health() method and contract_version field on ProviderSpec. |
 | `msb_v3/api` | LOAD-BEARING | Router layer — all of the table above. |
 | `msb_v3/business` | OPTIONAL | Business-report surface (hygiene h02/h04 experiments probe it); off canonical path. |
 | `msb_v3/codegraph` | OPTIONAL | Repo symbol graph (spec §4.2.1); operator-gated indexing, query-only use. |

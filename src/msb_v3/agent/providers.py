@@ -73,6 +73,7 @@ class ProviderSpec:
     capabilities: Tuple[str, ...] = ()
     max_risk_tier: int = 2
     timeout_s: float = 120.0
+    contract_version: str = "1"  # ProviderContract version this spec conforms to
 
 
 @dataclass(frozen=True)
@@ -96,7 +97,12 @@ class ProviderResult:
 
 class AgentProvider(ABC):
     """One worker execution seam. MSB calls ``execute``; the provider owns
-    how the goal becomes a result (local DAG, CLI subprocess, Paseo)."""
+    how the goal becomes a result (local DAG, CLI subprocess, Paseo).
+
+    ProviderContract v1 conformance: every production provider must
+    satisfy the contract defined in ``ProviderContract``. The conformance
+    suite (tests/contracts/test_provider_contract.py) verifies this.
+    """
 
     spec: ProviderSpec
 
@@ -110,6 +116,19 @@ class AgentProvider(ABC):
 
     def capabilities(self) -> Tuple[str, ...]:
         return self.spec.capabilities
+
+    def health(self) -> Dict[str, Any]:
+        """Health check — returns a dict with at minimum ``ok: bool``.
+
+        Default implementation delegates to ``available()``. Providers
+        that can perform deeper health checks (e.g. TCP reachability,
+        API key validation) should override this.
+        """
+        return {
+            "ok": self.available(),
+            "reason": self.unavailable_reason(),
+            "provider_id": self.spec.provider_id,
+        }
 
     @abstractmethod
     async def execute(

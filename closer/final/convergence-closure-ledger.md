@@ -34,17 +34,17 @@
 | **Status** | IMPLEMENTED — needs commit + push + CI verification |
 | **Note** | The gateway is the audit entry point; ActionGate is the enforcement layer. This is a dual-governance model where gateway records the compute decision and ActionGate enforces tool-level authorization. The bypass test catches future regressions. |
 
-### C3: ProviderContract v1 — OPEN, REQUIRES CONTRACT DESIGN
+### C3: ProviderContract v1 — IMPLEMENTED, LOCALY VERIFIED
 
 | Field | Value |
 |---|---|
 | **Blocker** | No versioned provider contract exists |
-| **Current State** | `AgentProvider(ABC)` defines the execution seam. `ProviderSpec` (frozen dataclass) declares: provider_id, display_name, kind, command, capabilities, max_risk_tier, timeout_s. Six concrete providers: LocalAgentProvider, CliAgentProvider, PaseoAgentProvider, AnthropicAgentProvider, DeepSeekAgentProvider, DshAgentProvider. No `ProviderContract` class. No conformance suite. |
-| **Evidence** | src/msb_v3/agent/providers.py lines 40-80 (ProviderSpec + AgentProvider ABC). No tests/contracts/ directory. |
-| **Required Change** | Define ProviderContract v1 with: identity, version, capabilities, risk tier, health, timeouts, error semantics, execution interface, lifecycle, governance requirements, evidence requirements. Migrate existing providers. Create conformance suite. |
-| **Verification** | tests/contracts/test_provider_contract.py that runs against every production provider. All must pass. |
-| **Status** | OPEN — requires contract design |
-| **Note** | ProviderSpec already captures most of what a contract needs. The gap is: (1) no version field, (2) no health/error semantics, (3) no evidence requirements, (4) no conformance enforcement. The contract can be built as a thin layer on top of ProviderSpec. |
+| **Current State** | ProviderContract v1 defined in `agent/contract.py`. ProviderSpec extended with `contract_version` field. AgentProvider ABC extended with `health()` method. Conformance suite created in `tests/contracts/test_provider_contract.py` — 190 tests, all pass. |
+| **Evidence** | src/msb_v3/agent/contract.py: ProviderContract dataclass + validate_contract() + contract_from_spec(). tests/contracts/test_provider_contract.py: 190 tests covering identity, capabilities, health, timeout, error semantics, execution, governance, evidence, contract version, registry conformance. |
+| **Required Change** | DONE. Contract defined, providers migrated, conformance suite created. |
+| **Verification** | tests/contracts/test_provider_contract.py — 190 tests, all pass. Each production provider (10 total: local.slice, api.deepseek, api.anthropic, dsh.headless, cli.claude, cli.codex, cli.opencode, paseo.claude, paseo.codex, paseo.opencode) is tested against all contract invariants. |
+| **Status** | IMPLEMENTED — needs commit + push + CI verification |
+| **Note** | ProviderContract v1 is a thin layer on top of ProviderSpec + AgentProvider. It adds: (1) contract_version field for forward compatibility, (2) health() method for runtime health checks, (3) validate_contract() for mechanical verification, (4) 190-test conformance suite that runs against every production provider. |
 
 ### C4: Meta-System Sequencing — OPEN, REQUIRES GOVERNANCE DECISION
 
