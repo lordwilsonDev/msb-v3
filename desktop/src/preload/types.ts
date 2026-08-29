@@ -1,104 +1,114 @@
 /**
- * MSB v3 Desktop — Typed IPC Contract
+ * MSB v3 Desktop - Typed IPC Contract
  *
- * This file defines the types for the IPC bridge between main and renderer.
- * The renderer uses window.msb.* which is typed via this interface.
- *
- * Security: every method is a named function (no arbitrary channel access).
- * The preload script exposes exactly these methods via contextBridge.
+ * Shapes match msb-v3 v0.3.x REST responses, verified live 2026-08-28.
+ * The renderer consumes `window.msb.*`; the main process is the authority
+ * and re-validates every payload.
  */
 
-// --- Result types ---
+// --- result envelope --------------------------------------------------
 
-export interface MsbResult<T = unknown> {
+/** Every IPC call resolves to this shape and never rejects. */
+export interface Result<T = unknown> {
   ok: boolean;
   error?: string;
+  detail?: string;
   data?: T;
 }
 
-export interface HealthResult {
-  ok: boolean;
-  service?: string;
-  version?: string;
-  ts?: string;
+export type RuntimeState = 'READY' | 'DEGRADED' | 'OFFLINE' | 'BLOCKED' | 'NOT_ATTACHED';
+
+// --- domain types ---------------------------------------------------
+
+export interface Health {
+  ok?: boolean;
+  status?: string;
+  [k: string]: unknown;
 }
 
-export interface IdentityResult {
-  ok: boolean;
-  config?: {
-    version?: string;
-    route_count?: number;
-    [key: string]: unknown;
-  };
+/** GET /status */
+export interface Identity {
+  service?: string;
+  version?: string;
+  ready: boolean;
+  model?: string;
+  host?: string;
+  port?: number;
+  /** true when service === "msb-v3" - i.e. the expected runtime. */
+  expected: boolean;
 }
 
 export interface AttachResult {
   ok: boolean;
-  health?: HealthResult;
-  identity?: IdentityResult;
+  state: RuntimeState;
+  health?: Health;
+  identity?: Identity | null;
+  operator?: boolean;
   error?: string;
+  detail?: string;
 }
 
+/** GET /governance/approvals -> { items: Approval[] } */
 export interface Approval {
-  id: number;
+  id: string;
   kind: string;
+  title?: string;
   status: string;
   created_at?: string;
-  [key: string]: unknown;
+  evidence_refs?: string[];
 }
 
-export interface KillSwitch {
-  scope: string;
-  armed: boolean;
-  created_at?: string;
-  [key: string]: unknown;
+/** GET /governance/status */
+export interface GovernanceStatus {
+  killswitch: {
+    armed?: boolean;
+    scopes?: Record<string, unknown>;
+    [k: string]: unknown;
+  };
+  budgets?: Record<string, unknown>;
+  governor?: Record<string, unknown>;
+  approvals?: {
+    pending: number;
+    kinds_requiring_approval: string[];
+  };
 }
 
+/** GET /memory/{session} */
 export interface MemoryMessage {
   role: string;
   content: string;
-  timestamp?: string;
-  source?: 'msb-v3-evidence' | 'vault-knowledge';
+  ts?: string;
 }
 
-export interface SearchResult {
-  title?: string;
+export interface MemoryPage {
+  session: string;
+  messages: MemoryMessage[];
+}
+
+/** POST /rag/search */
+export interface SearchHit {
   source?: string;
   text?: string;
-  content?: string;
   score?: number;
-  source_type?: 'msb-v3-evidence' | 'vault-knowledge';
+  [k: string]: unknown;
 }
 
-// --- IPC API (exposed via contextBridge) ---
+// --- exposed API ---------------------------------------------------
 
 export interface MsbApi {
-  /** Attach to the msb-v3 server */
   attach(opts?: { host?: string; port?: string }): Promise<AttachResult>;
-
-  /** Check server health */
-  health(): Promise<HealthResult>;
-
-  /** Get cockpit dashboard data */
-  cockpit(): Promise<Record<string, unknown>>;
-
-  /** Get pending approvals */
-  approvals(): Promise<{ approvals: Approval[] }>;
-
-  /** Approve or reject a pending action */
-  approve(id: string, action: 'approve' | 'reject'): Promise<MsbResult>;
-
-  /** Get kill switch status */
-  killswitch(): Promise<{ switches: KillSwitch[] }>;
-
-  /** Get conversation memory for a session */
-  memory(session?: string, limit?: number): Promise<{ messages: MemoryMessage[] }>;
-
-  /** Search the vault (semantic search via RAG) */
-  search(query: string, limit?: number): Promise<{ results: SearchResult[] }>;
+  health(): Promise<Result<Health>>;
+  identity(): Promise<Result<Identity>>;
+  cockpit(): Promise<Result<Record<string, unknown>>>;
+  governanceStatus(): Promise<Result<GovernanceStatus>>;
+  approvals(): Promise<Result<{ items: Approval[] }>>;
+  approve(id: string, action: 'approve' | 'reject', reason?: string): Promise<Result>;
+  killswitch(): Promise<Result<GovernanceStatus>>;
+  killswitchSet(op: 'arm' | 'disarm', reason?: string): Promise<Result>;
+  memory(session?: string, limit?: number): Promise<Result<MemoryPage>>;
+  search(query: string, limit?: number): Promise<Result<{ results?: SearchHit[]; [k: string]: unknown }>>;
 }
 
-// Global declaration for the renderer
 declare global {
   interface Window {
     msb: MsbApi;

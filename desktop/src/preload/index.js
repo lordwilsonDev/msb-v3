@@ -1,74 +1,81 @@
 /**
- * MSB v3 Desktop — Preload Script
+ * MSB v3 Desktop - Preload
  *
- * Runs in an isolated context (contextIsolation: true).
- * Exposes a typed, minimal API to the renderer via contextBridge.
- *
- * Security model:
- *   - nodeIntegration: false (no Node.js in renderer)
- *   - contextIsolation: true (preload context ≠ renderer context)
- *   - sandbox: true (renderer runs in OS sandbox)
- *   - Only explicitly exposed APIs are available to renderer
- *   - Every IPC call is a named method (no arbitrary channel access)
+ * Runs in an isolated world (contextIsolation: true). Exposes a small, frozen,
+ * domain-specific API on window.msb. There is NO generic channel access:
+ * every method maps to one named IPC handler in the main process, which
+ * re-validates the payload. Renderer args are coerced to safe primitives
+ * here as a first pass; the main process is the authority.
  */
 
 'use strict';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('msb', {
-  /**
-   * Attach to the msb-v3 server.
-   * @param {object} opts - { host?: string, port?: string }
-   * @returns {Promise<{ok: boolean, health?: object, identity?: object, error?: string}>}
-   */
-  attach: (opts) => ipcRenderer.invoke('msb:attach', opts || {}),
+const str = (v) => (v === undefined || v === null ? undefined : String(v));
+const int = (v) => {
+  if (v === undefined || v === null) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : undefined;
+};
 
-  /**
-   * Check server health.
-   * @returns {Promise<{ok: boolean, service?: string, version?: string, error?: string}>}
-   */
+const api = Object.freeze({
+  /** Discover -> health -> identity -> attach. Returns runtime state. */
+  attach: (opts) => {
+    const o = opts && typeof opts === 'object' ? opts : {};
+    return ipcRenderer.invoke('msb:attach', { host: str(o.host), port: str(o.port) });
+  },
+
+  /** GET /health */
   health: () => ipcRenderer.invoke('msb:health'),
 
-  /**
-   * Get cockpit dashboard data.
-   * @returns {Promise<object>}
-   */
+  /** GET /status - runtime identity (service, version, ready, model). */
+  identity: () => ipcRenderer.invoke('msb:identity'),
+
+  /** GET /cockpit/api - aggregated dashboard state. */
   cockpit: () => ipcRenderer.invoke('msb:cockpit'),
 
-  /**
-   * Get pending approvals.
-   * @returns {Promise<{approvals?: Array, error?: string}>}
-   */
+  /** GET /governance/status - killswitch + budgets + approvals summary. */
+  governanceStatus: () => ipcRenderer.invoke('msb:governanceStatus'),
+
+  /** GET /governance/approvals - pending queue. */
   approvals: () => ipcRenderer.invoke('msb:approvals'),
 
   /**
-   * Approve or reject a pending action.
-   * @param {string} id - Approval ID
+   * Approve or reject one pending action (operator token required in main).
+   * @param {string} id
    * @param {'approve'|'reject'} action
-   * @returns {Promise<{ok: boolean, error?: string}>}
+   * @param {string} [reason]
    */
-  approve: (id, action) => ipcRenderer.invoke('msb:approve', { id, action }),
+  approve: (id, action, reason) =>
+    ipcRenderer.invoke('msb:approve', { id: str(id), action: str(action), reason: str(reason) }),
 
-  /**
-   * Get kill switch status.
-   * @returns {Promise<{switches?: Array, error?: string}>}
-   */
+  /** GET /governance/status, killswitch view. */
   killswitch: () => ipcRenderer.invoke('msb:killswitch'),
 
   /**
-   * Get conversation memory for a session.
-   * @param {string} session
-   * @param {number} [limit]
-   * @returns {Promise<{messages?: Array, error?: string}>}
+   * Arm or disarm the kill switch (operator token required in main).
+   * @param {'arm'|'disarm'} op
+   * @param {string} [reason]
    */
-  memory: (session, limit) => ipcRenderer.invoke('msb:memory', { session, limit }),
+  killswitchSet: (op, reason) =>
+    ipcRenderer.invoke('msb:killswitchSet', { op: str(op), reason: str(reason) }),
 
   /**
-   * Search the vault (semantic search via RAG).
+   * GET /memory/{session} - execution/evidence memory.
+   * @param {string} [session]
+   * @param {number} [limit]
+   */
+  memory: (session, limit) =>
+    ipcRenderer.invoke('msb:memory', { session: str(session), limit: int(limit) }),
+
+  /**
+   * POST /rag/search - vault knowledge search.
    * @param {string} query
    * @param {number} [limit]
-   * @returns {Promise<{results?: Array, error?: string}>}
    */
-  search: (query, limit) => ipcRenderer.invoke('msb:search', { query, limit }),
+  search: (query, limit) =>
+    ipcRenderer.invoke('msb:search', { query: str(query), limit: int(limit) }),
 });
+
+contextBridge.exposeInMainWorld('msb', api);
