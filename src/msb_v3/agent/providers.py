@@ -63,6 +63,31 @@ def _default_spine(injected: Any = None) -> Any:
 _MAX_OUTPUT_BYTES = 200_000
 _MAX_ARTIFACTS = 20
 
+# Env vars a subprocess worker is allowed to inherit. Passing {**os.environ}
+# hands every secret in the process (operator token, provider API keys, cloud
+# creds) to a HIGH-risk worker that runs unsandboxed — see the module safety
+# note. The allowlist is: enough to run node/the binary and reach local
+# Ollama, plus the two MSB_* markers the worker needs. Nothing else.
+_CHILD_ENV_PASSTHROUGH = (
+    "PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "SHELL", "USER", "LOGNAME",
+    "SSL_CERT_FILE", "NODE_EXTRA_CA_CERTS",
+    "OLLAMA_API_KEY", "OLLAMA_URL", "OLLAMA_HOST", "OLLAMA_MODEL",
+)
+
+
+def _child_env(worktree: str, session: str) -> Dict[str, str]:
+    """Scoped environment for a subprocess worker: allowlisted passthrough
+    vars that are actually set, plus the worktree/session markers. Never
+    leaks the parent's secrets."""
+    env: Dict[str, str] = {}
+    for key in _CHILD_ENV_PASSTHROUGH:
+        value = os.environ.get(key)
+        if value is not None:
+            env[key] = value
+    env["MSB_WORKTREE"] = worktree
+    env["MSB_SESSION"] = session
+    return env
+
 
 @dataclass(frozen=True)
 class ProviderSpec:
@@ -237,7 +262,7 @@ class CliAgentProvider(AgentProvider):
         slug = "".join(c if c.isalnum() or c in "-_." else "_" for c in self.spec.provider_id)
         worktree = Path(tempfile.mkdtemp(prefix=f"{slug}_"))
         cmd = list(self.spec.command) + [goal]
-        env = {**os.environ, "MSB_WORKTREE": str(worktree), "MSB_SESSION": session}
+        env = _child_env(str(worktree), session)
         started = time.perf_counter()
         # Observation sink (same contract as the Paseo adapter): each
         # non-empty stdout line is streamed into the unified task as an
@@ -255,6 +280,7 @@ class CliAgentProvider(AgentProvider):
                 stderr=asyncio.subprocess.STDOUT,
             )
         except FileNotFoundError:
+            shutil.rmtree(worktree, ignore_errors=True)
             return ProviderResult(ok=False, error=f"command not found: {cmd[0]}")
         chunks: List[str] = []
         total_len = 0
@@ -292,6 +318,7 @@ class CliAgentProvider(AgentProvider):
                 await asyncio.wait_for(proc.wait(), timeout=5.0)
             except Exception:  # noqa: BLE001 — best-effort cleanup
                 logger.warning("failed to kill timed-out provider %s", self.spec.provider_id)
+            shutil.rmtree(worktree, ignore_errors=True)
             return ProviderResult(
                 ok=False,
                 error=f"timed out after {self.spec.timeout_s}s",
@@ -305,6 +332,7 @@ class CliAgentProvider(AgentProvider):
             if p.is_file() and len(artifacts) < _MAX_ARTIFACTS:
                 artifacts[p.name] = {"bytes": p.stat().st_size}
         ok = proc.returncode == 0
+        shutil.rmtree(worktree, ignore_errors=True)
         return ProviderResult(
             ok=ok,
             output=text,
@@ -638,7 +666,7 @@ class DshAgentProvider(AgentProvider):
         worktree = Path(tempfile.mkdtemp(prefix=f"{slug}_"))
         cmd = list(self._resolve_command())
         cmd.extend(["--profile", settings.dsh_profile, goal])
-        env = {**os.environ, "MSB_WORKTREE": str(worktree), "MSB_SESSION": session}
+        env = _child_env(str(worktree), session)
         started = time.perf_counter()
         context = context or {}
         on_observation = context.get("observation_sink")
@@ -651,6 +679,7 @@ class DshAgentProvider(AgentProvider):
                 stderr=asyncio.subprocess.STDOUT,
             )
         except FileNotFoundError:
+            shutil.rmtree(worktree, ignore_errors=True)
             return ProviderResult(
                 ok=False,
                 error=f"command not found: {cmd[0]}",
@@ -698,6 +727,7 @@ class DshAgentProvider(AgentProvider):
                     "failed to kill timed-out provider %s",
                     self.spec.provider_id,
                 )
+            shutil.rmtree(worktree, ignore_errors=True)
             return ProviderResult(
                 ok=False,
                 error=f"timed out after {self.spec.timeout_s}s",
@@ -711,6 +741,7 @@ class DshAgentProvider(AgentProvider):
             if p.is_file() and len(artifacts) < _MAX_ARTIFACTS:
                 artifacts[p.name] = {"bytes": p.stat().st_size}
         ok = proc.returncode == 0
+        shutil.rmtree(worktree, ignore_errors=True)
         return ProviderResult(
             ok=ok,
             output=text,
