@@ -14,7 +14,6 @@ boundary — i.e., it cannot access capabilities it wasn't granted.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import Tuple
 
 import pytest
@@ -94,15 +93,23 @@ class TestCliProviderWorktreeIsolation:
 
     @pytest.mark.asyncio
     async def test_execute_sets_msb_worktree_env(self):
-        """The MSB_WORKTREE env var must be set to the worktree path."""
-        provider = _make_cli_provider(command=("sh", "-c", "echo $MSB_WORKTREE"))
+        """MSB_WORKTREE must point at a real isolated directory the subprocess
+        runs in. Checked from inside the subprocess (`test -d`) — the provider
+        reaps the worktree once execute() returns, so a post-hoc exists() check
+        would race the cleanup."""
+        provider = _make_cli_provider(
+            command=("sh", "-c", 'test -d "$MSB_WORKTREE" && printf "%s" "$MSB_WORKTREE"')
+        )
 
         result = await provider.execute("env check")
 
         assert result.ok, f"Provider failed: {result.error}"
         output = result.output.strip()
-        assert output and output != "", "MSB_WORKTREE env var not set"
-        assert Path(output).exists(), f"Worktree path does not exist: {output}"
+        assert output and output != "", "MSB_WORKTREE env var not set / not a directory"
+        assert output != os.getcwd(), "worktree must not be the host cwd"
+        assert "cli" in output.lower() or "msb_" in output, (
+            f"expected an isolated temp worktree path, got: {output}"
+        )
 
 
 # ---------------------------------------------------------------------------
