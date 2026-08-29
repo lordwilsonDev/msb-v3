@@ -1,0 +1,20 @@
+appId: com.blackswanlabz.msb-v3-desktop
+productName: MSB v3 Desktop
+directories:
+  output: dist
+files:
+  - src/**/*
+  - config/**/*
+mac:
+  target: dmg
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  entitlements: config/entitlements.mac.plist
+  entitlementsInherit: config/entitlements.mac.plist
+win:
+  target: nsis
+  icon: config/icon.ico
+linux:
+  target: AppImage
+  icon: config/icon.png
+  category: Development

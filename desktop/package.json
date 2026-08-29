@@ -1,0 +1,36 @@
+{
+  "name": "msb-v3-desktop",
+  "version": "0.4.0",
+  "description": "MSB v3 Desktop — sovereign AI operations cockpit",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "electron-is-dev": "^3.0.1"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^5.8.0",
+    "@types/node": "^22.0.0"
+  },
+  "build": {
+    "appId": "com.blackswanlabz.msb-v3-desktop",
+    "productName": "MSB v3 Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "config/**/*"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    }
+  }
+}
