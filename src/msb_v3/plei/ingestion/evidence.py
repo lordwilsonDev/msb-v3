@@ -60,10 +60,13 @@ def ingest_evidence(project_root: str | Path) -> EvidenceFacts:
             [r.name for r in reports], f"{audit_dir.relative_to(root)}"
         )
 
-    # Live server health probe
+    # Live server health probe — use MSB_BASE_URL when set (CI runs the
+    # server on a random port), fall back to the default :8766.
+    import os
+    base_url = os.environ.get("MSB_BASE_URL", "http://127.0.0.1:8766")
     try:
         import urllib.request
-        req = urllib.request.Request("http://127.0.0.1:8766/health")
+        req = urllib.request.Request(f"{base_url}/health")
         with urllib.request.urlopen(req, timeout=3) as resp:
             body = json.loads(resp.read())
             facts.live_health = Provenanced.observed(body, "GET :8766/health")

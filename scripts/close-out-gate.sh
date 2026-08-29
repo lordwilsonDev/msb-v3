@@ -68,6 +68,19 @@ else
   # cleanup never touches a developer-owned listener.
   source scripts/ci-runtime.sh
   ci_runtime_init
+  # Seed the CI server's research root (temp dir) with the same fixtures
+  # the repo root got above — the server serves from CI_SERVER_RESEARCH,
+  # not the repo's runtime/research/. CI_SERVER_RESEARCH is set by
+  # ci_runtime_init to $CI_RUNTIME_DIR/research. The seed script uses
+  # $ROOT/runtime/research/ as the destination, so we seed directly into
+  # CI_SERVER_RESEARCH by creating a wrapper: copy each slug directory.
+  for slug_dir in "$REPO/tests/fixtures/research_runtime"/*/; do
+    [ -d "$slug_dir" ] || continue
+    slug="$(basename "$slug_dir")"
+    mkdir -p "$CI_SERVER_RESEARCH/$slug"
+    cp -n "$slug_dir"* "$CI_SERVER_RESEARCH/$slug/" 2>/dev/null || true
+  done
+  echo "[close-out] seeded CI server research root: $(ls "$CI_SERVER_RESEARCH" 2>/dev/null | wc -l) slugs"
   if ci_runtime_start_server; then
     "$PY" -m pytest -q tests/ --cov=msb_v3 --cov-report=term --cov-fail-under=70 >/tmp/close-out-pytest.log 2>&1
     leg pytest $?
