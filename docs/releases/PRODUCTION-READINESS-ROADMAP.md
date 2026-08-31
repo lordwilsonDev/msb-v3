@@ -1,5 +1,7 @@
 # MSB v3 — Production-Readiness Roadmap
 
+<!-- verify-claims: prose-exempt: forward-looking backlog — names test/doc files planned for P4/P5/H1-H15 that do not exist yet by design -->
+
 **Blueprint:** PRODUCTION-CLOSURE-001 · **Baseline:** v0.4.2 (`7a1ceb9`)
 **Definition of production-ready:** every production-claimed capability is
 connected to the canonical path, protected by the authority boundary,
@@ -54,7 +56,7 @@ locked it against regression.
 
 ## P4 — Provider interchangeability proven  ·  SCOPED  ·  ~1–2 sessions
 
-`ProviderContract v1` (`agent/contract.py`) + conformance suite exist (190
+`ProviderContract v1` (`src/msb_v3/agent/contract.py`) + conformance suite exist (190
 tests). 10 providers registered (`local.slice`, `api.anthropic`,
 `api.deepseek`, `dsh.headless`, `cli.{claude,codex,opencode}`,
 `paseo.{claude,codex,opencode}`). Not yet proven: identical governed workflow
@@ -129,8 +131,9 @@ required for "production-ready *product*". Ordered by dependency, not number.
 
 ## Also-open (from the closer audit, not in the 20 phases)
 
-- **O4** — `codegraph` index is empty live (`codegraph_stats` = 0). Populate +
-  verify, or downgrade the "V8 resolved" claim. ~0.5 sess.
+- **O4** — ✅ resolved 2026-08-31. Was a repo-key mismatch (queried with an
+  absolute path; index is keyed `"msb-v3"`). Re-indexed (stale since Aug 15):
+  7114 nodes / 42232 edges. Capability EXECUTED + VERIFIED.
 - **Debt** — `MemoryStore` → `memory_fabric.store` migration (DeprecationWarning
   every request); `ruff format` the ~516-file drift or add `--check` to CI.
 - **O2 residue** — no *machine*-enforced "tag only on green" (the

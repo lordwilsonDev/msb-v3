@@ -150,3 +150,37 @@ Executed PRODUCTION-CLOSURE-001 P0–P2.
 
 Closure ≈ 80% of the O-series. Remaining: O3 (large), O4 (small), + Phases
 17/18 debt.
+
+---
+
+## Update — 2026-08-31 (cont.): P3 CLOSED, O4 resolved
+
+- **O3 / P3 — CLOSED** (`e60d783`). Decision: Option B (dual-governance,
+  `docs/governance/authority-model.md`). All 14 entry paths mapped to first
+  capability execution — zero UNKNOWN (7 ALLOW-through-authority, 4
+  CONSTRAINED with documented narrower authority, 3 READ-ONLY). Proof:
+  `tests/architecture/test_authority_boundary.py` (16 cases incl. an
+  adversarially-verified bypass scanner). No production code changed — the
+  boundary already held.
+- **O4 — resolved (was a false alarm).** `codegraph_stats` returned "0 nodes"
+  in the 8/30 audit because it was queried with the **absolute path** as the
+  repo key; the index is keyed `"msb-v3"`. Under the right key it returns a
+  full graph. The stored index was ~2 weeks stale (Aug 15) — **re-indexed
+  2026-08-31**: 1843→**7114 nodes**, 12020→**42232 edges**
+  (file/module/class/function/method; calls/contains/imports/inherits/
+  references). Canonical repo key: `"msb-v3"` (not a path). The capability is
+  EXECUTED + VERIFIED; the "V8 resolved" claim stands.
+
+### O-series: closed
+
+| Item | Status |
+|---|---|
+| O1 release-verify | ✅ CLOSED (green virgin-clone on v0.4.2) |
+| O2 release truth | ✅ substantially closed (v0.4.2 CI-verified) |
+| O3 authority boundary | ✅ CLOSED (Option B, 14-path proof, e60d783) |
+| O4 codegraph | ✅ resolved (key mismatch; re-indexed 7114 nodes) |
+| C1 DeepSeek billing | blocked-human (unchanged) |
+
+**All four O-items closed.** Remaining production-readiness work is P4
+(provider failure matrix + interchange), P5 (routing measurable), and
+Wave 2 H1–H15 — see `docs/releases/PRODUCTION-READINESS-ROADMAP.md`.
