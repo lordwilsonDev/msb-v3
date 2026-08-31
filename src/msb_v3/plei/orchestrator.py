@@ -39,7 +39,12 @@ def ingest_all(project_root: str | Path) -> ProjectTwin:
     graceful — a missing artifact yields UNKNOWN, not an exception.
     """
     root = Path(project_root).resolve()
-    source_tag = f"plei/ingest_all ({root.name})"
+    # A project's identity name is what it declares in pyproject.toml, not the
+    # directory it happens to be checked out into. A virgin-clone verify (or a
+    # portability staging copy) lives under /tmp/<random>/ — falling back to
+    # root.name there mis-identifies the project. pyproject name first, dir last.
+    project_name = _extract_pyproject_name(root) or root.name
+    source_tag = f"plei/ingest_all ({project_name})"
 
     # --- Ingest every layer ---
     repo = ingest_repository(root)
@@ -52,7 +57,7 @@ def ingest_all(project_root: str | Path) -> ProjectTwin:
 
     # --- Assemble ProjectIdentity ---
     identity = ProjectIdentity(
-        name=Provenanced.observed(root.name, source_tag),
+        name=Provenanced.observed(project_name, source_tag),
         version=Provenanced.observed(
             _extract_pyproject_version(root),
             f"{root / 'pyproject.toml'}",
@@ -360,6 +365,17 @@ def _extract_pyproject_version(root: Path) -> str:
     except Exception:
         pass
     return "unknown"
+
+
+def _extract_pyproject_name(root: Path) -> str | None:
+    """The declared project name (`[project].name`), or None if unreadable."""
+    try:
+        import tomllib
+        data = tomllib.loads((root / "pyproject.toml").read_text())
+        name = data.get("project", {}).get("name")
+        return str(name) if name else None
+    except Exception:
+        return None
 
 
 def _simulation_section(
