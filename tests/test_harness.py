@@ -10,6 +10,10 @@ import pytest
 
 BASE = os.environ.get("MSB_BASE_URL", "http://127.0.0.1:8766")
 
+# Server-integration: asserts against a running msb-v3 on MSB_BASE_URL / :8766.
+# Tier: integration (PRODUCTION-CLOSURE-001 P1) — not part of the hermetic core.
+pytestmark = pytest.mark.integration
+
 
 def _get(path: str, expected: int = 200) -> None:
     try:
