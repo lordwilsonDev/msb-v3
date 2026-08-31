@@ -1,7 +1,8 @@
 # Proposal — closing O1 (`release-verify` hermeticity)
 
-**Status:** DECISION NEEDED (Wilson) · **Blueprint:** PRODUCTION-CLOSURE-001 P1
-**Branch:** `closure/p1-release-verify-hermetic`
+**Status:** DECIDED — **Option A**, implemented on the branch (`ba310b5`).
+Locally validated; end-to-end CI validation is the first tag cut after merge (O2).
+**Blueprint:** PRODUCTION-CLOSURE-001 P1 · **Branch:** `closure/p1-release-verify-hermetic`
 
 ---
 
@@ -78,3 +79,21 @@ prerequisite for O2 (a tag is only as trustworthy as the gate behind it).
 
 Sequencing: land Option A → integration tests green under the scoped server
 → then O2 (reconcile version identity + cut a CI-verified tag on HEAD).
+
+---
+
+## Outcome (chosen 2026-08-31)
+
+Option A implemented — `scripts/verify-release.sh` + `.github/workflows/release-verify.yml`
+on branch `closure/p1-release-verify-hermetic` (`ba310b5`).
+
+**Local validation:** run-scoped msb-v3 booted healthy on a random port with the
+launchd `:8766` untouched; `pytest -m "integration or chaos"` (60 tests) ran
+green against the fresh empty-DB server — **59 passed, 1 graceful skip**
+(`test_harness` read-timeout under load), 0 failures. No integration test
+needed warm dev-server state.
+
+**Still to do:** merge the branch → cut the first tag (O2) → the
+`release-verify` workflow validates the whole flow end-to-end from a virgin
+clone. Until that tag runs, O1 is "implemented + locally validated", not
+"CI-proven".
