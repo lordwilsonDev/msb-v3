@@ -95,10 +95,14 @@ def test_release_verify_script_wired() -> None:
 def test_release_verify_ci_workflow_wired() -> None:
     """The auto-verification workflow must exist, trigger on tag pushes, run
     on the self-hosted runner (the suite's live tests need the :8766 dev
-    server), ensure that server, and call the verifier with the
+    server), provision that server, and call the verifier with the
     token-authenticated remote. If any of that regresses (workflow renamed,
     trigger dropped, step removed), every release silently skips its
-    verification — the dead-wiring failure mode this test exists to catch."""
+    verification — the dead-wiring failure mode this test exists to catch.
+
+    PRODUCTION-CLOSURE-001 P1 (Option A): server provisioning moved out of the
+    workflow YAML and into verify-release.sh, which boots a run-scoped msb-v3
+    via scripts/ci-runtime.sh. The wiring check follows it there."""
     wf = ROOT / ".github" / "workflows" / "release-verify.yml"
     assert wf.is_file(), f"release-verify.yml missing: {wf}"
     data = yaml.safe_load(wf.read_text(encoding="utf-8"))
@@ -112,14 +116,9 @@ def test_release_verify_ci_workflow_wired() -> None:
     assert "workflow_dispatch" in triggers, "workflow must be dispatchable for manual verification"
     job = data["jobs"]["verify"]
     assert job["runs-on"] == ["self-hosted", "macOS"], (
-        "verification must run on the sovereign box (live :8766 dev server)"
+        "verification must run on the sovereign box (macOS + Ollama/Qdrant)"
     )
     steps = job["steps"]
-    assert any(
-        "make server-start" in s.get("run", "")
-        or "MSB_BASE_URL" in s.get("run", "")
-        for s in steps
-    ), "workflow must declare and verify the live server endpoint"
     verifier = next(
         (s for s in steps if "verify-release.sh" in s.get("run", "")), None
     )
@@ -129,3 +128,9 @@ def test_release_verify_ci_workflow_wired() -> None:
         "verifier must clone via the token-authenticated remote (private repo)"
     )
     assert "VERIFY_TAG" in env, "verifier must receive the tag (push ref or dispatch input)"
+
+    # Option A: the server is provisioned by verify-release.sh, not the YAML.
+    vr = (ROOT / "scripts" / "verify-release.sh").read_text(encoding="utf-8")
+    assert "ci-runtime.sh" in vr and "ci_runtime_start_server" in vr, (
+        "verify-release.sh must boot a run-scoped server via scripts/ci-runtime.sh"
+    )
