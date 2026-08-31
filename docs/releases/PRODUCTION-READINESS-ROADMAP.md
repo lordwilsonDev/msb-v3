@@ -29,33 +29,28 @@ within a phase, sub-items are ordered.
 
 ---
 
-## P3 / O3 — Authority closure  ·  SCOPED  ·  ~2–3 sessions
+## P3 / O3 — Authority closure  ·  IN PROGRESS  ·  ~1.5–2 sessions left
 
-**Blocker:** the gateway is a best-effort audit ping on `agent/handle.py`,
-not an enforced doorway. `test_gateway_canonical.py` accepts the audit-only
-model. Full plan + 14-path matrix: `docs/releases/O3-AUTHORITY-CLOSURE-PLAN.md`.
+**Decision made (2026-08-31): Option B — dual-governance.** `ActionGate`
+(`SafeProvider` / `run_gated`) is the enforcement boundary; the Gateway stays
+best-effort compute-decision audit. Acceptance + revised invariant:
+`docs/governance/authority-model.md`.
 
-**Decision required first (Wilson):**
-- **Option A** — make the gateway the enforced doorway (raises on deny, real
-  capabilities, no `try/except` swallow); tighten the test.
-- **Option B** — formally accept dual-governance (gateway = audit, ActionGate
-  = enforcement); the criterion becomes "every entry path reaches ActionGate";
-  amend the blueprint criterion with rationale. *Lower risk, matches the code.*
+**Progress:**
+- [x] Acceptance decision written with rationale.
+- [x] Established `agent/handle.py::handle()` is the single gated executor;
+      3/14 entry paths confirmed ALLOW-through-authority (agent/handle,
+      in-process providers, openbot).
+- [ ] Map rows 4–14 (chat, mcp_bridge, cron, wake, hook, automation, factory,
+      flywheel, replay, internal tool-registry, `/v1`) — trace each to first
+      capability execution. Matrix: `O3-AUTHORITY-CLOSURE-PLAN.md`.
+- [ ] Close any path that executes a capability without reaching ActionGate.
+- [ ] `tests/architecture/test_authority_boundary.py` — one adversarial case
+      per path (`allowed`/`denied`/`approval-required`/`error`, never silent);
+      **blocking** CI job.
+- [ ] Fill the matrix; zero `UNKNOWN`.
 
-**Work (after the decision):**
-1. Map all 14 entry paths (agent/handle, chat, mcp_bridge, cron, wake, hook,
-   automation, factory, flywheel, direct provider, replay, internal
-   tool-registry import, background task, `/v1`) from entry to first
-   capability/tool execution.
-2. Close every path that reaches a capability without crossing authority.
-3. New `tests/architecture/test_authority_boundary.py` — one adversarial case
-   per path, asserting ALLOW-through-authority or DENY, never a third state.
-   Make it a **blocking** CI job.
-4. Fill the matrix; zero `UNKNOWN` is the bar.
-
-**Acceptance:** decision written; 14/14 paths ALLOW-or-DENY; adversarial suite
-green and blocking in CI; `test_gateway_canonical.py` no longer accepts an
-un-mediated path.
+**Acceptance:** all 5 boxes above checked.
 
 ---
 

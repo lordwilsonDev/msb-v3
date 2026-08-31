@@ -29,44 +29,44 @@ criterion:
 > control boundary. There can be no accidental third state — every path is
 > ALLOW-through-authority or DENY.
 
-## The decision (must be made first)
+## The decision — RESOLVED 2026-08-31: Option B
 
-**Option A — make the gateway the enforced doorway.** `gateway_route()` on the
-canonical path passes real `capabilities`, `requires_authorization` reflects
-the request, a denied/failed decision **raises** (no `try/except` swallow),
-and `test_gateway_canonical.py` is tightened to reject the audit-only model.
-
-**Option B — formally accept dual-governance.** Write the acceptance:
-gateway = compute-decision audit, ActionGate = capability enforcement, and
-the P3 criterion is met when **every entry path reaches ActionGate** (not
-necessarily the gateway). Amend the blueprint criterion with the rationale.
-Then the work is proving ActionGate coverage across all 14 paths, not
-re-routing through the gateway.
-
-Option B is lower-risk and matches how the code already works; Option A is
-what the blueprint literally asks for. Pick before touching code.
+**Option B — dual-governance, `ActionGate` is the enforcement boundary.**
+Acceptance + revised invariant: `docs/governance/authority-model.md`.
+The P3 criterion is now: *every entry path that can execute a capability
+routes it through `ActionGate` (`SafeProvider` / `run_gated`) first; no third
+state — `allowed` / `denied` / `approval-required` / `error`.*
 
 ## The 14-path adversarial matrix
 
-For each entry path: attempt a capability invocation and record ALLOW
-(traversed authority) / DENY / **UNKNOWN** (bug — blocks closure).
+Status vocab: **ALLOW-through-authority** (execution crosses ActionGate) /
+**DENY** / **READ-ONLY** (path cannot execute a capability; documented) /
+**UNKNOWN** (bug — blocks closure).
 
-| # | Entry path | Reaches ActionGate? | Reaches gateway? | Status |
+Established so far: **`agent/handle.py::handle()` is the single gated executor**
+— the only site that builds `SafeProvider(provider, gate) + execute_graph`
+(`handle.py:987,1010`). Any path that runs a capability either routes through
+`handle()` or must call `tools/runtime.py::run_gated` directly.
+
+| # | Entry path | Reaches ActionGate? | How | Status |
 |---|---|---|---|---|
-| 1 | `POST /agent/handle` (canonical) | yes (DAG → ActionGate) | audit ping only | needs Option A/B call |
-| 2 | `POST /chat` | ? | ? | UNKNOWN |
-| 3 | MCP bridge (`/mcp/proxy`) | ? | ? | UNKNOWN |
-| 4 | `cron` scheduled job | ? | ? | UNKNOWN |
-| 5 | `wake` resident loop | ? | ? | UNKNOWN |
-| 6 | `POST /hook/<id>` webhook | ? | ? | UNKNOWN |
-| 7 | `automation` brain (n8n/Make/GHL) | ? | ? | UNKNOWN |
-| 8 | `factory` pipeline | ? | ? | UNKNOWN |
-| 9 | `flywheel` turn | ? | ? | UNKNOWN |
-| 10 | provider call (direct `resolve_client`) | ? | ? | UNKNOWN |
-| 11 | `replay` engine | ? | ? | UNKNOWN |
-| 12 | internal import → direct tool-registry call | ? | ? | UNKNOWN |
-| 13 | background task (asyncio) | ? | ? | UNKNOWN |
-| 14 | `/v1` OpenAI-compat adapter | ? | ? | UNKNOWN |
+| 1 | `POST /agent/handle` | yes | `api/agent.py:81` → `handle()` → `SafeProvider`+`execute_graph` | **ALLOW-through-authority** |
+| 2 | provider call `local.slice` / `api.anthropic` / `api.deepseek` | yes | `agent/providers.py:195,489,553` delegate to `handle()` | **ALLOW-through-authority** |
+| 3 | `integrations/openbot` | yes | `integrations/openbot.py:110` → `handle()` | **ALLOW-through-authority** |
+| 4 | `POST /chat` | ? | trace `api/chat.py` / `harnesses/base.py` (gateway route present; ActionGate?) | UNKNOWN |
+| 5 | MCP bridge (`/mcp/proxy`) | ? | trace `api/mcp_bridge.py` — proxies to `/chat`, `/agent`, `/memory` | UNKNOWN |
+| 6 | `cron` scheduled job | ? | trace `msb_v3/cron` job runner | UNKNOWN |
+| 7 | `wake` resident loop | ? | trace `msb_v3/wake` cycle runner | UNKNOWN |
+| 8 | `POST /hook/<id>` webhook | ? | trace `api/hook.py` → wake inbox | UNKNOWN |
+| 9 | `automation` brain | ? | trace `msb_v3/automation` (external side effects — H5 also) | UNKNOWN |
+| 10 | `factory` pipeline | ? | trace `msb_v3/factory` (FROZEN) — build/test/review | UNKNOWN |
+| 11 | `flywheel` turn | ? | trace `msb_v3/flywheel` (behind Phase-0B brakes) | UNKNOWN |
+| 12 | `replay` engine | ? | `msb_v3/replay` (FROZEN) — replays recorded runs; likely READ-ONLY | UNKNOWN |
+| 13 | internal import → `tools` registry direct call | ? | grep for `run_gated` bypass — any caller of `tools/executors` not via `run_gated` | UNKNOWN |
+| 14 | `/v1` OpenAI-compat adapter | ? | trace `api/openai_compat.py` — proxies to `/chat`? | UNKNOWN |
+
+**Next-session task:** resolve rows 4–14 by reading each module's call graph to
+the first capability execution. 3/14 confirmed ALLOW-through-authority.
 
 ## Work items (after the decision)
 
