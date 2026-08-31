@@ -3,11 +3,14 @@
 #
 # Mirrors the v0.2.3 manual verification: fresh-clone the tag from the remote,
 # confirm the checkout is virgin (no tracked .env / runtime/), seed the
-# research-runtime fixtures, and run the FULL suite from the clone — failing
+# research-runtime fixtures, boot a run-scoped msb-v3 FROM THE CLONE
+# (scripts/ci-runtime.sh — random port, torn down on exit, never borrows a
+# hand-managed :8766), and run the `-m "not live"` suite against it — failing
 # on any test failure AND on any seeded-artifact skip ("requires seeded"),
 # which would mean the research-runtime seeding workstream regressed.
 #
 #   bash scripts/verify-release.sh [TAG]                # default: v<pyproject version>
+#   VERIFY_PYTEST_M='not live and not slow' bash scripts/verify-release.sh  # override selection
 #   VERIFY_REMOTE=git@... bash scripts/verify-release.sh  # override the remote
 #   EXPECTED_PASS=814 bash scripts/verify-release.sh    # strict pass-count assertion
 #   VERIFY_KEEP=1 bash scripts/verify-release.sh        # keep the clone for debugging
@@ -84,17 +87,45 @@ fi
 echo "[verify-release] version sources agree ($VERSION)"
 
 # Seed the research-runtime fixtures, exactly as CI / the portability gate do
-# before booting/judging a server.
+# before booting/judging a server. Seeds into $CLONE_DIR/runtime/research/.
 if ! (cd "$CLONE_DIR" && bash scripts/seed-research-runtime.sh); then
   echo "[verify-release] FAIL: research-runtime seeding failed in the clone" >&2
   exit 1
 fi
 
-# Full suite from the clone, pinned exactly like the portability gate.
+# --- Option A (PRODUCTION-CLOSURE-001 P1): the release gate owns its runtime.
+# Boot a run-scoped msb-v3 FROM THE CLONE on a random port — no dependency on a
+# hand-managed :8766 or on vars.MSB_BASE_URL. ci-runtime.sh only ever signals
+# the PID it started; the temp dir is torn down on exit.
+cd "$CLONE_DIR"
+export PYTHONPATH="$CLONE_DIR/src"
+export CI_SERVER_PYTHON="$PY"
+# shellcheck source=/dev/null
+source "$CLONE_DIR/scripts/ci-runtime.sh"
+ci_runtime_init
+# Point the scoped server at the seeded research root (ci_runtime_init defaults
+# it to an empty temp dir; the fixtures live under the clone).
+CI_SERVER_RESEARCH="$CLONE_DIR/runtime/research"
+export CI_SERVER_RESEARCH
+mkdir -p "$CI_SERVER_RESEARCH"
+if ! ci_runtime_start_server; then
+  echo "[verify-release] FAIL: scoped msb-v3 did not become healthy" >&2
+  exit 1
+fi
+# ci_runtime_start_server installs its own EXIT trap — compose it with ours so
+# both the scoped server AND the temp clone are cleaned up.
+trap 'ci_runtime_cleanup; cleanup' EXIT
+echo "[verify-release] scoped server healthy at $MSB_BASE_URL"
+
+# Suite from the clone against the scoped server. Default selection excludes the
+# `live` tier (real model generation — not a release gate; measured elsewhere).
+# Override with VERIFY_PYTEST_M.
+PYTEST_SELECT=( -m "${VERIFY_PYTEST_M:-not live}" )
 LOG="$(mktemp /tmp/msb-verify-suite-XXXXXX).log"
-echo "[verify-release] running the full suite from the clone (~40s; log: $LOG)..."
+echo "[verify-release] running the suite (${PYTEST_SELECT[*]}) from the clone; log: $LOG ..."
 set +e
-(cd "$CLONE_DIR" && MSB_HOME="$CLONE_DIR" MSB_REPO="$CLONE_DIR" bash scripts/test.sh) >"$LOG" 2>&1
+(cd "$CLONE_DIR" && MSB_HOME="$CLONE_DIR" MSB_REPO="$CLONE_DIR" MSB_BASE_URL="$MSB_BASE_URL" \
+  bash scripts/test.sh "${PYTEST_SELECT[@]}") >"$LOG" 2>&1
 SUITE_RC=$?
 set -e
 
