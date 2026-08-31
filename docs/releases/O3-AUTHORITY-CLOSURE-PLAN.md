@@ -48,25 +48,36 @@ Established so far: **`agent/handle.py::handle()` is the single gated executor**
 (`handle.py:987,1010`). Any path that runs a capability either routes through
 `handle()` or must call `tools/runtime.py::run_gated` directly.
 
-| # | Entry path | Reaches ActionGate? | How | Status |
-|---|---|---|---|---|
-| 1 | `POST /agent/handle` | yes | `api/agent.py:81` → `handle()` → `SafeProvider`+`execute_graph` | **ALLOW-through-authority** |
-| 2 | provider call `local.slice` / `api.anthropic` / `api.deepseek` | yes | `agent/providers.py:195,489,553` delegate to `handle()` | **ALLOW-through-authority** |
-| 3 | `integrations/openbot` | yes | `integrations/openbot.py:110` → `handle()` | **ALLOW-through-authority** |
-| 4 | `POST /chat` | ? | trace `api/chat.py` / `harnesses/base.py` (gateway route present; ActionGate?) | UNKNOWN |
-| 5 | MCP bridge (`/mcp/proxy`) | ? | trace `api/mcp_bridge.py` — proxies to `/chat`, `/agent`, `/memory` | UNKNOWN |
-| 6 | `cron` scheduled job | ? | trace `msb_v3/cron` job runner | UNKNOWN |
-| 7 | `wake` resident loop | ? | trace `msb_v3/wake` cycle runner | UNKNOWN |
-| 8 | `POST /hook/<id>` webhook | ? | trace `api/hook.py` → wake inbox | UNKNOWN |
-| 9 | `automation` brain | ? | trace `msb_v3/automation` (external side effects — H5 also) | UNKNOWN |
-| 10 | `factory` pipeline | ? | trace `msb_v3/factory` (FROZEN) — build/test/review | UNKNOWN |
-| 11 | `flywheel` turn | ? | trace `msb_v3/flywheel` (behind Phase-0B brakes) | UNKNOWN |
-| 12 | `replay` engine | ? | `msb_v3/replay` (FROZEN) — replays recorded runs; likely READ-ONLY | UNKNOWN |
-| 13 | internal import → `tools` registry direct call | ? | grep for `run_gated` bypass — any caller of `tools/executors` not via `run_gated` | UNKNOWN |
-| 14 | `/v1` OpenAI-compat adapter | ? | trace `api/openai_compat.py` — proxies to `/chat`? | UNKNOWN |
+The capability primitives are the functions in `src/msb_v3/tools/executors.py`
+(`vault_write`, `vault_delete`, `memory_store`, `codegraph_rename`, …). The
+**only** sanctioned way to reach them is `tools/runtime.py::_run_governed`
+(capability check → approval check → executor → audit, 5 verdicts:
+`allowed` / `denied` / `approval-required` / `unknown` / `error`). The other
+boundary is `agent/safety.py::SafeProvider` (DAG path — maps tool→capability,
+then gates). `test_authority_boundary.py` scans every `src/` module and fails
+if any but `tools/runtime.py` imports `executors`.
 
-**Next-session task:** resolve rows 4–14 by reading each module's call graph to
-the first capability execution. 3/14 confirmed ALLOW-through-authority.
+| # | Entry path | Class | Evidence |
+|---|---|---|---|
+| 1 | `POST /agent/handle` | **ALLOW** | `api/agent.py:81` → `handle()` → `SafeProvider(provider, gate)` + `execute_graph` (`handle.py:987,1010`) |
+| 2 | in-process providers (`local.slice` / `api.anthropic` / `api.deepseek`) | **ALLOW** | `agent/providers.py:195,489,553` delegate to `handle()` |
+| 3 | `integrations/openbot` | **ALLOW** | `openbot.py:110` → `handle()` |
+| 4 | `POST /chat` | **ALLOW** | `harnesses/base.py:117` `register_governed_tools(client, …)` → tools wrapped by `_run_governed` before `execute_tool_loop` |
+| 5 | `/v1` OpenAI-compat | **ALLOW** | `api/openai_compat.py:281` → `ChatHarness.execute` (= path 4) |
+| 6 | MCP bridge `/mcp/proxy` | **ALLOW** | tool calls → `mcp_bridge.py:51 _run_governed_proxy` → `tools.runtime._run_governed`; `match` cases proxy to `/chat` (path 4) or read-only `/status` `/metrics` `/memory`-GET |
+| 7 | `POST /hook/<id>` webhook | **READ-ONLY** | `api/hook.py` → `WakeStore` enqueue only; nothing executes at receive |
+| 8 | `wake` resident loop | **CONSTRAINED** | `wake/runner.py` turn = bare `DeepSeekClient.chat` (no tool loop, no executor access); automation-plan handoff → path 9's gate |
+| 9 | `automation` brain | **CONSTRAINED** | `automation/brain.py` — dry-run by default, creation requires explicit approval, `BudgetLedger` spend cap, durable `Manifest` (status ∈ created/dry_run/blocked/failed) |
+| 10 | `cron` scheduled job | **CONSTRAINED** | `cron/actions.py` — fixed `ACTIONS` registry (~7 ops actions, no arbitrary tools); scheduler killswitch/timeout/retry; `action_http_call` host-allowlisted; `requires_approval` jobs |
+| 11 | `factory` pipeline | **CONSTRAINED** | operator-auth entry (`/factory`), FROZEN; CLI subprocess exec (`builders.py:124`) is the **C5 accepted-risk** (written waiver 2026-08-26) |
+| 12 | `flywheel` turn | **ALLOW** (approval brake) | `flywheel/cli.py` — turn parks at `WAITING_APPROVAL` at build/combine/record until an operator approves (Phase-0B brakes) |
+| 13 | `replay` engine | **READ-ONLY** | `replay/engine.py` — `replay_state/decision/task` reconstruct from the audit chain + event log; never re-executes |
+| 14 | internal import → tool-registry direct | **ALLOW** | `_run_governed` **is** the registry entry point; `test_authority_boundary.py::test_no_module_reaches_executors_except_the_gate` proves no bypass |
+
+**Zero `UNKNOWN`.** Every path is ALLOW-through-authority, CONSTRAINED (with a
+documented narrower authority), or READ-ONLY. Enforced by
+`tests/architecture/test_authority_boundary.py` (16 cases; the bypass scanner
+is adversarially verified to fail on an injected direct-executor import).
 
 ## Work items (after the decision)
 

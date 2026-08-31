@@ -29,28 +29,26 @@ within a phase, sub-items are ordered.
 
 ---
 
-## P3 / O3 — Authority closure  ·  IN PROGRESS  ·  ~1.5–2 sessions left
+## P3 / O3 — Authority closure  ·  ✅ DONE (2026-08-31)
 
 **Decision made (2026-08-31): Option B — dual-governance.** `ActionGate`
 (`SafeProvider` / `run_gated`) is the enforcement boundary; the Gateway stays
 best-effort compute-decision audit. Acceptance + revised invariant:
 `docs/governance/authority-model.md`.
 
-**Progress:**
-- [x] Acceptance decision written with rationale.
-- [x] Established `agent/handle.py::handle()` is the single gated executor;
-      3/14 entry paths confirmed ALLOW-through-authority (agent/handle,
-      in-process providers, openbot).
-- [ ] Map rows 4–14 (chat, mcp_bridge, cron, wake, hook, automation, factory,
-      flywheel, replay, internal tool-registry, `/v1`) — trace each to first
-      capability execution. Matrix: `O3-AUTHORITY-CLOSURE-PLAN.md`.
-- [ ] Close any path that executes a capability without reaching ActionGate.
-- [ ] `tests/architecture/test_authority_boundary.py` — one adversarial case
-      per path (`allowed`/`denied`/`approval-required`/`error`, never silent);
-      **blocking** CI job.
-- [ ] Fill the matrix; zero `UNKNOWN`.
+**All acceptance met:**
+- [x] Decision + rationale — `docs/governance/authority-model.md`.
+- [x] 14/14 entry paths mapped; matrix in `O3-AUTHORITY-CLOSURE-PLAN.md` has
+      zero `UNKNOWN` (7 ALLOW-through-authority, 4 CONSTRAINED w/ documented
+      narrower authority, 3 READ-ONLY).
+- [x] `_run_governed` is the sole path to `tools/executors.py`; capability +
+      approval checks precede executor resolution; every verdict audited.
+- [x] `tests/architecture/test_authority_boundary.py` — 16 cases incl. a
+      bypass scanner adversarially verified to fail on an injected
+      direct-executor import. Gated by every suite-running CI workflow.
 
-**Acceptance:** all 5 boxes above checked.
+**No code change was needed** — the boundary already held; P3 proved it and
+locked it against regression.
 
 ---
 

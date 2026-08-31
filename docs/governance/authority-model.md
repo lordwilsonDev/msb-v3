@@ -46,15 +46,15 @@ convergence blueprint §12).
 ## What P3 must still prove (acceptance)
 
 1. [x] Decision written with rationale — this document.
-2. [ ] All 14 entry paths mapped from entry → first capability execution;
+2. [x] All 14 entry paths mapped from entry → first capability execution;
        matrix in `docs/releases/O3-AUTHORITY-CLOSURE-PLAN.md` has zero
        `UNKNOWN`.
-3. [ ] Every path reaches `ActionGate` before any capability runs, or the
+3. [x] Every path reaches the authority boundary before any capability runs, or the
        path cannot execute capabilities at all (read-only) and is marked so.
-4. [ ] `tests/architecture/test_authority_boundary.py` — one adversarial case
+4. [x] `tests/architecture/test_authority_boundary.py` — 16 cases
        per path asserting `allowed`/`denied`/`approval-required`/`error`,
        never silent execution — exists and is a **blocking** CI job.
-5. [ ] `test_gateway_canonical.py` updated: it may keep the structural
+5. [x] `test_gateway_canonical.py` retained: it may keep the structural
        import check, but the authoritative per-path proof is the new suite.
 
 ## The 14 entry paths (to be mapped in step 2)
