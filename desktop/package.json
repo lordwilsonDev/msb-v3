@@ -1,6 +1,6 @@
 {
   "name": "msb-v3-desktop",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "description": "MSB v3 Desktop — sovereign AI operations cockpit",
   "main": "src/main/index.js",
   "scripts": {

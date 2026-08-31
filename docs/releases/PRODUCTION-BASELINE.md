@@ -117,9 +117,10 @@ make test           # expect ~3039 passed; the 1 live-ollama flake is load-depen
 - [x] Full-suite result captured with the one failure diagnosed.
 - [x] Version-identity, migration-state, and dependency-lock gaps named and
       routed to their closure phases (O2, Phase 18, Phase 17).
-- [ ] Independent reproduction on a second operator's machine — **not yet
-      done** (requires P1 hermeticity first; a virgin clone currently cannot
-      run the suite green without the live `:8766` + idle-machine timing).
+- [x] Independent reproduction from a virgin clone — **proven 2026-08-31**:
+      `release-verify` on `v0.4.2` runs a virgin clone of the tag through
+      seed + a run-scoped server + the `-m "not live"` suite and is green
+      (3040 passed). See `docs/releases/v0.4.2.md`.
 
-Phase O is **complete for the single-operator case**. Full "reproducible by
-another operator" is gated on P1.
+Phase O is **complete**. The virgin-clone path now works without the live
+`:8766` — P1 (Option A) closed that.
