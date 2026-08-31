@@ -106,6 +106,13 @@ against a task set with recorded metrics.
 
 ## Hardening — Wave 2 (P6–P20)  ·  OPEN  ·  ~4–8 sessions total
 
+> **Audited 2026-08-31 — see `docs/releases/HARDENING-AUDIT.md`.** Verified
+> state: 3 DONE (H3 security core, H5 automation, H6 cron/wake — `make
+> hygiene` 12/12 green), 10 PARTIAL (mostly formalization: docs/wiring on
+> evidence that already exists), 2 MISSING (H4 secrets broker, H12
+> local-data feature). Not "~4–8 sessions from zero" — closer to ~3–5 for
+> the PARTIALs + 2 for H12.
+
 These do **not** block a "production-ready canonical runtime" tag but are
 required for "production-ready *product*". Ordered by dependency, not number.
 
