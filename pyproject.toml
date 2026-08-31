@@ -77,6 +77,18 @@ where = ["src"]
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests", "src/personal_intelligence/tests"]
+# Test tiers (PRODUCTION-CLOSURE-001 P1). Unmarked tests are the hermetic
+# core: no live model, no fault-injection subprocess, no assumption that a
+# dev server is already listening. The release gate runs the core; the tiers
+# below are timing-sensitive and run separately.
+#   live        — hits a real Ollama / model endpoint
+#   chaos       — spawns the fault-injection proxy subprocess
+#   integration — expects an msb-v3 server already reachable (MSB_BASE_URL / :8766)
+markers = [
+    "live: hits a real Ollama / model endpoint; skip-on-timeout, not a regression",
+    "chaos: spawns the h08 fault-injection proxy subprocess",
+    "integration: expects an msb-v3 server already reachable",
+]
 
 [project.scripts]
 msb-v3 = "msb_v3.__main__:run"

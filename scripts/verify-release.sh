@@ -101,10 +101,18 @@ set -e
 SUMMARY="$(grep -E '^[0-9]+ (passed|failed)' "$LOG" | tail -1 || true)"
 echo "[verify-release] suite summary: ${SUMMARY:-<no summary found>}"
 
-[ "$SUITE_RC" -eq 0 ] || { echo "[verify-release] FAIL: suite exited non-zero ($SUITE_RC) — see $LOG" >&2; exit 1; }
+# Surface the failing test IDs into THIS log. The full pytest output only
+# exists in $LOG on the runner's disk; without this, a red release-verify in
+# GitHub shows a count and nothing else (the 2026-08 debugging trap).
+_emit_failures() {
+  echo "[verify-release] failing tests (from $LOG):" >&2
+  { grep -E '^(FAILED|ERROR) ' "$LOG" || grep -A40 'short test summary info' "$LOG" || true; } | sed 's/^/[verify-release]   /' >&2
+}
+
+[ "$SUITE_RC" -eq 0 ] || { echo "[verify-release] FAIL: suite exited non-zero ($SUITE_RC) — see $LOG" >&2; _emit_failures; exit 1; }
 [ -n "$SUMMARY" ] || { echo "[verify-release] FAIL: no suite summary line found — see $LOG" >&2; exit 1; }
 case "$SUMMARY" in
-  *failed*) echo "[verify-release] FAIL: test failures in the virgin-clone run — see $LOG" >&2; exit 1 ;;
+  *failed*) echo "[verify-release] FAIL: test failures in the virgin-clone run — see $LOG" >&2; _emit_failures; exit 1 ;;
 esac
 if grep -q 'requires seeded' "$LOG"; then
   echo "[verify-release] FAIL: a seeded-artifact test SKIPPED — research-runtime seeding regressed:" >&2

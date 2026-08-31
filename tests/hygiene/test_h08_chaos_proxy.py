@@ -25,6 +25,10 @@ from pathlib import Path
 
 import pytest
 
+# Every test here spawns the fault-injection proxy as a subprocess — timing
+# sensitive, gated out of the hermetic release core (PRODUCTION-CLOSURE-001 P1).
+pytestmark = pytest.mark.chaos
+
 PROXY = Path(__file__).resolve().parents[2] / "scripts" / "hygiene" / "h08_chaos_proxy.py"
 
 BIG_BODY = "X" * 4096
@@ -111,15 +115,35 @@ def _start_proxy(fault: str, port: int, upstream_port: int, **kw) -> subprocess.
     return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 
-def _wait_port(port: int, timeout_s: float = 10.0) -> None:
+def _wait_port(
+    port: int, timeout_s: float = 30.0, proc: subprocess.Popen | None = None
+) -> None:
+    """Block until ``port`` accepts a connection.
+
+    ``timeout_s`` is generous (30s): CI hosts that also run the live stack can
+    take several seconds just to fork a fresh Python interpreter, and a tight
+    budget here was the dominant ``release-verify`` flake. If ``proc`` is
+    given and the child has already exited, fail immediately with its captured
+    output instead of waiting out the whole deadline.
+    """
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
+        if proc is not None and proc.poll() is not None:
+            out = ""
+            try:
+                out = (proc.stdout.read() if proc.stdout else "") or ""
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"proxy subprocess exited early (rc={proc.returncode}) before "
+                f":{port} came up\n--- child output ---\n{out}"
+            )
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.5):
                 return
         except OSError:
             time.sleep(0.05)
-    raise TimeoutError(f"proxy on :{port} never came up")
+    raise TimeoutError(f"proxy on :{port} never came up within {timeout_s:.0f}s")
 
 
 def _proxy_request(port: int, timeout_s: float = 5.0) -> bytes:
@@ -143,7 +167,7 @@ def _run_proxy_scenario(fault: str, upstream: FakeUpstream, **kw) -> tuple[bytes
     port = _free_port()
     proc = _start_proxy(fault, port, upstream.port, **kw)
     try:
-        _wait_port(port)
+        _wait_port(port, proc=proc)
         data = _proxy_request(port)
     finally:
         proc.kill()
@@ -163,7 +187,7 @@ def test_latency_delays_response(upstream: FakeUpstream) -> None:
     port = _free_port()
     proc = _start_proxy("latency", port, upstream.port, ms=delay_ms)
     try:
-        _wait_port(port)
+        _wait_port(port, proc=proc)
         started = time.monotonic()
         data = _proxy_request(port, timeout_s=5.0)
         elapsed_ms = (time.monotonic() - started) * 1000
@@ -202,7 +226,7 @@ def test_truncate_of_small_response_is_observable(upstream: FakeUpstream) -> Non
     port = _free_port()
     proc = _start_proxy("truncate", port, upstream.port, truncate_bytes=cut)
     try:
-        _wait_port(port)
+        _wait_port(port, proc=proc)
         with socket.create_connection(("127.0.0.1", port), timeout=5.0) as sock:
             sock.sendall(b"GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n")
             sock.settimeout(5.0)
