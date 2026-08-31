@@ -33,7 +33,7 @@ log() { echo "[ops-audit] $(date '+%F %T') $*" | tee -a "$LOG"; }
 fails=0
 step() { echo; echo "== $1 =="; }
 
-SUITE=pass LEDGER=pass LICENSE=pass
+SUITE=pass LEDGER=pass LICENSE=pass SCHEMA=pass
 step "ops-script regression suite (bash 3.2, scratch dirs)"
 if [ "${MSB_AUDIT_SKIP_SUITE:-0}" = "1" ]; then
   SUITE=skipped
@@ -48,11 +48,15 @@ bash "$REPO/scripts/verify-pull-signatures.sh" || { fails=$((fails + 1)); LEDGER
 step "source license"
 bash "$REPO/scripts/verify-license.sh" || { fails=$((fails + 1)); LICENSE=fail; log "FAIL: source license"; }
 
+step "db schema versioning (H9 — every data/*.db stamped)"
+"${MSB_PYTHON:-python3}" "$REPO/scripts/stamp-schemas.py" --check \
+  || { fails=$((fails + 1)); SCHEMA=fail; log "FAIL: unstamped SQLite DB (run scripts/stamp-schemas.py)"; }
+
 step "ops status (informational)"
 bash "$REPO/scripts/ops-status.sh" >/dev/null 2>&1 || true
 
 # --- self-publish the audit report (evidence lives in the repo) --------------
-SUMMARY="suite=$SUITE ledger=$LEDGER license=$LICENSE"
+SUMMARY="suite=$SUITE ledger=$LEDGER license=$LICENSE schema=$SCHEMA"
 if [ "${MSB_PUBLISH_AUDIT:-0}" = "1" ]; then
   step "publish audit report"
   if MSB_AUDIT_SUMMARY="$SUMMARY" bash "$REPO/scripts/publish-audit.sh"; then

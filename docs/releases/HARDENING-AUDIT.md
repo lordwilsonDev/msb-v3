@@ -168,19 +168,27 @@ also unfinished (DeprecationWarning every request).
 
 ---
 
-## H9 · DB migration · **PARTIAL — real wiring gap**
+## H9 · DB migration · **DONE (2026-08-31)**
 
 **Built:** `db/migrations.py` — `Migration(version, sql)`, `ensure_schema()`
 applies atomically with rollback, `_schema_version` table, `get_schema_version`,
 `list_versions`. 13 tests.
 
-**Gap (from PRODUCTION-BASELINE.md):** none of the 26 live SQLite DBs is
-stamped — all report `user_version=0` with no `_schema_version` table, because
-no store's init calls `ensure_schema`. The framework shipped; it isn't wired.
+**Closed:** `db/migrations.py` gained `BASELINE` (a no-op-on-existing-data v1
+marker migration) + `stamp_all_db(data_dir)` — a directory walk (so new DBs
+are covered automatically, no hand-maintained registry) that applies
+`BASELINE` + any `REGISTRY` entries to anything below v1, best-effort per DB.
+`scripts/stamp-schemas.py` (`--check` = drift report / exit 1; no-arg =
+stamp). **All 25 live DBs stamped 0 → 1** (`data/msb_v3.db` 36 278 message
+rows, `uac/audit_chain.db` 51 108 audit rows — all intact; only the
+`_schema_version` + `_schema_baseline` tables added). `--check` is wired into
+`scripts/ops-audit.sh` (Sunday cascade). `tests/db/test_schema_stamping.py` —
+7 cases incl. a live-`data/` regression lock that fails if any new store
+leaves a DB unstamped. Idempotent + does-not-touch-existing-data proven.
 
-**To close:** call `ensure_schema` in each store's init with a v1 baseline
-migration that stamps the current schema; a test asserting every
-`data/**/*.db` has `_schema_version >= 1`.
+**Residual:** real v2+ migrations are still per-subsystem (add to `REGISTRY`
+when a schema actually changes) — that is the correct place for them; the H9
+gap was the missing *floor*, now set.
 
 ---
 
@@ -282,7 +290,7 @@ the 8/27 UNKNOWNs.
 | H6 | Cron / wake reliability | **DONE** |
 | H7 | Backup / restore | **DONE** mechanism / PARTIAL RPO-RTO |
 | H8 | Memory authority | PARTIAL |
-| H9 | DB migration | PARTIAL (framework unwired to 26 DBs) |
+| H9 | DB migration | **DONE** — 25 DBs stamped, drift check + regression lock |
 | H10 | Supply chain | PARTIAL (locks+CVE yes, SBOM+license no) |
 | H11 | Resource governance | PARTIAL |
 | H12 | Local data analysis | MISSING (new feature) |
@@ -290,7 +298,7 @@ the 8/27 UNKNOWNs.
 | H14 | Operator runbook | PARTIAL (organizational) |
 | H15 | Acceptance matrix | PARTIAL |
 
-**3 DONE, 10 PARTIAL, 2 MISSING.** The PARTIALs are mostly a few hours each of
+**4 DONE, 9 PARTIAL, 2 MISSING.** The PARTIALs are mostly a few hours each of
 formalization/wiring; H4-broker and H12 are the real builds. Ordered next
 steps: **H9** (wire migrations — concrete, bounded) → **H15 + H3-doc + H7
 RPO/RTO + H14** (documentation sweep, evidence already exists) → **H1 trace

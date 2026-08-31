@@ -126,6 +126,14 @@ def ensure_schema(
             final,
             len(pending),
         )
+        # Fold the WAL back into the main .db file so the version is visible to
+        # a plain file copy (portability gate, ops/backup). Best-effort: a
+        # live reader on the DB caps it at PASSIVE, which is enough for the
+        # small _schema_version write.
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.OperationalError:
+            pass
         return final
     finally:
         conn.close()
@@ -154,3 +162,44 @@ def list_versions(db_dir: Path | str) -> dict[str, int]:
         rel = str(db_file.relative_to(db_dir))
         versions[rel] = get_schema_version(db_file)
     return versions
+
+
+# The baseline migration every tracked DB gets: it does not touch any existing
+# table — it only records that schema versioning was adopted, so v2+ migrations
+# have a floor to build on. Idempotent (IF NOT EXISTS) and safe on a populated
+# database.
+BASELINE = Migration(
+    1,
+    "CREATE TABLE IF NOT EXISTS _schema_baseline "
+    "(adopted_at TEXT NOT NULL DEFAULT (datetime('now')))",
+)
+
+# Per-DB migration lists. A DB not listed here still gets BASELINE via
+# stamp_all_db's directory walk; add an entry only when a subsystem needs a
+# real v2+ migration.
+REGISTRY: dict[str, Sequence[Migration]] = {}
+
+
+def stamp_all_db(db_dir: Path | str) -> dict[str, int]:
+    """Ensure every ``*.db`` under ``db_dir`` is schema-versioned.
+
+    Walks the directory (so new databases are covered automatically), applies
+    ``BASELINE`` to anything below v1, plus any subsystem-specific migrations
+    from ``REGISTRY`` (keyed by path relative to ``db_dir``). Best-effort
+    per-DB: a locked or corrupt file is logged and skipped, never fatal.
+    Returns ``{relative_path: final_version}``.
+    """
+    db_dir = Path(db_dir)
+    out: dict[str, int] = {}
+    if not db_dir.exists():
+        return out
+    for db_file in sorted(db_dir.rglob("*.db")):
+        rel = str(db_file.relative_to(db_dir))
+        migrations = list(dict.fromkeys((BASELINE, *REGISTRY.get(rel, ()))))
+        migrations.sort(key=lambda m: m.version)
+        try:
+            out[rel] = ensure_schema(db_file, rel, migrations)
+        except Exception as exc:  # noqa: BLE001 — one bad DB must not stop the sweep
+            logger.error("stamp_all_db: %s failed: %s", rel, exc)
+            out[rel] = -1
+    return out

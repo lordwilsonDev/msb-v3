@@ -75,10 +75,12 @@ No unexpected skips in the local run.
 **SQLite — 26 databases under `data/`.** Every one reports
 `PRAGMA user_version = 0` and none has a `schema_version` table.
 
-> **Migration-drift finding (feeds Phase 18):** `src/msb_v3/db/migrations.py`
-> (the C3 "DB schema versioning" deliverable, 13 tests) exists, but no live
-> database is stamped. The migration *system* is present; migration *state*
-> is not applied. Phase 18 must decide: adopt-and-stamp, or scope the claim.
+> **Migration-drift finding — RESOLVED 2026-08-31 (H9).** `db/migrations.py`
+> gained `stamp_all_db()` + `scripts/stamp-schemas.py`; all 25 live DBs are
+> stamped at schema v1 (data intact — only `_schema_version` /
+> `_schema_baseline` tables added). Drift check wired into `ops-audit.sh`;
+> `tests/db/test_schema_stamping.py` is the regression lock. Real v2+
+> migrations remain per-subsystem via `migrations.REGISTRY`.
 
 Largest: `data/memory_fabric/memory.db` (31 MB), `data/runtime/tasks.db`
 (31 MB), `data/runtime/wake.db` (24 MB), `data/uac/audit_chain.db` (17 MB),
@@ -90,9 +92,12 @@ chunks) and `tenant_live_test_1787679462` (a stray test collection —
 
 ## Dependencies
 
-- No lockfile in the tree (`requirements*.txt` / `uv.lock` / `poetry.lock`
-  absent). Runtime + dev deps declared in `pyproject.toml` only
-  (`[project.dependencies]`, `[project.optional-dependencies].dev`).
+- **Correction (2026-08-31):** the tree *does* carry
+  `requirements-runtime.lock` + `requirements-dev.lock` (regenerated
+  2026-08-25), and `ci.yml` has a **blocking** lock-drift check +
+  `pip-audit --strict` CVE gate. The original "no lockfile" note here was
+  wrong. Remaining Phase-17 gaps: SBOM, license review, reproducible-install
+  proof (see `HARDENING-AUDIT.md` H10).
 - `pip-audit` on the host env is dominated by conda-base noise
   (`conda`, `libmambapy`, … "not found on PyPI"); a clean audit needs a
   locked runtime environment. Feeds Phase 17.
