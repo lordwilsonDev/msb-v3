@@ -120,7 +120,10 @@ echo "[verify-release] scoped server healthy at $MSB_BASE_URL"
 # Suite from the clone against the scoped server. Default selection excludes the
 # `live` tier (real model generation — not a release gate; measured elsewhere).
 # Override with VERIFY_PYTEST_M.
-PYTEST_SELECT=( -m "${VERIFY_PYTEST_M:-not live}" )
+# -rfE: name failures AND errors in the short summary, so _emit_failures can
+# surface them into the workflow log (scripts/test.sh defaults to -rs = skips
+# only, which hid the real failing tests through v0.3.2 / v0.4.0 / v0.4.1).
+PYTEST_SELECT=( -m "${VERIFY_PYTEST_M:-not live}" -rfE )
 LOG="$(mktemp /tmp/msb-verify-suite-XXXXXX).log"
 echo "[verify-release] running the suite (${PYTEST_SELECT[*]}) from the clone; log: $LOG ..."
 set +e
@@ -137,7 +140,13 @@ echo "[verify-release] suite summary: ${SUMMARY:-<no summary found>}"
 # GitHub shows a count and nothing else (the 2026-08 debugging trap).
 _emit_failures() {
   echo "[verify-release] failing tests (from $LOG):" >&2
-  { grep -E '^(FAILED|ERROR) ' "$LOG" || grep -A40 'short test summary info' "$LOG" || true; } | sed 's/^/[verify-release]   /' >&2
+  {
+    grep -E '^(FAILED|ERROR) ' "$LOG" \
+      || grep -E '^_{5,} .+ _{5,}$' "$LOG" \
+      || grep -A60 'short test summary info' "$LOG" \
+      || tail -60 "$LOG" \
+      || true
+  } | sed 's/^/[verify-release]   /' >&2
 }
 
 [ "$SUITE_RC" -eq 0 ] || { echo "[verify-release] FAIL: suite exited non-zero ($SUITE_RC) — see $LOG" >&2; _emit_failures; exit 1; }
