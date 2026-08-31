@@ -85,3 +85,6 @@ msb-replica/
 desktop/node_modules/
 desktop/dist/
 desktop/smoke.png
+
+# S-AOS Guardian local state (lock, fingerprint cache, failure budget, dry-run output)
+var/guardian/

@@ -1,0 +1,39 @@
+# S-AOS Guardian — runtime config (v1, OBSERVE-only)
+# Spec: ~/Documents/Vault/30_Architecture/S-AOS-Guardian/04_Guardian-Runtime-Specification.md
+
+[guardian]
+mode = "OBSERVE"                 # v1 only supports OBSERVE; run.py asserts this
+timebox_seconds = 300           # internal deadline (doc 1 §9)
+repo_path = "."                 # resolved relative to CWD at launch
+
+[fingerprint]
+# Paths matching these globs are dropped from the working-tree dirtiness check
+# AND from start_state_hash (doc 4 §12.3 decision: ignorable-paths list).
+# Anything still dirty after filtering -> ESCALATE / AMBIGUOUS_WORKING_TREE (doc 1 §12).
+ignorable_globs = [
+  "scratch/",
+  ".plei/",
+  "artifacts/hygiene/",
+  "audit/",
+  "*.archive.md",
+]
+# Never read these, ever (doc 2 §25). Presence is noted; contents are not.
+secret_paths = [".env", ".env.*"]
+
+[resources]
+disk_free_pct_min = 10          # advisory in v1 (reading may be non-authoritative, doc 1 §4)
+load_1m_max = 16.0             # advisory
+
+[reasoning]
+substrate = "claude_cli"       # "claude_cli" | "sdk" (v1 = claude_cli, doc 4 §12.1)
+claude_bin = "claude"
+model = ""                     # "" -> let the CLI default; pin later for K3 stability
+max_retries = 1
+# System prompt = this file's text + the OBSERVE rider baked into reasoning.py
+system_prompt_path = "~/Documents/Vault/30_Architecture/S-AOS-Guardian/01_Autonomous-Guardian-Protocol.md"
+
+[ledger]
+# Where run records / KPI / escalations are written (doc 4 §7). Decision: Obsidian vault.
+vault_dir = "~/Documents/Vault/30_Architecture/S-AOS-Guardian"
+inbox_dir = "~/Documents/Vault/00_Inbox"
+local_state_dir = "var/guardian"   # lock.json, last_fingerprint.json, failure_budget.json (gitignored)
