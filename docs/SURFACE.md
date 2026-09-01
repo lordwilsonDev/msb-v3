@@ -108,6 +108,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/uac` | FROZEN | Audit chain + ledger (P4 extraction) + anchor/notary — release-declared frozen; `msb_ledger` standalone. |
 | `msb_v3/vesta` | LOAD-BEARING | Vesta trust perimeter — approval contracts adversarially tested (13 bypass invariants). |
 | `msb_v3/wrongness` | OPTIONAL | Wrongness Engine MVP — deterministic claim-falsification layer (7 passes, three-tier escalation, by-hand 21-corpus replay, scorecard gate); off the runtime request path, manually invoked (`python -m msb_v3.wrongness`). |
+| `msb_v3/steward` | OPTIONAL | Canonical project-state layer (Steward blueprint Layer 02) — schema v1 + deterministic validator + CLI (`validate`/`health`); enforces §53 health-vector and §54 UNKNOWN!=GREEN (green must carry evidence); the state file lives in the vault (`30_Architecture/AIL-MoIE-Project-Steward/state/`). |
 
 ## Top-level packages
 
