@@ -16,6 +16,14 @@ Commands:
         Run a claim and render the human read-path (M7): findings grouped
         by tier, evidence links (M6), and an investigation path for every
         CHECK finding.  Write the markdown when --out is given.
+    run-all <claims-dir> [--repo ROOT] [--out DIR]
+        Run every claim JSON in a directory (underscore-prefixed files
+        skipped — the _TEMPLATE.json convention) and print a verdict table.
+        With --out, write a per-claim markdown report into DIR (M8: the
+        vault claims home is run in one command).
+    validate <claim.json>
+        Parse a claim against the schema and report validity — the
+        authoring hook that catches malformed claims before they run.
 """
 
 from __future__ import annotations
@@ -84,6 +92,50 @@ def cmd_replay(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run_all(args: argparse.Namespace) -> int:
+    import json as _json
+
+    base = Path(args.claims_dir)
+    if not base.is_dir():
+        print(f"error: claims dir {args.claims_dir!r} not found")
+        return 1
+    files = sorted(f for f in base.glob("*.json") if not f.name.startswith("_"))
+    if not files:
+        print(f"no claim JSON files in {base} (underscore-prefixed files are skipped)")
+        return 0
+    engine = WrongnessEngine(args.repo)
+    out_dir = Path(args.out) if args.out else None
+    if out_dir:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"{'claim':<28} {'verdict':<12} {'urgency':<8} checks")
+    print("-" * 62)
+    for f in files:
+        claim = Claim.from_dict(_json.loads(f.read_text(encoding="utf-8")))
+        result = engine.run(claim)
+        print(f"{claim.id[:27]:<28} {result.verdict:<12} {result.urgency:<8.2f} {len(result.checks)}")
+        if out_dir:
+            (out_dir / f"{claim.id}.md").write_text(
+                render_report(result, repo_root=args.repo), encoding="utf-8"
+            )
+    if out_dir:
+        print(f"reports written to {out_dir}")
+    return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    import json as _json
+
+    try:
+        data = _json.loads(Path(args.claim).read_text(encoding="utf-8"))
+        claim = Claim.from_dict(data)
+    except Exception as exc:
+        print(f"invalid claim {args.claim}: {exc}")
+        return 1
+    print(f"valid claim: {claim.id} — {claim.statement}")
+    print(f"  checks: {len(claim.checks)}, consequence: {claim.consequence}")
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     claim = _load_claim(args.claim)
     engine = WrongnessEngine(args.repo)
@@ -136,6 +188,16 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument("--repo", default=".")
     p_report.add_argument("--out", default=None, help="write markdown here")
     p_report.set_defaults(func=cmd_report)
+
+    p_run_all = sub.add_parser("run-all", help="run every claim in a directory (M8)")
+    p_run_all.add_argument("claims_dir")
+    p_run_all.add_argument("--repo", default=".", help="repo root for deterministic checks")
+    p_run_all.add_argument("--out", default=None, help="write per-claim markdown reports here")
+    p_run_all.set_defaults(func=cmd_run_all)
+
+    p_validate = sub.add_parser("validate", help="check a claim against the schema")
+    p_validate.add_argument("claim")
+    p_validate.set_defaults(func=cmd_validate)
 
     args = parser.parse_args(argv)
     return args.func(args)

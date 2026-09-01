@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# pre-commit — this repo requires cryptographically signed commits.
-# Refuses to commit unless signing is configured (set up by
+# pre-commit — this repo requires cryptographically signed commits AND
+# blocks secret-shaped content (AIB-001 §5, P0.1).
+#
+# Signing: refuses to commit unless signing is configured (set up by
 # scripts/install-hooks.sh, which generates an SSH signing key and sets
 # commit.gpgsign + user.signingkey). GitHub additionally enforces valid
 # signatures on main via branch protection.
+#
+# Secrets: scans the staged diff's added lines through
+# scripts/scan-secrets.py --staged. Fail-closed: any real secret-shaped
+# token blocks the commit. Placeholders (single character class, short
+# bodies) pass deliberately — they are the repo's own test fixtures.
 set -u
 fail() {
-  echo "ERROR: unsigned commits are not allowed in this repo." >&2
-  echo "  Run:  bash scripts/install-hooks.sh   (one-time setup)" >&2
-  echo "  Then: git commit -S                    (or rely on commit.gpgsign)" >&2
+  echo "ERROR: $1" >&2
   exit 1
 }
-[ "$(git config --get commit.gpgsign)" = "true" ] || fail
-[ -n "$(git config --get user.signingkey)" ] || fail
+[ "$(git config --get commit.gpgsign)" = "true" ] || fail "unsigned commits are not allowed in this repo. Run: bash scripts/install-hooks.sh"
+[ -n "$(git config --get user.signingkey)" ] || fail "no signing key configured. Run: bash scripts/install-hooks.sh"
+python3 scripts/scan-secrets.py --staged || fail "secret-shaped content in staged changes — revoke/remove before committing (see output above)"
 exit 0

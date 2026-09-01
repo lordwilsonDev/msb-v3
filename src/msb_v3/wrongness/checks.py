@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from .claims import CheckSpec
+from .claims import CheckSpec, Claim
 
 
 @dataclass(frozen=True)
@@ -294,6 +294,43 @@ def check_corpus_replay(
     )
 
 
+def check_claims_valid(root: Path, claims_dir: str) -> CheckResult:
+    """Schema-conformance gate for a directory of authored claims (M8).
+
+    Every ``*.json`` in ``claims_dir`` (underscore-prefixed files excluded —
+    that's the ``_TEMPLATE.json`` convention) must parse through
+    ``Claim.from_dict``.  This is the authoring hook: claims live where they
+    are authored (the vault), and the engine's own schema — defined in
+    ``claims.py`` — is the adjudicator, so a malformed claim fails fast
+    instead of silently producing a NOTE verdict.
+    """
+    base = root / claims_dir
+    if not base.exists():
+        return CheckResult(
+            ok=None,
+            evidence=f"claims dir {claims_dir!r} not found at {base}",
+            check=f"claims_valid({claims_dir})",
+            links=(EvidenceLink(path=claims_dir),),
+        )
+    files = sorted(f for f in base.glob("*.json") if not f.name.startswith("_"))
+    bad: list[str] = []
+    for f in files:
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            Claim.from_dict(data)
+        except Exception as exc:
+            bad.append(f"{f.name}: {exc}")
+    detail = f"{len(files)} claim(s) in {claims_dir}, {len(bad)} invalid"
+    if bad:
+        detail += ": " + "; ".join(bad[:5])
+    return CheckResult(
+        ok=not bad,
+        evidence=f"claims_valid: {detail}",
+        check=f"claims_valid({claims_dir})",
+        links=tuple(EvidenceLink(path=f"{claims_dir}/{f.name}") for f in files),
+    )
+
+
 def check_type_flow(root: Path, call: str) -> CheckResult:
     """Inspect the types flowing into a call site (D1: list-as-int => 0)."""
     files = [p for p in _tracked_files(root) if p.endswith(".py")]
@@ -320,6 +357,7 @@ _REGISTRY: dict[str, Callable[..., CheckResult]] = {
     "scorecard_gate": lambda root, **kw: check_scorecard_gate(root, **kw),
     "round_score": lambda root, **kw: check_round_score(root, **kw),
     "corpus_replay": lambda root, **kw: check_corpus_replay(root, **kw),
+    "claims_valid": lambda root, **kw: check_claims_valid(root, **kw),
 }
 
 

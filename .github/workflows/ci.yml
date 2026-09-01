@@ -119,6 +119,16 @@ jobs:
       - name: Run Ruff
         run: ruff check src/ tests/
 
+      # P0.1 (AIB-001 §5): secret-prevention gate — full-tree scan of
+      # tracked content. Fail-closed: a committed secret-shaped token
+      # (entropy-mixed, not placeholder) turns this job red. This is the
+      # forcing function the audit's C4 finding exists to trigger: the step
+      # stays red until the leaked credential is revoked AND purged from the
+      # tree (the history purge is the separate filter-repo step). Placeholders
+      # like the wrongness fixtures' all-"A" bodies pass by design.
+      - name: Secret scan (full tree)
+        run: python scripts/scan-secrets.py --tree
+
       # Full scope: types ALL three packages (msb_v3,
       # personal_intelligence), not just src/msb_v3. Blocking — the old
       # continue-on-error made this step a no-op that never gated.

@@ -57,14 +57,18 @@ def test_conflicting_requires_both_signals() -> None:
 
 def test_conflicting_reachable_through_engine() -> None:
     """A claim with supporting evidence and a failing check runs to CONFLICTING."""
+    # A call-site probe for a symbol that provably does not exist: n=0 < min=1
+    # -> deterministic refutation, hermetic to whatever tree the suite runs in.
+    # The symbol is assembled from parts so the contiguous word never appears in
+    # ANY tracked file (including this one, once it is committed) — the literal
+    # would match its own source line and flip the probe.
+    symbol = "".join(["zz_wrongness", "_conflict_probe"])
     claim = Claim(
         id="t-conflict",
         statement="the report is accurate",
         domain="process",
         supporting_evidence=("report says OK",),
-        # A call-site probe for a symbol that provably does not exist: n=0 < min=1
-        # -> deterministic refutation, hermetic to whatever tree the suite runs in.
-        checks=(CheckSpec(kind="call_sites", params={"symbol": "zz_wrongness_conflict_probe", "min_count": 1}),),
+        checks=(CheckSpec(kind="call_sites", params={"symbol": symbol, "min_count": 1}),),
     )
     result = WrongnessEngine(REPO).run(claim)
     assert result.verdict == CONFLICTING

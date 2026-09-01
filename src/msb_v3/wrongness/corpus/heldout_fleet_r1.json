@@ -1,0 +1,253 @@
+{
+  "schema": "wrongness-corpus-v1",
+  "source": "~/specialist-fleet/results/ROUND0-FINDING.md, ROUND1-FINDING.md, SCORECARD.md",
+  "experiment": "Held-out (M9 progress): fleet Round-0/1 decisions, outcomes recorded by the fleet's own deterministic scorecard gates — NOT by the engine's author",
+  "independence_note": "No row carries escalation_class or strongest_pass: the by-hand routing annotations (the leakage source flagged in M3) were deliberately omitted, so recorded-routing and blind replay are identical for this corpus. Outcomes were recorded by the fleet harness (SPEC §10 gate: score >= baseline - 0.05 AND >=2x faster where latency measured; 5-fold CV; fresh-set validation) before the Wrongness Engine existed.",
+  "claims": [
+    {
+      "id": "F-R0-1",
+      "statement": "A naive max-cosine router (bge-small) clears the 90% gate",
+      "domain": "router",
+      "outcome": "HIT",
+      "consequence": "high",
+      "falsification_conditions": [
+        "5-fold CV accuracy >= 0.90 on the 250-utt routing corpus",
+        "no route below 0.90"
+      ],
+      "evidence_refs": ["ROUND0-FINDING.md — bge-small max-cosine: 67.2% ± 3.9% (5-fold)"],
+      "checks": [
+        {
+          "kind": "round_score",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round0_sim_bge_cv.json",
+            "model": "BAAI/bge-small-en-v1.5",
+            "field": "score",
+            "min_score": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R0-2",
+      "statement": "A naive max-cosine router (all-MiniLM-L6-v2) clears the 90% gate",
+      "domain": "router",
+      "outcome": "HIT",
+      "consequence": "high",
+      "falsification_conditions": [
+        "5-fold CV accuracy >= 0.90 on the 250-utt routing corpus"
+      ],
+      "evidence_refs": ["ROUND0-FINDING.md — MiniLM max-cosine: 48.4% ± 6.1%, 22% abstain"],
+      "checks": [
+        {
+          "kind": "round_score",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round0_sim_minilm_cv.json",
+            "model": "sentence-transformers/all-MiniLM-L6-v2",
+            "field": "score",
+            "min_score": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R0-3",
+      "statement": "The learned SetFit router clears the 90% gate",
+      "domain": "router",
+      "outcome": "FP",
+      "falsification_conditions": [
+        "5-fold CV accuracy >= 0.90 on the 250-utt routing corpus",
+        "per-route floor >= 0.90"
+      ],
+      "evidence_refs": ["ROUND0-FINDING.md — SetFit: 96.4% ± 1.7%, every route >= 92%"],
+      "checks": [
+        {
+          "kind": "round_score",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round0_setfit.json",
+            "model": "sentence-transformers/all-MiniLM-L6-v2",
+            "field": "score",
+            "min_score": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R0-4",
+      "statement": "The n=25 single-split 68% (bge) proves router viability",
+      "domain": "router",
+      "outcome": "HIT",
+      "consequence": "medium",
+      "falsification_conditions": [
+        "the trustworthy 5-fold CV number meets the gate — it does not (67.2% ± 3.9%)",
+        "single-split results are stable across folds"
+      ],
+      "evidence_refs": ["ROUND0-FINDING.md — 'Previous run's n=25 single split (68% bge / 64% MiniLM) was noise-adjacent'"],
+      "checks": [
+        {
+          "kind": "round_score",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round0_sim_bge_cv.json",
+            "model": "BAAI/bge-small-en-v1.5",
+            "field": "score",
+            "min_score": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R0-5",
+      "statement": "The SetFit router generalizes to genuinely unseen input",
+      "domain": "router",
+      "outcome": "FP",
+      "falsification_conditions": [
+        "accuracy >= 0.90 on a fresh paraphrase set with no overlap with intents.yaml"
+      ],
+      "evidence_refs": ["ROUND0-FINDING.md — 100.0% (50/50, 0% abstain) on fresh 10-utt/route set"]
+    },
+    {
+      "id": "F-R1-1",
+      "statement": "qwen2.5-coder:0.5b beats the qwen3:8b generalist on code (HumanEval pass@1)",
+      "domain": "code",
+      "outcome": "FP",
+      "falsification_conditions": [
+        "pass@1 within 5% of baseline AND >= 2x faster (SPEC §10 gate)",
+        "result holds at n=50, not just small n"
+      ],
+      "evidence_refs": ["ROUND1-FINDING.md — 84.0% vs 62.0% (n=50), 4.6x faster"],
+      "checks": [
+        {
+          "kind": "scorecard_gate",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round1_code.json",
+            "model": "qwen2.5-coder:0.5b-instruct",
+            "baseline": "qwen3:8b",
+            "margin": 0.05,
+            "min_speedup": 2.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R1-2",
+      "statement": "qwen2.5-coder:1.5b is ELIGIBLE on code",
+      "domain": "code",
+      "outcome": "FP",
+      "falsification_conditions": [
+        "pass@1 within 5% of baseline AND >= 2x faster at n=20",
+        "margin robust to small-n optimism (0.5b regressed 95% -> 84% at n=50)"
+      ],
+      "evidence_refs": ["ROUND1-FINDING.md — 90.0% vs 45.0% (n=20), 5.3x faster; small-n caveat noted"],
+      "checks": [
+        {
+          "kind": "scorecard_gate",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round1_code_n20.json",
+            "model": "qwen2.5-coder:1.5b-instruct",
+            "baseline": "qwen3:8b",
+            "margin": 0.05,
+            "min_speedup": 2.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R1-3",
+      "statement": "smollm2:1.7b is an eligible code specialist",
+      "domain": "code",
+      "outcome": "HIT",
+      "consequence": "medium",
+      "falsification_conditions": [
+        "pass@1 within 5% of baseline AND >= 2x faster (SPEC §10 gate)",
+        "the pre-fix scorecard verdict (bogus ELIGIBLE) does not survive the >= 2x enforcement"
+      ],
+      "evidence_refs": ["ROUND1-FINDING.md — 40.0% vs 45.0% (n=20), 1.8x faster -> below bar; harness fix #3"],
+      "checks": [
+        {
+          "kind": "scorecard_gate",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round1_code_n20.json",
+            "model": "smollm2:1.7b",
+            "baseline": "qwen3:8b",
+            "margin": 0.05,
+            "min_speedup": 2.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R1-4",
+      "statement": "The 0.5b coder's n=20 95% pass@1 holds at n=50",
+      "domain": "code",
+      "outcome": "HIT",
+      "consequence": "medium",
+      "falsification_conditions": [
+        "pass@1 at n=50 >= 0.90 (the n=20 point estimate)"
+      ],
+      "evidence_refs": ["ROUND1-FINDING.md — 'the 0.5B regressed 95% -> 84% at n=50'"],
+      "checks": [
+        {
+          "kind": "round_score",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round1_code.json",
+            "model": "qwen2.5-coder:0.5b-instruct",
+            "field": "score",
+            "min_score": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R1-5",
+      "statement": "qwen2.5-coder:1.5b beats the generalist on automation (schema-constrained workflow JSON)",
+      "domain": "automation",
+      "outcome": "HIT",
+      "consequence": "high",
+      "falsification_conditions": [
+        "schema+fields accuracy within 5% of baseline (SPEC §10 gate)"
+      ],
+      "evidence_refs": ["ROUND1-FINDING.md — 46.7% vs 60.0% (n=30) -> below bar; 'the automation candidate stays out of the fleet'"],
+      "checks": [
+        {
+          "kind": "scorecard_gate",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round1_automation.json",
+            "model": "qwen2.5-coder:1.5b-instruct",
+            "baseline": "qwen3:8b",
+            "margin": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "F-R1-6",
+      "statement": "The generalist keeps the automation domain",
+      "domain": "automation",
+      "outcome": "FP",
+      "falsification_conditions": [
+        "the generalist's automation accuracy stays >= the specialist's by more than the margin"
+      ],
+      "evidence_refs": ["ROUND1-FINDING.md — 60.0% vs 46.7%; 'the generalist keeps the domain'"],
+      "checks": [
+        {
+          "kind": "scorecard_gate",
+          "params": {
+            "results_dir": "results",
+            "round_file": "round1_automation.json",
+            "model": "qwen3:8b",
+            "baseline": "qwen2.5-coder:1.5b-instruct",
+            "margin": 0.05
+          }
+        }
+      ]
+    }
+  ]
+}

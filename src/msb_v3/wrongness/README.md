@@ -31,6 +31,12 @@ if they beat what's here.
   what to answer), and both sides of the evidence for CONFLICTING verdicts
   so a human can actually decide.  A CHECK that only exists as JSON is as
   good as never raised.
+- **Vault claims home (M8)** — claims are authored where decisions live:
+  `~/Documents/Vault/30_Architecture/Wrongness-Engine/claims/` (schema
+  guide + `_TEMPLATE.json` + the gate-on-the-gate claim).  The `run-all`
+  CLI runs every claim in a directory in one command; the `validate` CLI
+  is the authoring hook; the `claims_valid` check is the schema-conformance
+  gate (underscore-prefixed files are skipped).
 - **Escalation policy** — `policy.py`.  **The load-bearing piece.**  Four
   verdict states (the AVeriTeC standard): `ESCALATE` (evidence-backed
   failure-assertion), `CONFLICTING` (evidence points BOTH ways — human
@@ -43,6 +49,14 @@ if they beat what's here.
   MVP must reproduce the by-hand verdict: **PEDR 1.0, FP 16.7% / 28.6%,
   decision VALIDATED** — or it loses to the cheaper alternative it was built
   to beat.
+- **Held-out corpus (M9 progress)** — `corpus/heldout_fleet_r1.json`: 11
+  fleet Round-0/1 decisions with outcomes recorded by the fleet harness's
+  OWN deterministic gates (SPEC §10 scorecard, 5-fold CV, fresh-set
+  validation), not the engine author's by-hand judgment.  Test-enforced
+  pin-free (no `escalation_class`/`strongest_pass`), so recorded-routing
+  and blind replay agree.  Replay: **PEDR 1.000 (6/6), FP-assertion
+  0.000, VALIDATED** — every real failure flagged, no confirmed claim
+  escalated.
 
 ## Usage
 
@@ -50,10 +64,15 @@ if they beat what's here.
 python -m msb_v3.wrongness replay                        # by-hand corpus verdict
 python -m msb_v3.wrongness replay --blind               # recorded routing off (M3)
 python -m msb_v3.wrongness replay --held-out            # score each half separately
+python -m msb_v3.wrongness replay --corpus src/msb_v3/wrongness/corpus/heldout_fleet_r1.json \
+    --repo ~/specialist-fleet                           # held-out (M9) replay
 python -m msb_v3.wrongness run claims/self_claim.json --repo .   # the engine on itself (M1)
 python -m msb_v3.wrongness run claims/fleet_bakeoff.json --repo ~/specialist-fleet
 python -m msb_v3.wrongness report claims/fleet_bakeoff.json --repo ~/specialist-fleet  # human read-path (M7)
 python -m msb_v3.wrongness report claims/self_claim.json --repo . --out self-report.md
+python -m msb_v3.wrongness validate <claim.json>                                 # authoring hook (M8)
+python -m msb_v3.wrongness run-all ~/Documents/Vault/30_Architecture/Wrongness-Engine/claims \
+    --repo ~/Documents/Vault                                                     # vault claims home (M8)
 ```
 
 ## First live claim

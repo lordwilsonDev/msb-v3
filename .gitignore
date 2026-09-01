@@ -91,3 +91,7 @@ var/guardian/
 
 # AI job board — coordination scaffolding for the FreeBuff/Hermes/Guardian loop; not project source
 ai-workspace/
+
+# P0 (AIB-001): local Claude settings are machine state — never commit
+# (the C4 Tavily key was tracked here; untracked 2026-09-01).
+.claude/settings.local.json
