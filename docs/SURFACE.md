@@ -84,6 +84,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/flywheel` | OPTIONAL | Research→Build loop — operator-driven, behind the brakes (CLAUDE.md Flywheel). |
 | `msb_v3/gateway` | LOAD-BEARING | Capability Gateway — canonical audit entry point for governed execution (`agent/handle.py` + `harnesses/base.py` both call `route()`); records compute decisions into the audit chain (docs/architecture/gateway-canonical-path.md). |
 | `msb_v3/governance` | LOAD-BEARING | The brakes (kill switch, budgets, approvals) — fail-closed everywhere (CLAUDE.md). |
+| `msb_v3/guardian` | OPTIONAL | S-AOS Guardian — headless OBSERVE-only repo steward (forensics → classify → vault ledger); no mutation path, manually triggered, off the runtime request path (`~/Documents/Vault/30_Architecture/S-AOS-Guardian/`). |
 | `msb_v3/guardrails` | LOAD-BEARING | `fold.StepEnforcer` — wired into the governed tool loops (DeepSeekClient, conversation). |
 | `msb_v3/harnesses` | OPTIONAL | Harness scaffolding; off canonical path. |
 | `msb_v3/infrastructure` | LOAD-BEARING | Centralized environment contracts, including Qdrant preflight consumed by CI harness gates. |
