@@ -1,0 +1,48 @@
+{
+  "id": "fleet-bakeoff-01",
+  "statement": "A specialist fleet with deterministic routing beats a single generalist",
+  "domain": "architecture",
+  "consequence": "high",
+  "falsification_conditions": [
+    "router accuracy >= 0.90 on held-out routing data",
+    "specialist score within 5% of generalist baseline AND >= 2x faster (code class)",
+    "specialist score within 5% of generalist baseline (automation class)"
+  ],
+  "evidence_refs": [
+    "~/specialist-fleet/results/SCORECARD.md",
+    "~/specialist-fleet/results/ROUND1-FINDING.md"
+  ],
+  "checks": [
+    {
+      "kind": "round_score",
+      "params": {
+        "results_dir": "results",
+        "round_file": "round0_setfit.json",
+        "model": "sentence-transformers/all-MiniLM-L6-v2",
+        "field": "score",
+        "min_score": 0.9
+      }
+    },
+    {
+      "kind": "scorecard_gate",
+      "params": {
+        "results_dir": "results",
+        "round_file": "round1_code.json",
+        "model": "qwen2.5-coder:0.5b-instruct",
+        "baseline": "qwen3:8b",
+        "margin": 0.05,
+        "min_speedup": 2.0
+      }
+    },
+    {
+      "kind": "scorecard_gate",
+      "params": {
+        "results_dir": "results",
+        "round_file": "round1_automation.json",
+        "model": "qwen2.5-coder:1.5b-instruct",
+        "baseline": "qwen3:8b",
+        "margin": 0.05
+      }
+    }
+  ]
+}

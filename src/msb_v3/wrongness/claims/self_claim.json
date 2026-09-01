@@ -1,0 +1,28 @@
+{
+  "id": "wrongness-self-01",
+  "statement": "The Wrongness Engine MVP reproduces the by-hand verdict: PEDR >= 0.95 and decision VALIDATED on the recorded-routing replay of corpus/byhand_21.json",
+  "domain": "meta",
+  "consequence": "high",
+  "falsification_conditions": [
+    "replay of corpus/byhand_21.json returns PEDR >= 0.95",
+    "replay decision is VALIDATED",
+    "the engine's own verdict on this claim is produced by the same machinery it applies to every claim"
+  ],
+  "evidence_refs": [
+    "30_Architecture/Wrongness-Engine/02_MVP.md",
+    "30_Architecture/Wrongness-Engine/03_Inversion-Audit.md"
+  ],
+  "supporting_evidence": [
+    "by-hand retrospective scored PEDR 1.0 / FP 16.7-28.6%",
+    "18-test suite green; full msb-v3 suite 3112 passed"
+  ],
+  "checks": [
+    {
+      "kind": "corpus_replay",
+      "params": {
+        "min_pedr": 0.95,
+        "require_decision": "VALIDATED"
+      }
+    }
+  ]
+}

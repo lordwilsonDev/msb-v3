@@ -107,6 +107,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/wake` | LOAD-BEARING | The resident wake loop (store + cycle runner) — the wake-agent cron action and /wake API depend on it (docs/wake-loop.md). |
 | `msb_v3/uac` | FROZEN | Audit chain + ledger (P4 extraction) + anchor/notary — release-declared frozen; `msb_ledger` standalone. |
 | `msb_v3/vesta` | LOAD-BEARING | Vesta trust perimeter — approval contracts adversarially tested (13 bypass invariants). |
+| `msb_v3/wrongness` | OPTIONAL | Wrongness Engine MVP — deterministic claim-falsification layer (7 passes, three-tier escalation, by-hand 21-corpus replay, scorecard gate); off the runtime request path, manually invoked (`python -m msb_v3.wrongness`). |
 
 ## Top-level packages
 

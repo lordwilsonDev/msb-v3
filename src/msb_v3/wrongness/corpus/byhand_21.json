@@ -1,0 +1,244 @@
+{
+  "schema": "wrongness-corpus-v1",
+  "source": "~/Documents/Vault/30_Architecture/Wrongness-Engine/01_Retrospective-ByHand.md",
+  "experiment": "SPEC §VII retrospective — 21 known-outcome decisions",
+  "claims": [
+    {
+      "id": "A1",
+      "statement": "The 12-tool roadmap is a unified, ready stack",
+      "domain": "tools",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "counterexample",
+      "falsification_conditions": ["installed == working", "actually run each of the 12 tools end-to-end"],
+      "evidence_refs": ["Foundation-Stack-Trim.md"]
+    },
+    {
+      "id": "A2",
+      "statement": "/rag/index + /rag/search are live and verified",
+      "domain": "rag",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "counterexample",
+      "falsification_conditions": ["query with distinct text and expect shaped results, not just []"],
+      "evidence_refs": ["Foundation-Stack-Trim.md"]
+    },
+    {
+      "id": "A3",
+      "statement": "Indexed 1 doc + search returned results = proof of RAG layer",
+      "domain": "rag",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "scaling",
+      "falsification_conditions": ["n>1 distinct docs", "overlapping vs non-overlapping queries"],
+      "evidence_refs": ["Foundation-Stack-Trim.md"]
+    },
+    {
+      "id": "A4",
+      "statement": "Hermes is redundant-with-msb-v3 sprawl — needs a decision",
+      "domain": "tools",
+      "outcome": "FP",
+      "escalation_class": "investigation-prompt",
+      "strongest_pass": "attack",
+      "falsification_conditions": ["two chat backends ⇒ conflict"],
+      "evidence_refs": ["Foundation-Stack-Trim.md addendum"]
+    },
+    {
+      "id": "A5",
+      "statement": "Triumvirate sovereign-cluster deploy plan is a trim threat",
+      "domain": "architecture",
+      "outcome": "FP",
+      "escalation_class": "investigation-prompt",
+      "strongest_pass": "attack",
+      "falsification_conditions": ["2ms test output == real feature"],
+      "evidence_refs": ["Foundation-Stack-Trim.md addendum"]
+    },
+    {
+      "id": "A6",
+      "statement": "~/.antigravity (622 MB) may be a real project before archiving",
+      "domain": "ops",
+      "outcome": "FP",
+      "escalation_class": "investigation-prompt",
+      "strongest_pass": "assumption",
+      "falsification_conditions": ["large dir ⇒ possibly real content"],
+      "evidence_refs": ["Foundation-Stack-Trim.md addendum"]
+    },
+    {
+      "id": "A7",
+      "statement": "Do not touch Granola's encrypted transcript data (privacy boundary)",
+      "domain": "privacy",
+      "outcome": "CORRECT",
+      "escalation_class": null,
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["privacy is a hard boundary, not a limitation to route around"],
+      "evidence_refs": ["Foundation-Stack-Trim.md"]
+    },
+    {
+      "id": "A8",
+      "statement": "Run Qdrant under launchd with WorkingDirectory=$REPO; recover when :6333 was down",
+      "domain": "ops",
+      "outcome": "HIT",
+      "hit_weight": 2,
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["cwd-relative storage is a silent-empty-data trap", "stop/start race (WAL WouldBlock)"],
+      "evidence_refs": ["Foundation-Stack-Trim.md"]
+    },
+    {
+      "id": "A9",
+      "statement": "Marker imports cleanly — near-fine",
+      "domain": "tools",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "counterexample",
+      "falsification_conditions": ["run on a real PDF, end to end"],
+      "evidence_refs": ["Foundation-Stack-Trim.md"]
+    },
+    {
+      "id": "B1",
+      "statement": "Closer reports CLOSED — 100% closure (was 95%)",
+      "domain": "process",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "incentive",
+      "falsification_conditions": ["verify the number, not the narrative", "report != tag"],
+      "evidence_refs": ["MSB-v3.md project log"],
+      "supporting_evidence": ["closer report states \"100% CLOSED\""],
+      "conflicts_with": ["B2"]
+    },
+    {
+      "id": "B2",
+      "statement": "\"100% CLOSED, every gate green\" state stands",
+      "domain": "process",
+      "outcome": "—",
+      "escalation_class": null,
+      "strongest_pass": "incentive",
+      "falsification_conditions": ["the reset (83%) is the confirming observation for B1, not a separate claim"],
+      "evidence_refs": ["MSB-v3.md project log"],
+      "conflicts_with": ["B1"]
+    },
+    {
+      "id": "B3",
+      "statement": "EAAE 30-section blueprint: adopt as rebuild primitive",
+      "domain": "architecture",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "incentive",
+      "falsification_conditions": ["who/what grows from adopting this?", "its P0-P3 roadmap IS the expansion it claims to defer"],
+      "evidence_refs": ["MSB-v3.md project log"]
+    },
+    {
+      "id": "B4",
+      "statement": "O1 Option A: make release-verify hermetic via self-provisioned server, gate core tier",
+      "domain": "release",
+      "outcome": "CORRECT",
+      "escalation_class": null,
+      "strongest_pass": "scaling",
+      "falsification_conditions": ["the gate must survive a foreign checkout, not just Wilson's box"],
+      "evidence_refs": ["MSB-v3.md project log"]
+    },
+    {
+      "id": "B5",
+      "statement": "Version identity 0.3.1 across pyproject/__version__/status while tags were v0.3.2/v0.4.0",
+      "domain": "release",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["one truth source per identity"],
+      "evidence_refs": ["MSB-v3.md project log"]
+    },
+    {
+      "id": "B6",
+      "statement": "speech/ + energy_matrix/ classified OPTIONAL after being built, without the dated exception",
+      "domain": "process",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["the repo rule requires the exception BEFORE the change"],
+      "evidence_refs": ["MSB-v3.md project log"]
+    },
+    {
+      "id": "C1",
+      "statement": "Guardian G1 finding: dependency drift via mtime",
+      "domain": "guardian",
+      "outcome": "FP",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "assumption",
+      "falsification_conditions": ["mtime ⇒ content change"],
+      "evidence_refs": ["guardian cycle-1 ledger"]
+    },
+    {
+      "id": "C2",
+      "statement": "Guardian G2 finding: stale test cache",
+      "domain": "guardian",
+      "outcome": "FP",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["is the observed artifact actually stale, or is my freshness model wrong?"],
+      "evidence_refs": ["guardian cycle-1 ledger"]
+    },
+    {
+      "id": "C3",
+      "statement": "Guardian AMBIGUOUS_WORKING_TREE escalation on staged files (JOB-001 second pass)",
+      "domain": "guardian",
+      "outcome": "FP",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["porcelain states: staged != unstaged != modified"],
+      "evidence_refs": ["JOB-001 in-progress guardian-after.json"]
+    },
+    {
+      "id": "C4",
+      "statement": "H4: no plaintext secret in repo (portability scan + CI)",
+      "domain": "security",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["does the scan's path set cover every tracked path?"],
+      "evidence_refs": ["HARDENING-AUDIT.md H4"],
+      "checks": [{"kind": "tracked_secret", "params": {"pattern": "tvly-[A-Za-z0-9_-]{20,}"}}]
+    },
+    {
+      "id": "C5",
+      "statement": "H9: schema versioning (ensure_schema) exists as shipped capability",
+      "domain": "code",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["call-site audit, not name-presence"],
+      "evidence_refs": ["HARDENING-AUDIT.md H9"],
+      "checks": [{"kind": "call_sites", "params": {"symbol": "ensure_schema", "min_count": 2}}]
+    },
+    {
+      "id": "C6",
+      "statement": "\".env is 0600\" (H4 sub-claim)",
+      "domain": "security",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["stat the file; don't assume"],
+      "evidence_refs": ["HARDENING-AUDIT.md H4"],
+      "checks": [{"kind": "file_mode", "params": {"path": ".env", "expected": "0600"}}]
+    },
+    {
+      "id": "D1",
+      "statement": "PLEI lifecycle classifier: source_files from components via _safe_int; version 0.3.1 via int parse",
+      "domain": "code",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "counterexample",
+      "falsification_conditions": ["what type flows into _safe_int? (list-as-int ⇒ 0, str-as-int ⇒ 0)"],
+      "evidence_refs": ["PLEI diagnosis"]
+    },
+    {
+      "id": "D2",
+      "statement": "12.7k malloc-noise lines are a repo problem / the gateway's fault",
+      "domain": "ops",
+      "outcome": "HIT",
+      "escalation_class": "failure-assertion",
+      "strongest_pass": "boundary",
+      "falsification_conditions": ["host env vs child env provenance (MallocStackLogging)"],
+      "evidence_refs": ["providers.py:81-91"]
+    }
+  ]
+}
