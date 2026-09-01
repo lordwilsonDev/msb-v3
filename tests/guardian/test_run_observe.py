@@ -86,3 +86,28 @@ def test_kpi_row_appended(config_file: Path) -> None:
     assert all(r["decision"] == "ESCALATE" for r in rows)
     assert (cfg.ledger.local_state_dir / "dry-run" / "kpi" / "kpi.md").is_file()
     _ = EXIT_OK  # referenced so the import is meaningful across the module
+
+
+def test_reasoning_provider_error_is_capability_unavailable(config_file, monkeypatch) -> None:
+    """A `claude -p` envelope with is_error:true (quota/auth/api_error) -> a
+    clean CAPABILITY_UNAVAILABLE escalation, not REASONING_UNVALIDATED."""
+    import subprocess as sp
+
+    from msb_v3.guardian import reasoning as rz
+    from msb_v3.guardian.config import GuardianConfig
+
+    cfg = GuardianConfig.load(config_file)
+    # force the claude_cli path
+    object.__setattr__(cfg.reasoning, "substrate", "claude_cli")
+
+    class _P:
+        returncode = 0
+        stdout = '{"is_error": true, "api_error_status": 400, "result": "Credit balance is too low"}'
+        stderr = ""
+
+    monkeypatch.setattr(rz.shutil, "which", lambda _b: "/usr/bin/true")
+    monkeypatch.setattr(sp, "run", lambda *a, **k: _P())
+    out = rz.classify(cfg, "guardian-x", {"run_id": "guardian-x"})
+    assert out.decision == "ESCALATE"
+    assert out.escalations[0].reason == "CAPABILITY_UNAVAILABLE"
+    assert "Credit balance" in out.escalations[0].detail

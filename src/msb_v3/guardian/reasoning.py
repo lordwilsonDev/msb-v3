@@ -93,6 +93,12 @@ def _deterministic_escalation(run_id: str, reason: str, detail: str) -> Guardian
     )
 
 
+class ReasoningProviderError(RuntimeError):
+    """The reasoning CLI ran but the provider refused (auth, quota, api_error)
+    — distinct from malformed model output, so classify() reports it as
+    CAPABILITY_UNAVAILABLE rather than REASONING_UNVALIDATED."""
+
+
 def _invoke_cli(cfg: GuardianConfig, system: str, user: str) -> tuple[str, int | None]:
     binp = shutil.which(cfg.reasoning.claude_bin)
     if binp is None:
@@ -104,7 +110,16 @@ def _invoke_cli(cfg: GuardianConfig, system: str, user: str) -> tuple[str, int |
     if p.returncode != 0:
         raise RuntimeError(f"claude cli exit {p.returncode}: {p.stderr[:500]}")
     envelope = json.loads(p.stdout)
-    # `claude -p --output-format json` wraps the reply in {result, usage, ...}
+    # `claude -p --output-format json` wraps the reply in {result, usage, ...}.
+    # A provider-level failure comes back as {is_error: true, api_error_status,
+    # result: "<message>"} with exit 0 — surface it as a provider error.
+    if isinstance(envelope, dict) and (
+        envelope.get("is_error") or envelope.get("api_error_status")
+    ):
+        msg = str(envelope.get("result") or envelope.get("subtype") or "unknown")
+        raise ReasoningProviderError(
+            f"reasoning provider error ({envelope.get('api_error_status', '?')}): {msg[:200]}"
+        )
     text = envelope.get("result", p.stdout) if isinstance(envelope, dict) else p.stdout
     usage = envelope.get("usage", {}) if isinstance(envelope, dict) else {}
     tokens = None
@@ -163,6 +178,8 @@ def classify(cfg: GuardianConfig, run_id: str, forensics: dict[str, object]) -> 
             return _deterministic_escalation(
                 run_id, "CAPABILITY_UNAVAILABLE", "claude CLI not on PATH"
             )
+        except ReasoningProviderError as exc:
+            return _deterministic_escalation(run_id, "CAPABILITY_UNAVAILABLE", str(exc))
         except (RuntimeError, ValueError, ValidationError, json.JSONDecodeError) as exc:
             last_err = str(exc)[:500]
 
