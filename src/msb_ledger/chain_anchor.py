@@ -96,6 +96,11 @@ ANCHOR_FILENAME = "chain_anchor.json"
 REGISTRY_FILENAME = "chain_key_registry.json"
 KEY_ENV = "MSB_CHAIN_ANCHOR_KEY"
 BACKEND_ENV = "MSB_CHAIN_ANCHOR_BACKEND"
+# Canonical keychain item name written by scripts/store-anchor-key.sh. Used as
+# the last-resort lookup in from_env() so a process that never sourced .env
+# (e.g. the gateway launchd job, which only sets PATH) still finds a stored
+# seed instead of failing "no chain anchor key configured".
+DEFAULT_KEYCHAIN_SERVICE = "msb-chain-anchor-key"
 _VERSION = 1
 REGISTRY_VERSION = 1
 
@@ -122,14 +127,17 @@ def _default_key_path() -> Path:
     return Path(settings.msb_home) / "data" / "uac" / "chain_anchor_key"
 
 
-def _seed_from_keychain() -> Optional[str]:
+def _seed_from_keychain(service: Optional[str] = None) -> Optional[str]:
     """Resolve the anchor seed from the macOS login keychain (a generic
-    password item) so the key need not live in a plaintext file. Gated on
-    MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE (set by scripts/store-anchor-key.sh):
-    unset => never invoked, zero behavior change and no subprocess. Returns
-    None when the item is absent or `security` is unavailable; the caller
-    reports the missing key fail-closed."""
-    service = os.getenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "").strip()
+    password item) so the key need not live in a plaintext file.
+
+    ``service`` defaults to MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE (set by
+    scripts/store-anchor-key.sh); unset => never invoked, zero behavior change
+    and no subprocess. ``from_env`` also calls this explicitly with
+    DEFAULT_KEYCHAIN_SERVICE as a last resort. Returns None when the item is
+    absent or `security` is unavailable; the caller fails closed."""
+    if service is None:
+        service = os.getenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", "").strip()
     if not service:
         return None
     account = os.getenv("MSB_CHAIN_ANCHOR_KEYCHAIN_ACCOUNT", "msb-v3")
@@ -377,7 +385,11 @@ class ChainAnchor:
         if raw is None and keyfile.exists():
             raw = keyfile.read_text().strip()
         if raw is None:
-            raw = _seed_from_keychain()
+            raw = _seed_from_keychain()  # env-gated service
+        if raw is None:
+            # Last resort: a seed stored by store-anchor-key.sh under the
+            # canonical service name, for processes that never sourced .env.
+            raw = _seed_from_keychain(DEFAULT_KEYCHAIN_SERVICE)
         if raw is None:
             raise ValueError(
                 f"no chain anchor key configured: set {KEY_ENV}, create {keyfile}, "

@@ -107,11 +107,16 @@ def test_anchored_chain_from_env_anchors_with_keychain(fake_security, monkeypatc
     assert result.verify_anchored()["valid"] is True
 
 
-def test_keychain_path_disabled_when_unconfigured(monkeypatch) -> None:
-    """Unset MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE => no keychain subprocess, the
-    standard missing-key error."""
+def test_missing_key_still_fails_closed(monkeypatch) -> None:
+    """No env seed, no keyfile, and no keychain item (under the env-gated
+    service OR the canonical default) => the standard missing-key error.
+    from_env() now tries DEFAULT_KEYCHAIN_SERVICE as a last resort, but the
+    fail-closed guarantee must survive when nothing is stored anywhere."""
+    import msb_ledger.chain_anchor as ca
+
     monkeypatch.delenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", raising=False)
     monkeypatch.delenv(KEY_ENV, raising=False)
+    monkeypatch.setattr(ca, "_seed_from_keychain", lambda service=None: None)
     with pytest.raises(ValueError, match="no chain anchor key configured"):
         ChainAnchor.from_env()
 
