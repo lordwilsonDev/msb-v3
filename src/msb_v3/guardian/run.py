@@ -70,16 +70,29 @@ def _acquire_lock(cfg: GuardianConfig, run_id: str) -> Path:
     return lock
 
 
-def _dirty_tree_escalation(run_id: str, forensics: dict[str, object]) -> GuardianResult:
+_CLEAN_CONTROLS = ["schema_valid", "repo_boundary", "no_mutation", "secret_guard"]
+
+
+def _wt(forensics: dict[str, object]) -> dict[str, object]:
     git = forensics.get("git", {})
     wt = git.get("working_tree", {}) if isinstance(git, dict) else {}
-    mod = wt.get("modified", []) if isinstance(wt, dict) else []
-    unt = wt.get("untracked", []) if isinstance(wt, dict) else []
+    return wt if isinstance(wt, dict) else {}
+
+
+def _wt_list(wt: dict[str, object], key: str) -> list[str]:
+    v = wt.get(key)
+    return [str(x) for x in v] if isinstance(v, list) else []
+
+
+def _dirty_tree_escalation(run_id: str, forensics: dict[str, object]) -> GuardianResult:
+    wt = _wt(forensics)
+    uns = _wt_list(wt, "unstaged") or _wt_list(wt, "modified")
+    unt = _wt_list(wt, "untracked")
     return GuardianResult(
         run_id=run_id,
         decision="ESCALATE",
         summary=(
-            f"Working tree dirty after ignorable-globs filter: {len(mod)} modified, "
+            f"Working tree dirty after ignorable-globs filter: {len(uns)} unstaged, "
             f"{len(unt)} untracked, none attributable to the Guardian (doc 1 §12)."
         ),
         escalations=[
@@ -87,10 +100,32 @@ def _dirty_tree_escalation(run_id: str, forensics: dict[str, object]) -> Guardia
                 reason="AMBIGUOUS_WORKING_TREE",
                 blocking=True,
                 evidence_ref="git.working_tree",
-                detail=f"modified={mod} untracked={unt}",
+                detail=f"unstaged={uns} untracked={unt}",
             )
         ],
-        controls_passed=["schema_valid", "repo_boundary", "no_mutation", "secret_guard"],
+        controls_passed=list(_CLEAN_CONTROLS),
+        tests={"passed": 0, "failed": 0, "skipped": 0, "not_run": "all"},
+    )
+
+
+def _staged_pending_commit(run_id: str, forensics: dict[str, object]) -> GuardianResult:
+    staged = _wt_list(_wt(forensics), "staged")
+    return GuardianResult(
+        run_id=run_id,
+        decision="PROPOSE",
+        summary=(
+            f"{len(staged)} file(s) fully staged, work-dir clean — ready for a human commit. "
+            f"Not AMBIGUOUS_WORKING_TREE: the change is attributable and contained."
+        ),
+        escalations=[
+            Escalation(
+                reason="STAGED_PENDING_COMMIT",
+                blocking=False,
+                evidence_ref="git.working_tree.staged",
+                detail=f"staged={staged}",
+            )
+        ],
+        controls_passed=list(_CLEAN_CONTROLS),
         tests={"passed": 0, "failed": 0, "skipped": 0, "not_run": "all"},
     )
 
@@ -118,12 +153,14 @@ def execute(config_path: str | Path, *, dry_run: bool = False) -> tuple[Guardian
 
     try:
         forensics = collect(cfg, run_id)
-        git = forensics.get("git", {})
-        wt = git.get("working_tree", {}) if isinstance(git, dict) else {}
-        clean = bool(wt.get("clean_after_filter", False)) if isinstance(wt, dict) else False
+        wt = _wt(forensics)
+        clean = bool(wt.get("clean_after_filter", False))
+        staged_only = bool(wt.get("staged_only", False))
 
-        if not clean:
+        if not clean and not staged_only:
             result = _dirty_tree_escalation(run_id, forensics)
+        elif staged_only:
+            result = _staged_pending_commit(run_id, forensics)
         elif time.monotonic() - started > cfg.timebox_seconds:
             result = GuardianResult(
                 run_id=run_id,

@@ -177,6 +177,13 @@ class Settings:
     wake_max_per_run: int = field(default_factory=lambda: int(os.getenv("MSB_WAKE_MAX_PER_RUN", "5")))
     # The resident cadence.
     wake_schedule: str = field(default_factory=lambda: os.getenv("MSB_WAKE_SCHEDULE", "*/5 * * * *"))
+    # When the DeepSeek turn fails (key unset, HTTP 402, circuit open, timeout),
+    # retry the same turn against the local Ollama model instead of failing the
+    # inbox message. On by default — a billing outage should degrade, not stop
+    # the resident loop.
+    wake_allow_local_fallback: bool = field(
+        default_factory=lambda: os.getenv("MSB_WAKE_LOCAL_FALLBACK", "1") == "1"
+    )
     # --- Automation brain (n8n / Make / Zapier / GoHighLevel) ---
     # The brain (DeepSeek-driven) turns a request into a structured plan and
     # executes it via the provider clients. Budget cap in USD on the LLM

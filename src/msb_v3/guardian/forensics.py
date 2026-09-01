@@ -11,6 +11,7 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -28,16 +29,43 @@ def _in_venv() -> bool:
 
 
 def _run(
-    args: list[str], cwd: Path, timeout: int = _SUBPROC_TIMEOUT, *, strip: bool = True
+    args: list[str],
+    cwd: Path,
+    timeout: int = _SUBPROC_TIMEOUT,
+    *,
+    strip: bool = True,
+    env: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
     try:
         p = subprocess.run(
-            args, cwd=cwd, capture_output=True, text=True, timeout=timeout, check=False
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+            env=env,
         )
         out = p.stdout.strip() if strip else p.stdout
         return p.returncode, out, p.stderr.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:  # pragma: no cover - env dependent
         return 127, "", str(exc)
+
+
+def _git(
+    args: list[str], cwd: Path, timeout: int = _GIT_TIMEOUT, *, strip: bool = True
+) -> tuple[int, str, str]:
+    """Read-only git call that never touches the index lock.
+
+    ``--no-optional-locks`` + ``GIT_OPTIONAL_LOCKS=0`` stop ``git status`` /
+    ``git diff`` from taking ``.git/index.lock`` to refresh the stat cache —
+    the source of the transient-lock contention with the repo's other cron
+    automations (JOB-006 / hermes/research/msb-v3-git-lock-contention.md).
+    """
+    lockless_env = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}
+    return _run(
+        ["git", "--no-optional-locks", *args], cwd, timeout, strip=strip, env=lockless_env
+    )
 
 
 def _is_ignorable(path: str, globs: list[str]) -> bool:
@@ -71,16 +99,12 @@ def _porcelain_entries(raw: str) -> list[tuple[str, str]]:
 
 
 def _git_block(cfg: GuardianConfig, repo: Path) -> dict[str, object]:
-    rc_head, head, _ = _run(["git", "rev-parse", "HEAD"], repo, _GIT_TIMEOUT)
-    _, branch, _ = _run(["git", "branch", "--show-current"], repo, _GIT_TIMEOUT)
-    _, last_commit, _ = _run(
-        ["git", "log", "-1", "--format=%cI %s"], repo, _GIT_TIMEOUT
-    )
-    _, porcelain, _ = _run(
-        ["git", "status", "--porcelain"], repo, _GIT_TIMEOUT, strip=False
-    )
-    rc_up, updata, _ = _run(
-        ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"], repo, _GIT_TIMEOUT
+    rc_head, head, _ = _git(["rev-parse", "HEAD"], repo)
+    _, branch, _ = _git(["branch", "--show-current"], repo)
+    _, last_commit, _ = _git(["log", "-1", "--format=%cI %s"], repo)
+    _, porcelain, _ = _git(["status", "--porcelain"], repo, strip=False)
+    rc_up, updata, _ = _git(
+        ["rev-list", "--left-right", "--count", "HEAD...@{u}"], repo
     )
     ahead = behind = 0
     have_upstream = rc_up == 0 and "\t" in updata
@@ -90,19 +114,29 @@ def _git_block(cfg: GuardianConfig, repo: Path) -> dict[str, object]:
 
     globs = cfg.fingerprint.ignorable_globs
     entries = _porcelain_entries(porcelain)
-    modified: list[str] = []
+    # porcelain XY: X = index (staged) status, Y = worktree (unstaged) status.
+    staged: list[str] = []
+    unstaged: list[str] = []
     untracked: list[str] = []
     ignored_out: list[str] = []
     for xy, path in entries:
         if _is_ignorable(path, globs):
             ignored_out.append(path)
             continue
+        x, y = (xy[0] if xy else " "), (xy[1] if len(xy) > 1 else " ")
         if xy == "??":
             untracked.append(path)
-        else:
-            modified.append(path)
+            continue
+        if x not in (" ", "?"):
+            staged.append(path)
+        if y not in (" ", "?"):
+            unstaged.append(path)
 
+    # back-compat: `modified` = every non-untracked dirty path (staged or not)
+    modified = sorted(set(staged) | set(unstaged))
     clean_after_filter = not modified and not untracked
+    # "staged and ready to commit": something is staged, nothing is unstaged or untracked
+    staged_only = bool(staged) and not unstaged and not untracked
 
     return {
         "head": head if rc_head == 0 else "UNKNOWN",
@@ -116,7 +150,10 @@ def _git_block(cfg: GuardianConfig, repo: Path) -> dict[str, object]:
         },
         "working_tree": {
             "clean_after_filter": clean_after_filter,
-            "modified": sorted(modified),
+            "staged_only": staged_only,
+            "staged": sorted(staged),
+            "unstaged": sorted(unstaged),
+            "modified": modified,
             "untracked": sorted(untracked),
             "ignored_by_config": sorted(ignored_out),
             "ownership_attributable_to_guardian": False,
@@ -142,6 +179,70 @@ def _mtime(p: Path) -> str | None:
         return None
 
 
+_PIN_RE = re.compile(r"^([A-Za-z0-9_.\-]+)\s*==\s*([A-Za-z0-9_.\-]+)")
+
+
+def _pins_from(reqs: list[str]) -> list[tuple[str, str]]:
+    pins: list[tuple[str, str]] = []
+    for r in reqs:
+        m = _PIN_RE.match(str(r).strip().strip('"').strip("'"))
+        if m:
+            pins.append((m.group(1).lower().replace("_", "-"), m.group(2)))
+    return pins
+
+
+def _pin_in_lock(name: str, version: str, lock_text: str) -> bool:
+    # tolerate an [extras] marker in the lock line: httpx[http2]==0.28.1
+    pat = re.escape(name) + r"(\[[^\]]*\])?==" + re.escape(version)
+    return re.search(pat, lock_text) is not None
+
+
+def _lock_drift(repo: Path) -> str:
+    """Content-based (G1): runtime pins must be in requirements-runtime.lock,
+    dev pins in requirements-dev.lock. Other optional groups (speech, …) are
+    unlocked by design and skipped. Replaces the mtime heuristic that
+    false-positived after any version bump (JOB-002).
+    """
+    pj = repo / "pyproject.toml"
+    if not pj.exists():
+        return "UNKNOWN (no pyproject.toml)"
+    try:
+        import tomllib
+
+        proj = tomllib.loads(pj.read_text(encoding="utf-8")).get("project", {})
+    except (OSError, ValueError):
+        return "UNKNOWN (pyproject.toml unparseable)"
+
+    checks: list[tuple[str, list[tuple[str, str]]]] = [
+        ("requirements-runtime.lock", _pins_from(list(proj.get("dependencies", []) or []))),
+        (
+            "requirements-dev.lock",
+            _pins_from(list((proj.get("optional-dependencies", {}) or {}).get("dev", []) or [])),
+        ),
+    ]
+    missing: list[str] = []
+    checked_any = False
+    for lock_name, pins in checks:
+        fp = repo / lock_name
+        if not pins or not fp.exists():
+            continue
+        try:
+            lock_text = fp.read_text(encoding="utf-8").lower()
+        except OSError:
+            continue
+        checked_any = True
+        missing += [
+            f"{n}=={v} (want in {lock_name})"
+            for n, v in pins
+            if not _pin_in_lock(n, v, lock_text)
+        ]
+    if not checked_any:
+        return "UNKNOWN (no lockfile to compare against)"
+    if not missing:
+        return "none (every runtime + dev pin is present in its lockfile)"
+    return f"DRIFT: {len(missing)} pin(s) missing: {'; '.join(sorted(missing)[:8])}"
+
+
 def _manifests_block(repo: Path) -> dict[str, object]:
     files: dict[str, str | None] = {}
     for name in (
@@ -155,15 +256,7 @@ def _manifests_block(repo: Path) -> dict[str, object]:
         if fp.exists():
             files[name] = _mtime(fp)
 
-    drift = "UNKNOWN"
-    pj = repo / "pyproject.toml"
-    lock = repo / "requirements-runtime.lock"
-    if pj.exists() and lock.exists():
-        drift = (
-            "SUSPECTED (pyproject newer than lock; mtime heuristic only)"
-            if pj.stat().st_mtime > lock.stat().st_mtime
-            else "none (lock newer than pyproject)"
-        )
+    drift = _lock_drift(repo)
 
     outdated: object = "UNKNOWN (no active venv in forensics shell)"
     if _in_venv():
@@ -201,12 +294,21 @@ def _tests_block(repo: Path) -> dict[str, object]:
             failed = sorted(str(k) for k in data)
         except (OSError, ValueError):
             failed = []
+    cov_m, cache_m = _mtime(cov), _mtime(cache)
+    # G2: the suite has run since the cache was written -> lastfailed is stale.
+    stale = bool(cov_m and cache_m and cache_m < cov_m)
     return {
         "this_cycle": "NOT_RUN",
-        "coverage_mtime": _mtime(cov),
-        "pytest_cache_mtime": _mtime(cache),
+        "coverage_mtime": cov_m,
+        "pytest_cache_mtime": cache_m,
         "lastfailed": failed,
-        "note": "lastfailed reflects the cache's last run, which may pre-date the latest suite run",
+        "lastfailed_stale": stale,
+        "note": (
+            "lastfailed is STALE — the suite has run since this cache (coverage newer); "
+            "treat these as unknown, not failing"
+            if stale
+            else "lastfailed reflects the cache's last run"
+        ),
     }
 
 

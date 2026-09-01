@@ -42,23 +42,40 @@ _WAKE_SYSTEM = (
 
 
 def default_turn_fn() -> TurnFn:
-    """DeepSeek-backed turn (the $10 brain). Raises RuntimeError when the
-    key is unset — the runner turns that into a failed inbox message, never
-    a silent no-op."""
+    """DeepSeek-backed turn (the $10 brain), with a local Ollama fallback.
+
+    When the DeepSeek call fails for any reason (key unset, HTTP 402 /
+    payment required, circuit open, timeout, connection error) and
+    ``settings.wake_allow_local_fallback`` is on, the same turn is retried
+    against the local model so a provider outage degrades the resident loop
+    instead of stopping it. If the fallback is disabled or also fails, the
+    original error propagates and the runner marks the message failed.
+    """
     from msb_v3.local_ai.deepseek import DeepSeekClient
 
     client = DeepSeekClient(timeout_s=45.0)
 
-    def turn(text: str, sender: str) -> str:
-        resp = client.chat(
-            [
-                {"role": "system", "content": _WAKE_SYSTEM},
-                {"role": "user", "content": f"[from {sender}]\n{text}"},
-            ],
-            temperature=0.4,
-            max_tokens=1024,
-        )
+    def _messages(text: str, sender: str) -> list[dict[str, str]]:
+        return [
+            {"role": "system", "content": _WAKE_SYSTEM},
+            {"role": "user", "content": f"[from {sender}]\n{text}"},
+        ]
+
+    def _local_turn(text: str, sender: str) -> str:
+        from msb_v3.local_ai.ollama import LocalAIClient
+
+        resp = LocalAIClient().chat(_messages(text, sender), temperature=0.4, max_tokens=1024)
         return resp.text
+
+    def turn(text: str, sender: str) -> str:
+        try:
+            resp = client.chat(_messages(text, sender), temperature=0.4, max_tokens=1024)
+            return resp.text
+        except Exception as exc:  # noqa: BLE001 — any DeepSeek failure is a fallback trigger
+            if not settings.wake_allow_local_fallback:
+                raise
+            logger.warning("wake: DeepSeek turn failed (%s) — falling back to local model", exc)
+            return _local_turn(text, sender)
 
     return turn
 

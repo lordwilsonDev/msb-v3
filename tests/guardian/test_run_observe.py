@@ -41,6 +41,31 @@ def test_ignorable_dirt_does_not_escalate(config_file: Path) -> None:
     assert result.escalations[0].reason == "CAPABILITY_UNAVAILABLE"
 
 
+def test_staged_only_tree_is_not_ambiguous(config_file: Path) -> None:
+    import subprocess
+
+    cfg = GuardianConfig.load(config_file)
+    (cfg.repo_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='2'\n", encoding="utf-8")
+    subprocess.run(["git", "add", "pyproject.toml"], cwd=cfg.repo_path, check=True, capture_output=True)
+    result, code = execute(config_file, dry_run=True)
+    assert result.decision == "PROPOSE"
+    assert result.escalations[0].reason == "STAGED_PENDING_COMMIT"
+    assert result.escalations[0].blocking is False
+    assert code == EXIT_OK
+
+
+def test_staged_plus_unstaged_still_ambiguous(config_file: Path) -> None:
+    import subprocess
+
+    cfg = GuardianConfig.load(config_file)
+    (cfg.repo_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='2'\n", encoding="utf-8")
+    subprocess.run(["git", "add", "pyproject.toml"], cwd=cfg.repo_path, check=True, capture_output=True)
+    (cfg.repo_path / "unexpected.py").write_text("x = 1\n", encoding="utf-8")
+    result, code = execute(config_file, dry_run=True)
+    assert result.escalations[0].reason == "AMBIGUOUS_WORKING_TREE"
+    assert code == EXIT_ESCALATE
+
+
 def test_lock_contention(config_file: Path) -> None:
     cfg = GuardianConfig.load(config_file)
     d = cfg.ledger.local_state_dir

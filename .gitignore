@@ -88,3 +88,6 @@ desktop/smoke.png
 
 # S-AOS Guardian local state (lock, fingerprint cache, failure budget, dry-run output)
 var/guardian/
+
+# AI job board — coordination scaffolding for the FreeBuff/Hermes/Guardian loop; not project source
+ai-workspace/

@@ -57,6 +57,33 @@ def _collection(tenant_id: str) -> str:
     return f"tenant_{safe}"
 
 
+def _ensure_collection(client: Any, collection: str) -> None:
+    """Create the collection only if it is missing.
+
+    The old code called ``create_collection`` unconditionally on every
+    ``/index`` request and logged the resulting 409 ("already exists") at
+    warning level — 318 error-level lines per JOB-004. Check first; only warn
+    on a genuine create failure (an unreachable server still fails loudly on
+    the subsequent upsert).
+    """
+    try:
+        exists = client.collection_exists(collection)
+    except Exception:  # noqa: BLE001 — older client / transport hiccup: fall through to create
+        exists = False
+    if exists:
+        return
+    try:
+        client.create_collection(
+            collection_name=collection,
+            vectors_config={"size": _EMBED_DIM, "distance": "Cosine"},
+        )
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc).lower()
+        if "already exists" in msg or "409" in msg or "conflict" in msg:
+            return
+        logger.warning("failed to create collection %s: %s", collection, exc)
+
+
 _TEST_TENANT_PREFIXES = ("live_test_", "r02_eval_")
 
 
@@ -170,13 +197,7 @@ async def rag_index(payload: IndexRequest) -> dict[str, Any]:
     collection = _collection(tenant_id)
     client = _qdrant_client()
 
-    try:
-        client.create_collection(
-            collection_name=collection,
-            vectors_config={"size": _EMBED_DIM, "distance": "Cosine"},
-        )
-    except Exception as exc:
-        logger.warning("failed to create collection %s: %s", collection, exc)
+    _ensure_collection(client, collection)
 
     points: list[dict[str, Any]] = []
     for idx, doc in enumerate(payload.documents):

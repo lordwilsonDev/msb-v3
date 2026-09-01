@@ -119,7 +119,8 @@ class PatchBuilder(Builder):
         self._timeout_s = timeout_s
 
     async def build(self, plan: Plan, worktree: str, *, repo_hint: str = "") -> BuildResult:
-        env = {**os.environ, "MSB_WORKTREE": worktree, "MSB_GOAL": plan.goal}
+        from msb_v3.agent.providers import scrub_debug_env
+        env = scrub_debug_env({**os.environ, "MSB_WORKTREE": worktree, "MSB_GOAL": plan.goal})
         try:
             proc = await asyncio.create_subprocess_exec(
                 "/bin/bash", self._script,

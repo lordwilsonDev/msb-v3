@@ -75,10 +75,27 @@ _CHILD_ENV_PASSTHROUGH = (
 )
 
 
+def scrub_debug_env(env: Dict[str, str]) -> Dict[str, str]:
+    """Drop macOS malloc-debug vars from a child environment.
+
+    When the parent inherits ``MallocStackLogging`` / ``MallocScribble`` /
+    ``NSZombieEnabled`` (from a leaked Xcode/Instruments session or a stray
+    ``launchctl setenv``), every spawned ``python`` prints
+    ``MallocStackLogging: can't turn off malloc stack logging ...`` at
+    startup — 12.7k lines/log per JOB-004. msb-v3's own subprocesses must
+    not propagate these regardless of where they came from.
+    """
+    return {
+        k: v
+        for k, v in env.items()
+        if not k.startswith("Malloc") and k != "NSZombieEnabled"
+    }
+
+
 def _child_env(worktree: str, session: str) -> Dict[str, str]:
     """Scoped environment for a subprocess worker: allowlisted passthrough
     vars that are actually set, plus the worktree/session markers. Never
-    leaks the parent's secrets."""
+    leaks the parent's secrets (and never propagates malloc-debug noise)."""
     env: Dict[str, str] = {}
     for key in _CHILD_ENV_PASSTHROUGH:
         value = os.environ.get(key)
@@ -86,7 +103,7 @@ def _child_env(worktree: str, session: str) -> Dict[str, str]:
             env[key] = value
     env["MSB_WORKTREE"] = worktree
     env["MSB_SESSION"] = session
-    return env
+    return scrub_debug_env(env)
 
 
 @dataclass(frozen=True)
