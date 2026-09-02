@@ -61,7 +61,7 @@ def _mixes_classes(token: str, n: int = 2) -> bool:
     Evaluated on the longest dash-separated segment, so deployment prefixes
     like ``dev-`` (all lowercase) cannot launder a single-class body: the
     placeholder ``tvly-dev-AAAA...`` stays one class, while a real key's
-    random tail (``<REDACTED>...``) mixes lower/upper/digit.
+    random tail (e.g. ``tvly-dev-a1B2c3D4e5F6...``) mixes lower/upper/digit.
     """
     core = max(token.split("-"), key=len)
     return sum(1 for cls in _CLASSES if cls.search(core)) >= n

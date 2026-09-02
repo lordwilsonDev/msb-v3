@@ -20,7 +20,8 @@ SCANNER = Path(__file__).resolve().parents[1] / "scripts" / "scan-secrets.py"
 # committed source never contains a contiguous secret-shaped token — the
 # tree scan would otherwise flag this very file as a fixture leak (the
 # same concatenation pattern the wrongness conflict-probe test uses).
-TVLY_FAKE = "tvly-dev-" + "<REDACTED>" + "<REDACTED>" + "<REDACTED>"
+TVLY_FAKE = "tvly-dev-" + "AbCdEf1234GhIjKl" + "5678MnOpQrStUvWxYz"
+
 AWS_FAKE = "AKIA" + "IOSFODNN7EXAMPLE"
 PEM_FAKE = "-----BEGIN " + "RSA PRIVATE KEY-----"
 
