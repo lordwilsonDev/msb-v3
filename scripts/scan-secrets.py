@@ -11,12 +11,11 @@ Exit 0 = clean, 1 = matches found (blocking), 2 = usage/scan error.
 
 Design rules (the blueprint's adversarial requirements):
 
-- **Entropy over prefix.** A match counts only if the token body mixes at
-  least two character classes (lower, upper, digit).  Placeholders like
+- **Entropy over prefix.** A match counts only if the token body mixes  at least two character classes (lower, upper, digit).  Placeholders like
   ``tvly-dev-AAAAAAAAAAAAAAAAAAAAAAAAAAAAA`` (one class) and ``sk-test``
   (too short) are deliberately NOT flagged — they are the repo's own test
   fixtures and the wrongness engine's fake-key inputs.  A real key mixes
-  classes (``tvly-dev-<REDACTED>-7lv7...``).
+  classes (``tvly-dev-Ab1cD...``).
 - **Fail closed.** Any staged match blocks the commit; any tree match fails
   the CI step.  The known historical offender (``.claude/settings.local.json``)
   is exactly what the --tree mode exists to keep failing until it is purged.
@@ -120,8 +119,29 @@ def staged_lines() -> list[str]:
 
 
 def tree_lines() -> list[str]:
-    """Every tracked file's content (the CI / full-tree gate's input)."""
-    files = _git("ls-files")
+    """Every tracked file's content (the CI / full-tree gate's input).
+
+    Falls back to walking the tree when no git worktree exists (the
+    portability gate stages a .git-less copy) — the staged copy's own
+    files then become the scanned set, pruned of VCS/venv/cache dirs.
+    """
+    try:
+        files = _git("ls-files")
+    except subprocess.CalledProcessError:
+        files = []
+        excluded = {
+            ".git", "__pycache__", ".pytest_cache", ".mypy_cache",
+            ".venv", "venv", "node_modules", ".direnv",
+        }
+        root = Path.cwd()
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = sorted(d for d in dirnames if d not in excluded)
+            for fn in sorted(filenames):
+                if fn.endswith((".pyc", ".pyo")):
+                    continue
+                p = Path(dirpath) / fn
+                if p.is_file() and not p.is_symlink():
+                    files.append(str(p.relative_to(root)))
     lines: list[str] = []
     for rel in files:
         p = Path.cwd() / rel

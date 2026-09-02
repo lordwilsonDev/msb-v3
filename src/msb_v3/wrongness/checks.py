@@ -15,6 +15,7 @@ evidence without parsing prose.
 from __future__ import annotations
 
 import json
+import os
 import re
 import stat
 import subprocess
@@ -60,7 +61,30 @@ def _git(root: Path, *args: str) -> str:
 
 
 def _tracked_files(root: Path) -> list[str]:
-    return _git(root, "ls-files", "-z").split("\x00")
+    tracked = _git(root, "ls-files", "-z")
+    if tracked:
+        return tracked.split("\x00")
+    # No git worktree (the portability gate stages a .git-less copy, prunes
+    # docs/, and the claim replay can run against arbitrary trees): fall back
+    # to walking the tree, pruning VCS/venv/cache dirs so the scan stays
+    # deterministic and mirrors what git would have tracked.
+    excluded = {
+        ".git", "__pycache__", ".pytest_cache", ".mypy_cache",
+        ".venv", "venv", "node_modules", ".direnv",
+    }
+    rels: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in excluded)
+        for fn in sorted(filenames):
+            if fn.endswith((".pyc", ".pyo")):
+                continue
+            p = Path(dirpath) / fn
+            if p.is_file() and not p.is_symlink():
+                try:
+                    rels.append(str(p.relative_to(root)))
+                except ValueError:  # pragma: no cover - defensive
+                    pass
+    return rels
 
 
 def _first_match_links(root: Path, rel: str, pattern: re.Pattern[str]) -> EvidenceLink | None:

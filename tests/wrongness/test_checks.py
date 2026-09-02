@@ -1,8 +1,10 @@
 """Deterministic checks: hermetic on temp repos, live re-detection on the tree.
 
 The live tests are the point (the by-hand lesson: the strongest check is
-often 5 lines of shell).  C4/C5/C6 were verified against the real tree in
-the hardening audit — these assert the checks still catch them today.
+often 5 lines of shell).  C4 was closed 2026-09-01 (key revoked, untracked,
+purged from history) — its test now asserts the tree stays CLEAN.  C5/C6
+were verified against the real tree in the hardening audit — these assert
+the checks still catch them today.
 """
 
 from __future__ import annotations
@@ -124,6 +126,20 @@ def test_live_c5_ensure_schema_now_wired() -> None:
 
 
 def test_live_c4_secret_scan() -> None:
-    """H4: no plaintext secret in the repo. The scan must still flag it."""
-    res = check_tracked_secret(REPO, r"tvly-[A-Za-z0-9_-]{20,}")
-    assert res.ok is False, f"tracked secret should still be present: {res.evidence}"
+    """C4 CLOSED (2026-09-01): the Tavily key was revoked, untracked, and
+    purged from all history. The P0.1 secret-prevention gate must now pass
+    clean on the tree — a reappearing secret flips this red."""
+    import subprocess
+    import sys
+
+    gate = REPO / "scripts" / "scan-secrets.py"
+    if not gate.exists():
+        pytest.skip("secret-scan gate missing")
+    run = subprocess.run(
+        [sys.executable, str(gate), "--tree"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert run.returncode == 0, f"secret scan flagging tracked secrets:\n{run.stdout}{run.stderr}"
