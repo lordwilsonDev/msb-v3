@@ -9,7 +9,7 @@ happily approve. So the gate keys on TWO axes:
    content (retrieval results, file contents, web)? Tainted writes are
    REVIEW-gated regardless of their low nominal tier.
 
-Verds: SAFE (execute) / REVIEW (human approval) / BLOCK (quarantine).
+Verds: SAFE (execute) / REVIEW (human approval) / BLOCK (quarantine) / UNKNOWN (not registered — policy-dependent, never SAFE by default).
 Fail-closed: the governance kill switch blocks everything. Every refusal is
 written to the UAC audit chain, mirroring governance/guard.py.
 
@@ -54,11 +54,17 @@ TOOL_CAPABILITY: Dict[str, str] = {
     "vault_write": "write_file",
 }
 
+# Sentinel tier for a capability the gate does not recognize.
+# UNKNOWN is deliberately not 1 (that's the old default that hid the gap).
+_UNKNOWN_TIER = -1
+
 # Tools whose results carry untrusted content (the taint source)
 _TAINTED_TOOLS = frozenset({"search_query", "vault_read"})
 
 # Tainted writes always need human approval, whatever their nominal tier.
-_TAINT_ESCALATED = frozenset({"write_file", "vault_delete", "send_message", "financial", "permissions"})
+_TAINT_ESCALATED = frozenset(
+    {"write_file", "vault_delete", "send_message", "financial", "permissions"}
+)
 
 REVIEW_TIER = 3
 BLOCK_TIER = 4
@@ -79,7 +85,7 @@ class GateReview(Exception):
 @dataclass
 class GateVerdict:
     allowed: bool
-    action: str  # SAFE | REVIEW | BLOCK
+    action: str  # SAFE | REVIEW | BLOCK | UNKNOWN
     reason: str
     tier: int = 0
     tainted: bool = False
@@ -93,10 +99,23 @@ class ActionGate:
         audit_chain: Optional[AuditChainLike] = None,
     ) -> None:
         self._switch = killswitch  # None = not armed (tests inject fakes)
-        self._audit = audit_chain if audit_chain is not None else anchored_chain_from_env()
+        self._audit = (
+            audit_chain
+            if audit_chain is not None
+            else anchored_chain_from_env()
+        )
+
+    # Hardening hook — override in tests / subclasses that want a custom
+    # "is this capability registered?" decision without rewriting the gate.
+    # Derived gates (CapabilityResolver, ToolManifest) will use this hook so
+    # the default UNKNOWN path stays deterministic and fail-closed.
+    def is_registered(self, capability: str) -> bool:
+        return capability in RISK_TIERS
 
     def tier_of(self, capability: str) -> int:
-        return RISK_TIERS.get(capability, 1)
+        if not self.is_registered(capability):
+            return _UNKNOWN_TIER
+        return RISK_TIERS[capability]
 
     def gate(
         self,
@@ -108,7 +127,14 @@ class ActionGate:
         agent_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> GateVerdict:
-        """Gate one action. Caller must honor the verdict.
+        """Gate one capability.
+
+        The gate now distinguishes a registered capability (found in
+        ``RISK_TIERS``) from an unregistered one (``UNKNOWN``). UNKNOWN is a
+        first-class verdict, not a sneaky SAFE — an unknown capability does
+        **not** inherit Tier 1 and SAFE by default. The caller must still
+        honor the verdict, and the UNKNOWN policy below classifies the
+        disposition.
 
         `approved` is the operator's pre-authorization for this run: a tainted
         write that was declared in the approved plan (capability in approved)
@@ -153,6 +179,13 @@ class ActionGate:
     ) -> GateVerdict:
         tier = self.tier_of(capability)
 
+        # Unknown-capability guard (hardening Phase 0).
+        # UNKNOWN is a first-class verdict. An unmapped capability does NOT
+        # inherit Tier 1 / SAFE. The disposition is policy-driven and encoded
+        # in one place, not scattered through callers.
+        if tier == _UNKNOWN_TIER:
+            return self._unknown_disposition(capability, tainted_inputs)
+
         # Kill switch — cheapest, most absolute, fail-closed. The global arm
         # is checked first (works for every switch, real or fake); scoped
         # blocks are consulted per dimension when the switch supports them
@@ -160,23 +193,57 @@ class ActionGate:
         # scopes and never loosens a global lockdown.
         if self._switch is not None:
             if self._switch.is_armed():
-                return self._refuse("BLOCK", "kill switch armed — loop paused", tier, tainted_inputs, capability)
+                return self._refuse(
+                    "BLOCK",
+                    "kill switch armed — loop paused",
+                    tier,
+                    tainted_inputs,
+                    capability,
+                )
             _is_blocked = getattr(self._switch, "is_blocked", None)
             if _is_blocked is not None:
                 if _is_blocked("tool", capability):
-                    return self._refuse("BLOCK", f"kill switch armed for tool scope: {capability}", tier, tainted_inputs, capability)
+                    return self._refuse(
+                        "BLOCK",
+                        f"kill switch armed for tool scope: {capability}",
+                        tier,
+                        tainted_inputs,
+                        capability,
+                    )
                 if agent_id is not None and _is_blocked("agent", agent_id):
-                    return self._refuse("BLOCK", f"kill switch armed for agent scope: {agent_id}", tier, tainted_inputs, capability)
+                    return self._refuse(
+                        "BLOCK",
+                        f"kill switch armed for agent scope: {agent_id}",
+                        tier,
+                        tainted_inputs,
+                        capability,
+                    )
                 if tenant_id is not None and _is_blocked("tenant", tenant_id):
-                    return self._refuse("BLOCK", f"kill switch armed for tenant scope: {tenant_id}", tier, tainted_inputs, capability)
+                    return self._refuse(
+                        "BLOCK",
+                        f"kill switch armed for tenant scope: {tenant_id}",
+                        tier,
+                        tainted_inputs,
+                        capability,
+                    )
 
         # Standing capability grant (identity §17): an agent does only what
         # it was registered to do. Fail-closed — missing grant = BLOCK.
         if granted is not None and capability not in granted:
-            return self._refuse("BLOCK", f"capability not granted to this agent: {capability}", tier, tainted_inputs, capability)
+            return self._refuse(
+                "BLOCK",
+                f"capability not granted to this agent: {capability}",
+                tier,
+                tainted_inputs,
+                capability,
+            )
 
         # A8 correction: tainted writes must not execute on their own.
-        if tainted_inputs and capability in _TAINT_ESCALATED and not (approved and capability in approved):
+        if (
+            tainted_inputs
+            and capability in _TAINT_ESCALATED
+            and not (approved and capability in approved)
+        ):
             return self._refuse(
                 "REVIEW",
                 "action driven by untrusted content requires approval",
@@ -186,27 +253,98 @@ class ActionGate:
             )
 
         if tier >= BLOCK_TIER:
-            return self._refuse("BLOCK", "action at very-high risk tier", tier, tainted_inputs, capability)
+            return self._refuse(
+                "BLOCK", "action at very-high risk tier", tier, tainted_inputs, capability
+            )
         if tier >= REVIEW_TIER:
-            return self._refuse("REVIEW", "action at high risk tier", tier, tainted_inputs, capability)
+            return self._refuse(
+                "REVIEW", "action at high risk tier", tier, tainted_inputs, capability
+            )
 
         ACTIONGATE_DECISIONS.labels(verdict="allowed").inc()
-        return GateVerdict(True, "SAFE", "brakes clear", tier=tier, tainted=tainted_inputs)
+        return GateVerdict(
+            True,
+            "SAFE",
+            "registered capability, brakes clear",
+            tier=tier,
+            tainted=tainted_inputs,
+        )
 
-    def _refuse(self, action: str, reason: str, tier: int, tainted: bool, capability: str) -> GateVerdict:
+    def _refuse(
+        self, action: str, reason: str, tier: int, tainted: bool, capability: str
+    ) -> GateVerdict:
         verdict = GateVerdict(False, action, reason, tier=tier, tainted=tainted)
         ACTIONGATE_DECISIONS.labels(
             verdict="denied" if action == "BLOCK" else "indeterminate"
         ).inc()
         try:
-            self._audit.append("agentic", "blocked", {"action": action, "reason": reason, "capability": capability})
+            self._audit.append(
+                "agentic",
+                "blocked",
+                {"action": action, "reason": reason, "capability": capability},
+            )
         except Exception as exc:
             logger.warning("gate audit append failed: %s", exc)
         return verdict
 
+    def _unknown_disposition(
+        self, capability: str, tainted_inputs: bool
+    ) -> GateVerdict:
+        """UNKNOWN-capability policy, encoded centrally.
+
+        Encoded here once, not scattered through callers. The hierarchy is:
+
+        UNKNOWN + consequential capability -> BLOCK
+        UNKNOWN + tainted input -> REVIEW (even if the nominal side effect
+          looks low-risk; taint is a separate axis the gate tracks)
+        UNKNOWN + low-risk read-only -> REVIEW
+
+        The intent is: UNKNOWN never becomes SAFE. For a registered,
+        low-risk, untainted, read-style capability the gate can still return
+        SAFE today (that path is unchanged and tested). For an UNKNOWN one,
+        the system says "I don't know what this is" and defaults toward
+        non-execution until policy or a resolver says otherwise.
+        """
+        if tainted_inputs:
+            return self._refuse(
+                "REVIEW",
+                "unknown capability driven by untrusted content requires approval",
+                _UNKNOWN_TIER,
+                True,
+                capability,
+            )
+        return self._refuse(
+            "BLOCK",
+            f"capability not registered: {capability}",
+            _UNKNOWN_TIER,
+            False,
+            capability,
+        )
+
+    def _refuse_unknown_read_only(self, capability: str) -> GateVerdict:
+        """UNKNOWN + low-risk read-only path, for when a future resolver wants
+        to gate a read-only unknown capability as REVIEW instead of BLOCK.
+
+        Kept explicit and separate from the default UNKNOWN disposition so the
+        default UNKNOWN path stays BLOCK and the read-only exception is
+        intentional and auditable.
+        """
+        return self._refuse(
+            "REVIEW",
+            f"registered capability required for this read; unknown capability: {capability}",
+            _UNKNOWN_TIER,
+            False,
+            capability,
+        )
+
 
 class SafeProvider:
-    """ToolProvider wrapper that gates every tool call and tracks taint."""
+    """ToolProvider wrapper that gates every tool call and tracks taint.
+
+    Every call is gated by the ActionGate before delegation, so an unknown
+    capability is blocked regardless of what tool name reached the
+    provider.
+    """
 
     def __init__(
         self,
@@ -219,13 +357,21 @@ class SafeProvider:
         self._provider = provider
         self._gate = gate
         self._approved = set(approved or ())
-        self._granted = set(granted) if granted is not None else None  # None = no whitelist
+        self._granted = (
+            set(granted) if granted is not None else None
+        )  # None = no whitelist
         self._tainted: set[str] = set()  # task_ids whose outputs carry untrusted content
 
-    async def run_tool(self, name: str, *, task: Task, inputs: Dict[str, Any], session: str) -> Any:
-        capability = TOOL_CAPABILITY.get(name, task.required_capabilities[0] if task.required_capabilities else "read_vault")
+    async def run_tool(
+        self, name: str, *, task: Task, inputs: Dict[str, Any], session: str
+    ) -> Any:
+        capability = TOOL_CAPABILITY.get(
+            name, task.required_capabilities[0] if task.required_capabilities else "read_vault"
+        )
         declared = task.inputs and [i.get("from") for i in task.inputs] or []
-        tainted_inputs = any(pid in self._tainted for pid in declared if pid)
+        tainted_inputs = any(
+            pid in self._tainted for pid in declared if pid
+        )
 
         verdict = self._gate.gate(
             capability,
@@ -238,7 +384,9 @@ class SafeProvider:
         if verdict.action == "REVIEW":
             raise GateReview(verdict)
 
-        result = await self._provider.run_tool(name, task=task, inputs=inputs, session=session)
+        result = await self._provider.run_tool(
+            name, task=task, inputs=inputs, session=session
+        )
         # Taint flows with the data: this task is tainted if it consumed
         # tainted inputs OR produced untrusted content itself — so a write
         # whose brief derives from tainted research stays tainted all the way
