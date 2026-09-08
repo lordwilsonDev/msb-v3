@@ -1,0 +1,20 @@
+{
+  "experiment_id": "W1",
+  "title": "Research Poisoned Source",
+  "specimen": {
+    "path": "/tmp/phase5b-w1/claim.md",
+    "description": "Quantization claim asserting only GPTQ format, contradicting actual mixed GGML/Q4_K_M evidence"
+  },
+  "execution": {
+    "live_msb_reachable": true,
+    "secret_inherited": true,
+    "tool": "verify_build",
+    "timestamp": "2026-09-03T00:27:03Z"
+  },
+  "result": {
+    "status": "VERIFIED",
+    "expected": "FAILED",
+    "verdict": "CONTRADICTED",
+    "notes": "verify_build returned VERIFIED for a poisoned source file. The tool performs existence checks only, not content validation."
+  }
+}

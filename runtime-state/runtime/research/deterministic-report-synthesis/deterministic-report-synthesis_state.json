@@ -1,0 +1,83 @@
+{
+  "slug": "deterministic-report-synthesis",
+  "status": "completed",
+  "ts": "2026-09-03T00:33:03.834063+00:00",
+  "result": {
+    "topic": "deterministic report synthesis",
+    "slug": "deterministic-report-synthesis",
+    "phases": [
+      {
+        "phase": "inversion",
+        "ok": true,
+        "result": {
+          "assumption": "Deterministic report synthesis can be achieved through structured data input and algorithmic processing without requiring human intervention.",
+          "inversion": "Deterministic report synthesis is inherently impossible due to the unpredictable nature of human language and context.",
+          "predictions": [
+            "A system using structured data and algorithms will produce identical reports from the same input within 95% accuracy.",
+            "Human reviewers will detect inconsistencies in algorithmically generated reports at a rate of 20% higher than in reports with human input.",
+            "The time required to generate a report using deterministic synthesis will be reduced by at least 40% compared to traditional methods."
+          ]
+        },
+        "ts": "2026-09-03T00:33:03.815693+00:00"
+      },
+      {
+        "phase": "evidence",
+        "ok": true,
+        "result": {
+          "evidence": [],
+          "claims": [],
+          "meta": {
+            "source_count": 0,
+            "claim_count": 0
+          }
+        },
+        "ts": "2026-09-03T00:33:03.817072+00:00"
+      },
+      {
+        "phase": "report",
+        "ok": true,
+        "result": {
+          "title": "deterministic report synthesis",
+          "slug": "deterministic-report-synthesis",
+          "abstract": "Autonomous research brief for deterministic report synthesis.",
+          "background": "",
+          "uim": {
+            "assumption": "Deterministic report synthesis can be achieved through structured data input and algorithmic processing without requiring human intervention.",
+            "inversion": "Deterministic report synthesis is inherently impossible due to the unpredictable nature of human language and context.",
+            "predictions": [
+              "A system using structured data and algorithms will produce identical reports from the same input within 95% accuracy.",
+              "Human reviewers will detect inconsistencies in algorithmically generated reports at a rate of 20% higher than in reports with human input.",
+              "The time required to generate a report using deterministic synthesis will be reduced by at least 40% compared to traditional methods."
+            ]
+          },
+          "methods": "AIL inversion + local evidence grounding + deterministic sha256 provenance.",
+          "results": {
+            "source_count": 0,
+            "claim_count": 0
+          },
+          "discussion": "",
+          "reproducibility": {
+            "runtime_root": "/Users/lordwilson/projects/AI-Agents/msb-v3/runtime/research/deterministic-report-synthesis",
+            "artifacts": [
+              "deterministic-report-synthesis_UIM.json",
+              "deterministic-report-synthesis_completion.json",
+              "deterministic-report-synthesis_evidence_ledger.json",
+              "deterministic-report-synthesis_report.md",
+              "deterministic-report-synthesis_review.md",
+              "deterministic-report-synthesis_state.json"
+            ]
+          },
+          "guard_events": [],
+          "sovereignty_notes": "Local-first artifacts; no external publish step."
+        },
+        "ts": "2026-09-03T00:33:03.818260+00:00"
+      }
+    ],
+    "status": "completed",
+    "ts": "2026-09-03T00:33:03.819245+00:00",
+    "notify": {
+      "ok": true,
+      "async": true
+    }
+  }
+}

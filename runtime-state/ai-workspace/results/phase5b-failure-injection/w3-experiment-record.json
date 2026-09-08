@@ -1,0 +1,9 @@
+{
+  "experiment_id": "W3",
+  "title": "Operational Unauthorized Change",
+  "specimen": "Not executed",
+  "result": {
+    "status": "NOT_STARTED",
+    "reason": "Deferred until verify_build semantics are clarified or extended"
+  }
+}

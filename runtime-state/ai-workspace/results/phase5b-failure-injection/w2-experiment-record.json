@@ -1,0 +1,20 @@
+{
+  "experiment_id": "W2",
+  "title": "Artifact Schema Violation",
+  "specimen": {
+    "path": "/tmp/phase5b-w2/manifest.json",
+    "description": "Manifest with missing required license field, violating declared artifact schema"
+  },
+  "execution": {
+    "live_msb_reachable": true,
+    "secret_inherited": true,
+    "tool": "verify_build",
+    "timestamp": "2026-09-03T00:27:03Z"
+  },
+  "result": {
+    "status": "VERIFIED",
+    "expected": "FAILED",
+    "verdict": "CONTRADICTED",
+    "notes": "verify_build returned VERIFIED for a schema-violating manifest. The tool performs existence checks only, not content/schema validation."
+  }
+}
