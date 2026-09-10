@@ -86,9 +86,18 @@ def _restart_server() -> None:
     if pid:
         os.kill(pid, 9)
         time.sleep(1)
+    # Spawn the server the same way CI boots it (plain `python -m msb_v3`),
+    # NOT scripts/run.sh: run.sh hardcodes a macOS-only miniforge python
+    # path as its fallback, which does not exist on hosted ubuntu runners —
+    # the restart silently failed there and left every later live test with
+    # Connection refused (P11 CI regression). Env is inherited, so the
+    # MCP_BRIDGE_SECRET loaded from .env / set by CI flows through.
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.path.join(REPO, "src")
     subprocess.Popen(
-        ["bash", "scripts/run.sh"],
+        [sys.executable, "-m", "msb_v3"],
         cwd=REPO,
+        env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
