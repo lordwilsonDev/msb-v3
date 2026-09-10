@@ -15,15 +15,13 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
+from msb_v3.agent.safety import RISK_TIERS  # noqa: E402
 from msb_v3.governance.capability_registry import (  # noqa: E402
+    DOMAIN_FINANCIAL,
     Capability,
     CapabilityRegistry,
-    DOMAIN_FINANCIAL,
-    DOMAIN_PERMISSIONS,
     registry_matches_current_tables,
 )
-from msb_v3.agent.safety import RISK_TIERS  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Known capabilities resolve

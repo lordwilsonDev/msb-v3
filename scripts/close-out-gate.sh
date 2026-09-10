@@ -3,8 +3,9 @@
 #
 # Runs the full battery in one command and exits non-zero on ANY failure:
 #   1. lint   — ruff + mypy (all of src) + verify-claims + policy drift gate
-#   2. pytest — full suite with coverage floor (--cov-fail-under=70), against
-#      a freshly booted server (same discipline as CI)
+#   2. pytest — hermetic core suite with coverage floor (--cov-fail-under=70),
+#      excluding explicitly marked live integration tests; the integration
+#      surface is a separate conditional leg in production_gate.py.
 #   3. pip-audit — blocking CVE scan over the installed environment
 #   4. docker  — build the real runtime image from a clean checkout and prove
 #      GET /health answers from the container (no host Python)
@@ -58,13 +59,14 @@ else
   leg lint $?
 fi
 
-# --- 2. pytest: full suite + coverage floor, against a booted server ---------
+# --- 2. pytest: hermetic core suite + coverage floor -------------------------
 if skip pytest; then
   echo "[close-out] SKIP  pytest (MSB_CLOSE_OUT_SKIP)"
   SKIPPED=$((SKIPPED + 1))
 else
   bash scripts/seed-research-runtime.sh >/tmp/close-out-seed.log 2>&1 || true
-  # Allocate a run-scoped server. The helper records its own PID and
+  # Allocate a run-scoped server for any unmarked local API fixtures. The
+  # hermetic core excludes tests that require a pre-existing fixed-port server;
   # cleanup never touches a developer-owned listener.
   source scripts/ci-runtime.sh
   ci_runtime_init
@@ -82,7 +84,7 @@ else
   done
   echo "[close-out] seeded CI server research root: $(ls "$CI_SERVER_RESEARCH" 2>/dev/null | wc -l) slugs"
   if ci_runtime_start_server; then
-    "$PY" -m pytest -q tests/ --cov=msb_v3 --cov-report=term --cov-fail-under=70 >/tmp/close-out-pytest.log 2>&1
+    "$PY" -m pytest -q tests/ -m 'not integration' --cov=msb_v3 --cov-report=term --cov-fail-under=70 >/tmp/close-out-pytest.log 2>&1
     leg pytest $?
   else
     echo "[close-out] FAIL  pytest (server failed to boot — see runtime log)"

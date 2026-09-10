@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
+from msb_v3.governance.capability_resolver import CapabilityResolution  # noqa: E402
 from msb_v3.governance.decision import (  # noqa: E402
     ApprovalState,
     ConflictState,
@@ -28,8 +29,6 @@ from msb_v3.governance.decision import (  # noqa: E402
     from_capability_resolution,
     unknown_decision,
 )
-from msb_v3.governance.capability_resolver import CapabilityResolution  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # UNKNOWN is a valid decision value

@@ -18,11 +18,10 @@ Design intent:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
-from msb_v3.agent.safety import RISK_TIERS, TOOL_CAPABILITY
-
+from msb_v3.agent.safety import RISK_TIERS
 
 # ---------------------------------------------------------------------------
 # Domain vocabulary

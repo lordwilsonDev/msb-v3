@@ -16,12 +16,11 @@ Design intent:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Tuple
 
 from msb_v3.agent.safety import TOOL_CAPABILITY
 from msb_v3.governance.capability_registry import CapabilityRegistry
-
 
 # ---------------------------------------------------------------------------
 # Manifest object

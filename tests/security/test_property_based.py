@@ -9,12 +9,15 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, os.path.join(REPO, "src"))
 
 from dotenv import load_dotenv  # noqa: E402
+
 load_dotenv(os.path.join(REPO, ".env"))
 
-from hypothesis import given, strategies as st, assume, settings  # noqa: E402
-from msb_v3.memory_fabric.models import MemoryType, VerificationState  # noqa: E402
+from hypothesis import assume, given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+
 import msb_v3.memory_fabric.fabric as fab_mod  # noqa: E402
 import msb_v3.memory_fabric.store as store_mod  # noqa: E402
+from msb_v3.memory_fabric.models import MemoryType, VerificationState  # noqa: E402
 
 
 def _fresh_db() -> str:

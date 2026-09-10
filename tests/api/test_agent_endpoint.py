@@ -115,7 +115,9 @@ assert d.score > 0.5, d
 from fastapi.testclient import TestClient
 
 from msb_v3.api.app import create_app
+from msb_v3.core.config import settings
 
+settings.operator_token = ""
 app = create_app()
 r = TestClient(app).post("/agent/handle", json={"request": "x"})
 assert r.status_code == 503, r.status_code  # mounted + token unset -> closed

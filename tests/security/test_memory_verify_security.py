@@ -6,20 +6,19 @@ Runs against MCP bridge by default; direct fabric path covered separately in
 
 from __future__ import annotations
 
-import os
-import sys
 import json
+import os
 import sqlite3
-import hashlib
-import urllib.request
+import sys
 import urllib.error
+import urllib.request
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "src"))
-
-from msb_v3.memory_fabric.fabric import MemoryFabric  # noqa: E402
 
 BRIDGE_URL = "http://127.0.0.1:8766/mcp/proxy"
 DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")

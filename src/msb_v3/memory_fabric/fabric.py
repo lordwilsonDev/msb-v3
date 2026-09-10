@@ -185,27 +185,56 @@ class MemoryFabric:
         memory_id: str,
         to_state: VerificationState,
         *,
-        by: str = "operator",
+        by: str = "",
+        requested_by: str = "",
         reason: str = "",
+        resolution: str = "",
+        request_id: str = "",
+        server_version: str = "",
     ) -> MemoryItem:
         """Transition a memory's verification state. Every transition is
         recorded (audit trail) and only legal transitions are allowed —
-        fail-closed."""
+        fail-closed. The actor identity is bound to the authenticated
+        execution context (not caller-supplied), and contradiction
+        resolution requires structured evidence."""
         item = self.store.get(memory_id)
         if item is None:
             raise KeyError(f"unknown memory: {memory_id}")
         if item.archived:
             raise ValueError(f"memory {memory_id} is archived (DEPRECATED is terminal)")
+        if not by or not by.strip() or by == "unknown":
+            raise ValueError("actor identity required")
         allowed = VERIFICATION_TRANSITIONS.get(item.verification_state.value, ())
         if to_state.value not in allowed:
             raise ValueError(
                 f"illegal verification transition: {item.verification_state.value} -> {to_state.value}"
             )
+        # INV-3: contradiction resolution gate — CONTRADICTED -> VERIFIED
+        # requires evidence demonstrating why the contradiction is resolved.
+        if (item.verification_state.value, to_state.value) == ("CONTRADICTED", "VERIFIED"):
+            if not (resolution or "").strip():
+                raise ValueError("resolution evidence required for CONTRADICTED -> VERIFIED")
+            reason = f"[RESOLVED] {(resolution or '').strip()[:500]}"
         from_state = item.verification_state.value
+        # Compute previous_hash for hash-chain integrity (INV-08).
+        previous_hash = ""
+        history = self.store.verification_history(memory_id)
+        if history:
+            previous_hash = history[-1].get("record_hash", "")
         item.verification_state = to_state
         item.updated_at = time.time()
         self.store.upsert(item)
-        self.store.record_verification(memory_id, from_state, to_state.value, by=by, reason=reason)
+        self.store.record_verification(
+            memory_id,
+            from_state,
+            to_state.value,
+            by=by.strip(),
+            requested_by=str(requested_by or "").strip(),
+            reason=reason,
+            request_id=request_id,
+            server_version=server_version,
+            previous_hash=previous_hash,
+        )
         return item
 
     # -- forget / consolidate ------------------------------------------------

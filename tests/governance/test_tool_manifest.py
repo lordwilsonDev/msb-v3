@@ -17,13 +17,12 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
+from msb_v3.agent.safety import TOOL_CAPABILITY  # noqa: E402
 from msb_v3.governance.tool_manifest import (  # noqa: E402
     ToolManifest,
     ToolManifestRegistry,
     manifest_registry_matches_current_tool_mapping,
 )
-from msb_v3.agent.safety import TOOL_CAPABILITY  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Bridge invariant
@@ -120,7 +119,7 @@ def test_unknown_tool_does_not_inherit_safe() -> None:
     # invariant that later phases wire into the executor/gate.
     for capability in ("read_vault", "write_file", "financial", "nuke"):
         assert registry.tool_may_exercise("no_such_tool", capability) is False, (
-            f"undeclared tool {tool_id!r} must not be able to exercise {capability}"
+            f"undeclared tool no_such_tool must not be able to exercise {capability}"
         )
 
 

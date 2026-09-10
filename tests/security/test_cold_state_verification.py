@@ -11,17 +11,22 @@ Also verifies that a fresh server doesn't re-create or re-verify the memory.
 from __future__ import annotations
 
 import os
-import sys
 import sqlite3
 import subprocess
+import sys
 import time
+
+import pytest
 import requests
+
+pytestmark = pytest.mark.integration
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
-import msb_v3.api.mcp_bridge as bridge  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
+
+import msb_v3.api.mcp_bridge as bridge  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(os.path.join(REPO, ".env"))

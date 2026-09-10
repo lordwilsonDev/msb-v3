@@ -1,4 +1,4 @@
-.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate production-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -305,4 +305,14 @@ setup:
 # MSB_CLOSE_OUT_SKIP=<lint,pytest,pip-audit,docker>.
 close-out-gate:
 	bash scripts/close-out-gate.sh
+
+# Canonical production-readiness aggregator. Strict by default: required legs
+# and the standalone-ledger-verifier blocker must pass, while unavailable
+# conditional infrastructure is reported explicitly rather than skipped.
+# Candidate profile permits a CONDITIONAL result to exit 0, but never masks a
+# required failure. Repeatable waivers require matching --waive/--reason args.
+#   make production-gate
+#   make production-gate ARGS='--profile candidate --waive docker-build-smoke --reason "Docker unavailable"'
+production-gate:
+	$(PY) scripts/production_gate.py $(ARGS)
 

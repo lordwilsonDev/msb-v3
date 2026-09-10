@@ -7,16 +7,20 @@ either serialize correctly or produce an error — never corrupt state.
 from __future__ import annotations
 
 import os
-import sys
 import sqlite3
-import time
-import requests
+import sys
 import threading
+
+import pytest
+import requests
+
+pytestmark = pytest.mark.integration
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
 from dotenv import load_dotenv  # noqa: E402
+
 load_dotenv(os.path.join(REPO, ".env"))
 SECRET = os.environ.get("MCP_BRIDGE_SECRET", "")
 BRIDGE_URL = "http://127.0.0.1:8766/mcp/proxy"

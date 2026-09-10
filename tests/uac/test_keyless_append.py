@@ -34,7 +34,9 @@ ALLOW = "MSB_ALLOW_KEYLESS_APPENDS"
 @pytest.fixture
 def default_db(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Point the module-level default chain at a scratch file."""
-    monkeypatch.setattr(ac, "_AUDIT_DB", tmp_path / "audit.db")
+    db_path = tmp_path / "audit.db"
+    monkeypatch.setattr(ac, "_AUDIT_DB", db_path)
+    return db_path
 
 
 def _seed() -> bytes:
@@ -142,6 +144,9 @@ def test_guard_key_configuration_matches_chain_anchor_factory(
     key is configured (env var OR default key file)."""
     # env unset, default key file absent -> both say "no key"
     monkeypatch.delenv(KEY, raising=False)
+    monkeypatch.delenv("MSB_CHAIN_ANCHOR_BACKEND", raising=False)
+    monkeypatch.delenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", raising=False)
+    monkeypatch.setattr(ac, "_default_anchor_key_path", lambda: default_db / "none.key")
     assert ac._chain_key_configured() is False
     from msb_v3.uac.chain_anchor import anchored_chain_from_env
 

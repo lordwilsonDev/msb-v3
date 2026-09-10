@@ -384,7 +384,9 @@ def test_factory_plain_without_key(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     import msb_v3.uac.chain_anchor as mod
 
     monkeypatch.delenv(KEY_ENV, raising=False)
+    monkeypatch.delenv("MSB_CHAIN_ANCHOR_KEYCHAIN_SERVICE", raising=False)
     monkeypatch.setattr(mod, "_default_key_path", lambda: tmp_path / "none.key")
+    monkeypatch.setattr(mod, "_seed_from_keychain", lambda service=None: None)
     assert isinstance(anchored_chain_from_env(), AuditChain)
 
 

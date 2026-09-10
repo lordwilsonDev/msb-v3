@@ -10,9 +10,9 @@ Evidence that:
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -20,16 +20,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
+from msb_v3.agent.safety import ActionGate  # noqa: E402
+from msb_v3.governance.decision import DecisionValue  # noqa: E402
 from msb_v3.governance.shadow import (  # noqa: E402
-    ShadowRecorder,
-    ShadowRecord,
     SHADOW_FILE,
-    DEFAULT_SHADOW_ROOT,
+    ShadowRecord,
+    ShadowRecorder,
     _classify,
 )
-from msb_v3.governance.decision import DecisionValue  # noqa: E402
-from msb_v3.agent.safety import ActionGate  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Shadow mode records in parallel
@@ -119,7 +117,7 @@ def test_shadow_deterministic_resolver_is_shadowed(shadow_dir: Path) -> None:
     # path uses the resolver, so a known request resolves via the resolver's
     # deterministic intent templates.
     recorder = ShadowRecorder(shadow_root=shadow_dir)
-    record = recorder.record("r1", "search the vault")
+    recorder.record("r1", "search the vault")
     records = recorder.load()
     assert records[0]["old_action"] == "BLOCK", (
         f"expected old_action BLOCK, got {records[0]['old_action']!r}"

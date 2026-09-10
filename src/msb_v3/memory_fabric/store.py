@@ -53,9 +53,14 @@ CREATE TABLE IF NOT EXISTS verification_history (
     memory_id   TEXT NOT NULL,
     from_state  TEXT NOT NULL,
     to_state    TEXT NOT NULL,
-    by          TEXT NOT NULL DEFAULT '',
+    by          TEXT NOT NULL DEFAULT '',        -- effective actor (authenticated)
+    requested_by TEXT NOT NULL DEFAULT '',       -- caller-supplied identity (forensic)
     reason      TEXT NOT NULL DEFAULT '',
-    at          REAL NOT NULL
+    at          REAL NOT NULL,
+    request_id  TEXT NOT NULL DEFAULT '',
+    server_version TEXT NOT NULL DEFAULT '',
+    previous_hash TEXT NOT NULL DEFAULT '',
+    record_hash TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_mem_tenant_type ON memory_items(tenant, type);
@@ -132,12 +137,26 @@ class MemoryFabricStore:
             )
 
     def record_verification(
-        self, memory_id: str, from_state: str, to_state: str, *, by: str = "", reason: str = ""
+        self,
+        memory_id: str,
+        from_state: str,
+        to_state: str,
+        *,
+        by: str = "",
+        requested_by: str = "",
+        reason: str = "",
+        request_id: str = "",
+        server_version: str = "",
+        previous_hash: str = "",
     ) -> None:
+        """Append an immutable verification event to the audit trail."""
+        import hashlib
+        record = f"{memory_id}:{from_state}:{to_state}:{by}:{reason}:{requested_by}:{request_id}:{server_version}:{previous_hash}"
+        record_hash = hashlib.sha256(record.encode()).hexdigest()
         with self._lock, self._conn() as conn:
             conn.execute(
-                "INSERT INTO verification_history(memory_id, from_state, to_state, by, reason, at) VALUES (?,?,?,?,?,?)",
-                (memory_id, from_state, to_state, by, reason, time.time()),
+                "INSERT INTO verification_history(memory_id, from_state, to_state, by, requested_by, reason, at, request_id, server_version, previous_hash, record_hash) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (memory_id, from_state, to_state, by, requested_by, reason, time.time(), request_id, server_version, previous_hash, record_hash),
             )
 
     def touch(self, memory_id: str) -> None:

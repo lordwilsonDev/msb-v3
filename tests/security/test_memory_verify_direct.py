@@ -7,15 +7,20 @@ proving the core invariant independently of network/auth layers.
 from __future__ import annotations
 
 import os
-import sys
 import sqlite3
+import sys
 
 import pytest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
-from msb_v3.memory_fabric.fabric import MemoryFabric, MemoryFabricStore, MemoryType, VerificationState  # noqa: E402
+from msb_v3.memory_fabric.fabric import (  # noqa: E402
+    MemoryFabric,
+    MemoryFabricStore,
+    MemoryType,
+    VerificationState,
+)
 
 DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")
 

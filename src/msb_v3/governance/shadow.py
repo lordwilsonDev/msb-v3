@@ -15,20 +15,18 @@ Design intent:
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
-from msb_v3.governance.capability_resolver import CapabilityResolver  # noqa: E402
-from msb_v3.governance.capability_registry import CapabilityRegistry  # noqa: E402
-from msb_v3.governance.decision import (  # noqa: E402
-    DecisionValue,
-    TaintState,
-)
-from msb_v3.governance.tool_manifest import ToolManifestRegistry  # noqa: E402
 from msb_v3.agent.safety import ActionGate
+from msb_v3.governance.capability_registry import CapabilityRegistry
+from msb_v3.governance.capability_resolver import CapabilityResolver
+from msb_v3.governance.decision import DecisionValue, TaintState
+from msb_v3.governance.tool_manifest import ToolManifestRegistry
 
+if TYPE_CHECKING:
+    from msb_v3.governance.capability_resolver import CapabilityResolution
 
 # ---------------------------------------------------------------------------
 # Where shadow records land
@@ -48,7 +46,7 @@ class ShadowRecord:
 
     request_id: str
     request: str
-    ts: str
+    ts: float
     tool_name: Optional[str] = None
     taint: str = TaintState.CLEAN
 

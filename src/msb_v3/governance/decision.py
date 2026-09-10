@@ -19,7 +19,10 @@ Design intent:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
+if TYPE_CHECKING:
+    from msb_v3.governance.capability_resolver import CapabilityResolution
 
 # ---------------------------------------------------------------------------
 # Decision vocabulary

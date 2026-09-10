@@ -65,9 +65,17 @@ artifacts/webcheck-all-*.log
 artifacts/qdrant-sweep-*.json
 artifacts/artifacts-backup-*/
 artifacts/harness-evidence-report.json
+artifacts/production-gate/
 # Research run outputs are regenerated on every run — never versioned
 /runtime/research/*/
 /runtime/flywheel/
+
+# Local experiment/scratch byproducts — regenerated or throwaway, never versioned
+/results/
+/scratch/
+.hypothesis/
+# Typo'd sibling of the machine-state ai-workspace/ above (verification results)
+ai-wworkspace/
 # Governance shadow-mode observations (Phase 5) are regenerated per run —
 # never versioned (docs/audits/governance-hardening-shadow-report.md)
 /runtime/governance-shadow/

@@ -243,7 +243,7 @@ def _mf_recall(args: dict[str, Any]) -> dict[str, Any]:
     return {"count": len(hits), "memories": [h.as_dict() for h in hits]}
 
 
-def _mf_verify(args: dict[str, Any]) -> dict[str, Any]:
+def _mf_verify(args: dict[str, Any], actor: str, requested_by: str = "") -> dict[str, Any]:
     from msb_v3.memory_fabric.models import VerificationState
 
     memory_id = str(args.get("memory_id") or "")
@@ -254,8 +254,29 @@ def _mf_verify(args: dict[str, Any]) -> dict[str, Any]:
         to_state = VerificationState(state_raw)
     except ValueError:
         raise HTTPException(status_code=422, detail=f"unknown state: {state_raw}")
+
+    # INV-1: reject unidentified callers — actor must be bound to
+    # authenticated execution context, not caller-supplied identity.
+    if actor == "unknown":
+        raise HTTPException(status_code=401, detail="client identity required")
+
+    # INV-04: caller-supplied identity is forensic only, never authoritative.
+    effective_requested_by = str(requested_by or args.get("by") or "").strip()
+    # INV-02: effective actor is the authenticated context, never `by=` payload.
+    effective_actor = actor
+
+    # Resolution evidence for CONTRADICTED -> VERIFIED (INV-3).
+    resolution = _safe_text(str(args.get("resolution") or ""))
+
     item = _memory_fabric().verify_memory(
-        memory_id, to_state, by=str(args.get("by") or "operator"), reason=str(args.get("reason") or "")
+        memory_id,
+        to_state,
+        by=effective_actor,            # authenticated actor (authoritative)
+        requested_by=effective_requested_by,  # caller-supplied identity (forensic)
+        reason=_safe_text(str(args.get("reason") or "")),
+        resolution=resolution,
+        request_id=_safe_text(str(args.get("request_id") or "")),
+        server_version=_safe_text(str(args.get("server_version") or "")),
     )
     return item.as_dict()
 
@@ -496,12 +517,20 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                             results = []
                         if not results:
                             # Substring fallback (the old behavior): literal
-                            # phrase match with a context window.
+                            # phrase match with a context window. Search the
+                            # ORIGINAL text with a compiled case-insensitive
+                            # regex (re.escape keeps the phrase literal) so
+                            # match.start() stays aligned with `text`. Lowering
+                            # the whole note to locate the match was wrong for
+                            # the few Unicode codepoints whose .lower() changes
+                            # length (e.g. 'İ' -> 'i\u0307'), which shifted the
+                            # snippet window sliced back into the original.
+                            phrase = re.compile(re.escape(query), re.IGNORECASE)
                             for p in _VAULT_BASE.rglob("*.md"):
                                 text = p.read_text(encoding="utf-8", errors="replace")
-                                q = query.lower()
-                                if q in text.lower():
-                                    idx = text.lower().index(q)
+                                match = phrase.search(text)
+                                if match:
+                                    idx = match.start()
                                     start = max(0, idx - 60)
                                     end = min(len(text), idx + 140)
                                     results.append({
@@ -678,7 +707,7 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                     case "memory_recall":
                         return {"ok": True, "tool": call.tool, "result": _mf_recall(call.args)}
                     case "memory_verify":
-                        return {"ok": True, "tool": call.tool, "result": _mf_verify(call.args)}
+                        return {"ok": True, "tool": call.tool, "result": _mf_verify(call.args, actor, requested_by=str(call.args.get("by") or ""))}
                     case "memory_forget":
                         return {"ok": True, "tool": call.tool, "result": _mf_forget(call.args)}
                     case "memory_consolidate":
@@ -747,7 +776,7 @@ _MCP_TOOLS: list[dict[str, Any]] = [
     {"name": "codegraph_rename", "description": "Rename preview: every reference a rename would touch (read-only)", "args": ["repo", "name"]},
     {"name": "memory_store", "description": "Store a memory in the fabric (episodic/semantic/procedural/architectural)", "args": ["content", "type", "tags", "importance", "source_agent", "project", "tech", "tenant"]},
     {"name": "memory_recall", "description": "Recall memories ranked for a query", "args": ["query", "project", "tech", "top_k", "tenant"]},
-    {"name": "memory_verify", "description": "Transition a memory's verification state (UNVERIFIED/VERIFIED/CONTRADICTED/DEPRECATED)", "args": ["memory_id", "to_state", "by", "reason"]},
+    {"name": "memory_verify", "description": "Transition a memory's verification state (UNVERIFIED/VERIFIED/CONTRADICTED/DEPRECATED). Identity is bound to authenticated context; CONTRADICTED -> VERIFIED requires resolution evidence.", "args": ["memory_id", "to_state", "reason", "resolution", "request_id", "requested_by"]},
     {"name": "memory_forget", "description": "Soft-delete a memory (archived + DEPRECATED record)", "args": ["memory_id", "reason"]},
     {"name": "memory_consolidate", "description": "Merge duplicate memories + decay everything for a tenant", "args": ["tenant"]},
     {"name": "context_compose", "description": "Compose a layered token-budgeted context (L0-L7) for a task", "args": ["task", "repo", "project", "tech", "budget_tokens", "tenant"]},

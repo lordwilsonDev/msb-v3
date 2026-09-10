@@ -17,12 +17,11 @@ Design intent:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from msb_v3.governance.capability_registry import Capability, CapabilityRegistry
-from msb_v3.governance.tool_manifest import ToolManifestRegistry
-
+from msb_v3.governance.capability_registry import CapabilityRegistry
+from msb_v3.governance.tool_manifest import ToolManifest, ToolManifestRegistry
 
 # ---------------------------------------------------------------------------
 # Output object
@@ -66,7 +65,7 @@ class CapabilityResolution:
 # This is deliberately tiny in V1. If a request doesn't match a template, the
 # resolver does not guess — it returns UNKNOWN.
 
-_INTENT_TEMPLATES: Tuple[Tuple[str, ...], str, str] = (
+_INTENT_TEMPLATES: Tuple[Tuple[Tuple[str, ...], str, str], ...] = (
     # (literal substring probes, resolved capability, reason)
     (("search the vault",), "read_vault", "request explicitly asks to search the vault"),
     (("read the vault",), "read_vault", "request explicitly asks to read the vault"),
@@ -155,17 +154,18 @@ class CapabilityResolver:
                 evidence.append(f"tool manifest for {tool_name!r}")
                 resolved = self._first_declared_capability(manifest)
                 if resolved is not None:
-                    tier = self._capability_registry.resolve(resolved).tier  # type: ignore[union-attr]
-                    return CapabilityResolution(
-                        resolved_capability=resolved,
-                        resolution_method="tool_manifest",
-                        confidence=1.0,
-                        alternatives=tuple(alternatives),
-                        ambiguous=False,
-                        risk_tier=tier,
-                        reason=f"tool {tool_name!r} declares capability {resolved!r}",
-                        evidence=tuple(evidence),
-                    )
+                    registered = self._capability_registry.resolve(resolved)
+                    if registered is not None:
+                        return CapabilityResolution(
+                            resolved_capability=resolved,
+                            resolution_method="tool_manifest",
+                            confidence=1.0,
+                            alternatives=tuple(alternatives),
+                            ambiguous=False,
+                            risk_tier=registered.tier,
+                            reason=f"tool {tool_name!r} declares capability {resolved!r}",
+                            evidence=tuple(evidence),
+                        )
 
         # 2. Capability registry — request mentions a known capability by name.
         named = self._extract_named_capability(request)
@@ -220,11 +220,8 @@ class CapabilityResolver:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _first_declared_capability(self, manifest: object) -> Optional[str]:
-        try:
-            caps = manifest.capabilities  # type: ignore[union-attr]
-        except Exception:
-            return None
+    def _first_declared_capability(self, manifest: ToolManifest) -> Optional[str]:
+        caps = manifest.capabilities
         if caps:
             return caps[0]
         return None

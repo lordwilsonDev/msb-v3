@@ -37,3 +37,6 @@
 {"ts": "2026-08-30T11:24:51Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
 {"ts": "2026-08-30T11:24:51Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}
 {"ts": "2026-08-31T11:23:57Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
+{"ts": "2026-08-31T11:23:57Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}
+{"ts": "2026-09-01T11:23:21Z", "event": "gate_run", "verdict": "PASS", "unknowns": 1}
+{"ts": "2026-09-01T11:23:21Z", "event": "evidence_push", "ok": false, "verdict": "PASS"}

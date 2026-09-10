@@ -18,14 +18,13 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
+from msb_v3.governance.capability_registry import CapabilityRegistry  # noqa: E402
 from msb_v3.governance.capability_resolver import (  # noqa: E402
     CapabilityResolution,
     CapabilityResolver,
     default_resolver,
 )
-from msb_v3.governance.capability_registry import CapabilityRegistry  # noqa: E402
 from msb_v3.governance.tool_manifest import ToolManifestRegistry  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Deterministic resolution works for known request shapes
@@ -66,7 +65,7 @@ def test_intent_templates_resolve(
         f"{req!r} must resolve via {expected_method}; got {resolution.resolution_method!r}"
     )
     assert resolution.confidence == 1.0, (
-        f"{request!r} resolved by an explicit source must have confidence=1.0"
+        f"{req!r} resolved by an explicit source must have confidence=1.0"
     )
     assert resolution.ambiguous is False
 
