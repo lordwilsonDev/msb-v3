@@ -32,6 +32,8 @@ dev = [
   "pip-tools==7.6.1",  # `make deps` regenerates the *.lock files
   "PyYAML==6.0.3",  # workflow-structure guard tests (tests/test_harness_gate_wiring.py)
   "types-PyYAML==6.0.12.20260724",  # mypy stubs for the PyYAML import
+  "hypothesis==6.148.9",  # property-based security tests (tests/security/test_property_based.py, P14)
+  "requests==2.32.3",  # HTTP-level security tests (tests/security/test_{replay_protection,race_toctou,cold_state_verification}.py, P10-P13)
 ]
 speech = [
   "webrtcvad==2.0.10",  # VAD in msb_v3/speech/vad.py — EXPERIMENTAL subsystem, not in the release contract; tests importorskip when absent
