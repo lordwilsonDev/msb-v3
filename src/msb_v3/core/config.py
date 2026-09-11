@@ -181,6 +181,15 @@ class Settings:
     alert_telegram_target: str = field(default_factory=lambda: os.getenv("MSB_ALERT_TELEGRAM_TARGET", "telegram"))
     alert_check_enabled: bool = field(default_factory=lambda: os.getenv("MSB_ALERT_CHECK_ENABLED", "1") == "1")
     alert_check_schedule: str = field(default_factory=lambda: os.getenv("MSB_ALERT_CHECK_SCHEDULE", "*/5 * * * *"))
+    # --- Model keep-alive (production-hardening blueprint §3.3) ---
+    # Replaces the external ~/.trinity hot-reload daemon, which pinged Ollama
+    # every 60s with keep_alive=-1 to defeat macOS page-out and keep a model
+    # permanently hot (~6GB RAM, always). Off by default — Wilson's explicit
+    # call 2026-09-11: he doesn't want always-hot as the default, just an
+    # easy toggle for when he does. Off = the ordinary OLLAMA_KEEP_ALIVE
+    # default governs (adaptive, unloads when idle).
+    model_keepalive_enabled: bool = field(default_factory=lambda: os.getenv("MSB_MODEL_KEEPALIVE_ENABLED", "0") == "1")
+    model_keepalive_models: str = field(default_factory=lambda: os.getenv("MSB_MODEL_KEEPALIVE_MODELS", "qwen3:8b"))
     # --- Wake loop (the 5-minute resident agent) ---
     # A cron job (wake-agent, schedule below) wakes the resident agent to
     # process messages left in the wake inbox from any session; responses

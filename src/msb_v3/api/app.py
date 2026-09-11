@@ -95,6 +95,10 @@ async def lifespan(app: FastAPI):
             from msb_v3.cron.actions import ensure_alert_check_job
 
             ensure_alert_check_job()
+        if settings.model_keepalive_enabled:
+            from msb_v3.cron.actions import ensure_model_keepalive_job
+
+            ensure_model_keepalive_job()
     try:
         yield
     finally:

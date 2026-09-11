@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+from typing import Any, Dict
 
 import pytest
 
@@ -375,4 +376,87 @@ def test_ensure_alert_check_job_seeds_once(tmp_path) -> None:
     assert job["schedule"] == "*/5 * * * *"
     # Idempotent — second call does not clobber.
     assert actions.ensure_alert_check_job(cron_store) is True
+    assert len(cron_store.list_jobs()) == 1
+
+
+class _FakeKeepaliveResponse:
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+
+
+class _FakeKeepaliveClient:
+    """Stand-in for httpx.Client — records every POST, returns a canned status."""
+
+    calls: list = []
+    status_code = 200
+
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def post(self, url: str, json: Dict[str, Any]):  # noqa: A002 — matches httpx's kwarg name
+        _FakeKeepaliveClient.calls.append((url, json))
+        return _FakeKeepaliveResponse(_FakeKeepaliveClient.status_code)
+
+
+def test_model_keepalive_disabled_by_default_makes_no_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(actions.settings, "model_keepalive_enabled", False)
+    _FakeKeepaliveClient.calls = []
+    monkeypatch.setattr("httpx.Client", _FakeKeepaliveClient)
+
+    result = actions.run_action("model_keepalive", {})
+
+    assert result["ok"] is True
+    assert "disabled" in result["summary"]
+    assert _FakeKeepaliveClient.calls == []
+
+
+def test_model_keepalive_enabled_pulses_configured_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(actions.settings, "model_keepalive_enabled", True)
+    monkeypatch.setattr(actions.settings, "model_keepalive_models", "qwen3:8b,nomic-embed-text")
+    monkeypatch.setattr(actions.settings, "ollama_url", "http://localhost:11434")
+    _FakeKeepaliveClient.calls = []
+    _FakeKeepaliveClient.status_code = 200
+    monkeypatch.setattr("httpx.Client", _FakeKeepaliveClient)
+
+    result = actions.run_action("model_keepalive", {})
+
+    assert result["ok"] is True
+    assert len(_FakeKeepaliveClient.calls) == 2
+    url, body = _FakeKeepaliveClient.calls[0]
+    assert url == "http://localhost:11434/api/generate"
+    assert body == {"model": "qwen3:8b", "prompt": "", "keep_alive": -1}
+    assert _FakeKeepaliveClient.calls[1][1]["model"] == "nomic-embed-text"
+
+
+def test_model_keepalive_reports_failure_when_ollama_unreachable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(actions.settings, "model_keepalive_enabled", True)
+    monkeypatch.setattr(actions.settings, "model_keepalive_models", "qwen3:8b")
+
+    class _RaisingClient(_FakeKeepaliveClient):
+        def post(self, url: str, json: Dict[str, Any]):  # noqa: A002
+            raise OSError("connection refused")
+
+    monkeypatch.setattr("httpx.Client", _RaisingClient)
+
+    result = actions.run_action("model_keepalive", {})
+
+    assert result["ok"] is False
+    assert any("qwen3:8b" in f for f in result["detail"]["failed"])
+
+
+def test_ensure_model_keepalive_job_seeds_once(tmp_path) -> None:
+    from msb_v3.cron.store import CronStore
+
+    cron_store = CronStore(db_path=str(tmp_path / "cron.db"))
+    assert actions.ensure_model_keepalive_job(cron_store) is True
+    job = cron_store.get_job("model-keepalive")
+    assert job["action"]["type"] == "model_keepalive"
+    assert job["schedule"] == "* * * * *"
+    assert actions.ensure_model_keepalive_job(cron_store) is True
     assert len(cron_store.list_jobs()) == 1

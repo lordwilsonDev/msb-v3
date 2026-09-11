@@ -438,6 +438,41 @@ def action_alert_check(params: Dict[str, Any]) -> Dict[str, Any]:
     return _ok(summary, **detail)
 
 
+# --- model_keepalive --------------------------------------------------------
+
+def action_model_keepalive(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Replaces the external ~/.trinity hot-reload daemon: on the same 60s
+    cadence it used, pulse each configured model with keep_alive=-1 so it
+    never pages out. Off by default (settings.model_keepalive_enabled) —
+    Wilson's explicit call: always-hot is opt-in, not the default, since it
+    permanently reserves several GB of RAM the rest of the system may need
+    (e.g. a concurrently running VM)."""
+    if not settings.model_keepalive_enabled:
+        return _ok("model keepalive disabled (MSB_MODEL_KEEPALIVE_ENABLED=0)")
+
+    import httpx
+
+    models = [m.strip() for m in settings.model_keepalive_models.split(",") if m.strip()]
+    url = f"{settings.ollama_url.rstrip('/')}/api/generate"
+    succeeded: List[str] = []
+    failed: List[str] = []
+    for model in models:
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                resp = client.post(url, json={"model": model, "prompt": "", "keep_alive": -1})
+            if resp.status_code == 200:
+                succeeded.append(model)
+            else:
+                failed.append(f"{model} (HTTP {resp.status_code})")
+        except Exception as exc:  # noqa: BLE001 — one model's failure must not stop the others
+            failed.append(f"{model} ({exc.__class__.__name__})")
+
+    detail = {"succeeded": succeeded, "failed": failed}
+    if failed:
+        return _fail(f"model keepalive: {len(succeeded)} ok, {len(failed)} failed", **detail)
+    return _ok(f"model keepalive: {len(succeeded)} model(s) pulsed", **detail)
+
+
 # --- registry --------------------------------------------------------------
 
 ACTIONS: Dict[str, ActionFn] = {
@@ -449,6 +484,7 @@ ACTIONS: Dict[str, ActionFn] = {
     "http_call": action_http_call,
     "wake_agent": action_wake_agent,
     "alert_check": action_alert_check,
+    "model_keepalive": action_model_keepalive,
 }
 
 
@@ -490,6 +526,35 @@ def ensure_alert_check_job(cron_store: Any = None) -> bool:
             governance={"max_retries": 1, "timeout_s": 60.0, "notify_on_failure": False},
         )
         logger.info("seeded alert-check cron job (%s)", settings.alert_check_schedule)
+        return True
+    except ValueError:
+        return False
+
+
+def ensure_model_keepalive_job(cron_store: Any = None) -> bool:
+    """Seed the model-keepalive cron job (every minute, matching the retired
+    ~/.trinity hot-reload daemon's cadence) if missing. Idempotent — called
+    from the app lifespan when model_keepalive_enabled and cron_enabled are
+    both on. The job itself is a no-op each tick unless the setting is on;
+    seeding is still gated by it so a fully-default install has no extra
+    scheduled job at all."""
+    from msb_v3.cron.store import CronStore
+
+    store = cron_store if cron_store is not None else CronStore()
+    try:
+        store.get_job("model-keepalive")
+        return True
+    except KeyError:
+        pass
+    try:
+        store.create_job(
+            "model-keepalive",
+            "Model keep-alive (replaces the external ~/.trinity hot-reload daemon)",
+            "* * * * *",
+            {"type": "model_keepalive", "params": {}},
+            governance={"max_retries": 1, "timeout_s": 45.0, "notify_on_failure": False},
+        )
+        logger.info("seeded model-keepalive cron job")
         return True
     except ValueError:
         return False
