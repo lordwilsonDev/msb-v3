@@ -68,6 +68,10 @@ jobs:
             cat /tmp/msb-ci-test-server.log
             exit 1
           fi
+          # H9: a fresh checkout's data/ DBs are created unstamped by the
+          # boot above — stamp them now, or test_schema_stamping.py fails
+          # on every clean runner (data/ is gitignored, never ships stamped).
+          python scripts/stamp-schemas.py
           PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
 
       - name: Upload coverage

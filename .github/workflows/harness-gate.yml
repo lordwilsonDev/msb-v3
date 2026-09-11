@@ -147,6 +147,12 @@ jobs:
         run: make portability
         env:
           MSB_REPO: ${{ github.workspace }}
+          # The staged copy's .env is template-generated (blank secret) by
+          # the drift-guard step above, but test_cold_state_verification.py
+          # / test_memory_verify_security.py hit the REAL already-running
+          # :8766 server with x-mcp-secret from this process's env — without
+          # this, SECRET resolves to "" and every call 401s.
+          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
 
       # Upload even on failure so a red gate still ships the report, the
       # stage logs (producer FAIL lines + consumer BLOCK detail), and the

@@ -75,6 +75,9 @@ jobs:
             cat /tmp/msb-test-server.log
             exit 1
           fi
+          # H9: stamp the fresh checkout's just-created data/ DBs before the
+          # regression suite's test_schema_stamping.py checks them.
+          python scripts/stamp-schemas.py
           pytest --cov=msb_v3 --cov-report=term --cov-fail-under=70 -q
 
       # Full scope: types ALL three packages, not just src/msb_v3 — the
