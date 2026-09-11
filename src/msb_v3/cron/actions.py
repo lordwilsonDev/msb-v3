@@ -20,6 +20,7 @@ import json
 import logging
 import shutil
 import sqlite3
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List
@@ -295,6 +296,39 @@ def action_wake_agent(params: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         return _fail("wake_agent max_items must be an integer")
     return run_wake_cycle(max_items=max_items)
+
+
+# --- alert_check -----------------------------------------------------------
+
+_ALERT_STATE_DEFAULT: Dict[str, Any] = {
+    "actiongate_baseline": {"failed": 0.0, "denied": 0.0},
+    "actiongate_window_start": None,
+    "consecutive_degraded": 0,
+    "alerts_active": {"killswitch": False, "actiongate_rate": False, "system_degraded": False},
+}
+
+
+def _alert_state_path() -> Path:
+    configured = settings.alert_state_path
+    if configured:
+        return Path(configured)
+    return Path(settings.db_path).parent / "cron" / "alert_watch_state.json"
+
+
+def _load_alert_state() -> Dict[str, Any]:
+    path = _alert_state_path()
+    if not path.exists():
+        return json.loads(json.dumps(_ALERT_STATE_DEFAULT))
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return json.loads(json.dumps(_ALERT_STATE_DEFAULT))
+
+
+def _save_alert_state(state: Dict[str, Any]) -> None:
+    path = _alert_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state))
 
 
 # --- registry --------------------------------------------------------------

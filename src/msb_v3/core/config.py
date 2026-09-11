@@ -153,6 +153,10 @@ class Settings:
     # is not on this list is refused. Defaults to loopback only; widen by
     # adding hosts (comma-separated, no scheme/port).
     cron_http_hosts: str = field(default_factory=lambda: os.getenv("MSB_CRON_HTTP_HOSTS", "127.0.0.1,localhost,::1"))
+    # Where alert_check's edge-trigger state (last-known killswitch/ActionGate/
+    # health state) persists between polls. Empty = derive from db_path
+    # (beside cron.db under data/cron/).
+    alert_state_path: str = field(default_factory=lambda: os.getenv("MSB_ALERT_STATE_PATH", ""))
     # --- Wake loop (the 5-minute resident agent) ---
     # A cron job (wake-agent, schedule below) wakes the resident agent to
     # process messages left in the wake inbox from any session; responses

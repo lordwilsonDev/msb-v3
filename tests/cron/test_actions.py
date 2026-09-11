@@ -183,3 +183,28 @@ def test_backup_spine_runs(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert result["detail"]["db_count"] == 1
     backups = sorted((tmp_path / "backups").iterdir())
     assert len(backups) == 1
+
+
+def test_alert_state_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    state = actions._load_alert_state()
+    assert state["alerts_active"] == {
+        "killswitch": False,
+        "actiongate_rate": False,
+        "system_degraded": False,
+    }
+    state["consecutive_degraded"] = 3
+    actions._save_alert_state(state)
+    reloaded = actions._load_alert_state()
+    assert reloaded["consecutive_degraded"] == 3
+
+
+def test_alert_state_defaults_on_corrupt_file(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    path = actions._alert_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("not json{{{")
+    state = actions._load_alert_state()
+    assert state["consecutive_degraded"] == 0
