@@ -34,7 +34,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/lordwilson/msb-v3</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3</string>
 
     <key>StartCalendarInterval</key>
     <dict>
