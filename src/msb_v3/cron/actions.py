@@ -348,9 +348,9 @@ def action_alert_check(params: Dict[str, Any]) -> Dict[str, Any]:
     """Watch killswitch state, ActionGate BLOCK/FAIL rate, and system health;
     notify (edge-triggered — once per state change, not once per poll) via
     Hermes when a rule crosses its threshold, and again on recovery."""
+    from msb_v3.api.system import system_health
     from msb_v3.governance.killswitch import KillSwitch
     from msb_v3.observability.metrics import ACTIONGATE_DECISIONS
-    from msb_v3.api.system import system_health
 
     state = _load_alert_state()
     notifications: List[str] = []
