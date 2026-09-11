@@ -467,3 +467,29 @@ def run_action(action_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(result, dict) or "ok" not in result:
         return _fail(f"action returned a malformed result: {result!r}")
     return result
+
+
+def ensure_alert_check_job(cron_store: Any = None) -> bool:
+    """Seed the alert-check cron job (schedule settings.alert_check_schedule)
+    if missing. Idempotent — called from the app lifespan when
+    alert_check_enabled and cron_enabled are both on."""
+    from msb_v3.cron.store import CronStore
+
+    store = cron_store if cron_store is not None else CronStore()
+    try:
+        store.get_job("alert-check")
+        return True
+    except KeyError:
+        pass
+    try:
+        store.create_job(
+            "alert-check",
+            "Governed-loop alerting (killswitch / ActionGate rate / system health)",
+            settings.alert_check_schedule,
+            {"type": "alert_check", "params": {}},
+            governance={"max_retries": 1, "timeout_s": 60.0, "notify_on_failure": False},
+        )
+        logger.info("seeded alert-check cron job (%s)", settings.alert_check_schedule)
+        return True
+    except ValueError:
+        return False

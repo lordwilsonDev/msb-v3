@@ -91,6 +91,10 @@ async def lifespan(app: FastAPI):
             from msb_v3.wake.runner import ensure_wake_job
 
             ensure_wake_job()
+        if settings.alert_check_enabled:
+            from msb_v3.cron.actions import ensure_alert_check_job
+
+            ensure_alert_check_job()
     try:
         yield
     finally:

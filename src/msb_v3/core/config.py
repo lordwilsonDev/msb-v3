@@ -165,6 +165,8 @@ class Settings:
     # the server process's PATH doesn't include it.
     hermes_send_cmd: str = field(default_factory=lambda: os.getenv("MSB_HERMES_SEND_CMD", "hermes"))
     alert_telegram_target: str = field(default_factory=lambda: os.getenv("MSB_ALERT_TELEGRAM_TARGET", "telegram"))
+    alert_check_enabled: bool = field(default_factory=lambda: os.getenv("MSB_ALERT_CHECK_ENABLED", "1") == "1")
+    alert_check_schedule: str = field(default_factory=lambda: os.getenv("MSB_ALERT_CHECK_SCHEDULE", "*/5 * * * *"))
     # --- Wake loop (the 5-minute resident agent) ---
     # A cron job (wake-agent, schedule below) wakes the resident agent to
     # process messages left in the wake inbox from any session; responses

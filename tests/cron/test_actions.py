@@ -363,3 +363,16 @@ def test_alert_check_reports_send_failure(monkeypatch: pytest.MonkeyPatch, tmp_p
 
     assert result["ok"] is False
     assert result["detail"]["send_failures"]
+
+
+def test_ensure_alert_check_job_seeds_once(tmp_path) -> None:
+    from msb_v3.cron.store import CronStore
+
+    cron_store = CronStore(db_path=str(tmp_path / "cron.db"))
+    assert actions.ensure_alert_check_job(cron_store) is True
+    job = cron_store.get_job("alert-check")
+    assert job["action"]["type"] == "alert_check"
+    assert job["schedule"] == "*/5 * * * *"
+    # Idempotent — second call does not clobber.
+    assert actions.ensure_alert_check_job(cron_store) is True
+    assert len(cron_store.list_jobs()) == 1
