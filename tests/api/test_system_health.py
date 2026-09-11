@@ -51,6 +51,9 @@ def test_system_health_llamacpp_reports_real_backend(monkeypatch, tmp_path):
     # Deterministic: pin the active-backend path so the test never depends on
     # a live ollama (the ollama row must read "ok" for the status asserts).
     monkeypatch.setattr(LocalAIClient, "generate", lambda self, *a, **k: "ok")
+    # llama.cpp is quarantined (off by default) — this test is specifically
+    # about the probe's real behavior, so opt in for its whole run.
+    monkeypatch.setattr(settings, "llamacpp_enabled", True)
 
     client = TestClient(create_app())
 
@@ -193,3 +196,60 @@ def test_system_config_exposes_governance_approvals_flywheel(monkeypatch):
     monkeypatch.setattr(settings, "gov_budget_tokens", 12345)
     cfg2 = client.get("/system/config").json()
     assert cfg2["governance"]["GOV_BUDGET_TOKENS"] == 12345
+
+
+def test_probe_llamacpp_disabled_by_default_skips_weights_check(monkeypatch, tmp_path):
+    """Quarantined (blueprint §3.2): with llamacpp_enabled False and ollama
+    active, the probe must not even stat the weights file."""
+    from msb_v3.api import system
+    from msb_v3.core.config import settings
+
+    monkeypatch.setattr(settings, "llamacpp_enabled", False)
+    monkeypatch.setattr(settings, "_active_backend", "ollama")
+    monkeypatch.setattr(settings, "llama_cpp_model", str(tmp_path / "never-checked.gguf"))
+
+    assert system._probe_llama_cpp() == "disabled (MSB_LLAMACPP_ENABLED=0)"
+
+
+def test_probe_llamacpp_auto_enables_when_active_backend(monkeypatch, tmp_path):
+    """Switching to llama.cpp as the active backend is, by definition, no
+    longer dormant — the probe must run even without the explicit flag."""
+    from msb_v3.api import system
+    from msb_v3.core.config import settings
+
+    monkeypatch.setattr(settings, "llamacpp_enabled", False)
+    monkeypatch.setattr(settings, "_active_backend", "llamacpp")
+    monkeypatch.setattr(settings, "llama_cpp_model", str(tmp_path / "missing.gguf"))
+
+    assert system._probe_llama_cpp().startswith("error: weights not provisioned")
+
+
+def test_probe_paseo_disabled_by_default_skips_daemon_call(monkeypatch):
+    """Quarantined (blueprint §3.2): with paseo_enabled False, the probe
+    must not attempt the live daemon call, and reports UNKNOWN — never
+    FAILED, so a dormant Paseo can't poison overall system health."""
+    from msb_v3.api import system
+    from msb_v3.core.config import settings
+
+    monkeypatch.setattr(settings, "paseo_enabled", False)
+    monkeypatch.setattr(settings, "paseo_url", "http://127.0.0.1:1/unreachable")  # would hard-fail if called
+
+    result = system._probe_paseo()
+
+    assert result == {"status": "UNKNOWN", "detail": "disabled (MSB_PASEO_ENABLED=0)"}
+
+
+def test_system_health_paseo_disabled_never_fails_overall(monkeypatch):
+    """With Paseo quarantined off, an unreachable daemon must not flip
+    /system/health's overall status to FAILED."""
+    monkeypatch.setattr(LocalAIClient, "generate", lambda self, *a, **k: "ok")
+    from msb_v3.core.config import settings
+
+    monkeypatch.setattr(settings, "paseo_enabled", False)
+    monkeypatch.setattr(settings, "paseo_url", "http://127.0.0.1:1/unreachable")
+
+    client = TestClient(create_app())
+    body = client.get("/system/health").json()
+
+    assert body["components"]["paseo"]["status"] == "UNKNOWN"
+    assert body["overall"] != "FAILED"

@@ -46,6 +46,13 @@ class Settings:
     llama_cpp_model: str = field(
         default_factory=lambda: os.getenv("LLAMA_CPP_MODEL", str(Path.home() / "models" / "gemma-4-12b-it" / "gemma-4-12b-it-q4_k_m.gguf"))
     )
+    # Quarantined (production-hardening blueprint §3.2, 2026-09-11): an
+    # optional alternate local backend, not the default. Off by default so
+    # /system/health doesn't spend a weights-file check + HTTP probe on a
+    # backend nobody asked for; auto-enabled below whenever it IS the
+    # active backend (_active_backend == "llamacpp"), since a backend you've
+    # switched to is by definition no longer dormant.
+    llamacpp_enabled: bool = field(default_factory=lambda: os.getenv("MSB_LLAMACPP_ENABLED", "0") == "1")
     # NotebookLM active cluster index (user data, home-derived); NOTEBOOKLM_ACTIVE_INDEX overrides.
     notebooklm_active_index: str = field(
         default_factory=lambda: os.getenv("NOTEBOOKLM_ACTIVE_INDEX", str(Path.home() / "notebooklm-library-deep-dive" / "active-index.json"))
@@ -109,6 +116,13 @@ class Settings:
     # per Paseo's config.ts DEFAULT_PORT). MSB_PASEO_URL overrides; the
     # adapter is inert (reports FAILED) when the daemon is unreachable.
     paseo_url: str = field(default_factory=lambda: os.getenv("MSB_PASEO_URL", "http://127.0.0.1:6767/mcp/agents"))
+    # Quarantined (production-hardening blueprint §3.2, 2026-09-11): Paseo
+    # is a real, documented integration (unified-architecture §7) but not
+    # part of MSB v3's default intentional startup surface. Off by default —
+    # /system/health skips the live daemon probe (reports UNKNOWN, never
+    # FAILED) unless explicitly opted into. Enabling this does not start or
+    # manage the Paseo daemon itself; it only turns the health probe back on.
+    paseo_enabled: bool = field(default_factory=lambda: os.getenv("MSB_PASEO_ENABLED", "0") == "1")
     # Operator-gated permission decisions: a Paseo agent's permission request
     # parks the run until an operator decides within this TTL; after that the
     # run is interrupted and the task fails (never silently completes).

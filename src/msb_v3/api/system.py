@@ -30,6 +30,14 @@ def _probe_llama_cpp(transport: Any | None = None) -> str:
 
     import httpx
 
+    # Quarantined (production-hardening blueprint §3.2): skip the weights-
+    # file check and HTTP probe entirely when llama.cpp is neither
+    # explicitly enabled nor the active backend — a dormant alternate
+    # backend shouldn't cost a filesystem stat + a network round trip on
+    # every /system/health call.
+    if not settings.llamacpp_enabled and settings._active_backend != "llamacpp":
+        return "disabled (MSB_LLAMACPP_ENABLED=0)"
+
     weights = Path(settings.llama_cpp_model)
     if not weights.exists():
         return f"error: weights not provisioned ({weights.name})"
@@ -124,7 +132,14 @@ def _probe_paseo() -> Dict[str, Any]:
     """Paseo execution surface (unified-architecture §7): the daemon's MCP
     endpoint answers the initialize handshake. The adapter is inert without
     the daemon — an unreachable daemon is a FAILED component, not a
-    footnote (truthful health, §14)."""
+    footnote (truthful health, §14).
+
+    Quarantined (production-hardening blueprint §3.2): Paseo is a real
+    integration but not part of the default intentional surface — skip the
+    live probe (report UNKNOWN, never FAILED) unless explicitly enabled."""
+    if not settings.paseo_enabled:
+        return {"status": "UNKNOWN", "detail": "disabled (MSB_PASEO_ENABLED=0)"}
+
     import httpx
     payload = {
         "jsonrpc": "2.0",
