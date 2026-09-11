@@ -10,7 +10,7 @@ printf 'root=%s\n' "$ROOT"
 printf 'date=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf 'branch='; git branch --show-current 2>/dev/null || printf 'unknown\n'
 printf 'head='; git rev-parse --short HEAD 2>/dev/null || printf 'not-a-git-checkout\n'
-printf 'status_count='; git status --short 2>/dev/null | wc -l | tr -d ' '
+printf 'status_count='; { git status --short 2>/dev/null || true; } | wc -l | tr -d ' '
 printf 'python='; command -v python3 || true
 
 printf '\n%s\n' '--- manifests ---'

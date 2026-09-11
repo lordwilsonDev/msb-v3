@@ -31,6 +31,11 @@ import msb_v3.api.mcp_bridge as bridge  # noqa: E402
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(os.path.join(REPO, ".env"))
 SECRET = os.environ.get("MCP_BRIDGE_SECRET", "") or getattr(bridge, "_MCP_BRIDGE_SECRET", "")
+if not SECRET:
+    # Portability gate stages a copy with .env deliberately excluded
+    # (secrets must never be copied) — these tests need the real running
+    # server's secret and cannot pass against an empty one.
+    pytestmark = [pytest.mark.integration, pytest.mark.skip(reason="MCP_BRIDGE_SECRET unavailable")]
 DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")
 BRIDGE_URL = "http://127.0.0.1:8766/mcp/proxy"
 

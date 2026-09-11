@@ -23,6 +23,11 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(os.path.join(REPO, ".env"))
 SECRET = os.environ.get("MCP_BRIDGE_SECRET", "")
+if not SECRET:
+    # Portability gate stages a copy with .env deliberately excluded
+    # (secrets must never be copied) — these tests need the real running
+    # server's secret and cannot pass against an empty one.
+    pytestmark = [pytest.mark.integration, pytest.mark.skip(reason="MCP_BRIDGE_SECRET unavailable")]
 BRIDGE_URL = "http://127.0.0.1:8766/mcp/proxy"
 DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")
 

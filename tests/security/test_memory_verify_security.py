@@ -33,6 +33,13 @@ def _secret() -> str:
     return os.environ.get("MCP_BRIDGE_SECRET", "")
 
 
+if not _secret():
+    # Portability gate stages a copy with .env deliberately excluded
+    # (secrets must never be copied) — these tests need the real running
+    # server's secret and cannot pass against an empty one.
+    pytestmark = [pytest.mark.integration, pytest.mark.skip(reason="MCP_BRIDGE_SECRET unavailable")]
+
+
 def _headers(actor: str) -> dict[str, str]:
     return {
         "Content-Type": "application/json",
