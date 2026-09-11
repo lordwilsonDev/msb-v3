@@ -143,16 +143,19 @@ jobs:
       - name: Portability gate (full suite from a foreign checkout path)
         # Pure pytest from a foreign checkout (live tests are opt-in) —
         # independent of the live Qdrant/server stages, so never mask it.
+        #
+        # Deliberately NOT passing MCP_BRIDGE_SECRET here (reverted
+        # 2026-09-11): injecting it caused real 401s, not passes — this
+        # runner is self-hosted on the same Mac as the developer's own
+        # persistent msb-v3 instance, so "the real running :8766 server"
+        # these tests hit is not reliably the one secrets.MSB_MCP_SECRET
+        # was meant for. The tests skip cleanly when the secret is
+        # unavailable (tests/security/*.py, fixed the same day) — same
+        # honest behavior as a genuine foreign checkout with no .env.
         if: always()
         run: make portability
         env:
           MSB_REPO: ${{ github.workspace }}
-          # The staged copy's .env is template-generated (blank secret) by
-          # the drift-guard step above, but test_cold_state_verification.py
-          # / test_memory_verify_security.py hit the REAL already-running
-          # :8766 server with x-mcp-secret from this process's env — without
-          # this, SECRET resolves to "" and every call 401s.
-          MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
 
       # Upload even on failure so a red gate still ships the report, the
       # stage logs (producer FAIL lines + consumer BLOCK detail), and the
