@@ -39,8 +39,8 @@
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/lordwilson/msb-v3/logs/qdrant.log</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/logs/qdrant.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/lordwilson/msb-v3/logs/qdrant.log</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/logs/qdrant.log</string>
 </dict>
 </plist>

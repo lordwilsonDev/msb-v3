@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/lordwilson/msb-v3/scripts/vault-backup.sh</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/vault-backup.sh</string>
   </array>
 
   <!-- Weekly: Sunday 05:30, after the 03:00 DB backup and the 04:30
@@ -26,7 +26,7 @@
     <key>MSB_BACKUP_KEEP</key><string>4</string>
     <!-- Restore verify: install deps + run the unit suite in the extracted
          copy (excludes env-sensitive files; see vault-verify-dsh.sh). -->
-    <key>MSB_BACKUP_VERIFY_CMD</key><string>/Users/lordwilson/msb-v3/scripts/vault-verify-dsh.sh</string>
+    <key>MSB_BACKUP_VERIFY_CMD</key><string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/vault-verify-dsh.sh</string>
     <key>MSB_BACKUP_INTEGRITY_PATHS</key><string>package.json pnpm-lock.yaml vitest.config.ts packages</string>
     <key>MSB_BACKUP_LOG</key><string>/Users/lordwilson/deepseek-harness/logs/vault-backup.log</string>
   </dict>

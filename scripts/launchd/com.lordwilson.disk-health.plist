@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/lordwilson/msb-v3/scripts/disk-health.sh</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/disk-health.sh</string>
   </array>
 
   <!-- Weekly Sunday 06:45 (after rotate-logs 06:00 + db drill 06:30):
@@ -23,7 +23,7 @@
   <key>KeepAlive</key><false/>
   <key>ThrottleInterval</key><integer>600</integer>
 
-  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/disk-health.err</string>
+  <key>StandardErrorPath</key><string>/Users/lordwilson/projects/AI-Agents/msb-v3/logs/disk-health.err</string>
   <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
 </dict>
 </plist>

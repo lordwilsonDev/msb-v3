@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/lordwilson/msb-v3/scripts/db-restore-drill.sh</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/db-restore-drill.sh</string>
   </array>
 
   <!-- Weekly: Sunday 06:30, after the 05:30 dsh vault backup. -->
@@ -24,7 +24,7 @@
 
   <!-- The script logs to msb-v3/logs/db-restore-drill.log itself; capture
        stderr separately (the watchdog cites this path on failure). -->
-  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/db-restore-drill.err</string>
+  <key>StandardErrorPath</key><string>/Users/lordwilson/projects/AI-Agents/msb-v3/logs/db-restore-drill.err</string>
   <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
 </dict>
 </plist>

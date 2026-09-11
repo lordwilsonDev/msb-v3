@@ -24,7 +24,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/lordwilson/msb-v3/scripts/factory_gate_daily.sh</string>
+        <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/factory_gate_daily.sh</string>
     </array>
 
     <!-- launchd's default PATH lacks Homebrew; the script needs tmux/curl. -->

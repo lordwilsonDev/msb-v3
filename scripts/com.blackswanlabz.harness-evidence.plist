@@ -30,7 +30,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/lordwilson/msb-v3/scripts/freshen-harness-evidence.sh</string>
+        <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/freshen-harness-evidence.sh</string>
     </array>
 
     <!-- launchd's default PATH lacks Homebrew; the script needs make/ffmpeg/osascript. -->

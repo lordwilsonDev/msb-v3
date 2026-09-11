@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/lordwilson/msb-v3/scripts/cache-trim.sh</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/cache-trim.sh</string>
   </array>
 
   <!-- Weekly Sunday 06:40 — right before the disk-health check (06:45) so
@@ -24,7 +24,7 @@
   <key>KeepAlive</key><false/>
   <key>ThrottleInterval</key><integer>600</integer>
 
-  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/cache-trim.err</string>
+  <key>StandardErrorPath</key><string>/Users/lordwilson/projects/AI-Agents/msb-v3/logs/cache-trim.err</string>
   <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
 </dict>
 </plist>

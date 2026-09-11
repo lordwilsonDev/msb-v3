@@ -35,7 +35,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/lordwilson/msb-v3/scripts/auto_repair.sh</string>
+        <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/auto_repair.sh</string>
     </array>
 
     <key>WorkingDirectory</key>

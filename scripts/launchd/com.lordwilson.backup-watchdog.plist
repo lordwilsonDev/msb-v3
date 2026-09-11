@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/lordwilson/msb-v3/scripts/backup-watchdog.sh</string>
+    <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/backup-watchdog.sh</string>
   </array>
 
   <!-- Every 15 minutes: cheap, idempotent poll of the backup agents. -->
@@ -19,7 +19,7 @@
 
   <!-- Alerts are appended to msb-v3/logs/backup-watchdog.log by the script
        itself (osascript notification + file); stderr is captured below. -->
-  <key>StandardErrorPath</key><string>/Users/lordwilson/msb-v3/logs/backup-watchdog.err</string>
+  <key>StandardErrorPath</key><string>/Users/lordwilson/projects/AI-Agents/msb-v3/logs/backup-watchdog.err</string>
   <key>WorkingDirectory</key><string>/Users/lordwilson/msb-v3</string>
 </dict>
 </plist>

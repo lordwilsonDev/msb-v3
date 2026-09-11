@@ -33,7 +33,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/lordwilson/msb-v3/scripts/verify_chain_anchor.sh</string>
+        <string>/Users/lordwilson/projects/AI-Agents/msb-v3/scripts/verify_chain_anchor.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
