@@ -118,9 +118,10 @@ the authorization layer still catches what the pre-filter misses.
 ## The heartbeat (cron)
 
 MSB is reactive by default; the cron scheduler makes it proactive. Durable
-jobs + run history in SQLite, a 5-field cron parser, seven built-in actions
+jobs + run history in SQLite, a 5-field cron parser, nine built-in actions
 (`health_check`, `audit_chain_verify`, `backup_spine`, `metric_export`,
-`log_rotation`, `http_call`, `wake_agent`), an in-process async loop, a
+`log_rotation`, `http_call`, `wake_agent`, `alert_check`, `model_keepalive`),
+an in-process async loop, a
 `/cron` REST API, and a CLI. Every execution is governed like a run: kill
 switch, retries, timeout, overlap guard, evidence receipt + audit-chain
 record. `http_call` is localhost-only by default (fail-closed allowlist).

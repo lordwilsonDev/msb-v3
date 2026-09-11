@@ -123,7 +123,12 @@ release tag: `CLAUDE.archive.md` → "Tag ruleset".
 
 ## Defaults
 
-- Primary LLM: DeepSeek V4-Flash.
+- Primary LLM: local Qwen3 (`qwen3:8b`) via Ollama. The remote frontier seam
+  (DeepSeek) was retired 2026-09-09 (D1) — local-only now. llama.cpp is a real,
+  fully-wired alternate local backend (`_active_backend=llamacpp`), just with
+  its `/system/health` probe off by default (`MSB_LLAMACPP_ENABLED=0`) unless
+  it's the active backend. Paseo (agent-management MCP integration) is
+  likewise off by default (`MSB_PASEO_ENABLED=0`).
 - Vault: `~/Documents/Vault` (git-tracked; override with `MSB_VAULT_PATH`). Repo
   root resolves from package/script location; override with `MSB_HOME` (Python)
   or `MSB_REPO` (shell scripts).

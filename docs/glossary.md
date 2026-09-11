@@ -124,12 +124,31 @@ synthesis + active-cluster gating). Live at `~/.notebooklm-library-deep-dive/act
 
 ### · Ollama / llama.cpp — local LLM backends
 - Ollama (`OLLAMA_URL`, default `qwen3:8b`) — everyday chat and skill
-  routing
-- llama.cpp (`LLAMA_CPP_URL`) — heavier lifting, GGUF model files in
-  `~/models/`
-- Frontier seam (`OPENAI_FRONTIER_URL/MODEL`) — the hybrid router's
-  Phase-2 upgrade path; closed (router degrades to local) until
-  `OPENAI_API_KEY` is set
+  routing; the active backend by default (`settings._active_backend`)
+- llama.cpp (`LLAMA_CPP_URL`) — a real, fully-wired alternate local
+  backend (GGUF model files in `~/models/`), switchable via
+  `_active_backend=llamacpp`. Its `/system/health` probe is off by
+  default (`MSB_LLAMACPP_ENABLED=0`) to avoid a filesystem check + HTTP
+  round-trip on a backend nobody's using — it auto-enables the instant
+  you actually switch to it (quarantined, not removed — blueprint §3.2,
+  2026-09-11)
+- Remote frontier seam (DeepSeek) — **retired 2026-09-09 (D1)**. All
+  routing, env vars (`OPENAI_FRONTIER_*`, `DEEPSEEK_*`), and the
+  dedicated provider client were removed; local is the only surface now
+
+### · Paseo — external agent-management integration
+- MSB ↔ Paseo adapter (`agent/paseo/`, unified-architecture §7): the
+  Paseo daemon manages Claude Code/Codex/OpenCode agents and exposes an
+  MCP server over Streamable HTTP (`MSB_PASEO_URL`, default
+  `127.0.0.1:6767/mcp/agents`)
+- Six spec operations via `PaseoAdapter`; an operator-gated permission
+  broker (`PaseoPermissionBroker`) parks a worker's permission requests
+  on durable Vesta approvals
+- Reachable via `/agent/paseo/*` (all behind `Depends(require_operator)`)
+- Its `/system/health` probe is off by default (`MSB_PASEO_ENABLED=0`,
+  quarantined blueprint §3.2, 2026-09-11) — reports `UNKNOWN`, never
+  `FAILED`, when disabled, so a stopped Paseo daemon can't poison overall
+  system health for an integration nobody's opted into
 
 ---
 
