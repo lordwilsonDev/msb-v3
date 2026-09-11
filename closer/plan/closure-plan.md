@@ -23,7 +23,7 @@ A project is CLOSED when:
 ### TASK-002: Resolve Port Conflict (:8080) ✅ DONE
 - **Status**: DONE
 - **Priority**: CRITICAL
-- **Closed by**: `522e1c9`
+- **Closed by**: `41df4df`
 - **Acceptance**: llama-server starts on non-conflicting port
 - **Verification**: Default changed to :8081 in `src/msb_v3/core/config.py`
 - **Risk**: LOW
@@ -38,7 +38,8 @@ A project is CLOSED when:
 ### TASK-004: Trigger CI and Fix Failures ✅ DONE
 - **Status**: DONE
 - **Priority**: CRITICAL
-- **Closed by**: `f645352` (CI fix) + `8df21ad` (lock file fix)
+- **Closed by**: unverified — no single commit reference survives; work landed across the
+  Aug 25-26 closer/ batch. Do not re-claim a SHA here without confirming it in `git log`.
 - **Acceptance**: GitHub Actions green on main
 - **Verification**: 3/3 workflows green (msb-v3 CI, harness-gate, factory-gate)
 - **Risk**: MEDIUM
@@ -48,7 +49,7 @@ A project is CLOSED when:
 ### TASK-005: End-to-End Integration Test ✅ DONE
 - **Status**: DONE
 - **Priority**: HIGH
-- **Closed by**: `522e1c9`
+- **Closed by**: `41df4df`
 - **Acceptance**: Test starts server, sends request, verifies response + evidence
 - **Verification**: `tests/integrations/test_e2e_integration.py` — 21 test cases
 - **Risk**: MEDIUM
@@ -56,7 +57,7 @@ A project is CLOSED when:
 ### TASK-006: PLEI Execute Loop Integration Test ✅ DONE
 - **Status**: DONE
 - **Priority**: HIGH
-- **Closed by**: `522e1c9`
+- **Closed by**: `41df4df`
 - **Acceptance**: Test creates WorkPlan, executes through harness, verifies spine
 - **Verification**: `tests/integrations/test_plei_execute_loop.py` — 11 test cases
 - **Risk**: LOW
@@ -64,7 +65,8 @@ A project is CLOSED when:
 ### TASK-007: Calibration Chain Verification ✅ DONE
 - **Status**: DONE
 - **Priority**: MEDIUM
-- **Closed by**: `2a54a22`
+- **Closed by**: unverified — no single commit reference survives; landed alongside TASK-006
+  in the Aug 25-26 closer/ batch. Do not re-claim a SHA here without confirming it in `git log`.
 - **Acceptance**: verify_chain() returns True on production data
 - **Verification**: Chain verified intact in `tests/integrations/test_plei_execute_loop.py`
 - **Risk**: LOW
@@ -72,7 +74,7 @@ A project is CLOSED when:
 ### TASK-008: Recovery Procedure Test ✅ DONE
 - **Status**: DONE
 - **Priority**: MEDIUM
-- **Closed by**: `e356745`
+- **Closed by**: `f8b6533`
 - **Acceptance**: Simulated failure + successful recovery
 - **Verification**: `tests/integrations/test_recovery_procedures.py` — 35 test cases across 10 recovery mechanisms
 - **Risk**: MEDIUM
@@ -105,7 +107,7 @@ A project is CLOSED when:
 ### TASK-012: README Update ✅ DONE
 - **Status**: DONE
 - **Priority**: MEDIUM
-- **Closed by**: `740c43b`
+- **Closed by**: `2c82fe2`
 - **Acceptance**: README reflects actual current state
 - **Verification**: PLEI section added with 7-phase table + endpoints
 - **Risk**: LOW
@@ -120,7 +122,7 @@ A project is CLOSED when:
 ### TASK-014: Architecture Decision Records ✅ DONE
 - **Status**: DONE
 - **Priority**: LOW
-- **Closed by**: `740c43b`
+- **Closed by**: `2c82fe2`
 - **Acceptance**: Key decisions documented with rationale
 - **Verification**: `docs/adr/` — 3 ADRs (PLEI, provider seam, evidence spine)
 - **Risk**: LOW
@@ -146,7 +148,7 @@ A project is CLOSED when:
 ### TASK-017: DB Schema Versioning ✅ DONE
 - **Status**: DONE
 - **Priority**: HIGH
-- **Closed by**: `5589fd6`
+- **Closed by**: `dc0f9c1`
 - **Acceptance**: Schema changes apply cleanly to existing databases
 - **Verification**: `src/msb_v3/db/migrations.py` — 13 tests
 - **Risk**: LOW
@@ -154,7 +156,7 @@ A project is CLOSED when:
 ### TASK-018: Structured Logging ✅ DONE
 - **Status**: DONE
 - **Priority**: MEDIUM
-- **Closed by**: `5589fd6`
+- **Closed by**: `dc0f9c1`
 - **Acceptance**: JSON + human formatters available
 - **Verification**: `src/msb_v3/core/logging.py` — 8 tests
 - **Risk**: LOW
@@ -162,7 +164,7 @@ A project is CLOSED when:
 ### TASK-019: Test Suite Speed ✅ DONE
 - **Status**: DONE
 - **Priority**: MEDIUM
-- **Closed by**: `8df21ad`
+- **Closed by**: `27f780c`
 - **Acceptance**: Test suite runs in <2 minutes
 - **Verification**: 2099 tests in 1m20s (52% faster than 3m35s)
 - **Risk**: LOW
@@ -170,7 +172,7 @@ A project is CLOSED when:
 ### TASK-020: Recovery Procedure Tests ✅ DONE
 - **Status**: DONE
 - **Priority**: HIGH
-- **Closed by**: `e356745`
+- **Closed by**: `f8b6533`
 - **Acceptance**: All recovery paths verified
 - **Verification**: 35 tests across 10 recovery mechanisms
 - **Risk**: LOW
