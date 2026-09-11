@@ -528,70 +528,6 @@ class AnthropicAgentProvider(AgentProvider):
         )
 
 
-class DeepSeekAgentProvider(AgentProvider):
-    """DeepSeek's native OpenAI-compatible API as a worker. The frontier seam
-    (``fabric.model_router.FrontierClient``) already defaults to DeepSeek; this
-    provider makes it first-class: ``execute()`` drives a full governed run
-    through ``agent.handle()`` with a DeepSeek-backed client, so MoIE ->
-    ActionGate -> evidence spine -> ledger -> receipt all fire with zero new
-    governance code (the same pattern as ``LocalAgentProvider``).
-    """
-
-    spec = ProviderSpec(
-        provider_id="api.deepseek",
-        display_name="DeepSeek (native API)",
-        kind="api",
-        capabilities=("search_query", "chat", "vault_write"),
-        max_risk_tier=3,
-        timeout_s=300.0,
-    )
-
-    def __init__(self, *, client: Any = None, spine: Any = None) -> None:
-        self._client = client
-        self._spine = spine
-
-    def available(self) -> bool:
-        if self._client is not None:
-            return True
-        return bool(settings.deepseek_api_key)
-
-    def unavailable_reason(self) -> str:
-        if self.available():
-            return ""
-        return "DEEPSEEK_API_KEY not set"
-
-    async def execute(
-        self,
-        goal: str,
-        *,
-        context: Optional[Dict[str, Any]] = None,
-        session: str = "default",
-    ) -> ProviderResult:
-        from msb_v3.agent.handle import handle
-        from msb_v3.local_ai.deepseek import DeepSeekClient
-
-        client = self._client if self._client is not None else DeepSeekClient()
-        context = context or {}
-        started = time.perf_counter()
-        result = await handle(
-            goal,
-            client=client,
-            spine=_default_spine(self._spine),
-            session=session,
-            tenant=context.get("tenant", "wilson-vault"),
-            approve=bool(context.get("approve", False)),
-            output_dir=context.get("output_dir"),
-        )
-        duration = round(time.perf_counter() - started, 4)
-        return ProviderResult(
-            ok=result.ok,
-            output=str(result.trace.get("outcome", {})) if result.trace else "",
-            artifacts={"deterministic_hash": result.deterministic_hash, "run_id": result.run_id},
-            error=result.error,
-            duration_s=duration,
-        )
-
-
 class DshAgentProvider(AgentProvider):
     """DeepSeek Harness (dsh) as a governed subprocess worker.
 
@@ -770,11 +706,11 @@ class DshAgentProvider(AgentProvider):
 
 def default_providers() -> Tuple[AgentProvider, ...]:
     """Local slice + the common CLI workers + DeepSeek Harness (dsh) +
-    Paseo-managed agents + the DeepSeek and Anthropic API providers
-    (availability checked lazily)."""
+    Paseo-managed agents + the Anthropic API provider (availability checked
+    lazily). The DeepSeek API provider was retired with the frontier seam
+    (D1, 2026-09-09)."""
     return (
         LocalAgentProvider(),
-        DeepSeekAgentProvider(),
         AnthropicAgentProvider(),
         DshAgentProvider(),
         CliAgentProvider(("claude", "-p")),

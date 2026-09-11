@@ -59,21 +59,21 @@ def test_create_dry_run_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.json()["manifest"][0]["status"] == "dry_run"
 
 
-def test_create_closed_without_brain_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No DEEPSEEK_API_KEY (the brain raises RuntimeError) -> 503, fail-closed
-    like the /v1 adapter without a key — never a 500."""
+def test_create_closed_without_brain_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The brain raises (local model unavailable) -> 503, fail-closed like the
+    /v1 adapter without a key — never a 500."""
     from msb_v3.automation import brain
 
     _open_operator(monkeypatch)
 
     def broken_llm(messages):
-        raise RuntimeError("deepseek seam closed: DEEPSEEK_API_KEY not set")
+        raise RuntimeError("local backend down")
 
     monkeypatch.setattr(brain, "default_llm", lambda: broken_llm)
     client = TestClient(create_app())
     r = client.post("/automation/create", json={"description": "build a webhook echo"}, headers=_auth("tok"))
     assert r.status_code == 503
-    assert "DEEPSEEK_API_KEY" in r.json()["detail"]
+    assert "local backend down" in r.json()["detail"]
 
 
 def test_status_shows_budget_and_providers(monkeypatch: pytest.MonkeyPatch) -> None:

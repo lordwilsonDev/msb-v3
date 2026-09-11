@@ -3,7 +3,8 @@
 Pins the contract:
   - Allowed call records a `call.allowed` event in the audit chain
   - Denied call records `call.denied` (denials are auditable)
-  - Local-vs-frontier routing follows `local_budget_bytes`
+  - Over-budget calls degrade to local rather than hop to a frontier
+    (the remote seam was retired 2026-09-09 — D1)
   - Capability check denies before authorization/backend selection
   - `requires_authorization` requires an exact `name:slug` grant
   - Decision IDs are 64-hex sha256 hashes (audit-chain compatible)
@@ -65,8 +66,10 @@ def test_basic_call_routes_local_when_fits_in_budget(audit_db):
     assert SHA256_RE.match(decision.decision_id)
 
 
-def test_large_call_routes_to_frontier(audit_db):
-    """Anything over the local budget is forced to the frontier seam."""
+def test_large_call_degrades_to_local(audit_db):
+    """Anything over the local budget still runs locally — the frontier
+    seam was retired 2026-09-09 (D1); over-budget calls degrade honestly
+    rather than hop to a remote backend."""
     ctx = GatewayContext(local_budget_bytes=4 * 1024 * 1024 * 1024)
     call = GatewayCall(
         name="llm.infer",
@@ -75,8 +78,9 @@ def test_large_call_routes_to_frontier(audit_db):
     decision = route(call, ctx)
 
     assert decision.authorized
-    assert decision.backend == "frontier"
+    assert decision.backend in ("local.ollama", "local.llamacpp")
     assert "exceeds_local_budget" in decision.reason
+    assert "frontier retired" in decision.reason
 
 
 def test_no_context_defaults_to_empty_capabilities():

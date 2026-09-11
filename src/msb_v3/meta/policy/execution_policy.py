@@ -192,9 +192,13 @@ class ExecutionPolicy:
         )
 
     @staticmethod
-    def hybrid(task_id: str, *, planner: str = "frontier", executor: str = "qwen3:8b",
-               verifier: str = "frontier") -> ExecutionPolicy:
-        """Preset: Hybrid mode — decompose + local exec + strong QC."""
+    def hybrid(task_id: str, *, planner: str = "qwen3:8b", executor: str = "qwen3:8b",
+               verifier: str = "qwen3:8b") -> ExecutionPolicy:
+        """Preset: Hybrid mode — decompose + local exec + strong QC.
+
+        Planner/verifier default to the local model since the frontier seam
+        was retired (D1, 2026-09-09); explicit model ids still override.
+        """
         return ExecutionPolicy(
             task_id=task_id,
             mode=ExecutionMode.HYBRID,

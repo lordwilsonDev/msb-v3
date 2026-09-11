@@ -182,7 +182,7 @@ def catalog_skills() -> list[SkillRecord]:
             description=description[:200],
             path=str(skill_md),
             capabilities=capabilities,
-            provider_ids=("api.deepseek", "api.anthropic", "local.slice"),
+            provider_ids=("local.slice", "api.anthropic"),
             installation="installed",
         ))
 

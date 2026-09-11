@@ -1,8 +1,9 @@
 """The automation brain — plan, then create.
 
-``plan_automation`` turns free text into a structured plan via DeepSeek (the
-$10 brain; injectable for tests). ``create_automation`` executes the plan
-through the provider clients under the runtime's discipline:
+``plan_automation`` turns free text into a structured plan via the local
+Ollama model (the frontier seam was retired 2026-09-09, D1; the LLM is
+injectable for tests). ``create_automation`` executes the plan through the
+provider clients under the runtime's discipline:
 
 - **Dry-run by default** — ``approve=False`` (or ``MSB_AUTOMATION_DRY_RUN=1``)
   records a ``dry_run`` manifest entry and creates nothing. Creation with
@@ -47,9 +48,13 @@ _PLAN_SYSTEM = (
 
 
 def default_llm() -> LlmFn:
-    from msb_v3.local_ai.deepseek import DeepSeekClient
+    # Local-only after the frontier retirement (D1, 2026-09-09): the brain
+    # plans on the local Ollama model, so there is no per-call spend to
+    # meter against the budget (the budget ledger still records zero-spend
+    # local turns honestly).
+    from msb_v3.local_ai.ollama import LocalAIClient
 
-    client = DeepSeekClient(timeout_s=45.0)
+    client = LocalAIClient()
 
     def llm(messages: List[Dict[str, Any]]) -> str:
         return client.chat(messages, temperature=0.2, max_tokens=600).text

@@ -224,16 +224,6 @@ def _stub_profiles() -> list[ProviderProfile]:
     """Stub profiles for testing without the runtime."""
     return [
         ProviderProfile(
-            provider_id="api.deepseek",
-            display_name="DeepSeek API",
-            kind="api",
-            capabilities=["code_generation", "analysis", "documentation"],
-            max_risk_tier=3,
-            available=True,
-            success_rate=0.92,
-            avg_latency_s=2.0,
-        ),
-        ProviderProfile(
             provider_id="local.slice",
             display_name="Local (Ollama/Qwen3)",
             kind="local",

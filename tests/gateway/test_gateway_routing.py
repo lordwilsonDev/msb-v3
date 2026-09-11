@@ -5,7 +5,7 @@ Proves the gateway:
 2. Denies calls with missing capabilities
 3. Denies calls requiring authorization when not granted
 4. Routes small calls to local backend
-5. Routes large calls to frontier
+5. Routes large (over-budget) calls to local backend too, degraded honestly
 6. Every decision is audit-logged
 """
 from __future__ import annotations
@@ -13,7 +13,8 @@ from __future__ import annotations
 from typing import Any, FrozenSet
 
 from msb_v3.gateway.route import (
-    BACKEND_FRONTIER,
+    BACKEND_LOCAL_LLAMACPP,
+    BACKEND_LOCAL_OLLAMA,
     GatewayCall,
     GatewayContext,
     route,
@@ -145,13 +146,15 @@ class TestGatewayBackendSelection:
         assert decision.backend is not None
         assert "local" in decision.backend.lower() or "ollama" in decision.backend.lower()
 
-    def test_large_call_routes_frontier(self):
-        """Large calls route to frontier backend."""
+    def test_large_call_still_routes_local_degraded(self):
+        """Over-budget calls degrade to local rather than hop to a frontier
+        (the remote seam was retired 2026-09-09 — D1)."""
         call = _make_call(estimated_bytes=9 * 1024 * 1024 * 1024)  # 9GB
         ctx = _make_ctx(budget=8 * 1024 * 1024 * 1024)  # 8GB budget
         decision = route(call, ctx)
         assert decision.authorized is True
-        assert decision.backend == BACKEND_FRONTIER
+        assert decision.backend in (BACKEND_LOCAL_OLLAMA, BACKEND_LOCAL_LLAMACPP)
+        assert "frontier retired" in decision.reason
 
 
 # ---------------------------------------------------------------------------

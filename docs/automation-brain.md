@@ -7,7 +7,7 @@ Zapier / GoHighLevel as their keys are configured.
 ## The flow
 
 ```
-request ──DeepSeek (the $10 brain)──▶ structured plan
+request ──local Ollama (qwen3:8b)──▶ structured plan
                                           │
                                           ▼
                               budget check (cap = $10)
@@ -19,9 +19,10 @@ request ──DeepSeek (the $10 brain)──▶ structured plan
                               provider client creates it ──▶ manifest: "created"
 ```
 
-- **Planning** — DeepSeek turns the request into
-  `{provider, name, description}`. n8n is the default provider when none is
-  named: it creates and **activates a real webhook workflow**
+- **Planning** — the local Ollama model turns the request into
+  `{provider, name, description}` (the frontier seam was retired 2026-09-09,
+  D1 — local-only, zero per-call spend). n8n is the default provider when
+  none is named: it creates and **activates a real webhook workflow**
   (Webhook → Respond to Webhook) and reports the webhook URL.
 - **Dry-run by default** — `MSB_AUTOMATION_DRY_RUN=1` (or a request without
   `approve: true`) records the plan in the manifest and creates nothing.
@@ -76,7 +77,7 @@ called.
 sentences deterministically — `every 30 minutes, post a heartbeat to
 http://…`, `daily at 09:00, ping https://hook.make.com/abc` — into living
 automations with `provider="self"`. No LLM, no platform syntax: the brain
-tries the recipe parser first and only falls back to DeepSeek for fuzzy
+tries the recipe parser first and only falls back to the local LLM for fuzzy
 requests.
 
 **Stage 3 — the webhook sense.** One endpoint, `POST /hook/<automation_id>`

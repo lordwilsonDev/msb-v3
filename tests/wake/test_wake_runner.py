@@ -150,15 +150,7 @@ def test_cycle_ticks_dispatcher_and_audit(monkeypatch, tmp_path) -> None:
     assert "audit: 2 finding(s)" in result["summary"]
 
 
-# --- DeepSeek -> local Ollama fallback (JOB-007) -------------------------------
-
-class _RaisingDeepSeek:
-    def __init__(self, *a, **k) -> None:
-        pass
-
-    def chat(self, *a, **k):
-        raise RuntimeError("deepseek HTTP 402 (payment required)")
-
+# --- Local-only turn (frontier retired 2026-09-09, D1) -----------------------
 
 class _StubResp:
     text = "local model reply"
@@ -172,27 +164,28 @@ class _StubOllama:
         return _StubResp()
 
 
-def test_deepseek_failure_falls_back_to_local(monkeypatch) -> None:
-    from msb_v3.core.config import settings
+class _BrokenOllama:
+    def __init__(self, *a, **k) -> None:
+        pass
+
+    def chat(self, *a, **k):
+        raise RuntimeError("local backend down")
+
+
+def test_default_turn_uses_local_model(monkeypatch) -> None:
     from msb_v3.wake.runner import default_turn_fn
 
-    monkeypatch.setattr("msb_v3.local_ai.deepseek.DeepSeekClient", _RaisingDeepSeek)
     monkeypatch.setattr("msb_v3.local_ai.ollama.LocalAIClient", _StubOllama)
-    monkeypatch.setattr(settings, "wake_allow_local_fallback", True)
-
     turn = default_turn_fn()
     assert turn("ping", "wilson") == "local model reply"
 
 
-def test_deepseek_failure_raises_when_fallback_disabled(monkeypatch) -> None:
+def test_local_turn_failure_propagates(monkeypatch) -> None:
     import pytest
 
-    from msb_v3.core.config import settings
     from msb_v3.wake.runner import default_turn_fn
 
-    monkeypatch.setattr("msb_v3.local_ai.deepseek.DeepSeekClient", _RaisingDeepSeek)
-    monkeypatch.setattr(settings, "wake_allow_local_fallback", False)
-
+    monkeypatch.setattr("msb_v3.local_ai.ollama.LocalAIClient", _BrokenOllama)
     turn = default_turn_fn()
-    with pytest.raises(RuntimeError, match="402"):
+    with pytest.raises(RuntimeError, match="local backend down"):
         turn("ping", "wilson")

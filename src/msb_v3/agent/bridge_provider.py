@@ -96,9 +96,9 @@ class BridgeProvider:
     """ToolProvider over the live msb-v3 surfaces.
 
     Search goes through the fabric retrieval domains router
-    (semantic/episodic/knowledge) and synthesis through the hybrid model
-    router (frontier seam when configured, local otherwise). Both are
-    injectable so tests stay hermetic and deterministic.
+    (semantic/episodic/knowledge) and synthesis through the local model
+    router (frontier retired 2026-09-09 — local only). Both are injectable
+    so tests stay hermetic and deterministic.
     """
 
     def __init__(
@@ -168,22 +168,10 @@ class BridgeProvider:
         prompt = built.text
         ledger = asdict(built.ledger)
 
-        from msb_v3.fabric.model_router import resolve_client
-
-        client, decision = resolve_client("verify_synth", client=self._client, router=self._router)
-        if decision is not None and decision.tier == "frontier" and decision.available:
-            # Frontier seam: call the routed client directly (a failure here
-            # propagates to the executor's retry/fail path — never faked).
-            resp = client.generate(prompt, temperature=0.2)
-            return {
-                "text": resp.text,
-                "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
-                "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
-                "context_ledger": ledger,
-            }
-        # Local tier (or an injected test client): keep the ChatHarness path
-        # so dispatcher metrics, latency histogram, and the [fallback]
-        # degradation stay observable — the slice's telemetry contract.
+        # Local-only after the frontier retirement (D1, 2026-09-09): the
+        # synthesis always runs through the local ChatHarness so dispatcher
+        # metrics, latency histogram, and the [fallback] degradation stay
+        # observable — the slice's telemetry contract.
         harness = ChatHarness(client=self._client)
         result = harness.execute(prompt)
         telemetry = result.telemetry or {}

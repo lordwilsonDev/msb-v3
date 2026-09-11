@@ -143,7 +143,7 @@ The project does **not** occupy one phase — the ops layer is a quarter turn ah
 | Architecture | STRONG | Frozen canonical path, expansion freeze, standalone ledger |
 | Code quality | STRONG | ruff + mypy pinned, 1706 tests, claims gate, E402 sweep |
 | Testing | STRONG | 172 files, failure matrix, bypass, soak, hermetic suites |
-| AI quality | DEVELOPING | MoIE pre-filter + factory reviewers; documented reviewer miss is caught deterministically; frontier seam unverified |
+| AI quality | DEVELOPING | MoIE pre-filter + factory reviewers; documented reviewer miss is caught deterministically; frontier seam retired 2026-09-09 (D1) — local-only |
 | Security | STRONG | ActionGate fail-closed, bypass 13/13, license gate, YubiKey/Secure Enclave, Merkle |
 | Reliability | STRONG | Failure matrix 11/11, soak metrics, backup/restore drill; longitudinal capped by single machine |
 | Observability | STRONG | audit.jsonl, Prometheus, cockpit/console, self-publishing audits |

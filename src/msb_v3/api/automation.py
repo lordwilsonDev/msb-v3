@@ -40,8 +40,8 @@ def automation_create(body: Dict[str, Any]) -> Dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (RuntimeError, ConnectionError) as exc:
-        # The brain is closed until DEEPSEEK_API_KEY is set — fail-closed
-        # with the same semantics as the /v1 adapter without a key.
+        # The brain is fail-closed when the local model is unavailable —
+        # same semantics as the /v1 adapter without a key.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     result = create_automation(plan, approve=approve)
     return {"ok": result.get("ok", False), **result}

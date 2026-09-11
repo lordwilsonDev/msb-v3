@@ -14,11 +14,11 @@ Three orthogonal dimensions of the decision:
    with reason="requires_authorization_not_granted" — the call is
    parked, not refused, so a human signer can lift it without the
    call having to be re-built.
-3. **Backend selection.** If allowed, route based on
-   `estimated_bytes`: fit-in-local-memory (8 GB on M1; configurable
-   via `MSB_LOCAL_MEMORY_BUDGET_BYTES`) goes to the active local
-   backend (Ollama/llama.cpp via `local_ai.client_factory`); else
-   frontier seam (`core.config.settings.openai_frontier_url`).
+3. **Backend selection.** If allowed, route to the active local backend
+   (Ollama/llama.cpp via `local_ai.client_factory`). The remote frontier
+   seam was retired 2026-09-09 (D1), so a call that exceeds the local
+   memory budget is still served locally — the reason records the
+   degradation honestly (`exceeds_local_budget ... served locally`).
 
 Every call — allowed OR denied — appends one record to the audit
 chain so the "why was this routed where" answer is replayable.
@@ -45,7 +45,6 @@ _DEFAULT_LOCAL_BUDGET_BYTES = 6 * 1024 * 1024 * 1024
 # Backend labels — stable strings; auditors and dashboards read these.
 BACKEND_LOCAL_OLLAMA = "local.ollama"
 BACKEND_LOCAL_LLAMACPP = "local.llamacpp"
-BACKEND_FRONTIER = "frontier"
 
 
 @dataclass(frozen=True)
@@ -159,10 +158,13 @@ def route(call: GatewayCall, ctx: Optional[GatewayContext] = None) -> GatewayDec
             f"<=budget={ctx.local_budget_bytes}"
         )
     else:
-        backend = BACKEND_FRONTIER
+        # Frontier seam retired (D1, 2026-09-09): oversized calls are still
+        # served by the local backend, and the degradation is recorded in
+        # the audit chain — never a silent remote hop.
+        backend = BACKEND_LOCAL_OLLAMA
         reason = (
             f"exceeds_local_budget:bytes={call.estimated_bytes}"
-            f">budget={ctx.local_budget_bytes}; routed to frontier seam"
+            f">budget={ctx.local_budget_bytes}; frontier retired — served locally"
         )
 
     return _log_decision(

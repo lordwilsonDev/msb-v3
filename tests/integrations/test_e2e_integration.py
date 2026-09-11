@@ -246,8 +246,11 @@ class TestConfiguration:
     def test_settings_has_providers(self):
         from msb_v3.core.config import settings
 
-        assert hasattr(settings, "deepseek_api_key")
-        assert hasattr(settings, "deepseek_base_url")
+        # The DeepSeek frontier settings were retired with the seam (D1,
+        # 2026-09-09) — the remaining provider surface is the /v1 adapter.
+        assert not hasattr(settings, "deepseek_api_key")
+        assert not hasattr(settings, "openai_frontier_url")
+        assert hasattr(settings, "openai_api_key")
 
 
 # ── Provider Registry ────────────────────────────────────────────────────

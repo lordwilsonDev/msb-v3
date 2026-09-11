@@ -39,9 +39,9 @@ from msb_v3.agent.providers import (
 # ---------------------------------------------------------------------------
 
 # Local + API providers that share the same capabilities and risk tier.
-# These are the "can they swap?" pairs.
+# These are the "can they swap?" pairs. The DeepSeek API provider was
+# retired with the frontier seam (D1, 2026-09-09) — Anthropic remains.
 _INTERCHANGEABLE_PAIRS: List[Tuple[str, str]] = [
-    ("local.slice", "api.deepseek"),  # both: search_query, chat, vault_write; tier 3
     ("local.slice", "api.anthropic"),  # both: search_query, chat, vault_write; tier 3
 ]
 
@@ -171,7 +171,7 @@ class TestBehavioralInterchangeability:
     """Both providers must return the same result shape from execute(),
     proving the caller doesn't need provider-specific code."""
 
-    @pytest.mark.parametrize("provider_id", ["local.slice", "api.deepseek", "api.anthropic"])
+    @pytest.mark.parametrize("provider_id", ["local.slice", "api.anthropic"])
     def test_execute_returns_provider_result(self, provider_id: str):
         """execute() must return a ProviderResult with standard fields."""
         provider = _provider_map()[provider_id]
@@ -185,7 +185,7 @@ class TestBehavioralInterchangeability:
             f"{provider_id}: execute() must return ProviderResult"
         )
 
-    @pytest.mark.parametrize("provider_id", ["local.slice", "api.deepseek", "api.anthropic"])
+    @pytest.mark.parametrize("provider_id", ["local.slice", "api.anthropic"])
     def test_health_returns_same_shape(self, provider_id: str):
         """health() must return a dict with 'ok' key for all providers."""
         provider = _provider_map()[provider_id]
@@ -194,7 +194,7 @@ class TestBehavioralInterchangeability:
         assert "ok" in result
         assert isinstance(result["ok"], bool)
 
-    @pytest.mark.parametrize("provider_id", ["local.slice", "api.deepseek", "api.anthropic"])
+    @pytest.mark.parametrize("provider_id", ["local.slice", "api.anthropic"])
     def test_available_returns_bool(self, provider_id: str):
         """available() must return a bool for all providers."""
         provider = _provider_map()[provider_id]

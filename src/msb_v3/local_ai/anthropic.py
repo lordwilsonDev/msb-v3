@@ -1,5 +1,6 @@
 """Anthropic native Messages API client — the third harness behind the
-AgentProvider ABC (api.anthropic), alongside DeepSeek (api.deepseek).
+AgentProvider ABC (api.anthropic). The DeepSeek API provider was retired
+with the frontier seam on 2026-09-09 (D1).
 
 Anthropic's wire protocol is NOT OpenAI-compatible: messages go to
 ``/v1/messages`` with ``x-api-key`` + ``anthropic-version`` headers, the

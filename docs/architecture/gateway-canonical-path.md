@@ -90,9 +90,10 @@ most consequential execution path in the system — bypasses the gateway entirel
 ### Why This Happened
 
 The gateway was designed as a **compute-plane router** (local vs. frontier
-based on memory budget). The agent path was designed as a **governed execution
-loop** (intent → plan → gated tools → verify → evidence). They solve
-different problems:
+based on memory budget; the frontier tier was retired 2026-09-09, D1, so
+backend selection is now local-only). The agent path was designed as a
+**governed execution loop** (intent → plan → gated tools → verify →
+evidence). They solve different problems:
 
 - Gateway asks: "Given these capability tokens, is this call authorized and
   where should the compute happen?"
@@ -178,8 +179,8 @@ remains the enforcement layer for tool-level gating.
 - ActionGate still enforces risk tier + taint checks on every tool call
 - KillSwitch still provides emergency shutdown
 - ModelRouter still selects the LLM client
-- The gateway's backend selection (local vs. frontier) is informational
-  for the agent path — the agent path always uses the local client
+- The gateway's backend selection is informational for the agent path —
+  the agent path always uses the local client (frontier retired 2026-09-09)
 
 ### The Bypass Test
 
@@ -195,7 +196,7 @@ remains the enforcement layer for tool-level gating.
 
 | Concern | Authority | Module |
 |---|---|---|
-| Compute routing (local vs. frontier) | Gateway | `gateway/route.py` |
+| Compute routing (local-only since D1, 2026-09-09) | Gateway | `gateway/route.py` |
 | Tool execution authorization | ActionGate | `agent/safety.py` |
 | Emergency shutdown | KillSwitch | `governance/killswitch.py` |
 | Operator approval | ApprovalQueue | `governance/approval.py` |

@@ -6,10 +6,10 @@ verification method, timeout, retry policy), the parser validates each one,
 and any failure degrades to the template DAG rather than an error. The loop
 can therefore always proceed to execution.
 
-Async by design: planning can route through the /v1 frontier seam
-(FrontierClient.agenerate), and even a sync local client is
-offloaded via asyncio.to_thread — so plan() never blocks the server's event
-loop when called from /agent/handle.
+Async by design: an async-capable local client is awaited directly, and a
+sync-only client is offloaded via asyncio.to_thread — so plan() never blocks
+the server's event loop when called from /agent/handle. (The remote frontier
+seam was retired 2026-09-09, D1 — local-only.)
 
 Slice vocabulary (capability → real tool, wired in the executor):
     read_vault      → search_query + vault_read (MCP bridge / retrieval router)
@@ -222,27 +222,24 @@ def _is_acyclic_graph(tasks: List[Task]) -> bool:
 
 async def plan(
     intent: Intent,
-    client: Any | None = None,  # local client or FrontierClient (router decides)
+    client: Any | None = None,  # local client (router decides)
     *,
     router: Any | None = None,
 ) -> TaskGraph:
     """Build a task DAG for an Intent. LLM-first, template fallback.
 
-    Planning is a frontier-default task (A5 fix) — the hybrid model router
-    decides which client plans (frontier via /v1 when configured,
-    local otherwise). An injected `client` wins over the router, so existing
+    Planning runs on the local client (the frontier seam was retired
+    2026-09-09, D1). An injected `client` wins over the router, so existing
     tests and callers keep full control.
 
-    Never blocks the event loop: a client with `agenerate` (the async
-    FrontierClient) is awaited directly; a sync-only client (the local
-    Ollama/llama.cpp clients, fakes in tests) is offloaded via
-    asyncio.to_thread.
+    Never blocks the event loop: a client with `agenerate` is awaited
+    directly; a sync-only client (the local Ollama/llama.cpp clients, fakes
+    in tests) is offloaded via asyncio.to_thread.
 
     NOTE (privacy floor): the slice's intents default privacy=True, which the
-    router treats as privacy_scoped — so plan() stays on the local client in
-    practice (the honest choice; a plan built from private vault content
-    should not leave the device). The frontier path exists for explicitly
-    public/non-scoped tasks.
+    router records as privacy_scoped — planning stays on the local client by
+    construction (a plan built from private vault content never leaves the
+    device).
     """
     if client is None:
         from msb_v3.fabric.model_router import resolve_client

@@ -1,9 +1,9 @@
 """Intelligence Fabric (spec §3 Layer 2).
 
-The hybrid routing + retrieval + context layer that makes the slice's brain
+The routing + retrieval + context layer that makes the slice's brain
 and grounding composable:
 
-    model_router      hybrid local/frontier routing with the R score (spec §3.5)
+    model_router      deterministic local-only routing (frontier retired 2026-09-09)
     retrieval_router  retrieval domains (semantic/episodic/knowledge) over Qdrant
     context           token-budgeted context builder with deterministic eviction
 
@@ -12,13 +12,7 @@ and unit-testable without live services.
 """
 
 from msb_v3.fabric.context import BuiltContext, ContextBuilder, ContextLedger
-from msb_v3.fabric.model_router import (
-    DEFAULT_TIER,
-    FRONTIER_THRESHOLD,
-    WEIGHTS,
-    ModelRouter,
-    RouterDecision,
-)
+from msb_v3.fabric.model_router import DEFAULT_TIER, ModelRouter, RouterDecision
 from msb_v3.fabric.retrieval_router import (
     DomainResult,
     FabricRetrievalRouter,
@@ -32,9 +26,7 @@ __all__ = [
     "DEFAULT_TIER",
     "DomainResult",
     "FabricRetrievalRouter",
-    "FRONTIER_THRESHOLD",
     "ModelRouter",
     "RouterDecision",
-    "WEIGHTS",
     "detect_domain",
 ]

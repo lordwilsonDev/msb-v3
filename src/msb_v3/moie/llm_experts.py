@@ -307,13 +307,10 @@ def _default_reviewer_models() -> List[str]:
 
 
 def _default_client_factory(model: str) -> Any:
-    from msb_v3.core.config import settings
+    # Local-only after the frontier retirement (D1, 2026-09-09): every
+    # reviewer model id resolves to the local Ollama client.
     from msb_v3.local_ai.ollama import LocalAIClient
 
-    if model == settings.openai_frontier_model and settings.openai_api_key:
-        from msb_v3.fabric.model_router import FrontierClient
-
-        return FrontierClient(model=model)
     return LocalAIClient(model=model)
 
 

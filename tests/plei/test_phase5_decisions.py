@@ -336,14 +336,14 @@ class TestTradeoffs:
 class TestNextAction:
     def test_selects_top_action_as_primary(self, real_gap_dict, real_risk_dict):
         prio = prioritize(real_gap_dict, real_risk_dict)
-        prov_avail: dict[str, bool] = {"api.deepseek": True, "local.slice": True, "cli.codebuddy": True}
+        prov_avail: dict[str, bool] = {"local.slice": True, "cli.codebuddy": True}
         report = select_next_action(prio, prov_avail)
         assert report.primary is not None
         assert report.primary.rank == 1
 
     def test_validation_checks_present(self, real_gap_dict, real_risk_dict):
         prio = prioritize(real_gap_dict, real_risk_dict)
-        prov_avail: dict[str, bool] = {"local.slice": True, "api.deepseek": True}
+        prov_avail: dict[str, bool] = {"local.slice": True, "api.anthropic": True}
         report = select_next_action(prio, prov_avail)
         assert len(report.primary.validation_checks) >= 3
 
@@ -368,7 +368,7 @@ class TestNextAction:
 
     def test_next_action_as_dict_serializable(self, real_gap_dict, real_risk_dict):
         prio = prioritize(real_gap_dict, real_risk_dict)
-        prov_avail: dict[str, bool] = {"local.slice": True, "api.deepseek": True}
+        prov_avail: dict[str, bool] = {"local.slice": True, "api.anthropic": True}
         report = select_next_action(prio, prov_avail)
         d = next_action_as_dict(report)
         assert "primary" in d

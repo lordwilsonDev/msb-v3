@@ -121,17 +121,6 @@ def test_system_health_llamacpp_reports_real_backend(monkeypatch, tmp_path):
     assert body["status"] == "degraded"
 
 
-def test_system_health_frontier_reports_seam_reality(monkeypatch):
-    """AC-2.1 (frontier): the row reflects whether OPENAI_API_KEY is set."""
-    from msb_v3.core.config import settings
-
-    client = TestClient(create_app())
-    monkeypatch.setattr(settings, "openai_api_key", "")
-    assert client.get("/system/health").json()["frontier"] == "closed (OPENAI_API_KEY unset)"
-    monkeypatch.setattr(settings, "openai_api_key", "sk-test")
-    assert client.get("/system/health").json()["frontier"] == "configured"
-
-
 def test_system_config_exposes_rate_limit_guards(monkeypatch):
     """/system/config exposes the live /v1 guard settings keyed by their
     env-var names, and reflects a live change without a restart."""

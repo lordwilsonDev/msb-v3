@@ -49,7 +49,7 @@ subpackage is unclassified (AC-3.1).
 | `api/openai_compat.py` | LOAD-BEARING | `/v1` OpenAI-compatible adapter — Open WebUI / OpenAI SDK path (README). |
 | `api/rag.py` | LOAD-BEARING | `/rag/search` semantic vault search — used by mcp_bridge `search_query`, cockpit find, flywheel engine. |
 | `api/research.py` | OPTIONAL | Research-assistant endpoints; off canonical path. |
-| `api/safety.py` | LOAD-BEARING | Safety/guardrail surface; guardrails are wired into the tool loop (`guardrails/fold.py` used by DeepSeekClient). |
+| `api/safety.py` | LOAD-BEARING | Safety/guardrail surface; guardrails are wired into the tool loop (`guardrails/fold.py` used by the local clients). |
 | `api/skill_router.py` | OPTIONAL | Skill discovery/execution from `~/.hermes/skills`; dormant-satellites disposition kept it deferred. |
 | `api/smi.py` | OPTIONAL | SMI surface (SMI-017/018 workstreams); off canonical path. |
 | `api/studio.py` | OPTIONAL | Studio surface; off canonical path. |
@@ -78,17 +78,17 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/db` | LOAD-BEARING | SQLite infra under every store. |
 | `msb_v3/device` | OPTIONAL | Signed-device enrollment support (Vesta path, low volume). |
 | `msb_v3/evidence` | FROZEN | Evidence spine — release-declared frozen. |
-| `msb_v3/fabric` | LOAD-BEARING | Model router + FrontierClient seam — `resolve_client` on the agent path; DeepSeekClient extends FrontierClient. |
+| `msb_v3/fabric` | LOAD-BEARING | Local-only model router — `resolve_client` on the agent path (frontier seam retired 2026-09-09, D1). |
 | `msb_v3/energy_matrix` | OPTIONAL | Energy-aware resource scheduling — telemetry + scheduler + governance. |
 | `msb_v3/factory` | FROZEN | The factory pipeline — release-declared frozen (dogfood reached MERGED). |
 | `msb_v3/flywheel` | OPTIONAL | Research→Build loop — operator-driven, behind the brakes (CLAUDE.md Flywheel). |
 | `msb_v3/gateway` | LOAD-BEARING | Capability Gateway — canonical audit entry point for governed execution (`agent/handle.py` + `harnesses/base.py` both call `route()`); records compute decisions into the audit chain (docs/architecture/gateway-canonical-path.md). |
 | `msb_v3/governance` | LOAD-BEARING | The brakes (kill switch, budgets, approvals) — fail-closed everywhere (CLAUDE.md). |
 | `msb_v3/guardian` | OPTIONAL | S-AOS Guardian — headless OBSERVE-only repo steward (forensics → classify → vault ledger); no mutation path, manually triggered, off the runtime request path (`~/Documents/Vault/30_Architecture/S-AOS-Guardian/`). |
-| `msb_v3/guardrails` | LOAD-BEARING | `fold.StepEnforcer` — wired into the governed tool loops (DeepSeekClient, conversation). |
+| `msb_v3/guardrails` | LOAD-BEARING | `fold.StepEnforcer` — wired into the governed tool loops (local clients, conversation). |
 | `msb_v3/harnesses` | OPTIONAL | Harness scaffolding; off canonical path. |
 | `msb_v3/infrastructure` | LOAD-BEARING | Centralized environment contracts, including Qdrant preflight consumed by CI harness gates. |
-| `msb_v3/local_ai` | LOAD-BEARING | Ollama + llama + DeepSeek clients — the model layer under `/chat`, `/agent`, `/v1`. |
+| `msb_v3/local_ai` | LOAD-BEARING | Ollama + llama clients (DeepSeek retired 2026-09-09, D1) — the model layer under `/chat`, `/agent`, `/v1`. |
 | `msb_v3/memory` | LOAD-BEARING | SQLite session/message memory — `/memory` + MCP bridge depend on it. |
 | `msb_v3/memory_fabric` | OPTIONAL | Memory fabric (spec §4.2.2); off canonical path. |
 | `msb_v3/meta` | OPTIONAL | Meta-System project compiler — META-0: contract types only (`MetaTask`/`MSL`/`TaskState`/`ProjectState`/`VerificationResult`/`FailureRecord`/`WorkerResult`), no orchestration. Off canonical path. |

@@ -72,12 +72,8 @@ async def ready(response: Response) -> Dict[str, Any]:
     # Refresh component states on each /ready call
     _COMPONENTS["ollama"] = await _check_ollama()
     _COMPONENTS["db"] = await _check_db()
-    # DeepSeek circuit breaker state (Phase 0 — circuit open = provider down)
-    try:
-        from msb_v3.local_ai.deepseek import deepseek_circuit_state
-        circuit = deepseek_circuit_state()
-    except Exception:
-        circuit = {"open": False, "reason": "unknown"}
+    # Anthropic circuit state (the DeepSeek circuit was retired with the
+    # frontier seam on 2026-09-09, D1).
     try:
         from msb_v3.local_ai.anthropic import anthropic_circuit_state
         anthropic_circuit = anthropic_circuit_state()
@@ -90,7 +86,6 @@ async def ready(response: Response) -> Dict[str, Any]:
     return {
         "ready": ok,
         "components": _COMPONENTS,
-        "deepseek_circuit": circuit,
         "anthropic_circuit": anthropic_circuit,
         "ts": datetime.now(timezone.utc).isoformat(),
     }

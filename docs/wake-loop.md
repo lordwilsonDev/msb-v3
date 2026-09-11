@@ -20,7 +20,8 @@ any session ──POST /wake──▶ wake inbox ──wake-agent cron job──
   switch, retries, timeout, run history, and evidence receipt — the same
   discipline as backups and health checks. Bounded at
   `MSB_WAKE_MAX_PER_RUN` (default 5) messages per cycle.
-- **The brain is DeepSeek** (the $10 key). No `DEEPSEEK_API_KEY`? The turn
+- **The brain is the local Ollama model** (the frontier seam was retired
+  2026-09-09, D1 — local-only). If the local backend is down, the turn
   fails loudly and the message stays `failed` with the reason — never a
   silent no-op.
 - **Automations**: if a wake message asks the agent to build an automation,

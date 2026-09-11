@@ -74,19 +74,10 @@ class Settings:
     # (not Vesta-specific) so it lives under data/evidence/.
     decision_spine_db_path: str = field(default_factory=lambda: os.getenv("MSB_DECISION_SPINE_DB_PATH", "data/evidence/decision_spine.db"))
     # Bearer key for the OpenAI-compatible /v1 adapter (Open WebUI etc.).
-    # Empty = adapter closed (503) until configured — fail-closed.
+    # Empty = adapter closed (503) until configured — fail-closed. This is
+    # the *local* /v1 surface only — the remote frontier seam (DeepSeek) was
+    # retired 2026-09-09 (decision D1, docs/blueprints/2026-09-09-production-hardening.md).
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
-    # Frontier seam for the hybrid model router: the /v1 adapter URL + the
-    # model id used for long-horizon plan/verify-synth work. The
-    # seam is "closed" (router degrades to local) until OPENAI_API_KEY is set.
-    openai_frontier_url: str = field(default_factory=lambda: os.getenv("OPENAI_FRONTIER_URL", "http://127.0.0.1:8766/v1"))
-    openai_frontier_model: str = field(default_factory=lambda: os.getenv("OPENAI_FRONTIER_MODEL", "frontier"))
-    # DeepSeek native API (OpenAI-compatible) — the first frontier provider
-    # behind the AgentProvider ABC. DEEPSEEK_API_KEY falls back to
-    # OPENAI_API_KEY so the /v1 seam and this provider can share one key.
-    deepseek_api_key: str = field(default_factory=lambda: os.getenv("DEEPSEEK_API_KEY", "") or os.getenv("OPENAI_API_KEY", ""))
-    deepseek_base_url: str = field(default_factory=lambda: os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
-    deepseek_model: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"))
     # Anthropic native Messages API (the api.anthropic provider). Strictly
     # ANTHROPIC_API_KEY — no fallback to OPENAI_API_KEY: unlike DeepSeek,
     # Anthropic's wire protocol is not OpenAI-compatible, so sharing the key
@@ -177,18 +168,12 @@ class Settings:
     wake_max_per_run: int = field(default_factory=lambda: int(os.getenv("MSB_WAKE_MAX_PER_RUN", "5")))
     # The resident cadence.
     wake_schedule: str = field(default_factory=lambda: os.getenv("MSB_WAKE_SCHEDULE", "*/5 * * * *"))
-    # When the DeepSeek turn fails (key unset, HTTP 402, circuit open, timeout),
-    # retry the same turn against the local Ollama model instead of failing the
-    # inbox message. On by default — a billing outage should degrade, not stop
-    # the resident loop.
-    wake_allow_local_fallback: bool = field(
-        default_factory=lambda: os.getenv("MSB_WAKE_LOCAL_FALLBACK", "1") == "1"
-    )
     # --- Automation brain (n8n / Make / Zapier / GoHighLevel) ---
-    # The brain (DeepSeek-driven) turns a request into a structured plan and
-    # executes it via the provider clients. Budget cap in USD on the LLM
-    # brain spend (the $10 key); platform per-run costs are the provider's
-    # own billing and are recorded in the manifest when known.
+    # The brain (local Ollama — the frontier seam was retired 2026-09-09)
+    # turns a request into a structured plan and executes it via the provider
+    # clients. Budget cap in USD on the LLM brain spend; platform per-run
+    # costs are the provider's own billing and are recorded in the manifest
+    # when known.
     automation_budget_usd: float = field(default_factory=lambda: float(os.getenv("MSB_AUTOMATION_BUDGET_USD", "10.0")))
     # Fail-closed: dry-run by default. Creation with side effects requires
     # approve=true on the request (operator token = the approval) or this

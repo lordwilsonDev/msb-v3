@@ -89,7 +89,8 @@ def test_identity_contains_reproducibility_fields(tmp_path: Path) -> None:
     assert result["dirty"] is False
     assert "python_version" in result
     assert set(result["lock_hashes"]) == {"runtime", "dev"}
-    assert set(result["models"]) == {"chat", "embedding", "frontier"}
+    # Local-only after the frontier retirement (D1, 2026-09-09).
+    assert set(result["models"]) == {"chat", "embedding"}
 
 
 def test_write_manifest_is_atomic_and_machine_readable(tmp_path: Path) -> None:

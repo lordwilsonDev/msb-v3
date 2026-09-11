@@ -2,11 +2,11 @@
 
 The Dream Big Blue vertical slice (intent → plan → execute → verify →
 evidence) runs end-to-end in this process via ``agent.handle.handle()``.
-A caller can drive a real router decision (R score, frontier vs local)
-inside the server process, so the decision lands in
-this server's Prometheus registry (/metrics/prometheus) — the slice was
-previously only reachable from standalone scripts, whose in-process
-metrics never appeared on the live server.
+A caller can drive a real router decision (local-only since the frontier
+retirement of 2026-09-09, D1) inside the server process, so the decision
+lands in this server's Prometheus registry (/metrics/prometheus) — the
+slice was previously only reachable from standalone scripts, whose
+in-process metrics never appeared on the live server.
 
 Gate: operator bearer token (Depends(require_operator), MSB_OPERATOR_TOKEN
 from .env — fail-closed 503 until set, 401 on mismatch), the same control-

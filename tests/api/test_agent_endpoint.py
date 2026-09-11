@@ -95,9 +95,9 @@ import sys
 sys.path.insert(0, "@@SRC@@")
 
 # A fresh interpreter == the live server process: importing the app registers
-# the router counter before any decision; an open seam + public plan routes
-# frontier and increments it. Assertions run here, so failures raise in this
-# process and surface as non-zero exit.
+# the router counter before any decision; a plan routes local (frontier
+# retired 2026-09-09, D1) and increments it. Assertions run here, so
+# failures raise in this process and surface as non-zero exit.
 from prometheus_client import REGISTRY
 from msb_v3.fabric.model_router import ModelRouter
 
@@ -106,9 +106,8 @@ from msb_v3.fabric.model_router import ModelRouter
 names = {m.name for m in REGISTRY.collect()}
 assert "msb_v3_router_decisions" in names, "counter not registered at startup"
 
-d = ModelRouter(available=True).decide("plan", privacy_scoped=False)
-assert d.tier == "frontier", d
-assert d.score > 0.5, d
+d = ModelRouter().decide("plan", privacy_scoped=False)
+assert d.tier == "local", d
 
 # The /agent surface is mounted: an unauthenticated POST answers 503
 # (fail-closed), not 404 (not mounted).
@@ -124,21 +123,22 @@ assert r.status_code == 503, r.status_code  # mounted + token unset -> closed
 
 value = REGISTRY.get_sample_value(
     "msb_v3_router_decisions_total",
-    {"task_kind": "plan", "tier": "frontier", "cause": "tier-default"},
+    {"task_kind": "plan", "tier": "local", "cause": "local-only"},
 )
 assert value is not None and value >= 1, value
 
-# Privacy floor still holds on the same open seam.
-dp = ModelRouter(available=True).decide("plan", privacy_scoped=True)
+# Privacy-scoped plans route local too — the local backend never leaves the
+# device, so the privacy floor holds by construction.
+dp = ModelRouter().decide("plan", privacy_scoped=True)
 assert dp.tier == "local", dp
-print("FRESH-PROCESS-OK tier=%s score=%s counter=%s" % (d.tier, d.score, value))
+print("FRESH-PROCESS-OK tier=%s counter=%s" % (d.tier, value))
 """.replace("@@SRC@@", str(SRC))
 
 
-def test_fresh_server_process_registers_counter_and_routes_frontier() -> None:
+def test_fresh_server_process_registers_counter_and_routes_local() -> None:
     """Run the live-test assertions in a clean interpreter, exactly like the
-    server process: counter registered at startup, public plan -> frontier on
-    an open seam, decision counted, /agent mounted."""
+    server process: counter registered at startup, plan -> local (frontier
+    retired), decision counted, /agent mounted."""
     proc = subprocess.run(
         [sys.executable, "-c", _FRESH_PROCESS],
         capture_output=True,

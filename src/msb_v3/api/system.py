@@ -170,10 +170,8 @@ def system_health() -> Dict[str, Any]:
     # truth-in-config (FR-2.3): report what can actually serve. The llama.cpp
     # backend is green only when weights exist AND the server answers.
     checks["llamacpp"] = _probe_llama_cpp()
-    # Frontier /v1 seam: configured == OPENAI_API_KEY set; a set key without
-    # reachability is still "configured" (the router treats config as
-    # availability and degrades on execution failure) — never claim serving.
-    checks["frontier"] = "configured" if settings.openai_api_key else "closed (OPENAI_API_KEY unset)"
+    # The remote frontier seam was retired 2026-09-09 (D1): the only model
+    # surfaces are local (ollama / llama.cpp / the /v1 adapter).
     # Status reflects the core + the *active* backend only: llama.cpp is an
     # optional alternate, so its down state is reported per-row (truthful)
     # without degrading a system that is actively serving via ollama.

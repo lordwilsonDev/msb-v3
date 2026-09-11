@@ -5,9 +5,10 @@ synchronous (cron actions are sync callables run under the scheduler's kill
 switch / timeout / retries) and bounded: at most ``MSB_WAKE_MAX_PER_RUN``
 pending messages per cycle, each turn capped by the client timeout.
 
-The default turn function drives DeepSeek (the $10 brain); tests inject a
-stub. After each turn the response is scanned for a fenced JSON automation
-plan (``{\"automation\": {...}}``) and handed to the automation brain, which
+The default turn function drives the local Ollama model (the frontier seam
+was retired 2026-09-09, D1 — local-only); tests inject a stub. After each
+turn the response is scanned for a fenced JSON automation plan
+(``{\"automation\": {...}}``) and handed to the automation brain, which
 dry-runs by default — so a wake message like \"build me an n8n workflow that
 pings me\" produces a plan + dry-run manifest entry, not an untested
 workflow.
@@ -42,18 +43,15 @@ _WAKE_SYSTEM = (
 
 
 def default_turn_fn() -> TurnFn:
-    """DeepSeek-backed turn (the $10 brain), with a local Ollama fallback.
+    """Local-only turn (the frontier seam was retired 2026-09-09, D1).
 
-    When the DeepSeek call fails for any reason (key unset, HTTP 402 /
-    payment required, circuit open, timeout, connection error) and
-    ``settings.wake_allow_local_fallback`` is on, the same turn is retried
-    against the local model so a provider outage degrades the resident loop
-    instead of stopping it. If the fallback is disabled or also fails, the
-    original error propagates and the runner marks the message failed.
+    The resident agent always answers on the local Ollama model — there is
+    no remote provider to fail over to, so the turn either succeeds or
+    propagates its error and the runner marks the message failed.
     """
-    from msb_v3.local_ai.deepseek import DeepSeekClient
+    from msb_v3.local_ai.ollama import LocalAIClient
 
-    client = DeepSeekClient(timeout_s=45.0)
+    client = LocalAIClient()
 
     def _messages(text: str, sender: str) -> list[dict[str, str]]:
         return [
@@ -61,21 +59,9 @@ def default_turn_fn() -> TurnFn:
             {"role": "user", "content": f"[from {sender}]\n{text}"},
         ]
 
-    def _local_turn(text: str, sender: str) -> str:
-        from msb_v3.local_ai.ollama import LocalAIClient
-
-        resp = LocalAIClient().chat(_messages(text, sender), temperature=0.4, max_tokens=1024)
-        return resp.text
-
     def turn(text: str, sender: str) -> str:
-        try:
-            resp = client.chat(_messages(text, sender), temperature=0.4, max_tokens=1024)
-            return resp.text
-        except Exception as exc:  # noqa: BLE001 — any DeepSeek failure is a fallback trigger
-            if not settings.wake_allow_local_fallback:
-                raise
-            logger.warning("wake: DeepSeek turn failed (%s) — falling back to local model", exc)
-            return _local_turn(text, sender)
+        resp = client.chat(_messages(text, sender), temperature=0.4, max_tokens=1024)
+        return resp.text
 
     return turn
 

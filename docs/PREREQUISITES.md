@@ -27,8 +27,8 @@ make doctor   # prints exactly what's missing on YOUR machine
 | **Docker** | the compose stack (Open WebUI, Timescale) | `docker compose -f docker-compose.sovereign.yml up -d` |
 | **n8n** | the automation brain's first target (self-hosted, free) | reachable at `http://127.0.0.1:5678`; create an **API key** in n8n: Settings → API → `N8N_API_KEY` |
 | **Make / Zapier / GoHighLevel keys** | remaining automation targets | `MSB_MAKE_WEBHOOK_URL`, `MSB_ZAPIER_API_KEY`, `MSB_GHL_API_KEY` |
-| **`DEEPSEEK_API_KEY`** | the wake agent + automation brain (the $10 brain) | https://platform.deepseek.com — an OpenAI-compatible key; ~$10 = millions of tokens |
 | **`OPENAI_API_KEY`** | the `/v1` adapter (Open WebUI chat) | `OPENAI_API_KEY` in `.env` |
+| ~~`DEEPSEEK_API_KEY`~~ | ~~the wake agent + automation brain~~ — **retired 2026-09-09** (D1): the wake agent and automation brain now run local-only on Ollama | no longer required |
 | **`MSB_OPERATOR_TOKEN`** | `/cron`, `/wake`, `/automation` control surfaces | without it those endpoints are closed (503 — fail-closed by design) |
 | **`MCP_BRIDGE_SECRET`** | live-auth gate on conversation/workflow routes | set it; unset = dev mode |
 
