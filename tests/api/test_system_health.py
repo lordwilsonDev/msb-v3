@@ -241,12 +241,19 @@ def test_probe_paseo_disabled_by_default_skips_daemon_call(monkeypatch):
 
 def test_system_health_paseo_disabled_never_fails_overall(monkeypatch):
     """With Paseo quarantined off, an unreachable daemon must not flip
-    /system/health's overall status to FAILED."""
-    monkeypatch.setattr(LocalAIClient, "generate", lambda self, *a, **k: "ok")
+    /system/health's overall status to FAILED. Isolated from every other
+    component (vesta's tasks.db, for one, doesn't exist in a fresh/staged
+    checkout regardless of Paseo — that's a real but unrelated environment
+    fact, not something this test should depend on)."""
+    from msb_v3.api import system
     from msb_v3.core.config import settings
 
+    monkeypatch.setattr(LocalAIClient, "generate", lambda self, *a, **k: "ok")
     monkeypatch.setattr(settings, "paseo_enabled", False)
     monkeypatch.setattr(settings, "paseo_url", "http://127.0.0.1:1/unreachable")
+    monkeypatch.setattr(system, "_probe_qdrant", lambda: system._component(True, "ok"))
+    monkeypatch.setattr(system, "_probe_auditchain", lambda: system._component(True, "ok"))
+    monkeypatch.setattr(system, "_probe_vesta", lambda: system._component(True, "ok"))
 
     client = TestClient(create_app())
     body = client.get("/system/health").json()
