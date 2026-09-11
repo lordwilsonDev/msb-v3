@@ -208,3 +208,158 @@ def test_alert_state_defaults_on_corrupt_file(monkeypatch: pytest.MonkeyPatch, t
     path.write_text("not json{{{")
     state = actions._load_alert_state()
     assert state["consecutive_degraded"] == 0
+
+
+def _reset_actiongate_counter() -> None:
+    from msb_v3.observability.metrics import ACTIONGATE_DECISIONS
+
+    for verdict in ("failed", "denied"):
+        ACTIONGATE_DECISIONS.labels(verdict=verdict)._value.set(0)
+
+
+def test_alert_check_no_alert_when_healthy(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    _reset_actiongate_counter()
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: False})(),
+    )
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "healthy"})
+    sent = []
+    monkeypatch.setattr(actions, "_send_hermes_alert", lambda msg: sent.append(msg) or True)
+
+    result = actions.run_action("alert_check", {})
+
+    assert result["ok"] is True
+    assert sent == []
+
+
+def test_alert_check_killswitch_armed_then_recovers(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    _reset_actiongate_counter()
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "healthy"})
+    sent = []
+    monkeypatch.setattr(actions, "_send_hermes_alert", lambda msg: sent.append(msg) or True)
+
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: True})(),
+    )
+    actions.run_action("alert_check", {})
+    assert len(sent) == 1
+    assert "ARMED" in sent[0]
+
+    # Still armed on the next poll — must NOT re-alert (edge-triggered).
+    actions.run_action("alert_check", {})
+    assert len(sent) == 1
+
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: False})(),
+    )
+    actions.run_action("alert_check", {})
+    assert len(sent) == 2
+    assert "RECOVERED" in sent[1]
+
+
+def test_alert_check_actiongate_rate_spike(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    from msb_v3.observability.metrics import ACTIONGATE_DECISIONS
+
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    monkeypatch.setattr(actions.settings, "alert_actiongate_threshold", 5)
+    monkeypatch.setattr(actions.settings, "alert_actiongate_window_s", 900)
+    _reset_actiongate_counter()
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: False})(),
+    )
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "healthy"})
+    sent = []
+    monkeypatch.setattr(actions, "_send_hermes_alert", lambda msg: sent.append(msg) or True)
+
+    # Establish the window baseline (0 failed/denied at this point).
+    actions.run_action("alert_check", {})
+    assert sent == []
+
+    # 6 denials within the same window > threshold of 5.
+    for _ in range(6):
+        ACTIONGATE_DECISIONS.labels(verdict="denied").inc()
+    actions.run_action("alert_check", {})
+    assert len(sent) == 1
+    assert "spike" in sent[0]
+
+
+def test_alert_check_degraded_needs_two_consecutive_polls(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    monkeypatch.setattr(actions.settings, "alert_degraded_consecutive_threshold", 2)
+    _reset_actiongate_counter()
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: False})(),
+    )
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "degraded"})
+    sent = []
+    monkeypatch.setattr(actions, "_send_hermes_alert", lambda msg: sent.append(msg) or True)
+
+    actions.run_action("alert_check", {})
+    assert sent == []  # first degraded poll: not yet 2 consecutive
+
+    actions.run_action("alert_check", {})
+    assert len(sent) == 1
+    assert "degraded" in sent[0]
+
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "healthy"})
+    actions.run_action("alert_check", {})
+    assert len(sent) == 2
+    assert "RECOVERED" in sent[1]
+
+
+def test_alert_check_survives_read_exception(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    """A rule's read function raising must not crash the action, must not
+    block the other rules, and must not corrupt the state file for the
+    next poll."""
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    _reset_actiongate_counter()
+
+    def _raise_killswitch() -> None:
+        raise RuntimeError("killswitch db locked")
+
+    monkeypatch.setattr("msb_v3.governance.killswitch.KillSwitch", _raise_killswitch)
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "healthy"})
+    monkeypatch.setattr(actions, "_send_hermes_alert", lambda msg: True)
+
+    result = actions.run_action("alert_check", {})
+
+    assert result["ok"] is False
+    assert any("killswitch" in e for e in result["detail"]["errors"])
+
+    # Next poll (killswitch reading fine again) must work normally, proving
+    # the state file wasn't corrupted by the failed poll.
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: False})(),
+    )
+    result2 = actions.run_action("alert_check", {})
+    assert result2["ok"] is True
+
+
+def test_alert_check_reports_send_failure(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(actions.settings, "db_path", str(tmp_path / "msb.db"))
+    monkeypatch.setattr(actions.settings, "alert_state_path", "")
+    _reset_actiongate_counter()
+    monkeypatch.setattr(
+        "msb_v3.governance.killswitch.KillSwitch",
+        lambda: type("KS", (), {"is_armed": lambda self: True})(),
+    )
+    monkeypatch.setattr("msb_v3.api.system.system_health", lambda: {"overall": "healthy"})
+    monkeypatch.setattr(actions, "_send_hermes_alert", lambda msg: False)
+
+    result = actions.run_action("alert_check", {})
+
+    assert result["ok"] is False
+    assert result["detail"]["send_failures"]

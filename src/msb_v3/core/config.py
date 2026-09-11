@@ -157,6 +157,14 @@ class Settings:
     # health state) persists between polls. Empty = derive from db_path
     # (beside cron.db under data/cron/).
     alert_state_path: str = field(default_factory=lambda: os.getenv("MSB_ALERT_STATE_PATH", ""))
+    alert_actiongate_threshold: int = field(default_factory=lambda: int(os.getenv("MSB_ALERT_ACTIONGATE_THRESHOLD", "5")))
+    alert_actiongate_window_s: int = field(default_factory=lambda: int(os.getenv("MSB_ALERT_ACTIONGATE_WINDOW_S", "900")))
+    alert_degraded_consecutive_threshold: int = field(default_factory=lambda: int(os.getenv("MSB_ALERT_DEGRADED_CONSECUTIVE", "2")))
+    # `hermes send` (no LLM, no running gateway required for bot-token
+    # platforms) — see ~/.local/bin/hermes send --help. Overridable in case
+    # the server process's PATH doesn't include it.
+    hermes_send_cmd: str = field(default_factory=lambda: os.getenv("MSB_HERMES_SEND_CMD", "hermes"))
+    alert_telegram_target: str = field(default_factory=lambda: os.getenv("MSB_ALERT_TELEGRAM_TARGET", "telegram"))
     # --- Wake loop (the 5-minute resident agent) ---
     # A cron job (wake-agent, schedule below) wakes the resident agent to
     # process messages left in the wake inbox from any session; responses

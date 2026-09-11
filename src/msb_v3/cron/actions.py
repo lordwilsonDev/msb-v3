@@ -331,6 +331,113 @@ def _save_alert_state(state: Dict[str, Any]) -> None:
     path.write_text(json.dumps(state))
 
 
+def _send_hermes_alert(message: str) -> bool:
+    """Send one alert via the Hermes agent's `send` CLI (no LLM, no running
+    gateway required for bot-token platforms — see `hermes send --help`).
+    Never raises: a missing binary or a timeout is a failure to report, not
+    a crash."""
+    cmd = [settings.hermes_send_cmd, "send", "-t", settings.alert_telegram_target, message]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def action_alert_check(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Watch killswitch state, ActionGate BLOCK/FAIL rate, and system health;
+    notify (edge-triggered — once per state change, not once per poll) via
+    Hermes when a rule crosses its threshold, and again on recovery."""
+    from msb_v3.governance.killswitch import KillSwitch
+    from msb_v3.observability.metrics import ACTIONGATE_DECISIONS
+    from msb_v3.api.system import system_health
+
+    state = _load_alert_state()
+    notifications: List[str] = []
+    errors: List[str] = []
+
+    # Rule 1: killswitch armed.
+    try:
+        armed = KillSwitch().is_armed()
+    except Exception as exc:  # noqa: BLE001 — one rule's read failure must not block the others
+        armed = state["alerts_active"]["killswitch"]
+        errors.append(f"killswitch read failed: {exc}")
+    else:
+        if armed and not state["alerts_active"]["killswitch"]:
+            notifications.append(
+                "🚨 MSB v3 ALERT: killswitch ARMED — execution halted. Investigate immediately."
+            )
+        elif not armed and state["alerts_active"]["killswitch"]:
+            notifications.append("✅ MSB v3 RECOVERED: killswitch disarmed — execution resumed.")
+    state["alerts_active"]["killswitch"] = armed
+
+    # Rule 2: ActionGate BLOCK/FAIL rate, resetting window (simplest correct
+    # implementation — no per-event history to store).
+    try:
+        failed = ACTIONGATE_DECISIONS.labels(verdict="failed")._value.get()
+        denied = ACTIONGATE_DECISIONS.labels(verdict="denied")._value.get()
+        now = datetime.now(timezone.utc)
+        window_start_raw = state.get("actiongate_window_start")
+        window_start = datetime.fromisoformat(window_start_raw) if window_start_raw else now
+        if (now - window_start).total_seconds() >= settings.alert_actiongate_window_s:
+            if state["alerts_active"]["actiongate_rate"]:
+                notifications.append("✅ MSB v3 RECOVERED: ActionGate rate back to normal.")
+            state["alerts_active"]["actiongate_rate"] = False
+            state["actiongate_baseline"] = {"failed": failed, "denied": denied}
+            state["actiongate_window_start"] = now.isoformat()
+        else:
+            baseline = state.get("actiongate_baseline", {"failed": failed, "denied": denied})
+            delta = (failed - baseline.get("failed", failed)) + (denied - baseline.get("denied", denied))
+            if delta > settings.alert_actiongate_threshold and not state["alerts_active"]["actiongate_rate"]:
+                notifications.append(
+                    f"🚨 MSB v3 ALERT: ActionGate spike — {int(delta)} denied/failed in window "
+                    f"(threshold {settings.alert_actiongate_threshold}). Check /cockpit."
+                )
+                state["alerts_active"]["actiongate_rate"] = True
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"actiongate read failed: {exc}")
+
+    # Rule 3: system degraded for 2+ consecutive polls (filters a single blip).
+    try:
+        health = system_health()
+        overall = health.get("overall", "healthy")
+    except Exception as exc:  # noqa: BLE001
+        overall = "FAILED"
+        errors.append(f"system_health call failed: {exc}")
+    if overall in ("degraded", "FAILED"):
+        state["consecutive_degraded"] = state.get("consecutive_degraded", 0) + 1
+        if (
+            state["consecutive_degraded"] >= settings.alert_degraded_consecutive_threshold
+            and not state["alerts_active"]["system_degraded"]
+        ):
+            notifications.append(
+                f"⚠️ MSB v3: system health degraded ({overall}) for "
+                f"{state['consecutive_degraded']} consecutive checks. Check /system/health."
+            )
+            state["alerts_active"]["system_degraded"] = True
+    else:
+        if state["alerts_active"]["system_degraded"]:
+            notifications.append("✅ MSB v3 RECOVERED: system health back to healthy.")
+        state["consecutive_degraded"] = 0
+        state["alerts_active"]["system_degraded"] = False
+
+    send_failures: List[str] = []
+    sent: List[str] = []
+    for msg in notifications:
+        if _send_hermes_alert(msg):
+            sent.append(msg)
+        else:
+            send_failures.append(msg)
+
+    _save_alert_state(state)
+
+    detail = {"notifications_sent": sent, "send_failures": send_failures, "errors": errors}
+    if errors or send_failures:
+        return _fail("alert check encountered errors", **detail)
+    summary = f"alert check: {len(sent)} notification(s)" if sent else "alert check: no change"
+    return _ok(summary, **detail)
+
+
 # --- registry --------------------------------------------------------------
 
 ACTIONS: Dict[str, ActionFn] = {
@@ -341,6 +448,7 @@ ACTIONS: Dict[str, ActionFn] = {
     "log_rotation": action_log_rotation,
     "http_call": action_http_call,
     "wake_agent": action_wake_agent,
+    "alert_check": action_alert_check,
 }
 
 
