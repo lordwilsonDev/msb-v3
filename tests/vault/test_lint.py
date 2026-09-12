@@ -75,6 +75,16 @@ def test_real_link_is_not_dangling(tmp_path):
     assert report.dangling_links == {}
 
 
+def test_cross_note_heading_anchor_link_is_not_dangling(tmp_path):
+    """Regression: found linting the real vault 2026-09-12 — [[Note#Heading]]
+    links to a heading inside ANOTHER note; the note itself must exist, but
+    the "#Heading" suffix isn't part of the path to check."""
+    _write(tmp_path, "A.md", "---\nid: 1\n---\nSee [[B#Some Heading]] for detail.\n")
+    _write(tmp_path, "B.md", "---\nid: 2\n---\n## Some Heading\nbody\n")
+    report = lint_vault(tmp_path)
+    assert report.dangling_links == {}
+
+
 def test_link_to_a_non_markdown_file_is_not_dangling(tmp_path):
     """Regression: found linting the real vault 2026-09-12 — a .csv prospect
     registry and a .yaml decision-card template were both flagged as

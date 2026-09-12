@@ -97,7 +97,15 @@ def lint_vault(vault_root: str | Path, *, required_fields: list[str] | None = No
     report.duplicate_ids = find_duplicate_ids(notes)
 
     for rel, text in bodies.items():
-        dangling = [target for target in extract_wikilinks(text) if target not in known_names]
+        dangling = []
+        for target in extract_wikilinks(text):
+            # [[Note#Heading]] links to a heading inside another note — the
+            # note itself is what must exist, not the literal "Note#Heading"
+            # string. (extract_wikilinks already filters out a *same-file*
+            # "#Heading" target on its own, handled separately from this.)
+            note_part = target.split("#", 1)[0]
+            if note_part not in known_names:
+                dangling.append(target)
         if dangling:
             report.dangling_links[rel] = dangling
 
