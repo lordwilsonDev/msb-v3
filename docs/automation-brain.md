@@ -104,9 +104,25 @@ errors behind 404; create a fresh PIT in GHL: Settings → Locations → API);
 n8n forwarding is implemented and **LIVE-VERIFIED 2026-08-20 with the full
 local circle** — no VPS, no cloud: a real n8n forwarder workflow (Webhook →
 HTTP Request → /hook) was created via the public API and activated, and a
-real msb-v3 cron job (`local-demo`, `*/2 * * * *`, `http_call` POST) fires
+real msb-v3 cron job (`local-demo`, `*/2 * * * *`, `http_call` POST) fired
 the n8n webhook → the forwarder hands the payload to /hook → it lands in the
-wake inbox → the resident agent processes it. Creating workflows programmatically
+wake inbox → the resident agent processes it.
+
+**`local-demo` was a one-time verification job, not meant to run forever —
+it was accidentally left running for 23 days.** Found 2026-09-12: the
+scheduler was re-firing it far faster than its stated 2-minute schedule
+(observed gaps as low as ~19s), generating ~105,800 dead wake-inbox rows
+(43% of them failed) and a permanently-growing backlog the 5-minute
+wake-agent consumer could never drain — disruptive enough to be reported
+as a real symptom (interrupting other things on the machine when the
+10-minute chain-anchor-verify job's own alerts piled on top). Deleted via
+`DELETE /cron/jobs/local-demo` and purged the dead backlog from
+`data/runtime/wake.db`. The n8n `msb-local-forwarder` workflow itself is a
+pure 1:1 forwarder with no trigger of its own (confirmed by reading its
+node definitions) — it never fires unless something calls its webhook, so
+deleting the msb-v3 cron job fully stops the loop; the forwarder workflow
+was left in place (harmless, dormant) in case the pattern is verified
+again deliberately. Creating workflows programmatically
 taught three real API-contract lessons (all fixed + tested): the create schema
 rejects `tags`/`meta` (strip them), activation is `POST /workflows/{id}/activate`
 (not PATCH-active), and a Webhook node needs a `webhookId` for its production
