@@ -54,7 +54,6 @@ subpackage is unclassified (AC-3.1).
 | `api/smi.py` | OPTIONAL | SMI surface (SMI-017/018 workstreams); off canonical path. |
 | `api/studio.py` | OPTIONAL | Studio surface; off canonical path. |
 | `api/system.py` | LOAD-BEARING | `/system/health|config|routes` — deep health + truth-in-config surface (close-out Phase 2). |
-| `api/tenant_chat.py` | OPTIONAL | Tenant chat routing — documented limitation "not tenant-scoped" (release doc #4); off canonical path. |
 | `api/tenants.py` | OPTIONAL | Tenant admin surface; single-operator system (project-map §2). |
 | `api/triumvirate.py` | LOAD-BEARING | The Triumvirate (Guardian/Argus/Hippocampus) — canonical-path governance (README safety model). |
 | `api/wake.py` | LOAD-BEARING | The wake inbox/outbox channel (`/wake`, operator-gated) — the 5-minute resident agent's surface (docs/wake-loop.md). |

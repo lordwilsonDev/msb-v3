@@ -10,8 +10,11 @@ of regression impossible by construction:
    ``create_app()``.
 2. Every router imported into ``app.py`` must actually be mounted (catches
    import-then-forget).
-3. The one documented exception is ``tenant_chat`` — a deliberately parked
-   placeholder, pinned unmounted by ``tests/api/test_tenant_chat_gate.py``.
+3. A deliberately parked router may be added to ``PARKED_UNMOUNTED`` below
+   with a dated reason and its own gate test asserting it stays unmounted
+   (see git history for the ``tenant_chat`` precedent, cut 2026-09-11 —
+   forensic audit found it was a pure echo placeholder with no live plan
+   referencing it).
 
 The check is static (AST on ``app.py`` + the api directory), so it needs no
 database, no env, and no app boot — it runs everywhere the suite runs.
@@ -28,12 +31,7 @@ APP_FILE = API_DIR / "app.py"
 
 # Documented, dated exceptions — routers that exist but are deliberately NOT
 # mounted. Each entry needs its own gate test asserting it stays unmounted.
-PARKED_UNMOUNTED = {
-    "tenant_chat": (
-        "parked placeholder (Phase 1 hardening 2026-08-15) — pinned "
-        "unmounted by tests/api/test_tenant_chat_gate.py"
-    ),
-}
+PARKED_UNMOUNTED: dict[str, str] = {}
 
 
 def _module_defines_router(path: Path) -> bool:
