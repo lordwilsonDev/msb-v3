@@ -29,10 +29,17 @@ def _get(path, expected=200):
 
 @pytest.mark.xdist_group("triumvirate")
 def test_triumvirate_plan_lock_verify_cycle():
-    # This test hits a live server with shared state — skip under xdist workers
-    # to avoid flaky failures from concurrent server modifications.
-    if os.getenv("PYTEST_XDIST_WORKER"):
-        pytest.skip("Skipped under xdist: live server state conflict")
+    # xdist_group pins this test to a single worker, which is the actual
+    # fix for concurrent-modification races — it was added in the same
+    # commit (27f780c) as a redundant manual skip that fired on ANY xdist
+    # worker, unconditionally, defeating the whole point of the group
+    # (removed 2026-09-11: this test never actually ran under xdist since
+    # that commit, and pytest-xdist isn't even invoked with -n anywhere in
+    # this repo's CI/Makefile today, so the skip was pure dead weight).
+    # NOTE: tests/test_harness.py and tests/triumvirate/test_metrics.py also
+    # hit these same shared-state endpoints and are NOT in this xdist_group —
+    # if this suite ever does run with real parallel workers (-n), those two
+    # files need the same xdist_group("triumvirate") tag to be fully race-safe.
     goal = "sovereign cluster deploy"
     plan = _post("/triumvirate/plan", {"goal": goal})
     assert plan["goal"] == goal

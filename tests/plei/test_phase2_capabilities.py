@@ -118,13 +118,24 @@ def test_taxonomy_summary_is_serializable():
 
 
 # --- Gap Detection ---
+#
+# All four tests below share one ingest_all(ROOT) call via this fixture.
+# A prior "fix" (3fe17a4, 2026-08-27) wrapped each call in
+# `except (MemoryError, OSError): pytest.skip(...)` after a real crash was
+# observed in CI — but that masked the crash instead of diagnosing it: any
+# future regression that makes ingestion blow memory again would show up
+# as a silent skip, not a failure, which defeats the entire point of a
+# regression test. Verified 2026-09-11: ingest_all(ROOT) runs clean today
+# (5.15s, 125MB peak RSS) — nowhere near resource exhaustion on any real
+# environment. If it ever fails for real again, it must fail loud.
 
-def test_gap_detector_for_msb_v3():
+@pytest.fixture(scope="module")
+def twin():
+    return ingest_all(ROOT)
+
+
+def test_gap_detector_for_msb_v3(twin):
     """msb-v3 is OPERATIONS — gaps should include some MISSING/PARTIAL capabilities."""
-    try:
-        twin = ingest_all(ROOT)
-    except (MemoryError, OSError) as exc:
-        pytest.skip(f"resource exhaustion during ingestion: {exc}")
     report = detect_gaps(twin)
 
     # Path-dependent heuristic: lifecycle stage differs when run from /tmp portable copies
@@ -145,22 +156,14 @@ def test_gap_detector_for_msb_v3():
         assert g.recommendation, f"{g.capability} has no recommendation"
 
 
-def test_gap_report_ranks_missing_first():
-    try:
-        twin = ingest_all(ROOT)
-    except (MemoryError, OSError) as exc:
-        pytest.skip(f"resource exhaustion during ingestion: {exc}")
+def test_gap_report_ranks_missing_first(twin):
     report = detect_gaps(twin)
     if report.missing > 0:
         first = report.gaps[0]
         assert first.status == "MISSING", "First gap should be MISSING"
 
 
-def test_gap_report_as_dict_is_json_safe():
-    try:
-        twin = ingest_all(ROOT)
-    except (MemoryError, OSError) as exc:
-        pytest.skip(f"resource exhaustion during ingestion: {exc}")
+def test_gap_report_as_dict_is_json_safe(twin):
     report = detect_gaps(twin)
     d = gap_report_as_dict(report)
     import json
@@ -172,12 +175,7 @@ def test_gap_report_as_dict_is_json_safe():
 
 # --- Integration: gaps appear in twin_summary ---
 
-def test_twin_summary_includes_gaps():
-    try:
-        twin = ingest_all(ROOT)
-    except (MemoryError, OSError) as exc:
-        pytest.skip(f"resource exhaustion during ingestion: {exc}")
-    
+def test_twin_summary_includes_gaps(twin):
     from msb_v3.plei.orchestrator import twin_summary
     summary = twin_summary(twin)
     assert "gaps" in summary
