@@ -211,9 +211,40 @@ class CronScheduler:
 
     # --- the loop ----------------------------------------------------------
 
+    def _already_fired_this_minute(self, job_id: str, now: datetime) -> bool:
+        """True if a schedule-triggered run for this job already started
+        during the current matching minute.
+
+        Found 2026-09-12: `matches()` is minute-granularity (True for the
+        entire 60s span of a matching minute), but the tick loop runs every
+        `cron_tick_s` (default 15s) -- 4 ticks per minute. With only the
+        overlap guard (is_running), any job whose action finishes faster
+        than one tick interval re-qualifies as "due" on every subsequent
+        tick within its own matching minute and fires again. A fast local
+        HTTP round-trip job observed firing every ~19-20s instead of once
+        per its stated 2-minute schedule; slower jobs (an Ollama call) hit
+        this less often but not never. This is the real per-minute dedup
+        `matches()` alone can't provide.
+        """
+        recent = self.store.history(job_id, limit=1)
+        if not recent:
+            return False
+        last = recent[0]
+        if last.get("trigger") != "schedule":
+            return False
+        started_at = last.get("started_at")
+        if not started_at:
+            return False
+        try:
+            started = datetime.fromisoformat(started_at)
+        except ValueError:
+            return False
+        return started.astimezone(timezone.utc).replace(second=0, microsecond=0) == now
+
     def due_jobs(self, now: Optional[datetime] = None) -> List[Dict[str, Any]]:
         """Jobs whose schedule fires at this minute AND that are enabled AND
-        not currently running. Pure — the loop calls this each tick."""
+        not currently running AND not already fired this exact minute (see
+        ``_already_fired_this_minute``). Pure — the loop calls this each tick."""
         now = now or datetime.now(timezone.utc).replace(second=0, microsecond=0)
         due: List[Dict[str, Any]] = []
         for job in self.store.list_jobs():
@@ -222,10 +253,14 @@ class CronScheduler:
             if self.store.is_running(job["job_id"]):
                 continue
             try:
-                if CronExpr.parse(job["schedule"]).matches(now):
-                    due.append(job)
+                if not CronExpr.parse(job["schedule"]).matches(now):
+                    continue
             except ValueError:
                 logger.warning("cron job %s has an unparseable schedule; skipping", job["job_id"])
+                continue
+            if self._already_fired_this_minute(job["job_id"], now):
+                continue
+            due.append(job)
         return due
 
     async def tick(self) -> List[Dict[str, Any]]:
