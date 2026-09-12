@@ -42,6 +42,25 @@ def _disable_cron_scheduler(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _isolate_governance_db(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point governance/killswitch state at a per-test scratch DB.
+
+    Found 2026-09-12 (chaos test): governance.db.default_db_path() derives
+    from settings.db_path, and a fresh KillSwitch() with no explicit path
+    resolves there. Before this fixture, any test exercising a code path
+    that constructs KillSwitch() with no override picked up whatever the
+    REAL operator has armed on this machine (e.g. the real vault_write
+    scope armed since 2026-09-02) -- tests passed or failed depending on
+    unrelated live state, not the code under test. Isolating db_path here
+    (same pattern as the other _isolate_* fixtures in this file) means
+    settings.db_path always needs a matching override in any test that
+    then asserts on decision_spine_db_path/cron_db_path/etc. deriving from
+    it, since this fixture wins over anything set before it runs -- see
+    the other _isolate_* fixtures for the same constraint."""
+    monkeypatch.setattr(settings, "db_path", str(tmp_path / "msb_v3.db"))
+
+
+@pytest.fixture(autouse=True)
 def _isolate_wake_and_automation(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Point the wake inbox/outbox store and the automation manifest/budget
     at per-test scratch files so no test touches data/runtime/wake.db or

@@ -5,10 +5,14 @@ with the model unless its execution path terminates inside the governance
 perimeter.** Registration therefore:
 
     1. only accepts tools that exist in the canonical registry (``TOOLS``);
-    2. wraps each one in a capability gate (``required_capabilities`` against
+    2. checks the kill switch first — global arm, then the tool/tenant scope
+       (fail-closed; added 2026-09-12, a chaos test found this path was the
+       only one of the two tool-execution mechanisms in the codebase that
+       never consulted it — see ``_killswitch_block_reason``'s docstring);
+    3. wraps each one in a capability gate (``required_capabilities`` against
        the request's granted capabilities — fail-closed, default grants
        nothing beyond the registered read tools);
-    3. records every execution to the AuditChain (best-effort, never fatal).
+    4. records every execution to the AuditChain (best-effort, never fatal).
 
 This is what fixes the forensic finding that /chat advertised tools with no
 registered implementations: ``register_governed_tools`` is called by the
@@ -21,6 +25,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict
 
+from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.tools import executors
 from msb_v3.tools.registry import TOOLS
 
@@ -63,6 +68,37 @@ def _audit_append(
         logger.debug("governed tool audit append failed: %s", exc)
 
 
+def _killswitch_block_reason(tool_id: str, tenant: str) -> str | None:
+    """None = not blocked. Otherwise the reason string.
+
+    Found 2026-09-12 (chaos test): this tool-execution path -- what /chat's
+    tool calling actually runs through -- never consulted the killswitch at
+    all, global or scoped. agent/handle.py's ActionGate does (the same
+    KillSwitch state, checked the same way: global arm first, then the
+    "tool" scope), so two independent tool-execution mechanisms enforced
+    two different things. Not currently exploitable through /chat (it
+    never grants capabilities either, so capability-denial already blocks
+    everything first) -- but that's a coincidence of an unrelated
+    restriction, not a real protection, and would silently stop protecting
+    anything the moment capability-granting is ever added to /chat.
+    Fail-closed on any error constructing/reading the switch (matches
+    KillSwitch's own state()/scope_state() fail-closed behavior on read
+    failure) -- a broken killswitch must never look like "not armed".
+    """
+    try:
+        switch = KillSwitch()
+        if switch.is_armed():
+            return "kill switch armed (global)"
+        if switch.is_blocked("tool", tool_id):
+            return f"kill switch armed for tool scope: {tool_id}"
+        if switch.is_blocked("tenant", tenant):
+            return f"kill switch armed for tenant scope: {tenant}"
+    except Exception as exc:
+        logger.warning("killswitch check failed for tool %s; failing closed (blocked): %s", tool_id, exc)
+        return f"killswitch unreadable, failing closed: {exc}"
+    return None
+
+
 def _run_governed(
     tool_id: str,
     args: Dict[str, Any],
@@ -72,18 +108,27 @@ def _run_governed(
     session: str,
     approved: frozenset = frozenset(),
 ) -> str:
-    """Approval gate + capability gate + contained execution + audit.
+    """Kill switch + approval gate + capability gate + contained execution + audit.
 
-    Every outcome — allow, deny, approval-required, tool-error, unknown —
-    returns a structured string AND is written to the AuditChain (best-effort,
-    never fatal), so a refusal leaves evidence rather than an absent result.
-    ``approved`` is the set of tool ids the caller's context pre-authorized
-    for approval-required tools (fail-closed: absent = refused).
+    Every outcome — allow, deny, approval-required, tool-error, unknown,
+    blocked — returns a structured string AND is written to the AuditChain
+    (best-effort, never fatal), so a refusal leaves evidence rather than an
+    absent result. ``approved`` is the set of tool ids the caller's context
+    pre-authorized for approval-required tools (fail-closed: absent =
+    refused).
     """
     td = TOOLS.get(tool_id)
     if td is None:
         outcome = f"[tool-error] unknown tool: {tool_id}"
         _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="unknown")
+        return outcome
+    # Kill switch — cheapest, most absolute, fail-closed. Checked before
+    # approval/capability so an armed switch can never be bypassed by
+    # unrelated gate logic (same ordering as agent/safety.py's ActionGate).
+    block_reason = _killswitch_block_reason(tool_id, tenant)
+    if block_reason is not None:
+        outcome = f"[blocked] tool {tool_id}: {block_reason}"
+        _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="blocked")
         return outcome
     if td.approval_required and tool_id not in approved:
         outcome = f"[approval-required] tool {tool_id} requires operator approval"
