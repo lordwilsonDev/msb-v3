@@ -55,6 +55,19 @@ def test_path_style_link_to_a_real_note_is_not_dangling(tmp_path):
     assert report.dangling_links == {}
 
 
+def test_lm_wiki_raw_sibling_link_is_not_dangling(tmp_path):
+    """Regression: found linting the real vault 2026-09-12 — LM-Wiki-Schema
+    topic wikis (docs/... raw/ + wiki/ siblings under one topic folder) link
+    across siblings with a short relative path ([[raw/Note]]), Obsidian's
+    "shortest unique path" convention. A root-relative-or-stem-only known-names
+    set incorrectly flagged 24 of these as dangling even though every one
+    resolved to a real file."""
+    _write(tmp_path, "Topic/raw/source-log.md", "---\nid: 1\n---\nbody\n")
+    _write(tmp_path, "Topic/wiki/Concept.md", "---\nid: 2\n---\nSee [[raw/source-log]] for the source.\n")
+    report = lint_vault(tmp_path)
+    assert report.dangling_links == {}
+
+
 def test_real_link_is_not_dangling(tmp_path):
     _write(tmp_path, "A.md", "---\nid: 1\n---\nSee [[B]] for more.\n")
     _write(tmp_path, "B.md", "---\nid: 2\n---\nbody\n")

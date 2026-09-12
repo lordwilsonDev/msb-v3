@@ -39,16 +39,23 @@ def lint_vault(vault_root: str | Path, *, required_fields: list[str] | None = No
     per-note-type schemas."""
     root = Path(vault_root).expanduser().resolve()
     md_files = sorted(root.rglob("*.md"))
-    # A wikilink target may be a bare stem ([[Note]]) or a path relative to
-    # the vault root, with or without the extension ([[folder/Note]] /
-    # [[folder/Note.md]]) — found linting the real vault 2026-09-12: several
-    # SOPs link by full path, which a stem-only set incorrectly flags as
-    # dangling even though the note exists.
-    known_names = {p.stem for p in md_files}
+    # A wikilink target may be a bare stem ([[Note]]), a path relative to the
+    # vault root ([[folder/Note]] / [[folder/Note.md]]), or — Obsidian's
+    # "shortest unique path" convention, the LM-Wiki-Schema raw/wiki layout
+    # relies on it — any trailing suffix of the real path ([[raw/Note]] for
+    # a file at .../TopicWiki/raw/Note.md). Found linting the real vault
+    # 2026-09-12: several LM-Wiki pages link this way and a
+    # root-relative-or-bare-stem-only set incorrectly flagged them as
+    # dangling even though the note exists. Every suffix is added (not just
+    # the shortest), since a link may name as many trailing segments as the
+    # author chose for disambiguation.
+    known_names: set = set()
     for p in md_files:
-        rel_no_ext = str(p.relative_to(root).with_suffix(""))
-        known_names.add(rel_no_ext)
-        known_names.add(rel_no_ext + ".md")
+        parts = p.relative_to(root).parts
+        for i in range(len(parts)):
+            suffix_no_ext = "/".join(parts[i:])[: -len(".md")]
+            known_names.add(suffix_no_ext)
+            known_names.add(suffix_no_ext + ".md")
 
     notes: dict = {}
     bodies: dict = {}
