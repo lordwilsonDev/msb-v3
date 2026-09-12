@@ -83,6 +83,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from msb_ledger.audit_chain import AuditChain
 from msb_ledger.config import settings
+from msb_ledger.merkle import merkle_root as _compute_merkle_root
 from msb_ledger.signing import (
     ED25519,
     SigningBackend,
@@ -403,6 +404,21 @@ class ChainAnchor:
 
     # ── Snapshot ──────────────────────────────────────────────────────────────
     def _snapshot(self, chain: AuditChain) -> Dict[str, Any]:
+        # Found 2026-09-12: this used to be `chain.get_chain()` here PLUS a
+        # separate `chain.merkle_root()` call -- two independent SQL reads
+        # of an actively-appended-to table. Every field except merkle_root
+        # came from the first read; merkle_root came from a second, later
+        # read of its own. Any record appended in the gap between them (a
+        # near-certainty on a live chain doing hundreds of appends/hour)
+        # meant merkle_root reflected a newer chain state than tip_hash/
+        # seq/chain_sha256 did -- a false "merkle root mismatch — chain
+        # content changed under the anchor" verify() failure despite
+        # nothing actually being tampered. Traced from real production
+        # symptoms: 67 of these alerts (each firing a macOS notification
+        # with sound) over the prior month, at a rate consistent with
+        # ordinary chain growth, not tampering. Fix: derive every field
+        # from the ONE already-fetched `records` list -- no second read,
+        # so nothing can race.
         records = chain.get_chain()
         if records:
             tip_hash = records[-1].record_hash
@@ -410,9 +426,8 @@ class ChainAnchor:
         else:
             tip_hash = "0" * 64
             seq = 0
-        chain_sha = hashlib.sha256(
-            "\n".join(r.record_hash for r in records).encode()
-        ).hexdigest()
+        record_hashes = [r.record_hash for r in records]
+        chain_sha = hashlib.sha256("\n".join(record_hashes).encode()).hexdigest()
         return {
             "version": _VERSION,
             "db_path": str(Path(chain.db_path).resolve()),
@@ -422,7 +437,7 @@ class ChainAnchor:
             # Merkle root (P4): committed in the signed snapshot so a third
             # party holding ONLY this anchor + one inclusion receipt can
             # verify a single action without the whole chain.
-            "merkle_root": chain.merkle_root(),
+            "merkle_root": _compute_merkle_root(record_hashes),
             "chain_sha256": chain_sha,
             "anchored_at": _now_iso(),
         }

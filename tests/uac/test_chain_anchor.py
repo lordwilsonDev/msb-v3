@@ -594,3 +594,39 @@ def test_unknown_key_notary_entry_rejected(tmp_path: Path) -> None:
     report = old.verify_notary(chain, notary)
     assert report["valid"] is False
     assert "not registered" in report["reason"]
+
+
+def test_snapshot_merkle_root_cannot_race_a_concurrent_append(tmp_path: Path, monkeypatch) -> None:
+    """Found 2026-09-12, traced from a real production symptom: a macOS
+    notification (with sound) firing on a false 'merkle root mismatch —
+    chain content changed under the anchor' verdict roughly twice a day for
+    a month, on a chain that was never actually tampered.
+
+    Root cause: `_snapshot()` used to call `chain.get_chain()` for
+    tip_hash/seq/chain_sha256, then SEPARATELY call `chain.merkle_root()`
+    -- two independent SQL reads of an actively-appended-to table. Any
+    record landing in the gap between them meant merkle_root reflected a
+    newer chain state than everything else in the same snapshot, so
+    `verify()`'s cross-check failed even though nothing was tampered.
+
+    This pins the fix structurally rather than trying to force the actual
+    timing race: `chain.merkle_root()` is monkeypatched to explode if
+    called at all. A snapshot/anchor/verify cycle passing anyway proves
+    every field is derived from the single `get_chain()` read, not a
+    second, independently-racing query."""
+    chain = make_chain(tmp_path / "audit.db", 5)
+
+    def _must_not_be_called() -> str:
+        raise AssertionError(
+            "chain.merkle_root() was called -- _snapshot() must derive the "
+            "merkle root from its own get_chain() read, not a second query "
+            "that can race a concurrent append"
+        )
+
+    monkeypatch.setattr(chain, "merkle_root", _must_not_be_called)
+
+    anchor = ChainAnchor(seed=generate_seed())
+    anchor.anchor(chain)
+    result = anchor.verify(chain)
+    assert result["valid"] is True
+    assert result["stale"] is False
