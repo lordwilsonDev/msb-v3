@@ -112,10 +112,15 @@ def extract_wikilinks(text: str) -> list[str]:
       conditionals) that happen to be bracket-wrapped in the source.
     - ``#Heading`` targets — a same-file heading link, not a reference to
       another note.
+
+    The alias separator may be an escaped pipe (``\\|``) as well as a plain
+    one — a table cell needs the escape to keep ``|`` from being read as a
+    column delimiter (``70_Skills/INDEX.md``'s skill-catalog table does
+    this throughout), and Obsidian's own link parser accepts both forms.
     """
     seen: list[str] = []
     for match in re.finditer(r"\[\[([^\]]+)\]\]", text):
-        target = match.group(1).split("|", 1)[0]
+        target = re.split(r"\\?\|", match.group(1), maxsplit=1)[0]
         if not re.search(r"[a-zA-Z]", target):
             continue
         if target.startswith("#"):

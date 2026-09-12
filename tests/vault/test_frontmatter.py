@@ -134,6 +134,14 @@ def test_alias_syntax_returns_target_not_alias():
     assert extract_wikilinks(text) == ["Automation-Factory"]
 
 
+def test_escaped_pipe_alias_in_a_table_cell():
+    """Regression: found linting the real vault 2026-09-12 — 70_Skills/INDEX.md's
+    skill-catalog table escapes the alias pipe (\\|) so it survives markdown
+    table-cell parsing; Obsidian's own link parser accepts \\| same as |."""
+    text = r"| Architecture | [[70_Skills/architecture/_catalog\|architecture]] |"
+    assert extract_wikilinks(text) == ["70_Skills/architecture/_catalog"]
+
+
 def test_no_links_is_empty():
     assert extract_wikilinks("plain text, no links") == []
 
