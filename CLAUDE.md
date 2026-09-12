@@ -46,10 +46,12 @@ Standby pidfile `.artifacts/msb-v3.pid`.
 Three gates run on push to main:
 - `msb-v3 CI` (hosted) — tests 3.11/3.12, lint (ruff + mypy), security (pip-audit), docker build, claims verify
 - `factory-gate` (hosted) — full suite + coverage floor + hygiene + auth + E2E
-- `harness-gate` (**self-hosted** `msb-v3-mac-arm64`, `~/actions-runner`) — browser + video-harness evidence gate
+- `harness-gate` (**self-hosted** `msb-v3-mac-arm64`, `~/actions-runner`) — browser endpoint
+  gate (`STAGES=endpoints`; the video-harness evidence stage was dropped 2026-09-11 —
+  `~/video-harness` doesn't exist on this machine and nothing documents what it verified)
 
-Codecov token rotation, self-hosted runner registration, and the harness-evidence
-freshener LaunchAgent: see `CLAUDE.archive.md` → "CI internals".
+Codecov token rotation and self-hosted runner registration: see `CLAUDE.archive.md` →
+"CI internals".
 
 ## Ports
 

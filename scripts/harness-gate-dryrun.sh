@@ -7,7 +7,12 @@ set -uo pipefail
 # never surprises you:
 #   1. ensure Qdrant is up   (best-effort `make qdrant-start` + probe :6333)
 #   2. ensure msb-v3 is up   (best-effort `make server-start` + probe :8766)
-#   3. make webcheck-all STAGES=endpoints,harness   <- the gate itself
+#   3. make webcheck-all STAGES=endpoints   <- the gate itself
+#
+# STAGES default is `endpoints` only (harness dropped 2026-09-11 -- see
+# .github/workflows/harness-gate.yml header comment; ~/video-harness does
+# not exist on this machine). Pass STAGES=endpoints,harness to include it
+# again once that's rebuilt.
 #
 # Differences from the workflow: no artifact upload (CI-only), MSB_REPO stays
 # the local checkout (defaults to the repo root, not a fresh workspace copy),
@@ -20,7 +25,7 @@ set -uo pipefail
 #
 # Env:
 #   MSB_REPO     repo root (default: the repo this script lives in)
-#   STAGES       gate stages (default endpoints,harness -- the CI set)
+#   STAGES       gate stages (default endpoints -- the current CI set)
 #   MSB_PORT     server probe port (default 8766)
 #   QDRANT_PORT  qdrant probe port (default 6333)
 #
@@ -31,7 +36,7 @@ cd "$REPO" || exit 2
 
 MSB_PORT="${MSB_PORT:-8766}"
 QDRANT_PORT="${QDRANT_PORT:-6333}"
-STAGES="${STAGES:-endpoints,harness}"
+STAGES="${STAGES:-endpoints}"
 
 fail=0
 
@@ -78,7 +83,7 @@ echo "===== [3/3 gate: make webcheck-all STAGES=${STAGES}] ====="
 make webcheck-all STAGES="$STAGES" || fail=$((fail + 1))
 
 echo
-say "CI would upload: artifacts/harness-evidence-report.json + webcheck-all-*.log + webcheck-*/"
+say "CI would upload: webcheck-all-*.log + webcheck-*/"
 if [ "$fail" -eq 0 ]; then
   echo "harness-gate-dryrun: ALL STEPS PASSED"
   exit 0

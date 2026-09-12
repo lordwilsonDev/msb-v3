@@ -12,23 +12,37 @@ it's runbooks and rationale you reach for a few times a year.
 
 `~/actions-runner`, name `msb-v3-mac-arm64`, labels `macOS, self-hosted`. Runs
 the harness-gate job because it exercises machine-local state (`~/bin/webcheck.py`,
-`~/video-harness/evidence`, live `:8766`/`:6333`, system Chrome). Supervised by
+live `:8766`/`:6333`, system Chrome). Supervised by
 user-domain LaunchAgent `com.blackswanlabz.msb-v3.runner` (source
 `scripts/com.blackswanlabz.msb-v3.runner.plist`, installed copy in
 `~/Library/LaunchAgents/`, no sudo — `launchctl bootstrap gui/$(id -u)`).
 Full fresh-machine registration runbook: `Self-Hosted-CI-Runner-macOS` (30-012)
 in the vault, `~/Documents/Vault/30_Architecture/decisions/`.
 
-### Keeping harness-gate green
+### Video-harness evidence stage — DROPPED 2026-09-11
 
-Automatic via daily LaunchAgent `com.blackswanlabz.harness-evidence` (06:30;
-template `scripts/com.blackswanlabz.harness-evidence.plist` →
-`scripts/freshen-harness-evidence.sh`) — skips when evidence is fresh, else
-re-runs `make run/run-p1/run-p2` in `~/video-harness` and proves the gate (log
-`~/Library/Logs/msb-harness-evidence.log`). `harness-gate.yml` also runs the
-freshener as a pre-flight step, so a stale-evidence push self-heals before the
-gate. Manual freshen: `bash scripts/freshen-harness-evidence.sh`. Local dry-run:
-`make harness-gate-dryrun`.
+`harness-gate.yml` used to also gate on `~/video-harness/evidence` (three
+experiments: p0_basic/p1_ffmpeg/p2_inference), kept fresh by a daily 06:30
+LaunchAgent `com.blackswanlabz.harness-evidence` (template
+`scripts/com.blackswanlabz.harness-evidence.plist` →
+`scripts/freshen-harness-evidence.sh`, which re-ran `make run/run-p1/run-p2`
+in `~/video-harness` when evidence went stale) plus a pre-flight freshen step
+in the workflow itself.
+
+`~/video-harness` does not exist on this machine — confirmed absent, not
+just stale — and nothing in the repo or vault documents what those three
+experiments were actually supposed to verify, so it could not be rebuilt
+without fabricating pass criteria. It had been failing the gate on every
+push since the 2026-09-02 repo move. Dropped the stage
+(`STAGES=endpoints,harness` → `STAGES=endpoints` in `harness-gate.yml`),
+unloaded and removed the installed freshener LaunchAgent. The scripts
+(`harness-evidence.sh`, `freshen-harness-evidence.sh`, the plist template)
+are left in the repo, dormant — to re-enable: rebuild `~/video-harness` with
+real experiments, flip `STAGES` back in `harness-gate.yml`, restore its
+pre-flight freshen step (see git history around the drop commit), and
+reinstall the LaunchAgent. Local dry-run of the current (endpoints-only)
+gate: `make harness-gate-dryrun` (`STAGES=endpoints,harness` still works if
+you rebuild the harness directory first).
 
 ### Codecov coverage upload / token rotation
 

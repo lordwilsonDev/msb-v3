@@ -1,13 +1,20 @@
-"""Guard the harness-gate CI wiring — the stale-evidence self-heal must not
-silently regress.
+"""Guard the harness-gate CI wiring.
 
-harness-gate.yml blocks on stale video-harness evidence (24h window) unless
-the pre-flight freshen step re-runs the baseline experiments first. If that
-wiring ever regresses (step renamed, moved after the evidence gate, pointed
-at the wrong script, or MSB_REPO unbound so it would judge a foreign
-checkout), this file fails on the next push instead of silently dropping the
-guard — same failure mode as the 2026-08 paths-filter@v3 dead-output bug that
-let CI gates skip for weeks unseen.
+DROPPED 2026-09-11: the video-harness evidence stage (`STAGES=...,harness`)
+and its pre-flight freshen step. `~/video-harness` does not exist on the
+runner's machine and nothing in the repo or vault documents what its
+p0_basic/p1_ffmpeg/p2_inference experiments verified, so it could not be
+rebuilt without fabricating pass criteria — it had been failing the gate on
+every push since the 2026-09-02 repo move. See CLAUDE.archive.md -> "CI
+internals" -> "Video-harness evidence stage — DROPPED 2026-09-11" for the
+full rationale and the re-enable path.
+
+This file now pins the opposite of what it used to: the harness stage and
+its freshener wiring must NOT come back silently (e.g. someone restoring
+`STAGES=endpoints,harness` without also restoring the freshen step and the
+LaunchAgent would reintroduce the exact "evidence dir doesn't exist ->
+gate always fails" class of bug this dropped). A deliberate re-enable
+should update this file alongside the workflow.
 """
 
 from __future__ import annotations
@@ -18,8 +25,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "harness-gate.yml"
+EVIDENCE_GATE = "Run webcheck-all (endpoints)"
 PREFLIGHT = "Pre-flight freshen (harness evidence self-heal)"
-EVIDENCE_GATE = "Run webcheck-all (endpoints + harness evidence gate)"
 
 
 def _gate_steps() -> list[dict]:
@@ -27,47 +34,33 @@ def _gate_steps() -> list[dict]:
     return wf["jobs"]["gate"]["steps"]
 
 
-def test_preflight_freshen_step_exists_before_evidence_gate() -> None:
-    """The freshen step must exist AND run before the evidence gate — a
-    freshen step placed after the gate is useless (the gate already judged)."""
+def test_evidence_gate_step_runs_endpoints_only() -> None:
+    """The gate step must exist and run STAGES=endpoints — not `,harness`,
+    which would silently resurrect a gate that always fails (no
+    ~/video-harness on this machine)."""
     steps = _gate_steps()
-    names = [s.get("name") for s in steps]
-    assert PREFLIGHT in names, f"missing step {PREFLIGHT!r} in {WORKFLOW.name}"
-    assert EVIDENCE_GATE in names, f"missing gate step {EVIDENCE_GATE!r} in {WORKFLOW.name}"
-    assert names.index(PREFLIGHT) < names.index(EVIDENCE_GATE), (
-        f"{PREFLIGHT!r} must run BEFORE {EVIDENCE_GATE!r}"
-    )
-
-
-def test_preflight_step_calls_freshener_from_checkout() -> None:
-    """The step must invoke the freshener script and bind MSB_REPO to the
-    checkout workspace so it uses THIS commit's gate logic (not a machine
-    path), while HARNESS_DIR stays defaulted to the runner's real
-    ~/video-harness."""
-    step = next((s for s in _gate_steps() if s.get("name") == PREFLIGHT), None)
-    assert step is not None, f"missing step {PREFLIGHT!r}"
+    step = next((s for s in steps if s.get("name") == EVIDENCE_GATE), None)
+    assert step is not None, f"missing step {EVIDENCE_GATE!r} in {WORKFLOW.name}"
     run = step["run"]
-    assert "freshen-harness-evidence.sh" in run, f"step does not call the freshener: {run!r}"
-    # Best-effort by design: if the freshener fails, the evidence gate below
-    # still runs and ships the authoritative report. Pin the actual fallback
-    # so a fail-closed rewrite (`|| exit 1`, which would mask that report) is
-    # caught, not just a removal of `||`.
-    assert "|| {" in run, "freshen step must be best-effort (gate stays authoritative)"
-    assert step["env"]["MSB_REPO"] == "${{ github.workspace }}", (
-        "MSB_REPO must bind to the checkout so the freshener uses the pushed "
-        "commit's gate script"
-    )
-    # The freshener's correctness depends on HARNESS_DIR defaulting to the
-    # runner's REAL ~/video-harness. Binding it to the workspace would judge
-    # a fresh checkout's empty evidence dir (NO EVIDENCE -> refresh the wrong
-    # dir) while the real evidence gate still blocks — and every assertion
-    # above would still pass.
-    assert "HARNESS_DIR" not in step.get("env", {}), (
-        "HARNESS_DIR must stay defaulted to the runner's ~/video-harness"
+    assert "STAGES=endpoints" in run, f"gate step must run STAGES=endpoints: {run!r}"
+    assert "harness" not in run, (
+        f"harness stage must not be re-added without restoring the freshen "
+        f"step + LaunchAgent (see module docstring): {run!r}"
     )
 
 
-def test_freshener_script_is_committed() -> None:
-    """The wiring target must exist in the repo — a dangling reference would
-    fail the job on the runner but this catches it in the suite first."""
+def test_preflight_freshen_step_is_not_present() -> None:
+    """The pre-flight freshener step was dropped along with the harness
+    stage — nothing left for it to freshen. Its presence without the gate
+    also running `harness` would be dead weight; pin it absent instead."""
+    names = [s.get("name") for s in _gate_steps()]
+    assert PREFLIGHT not in names, (
+        f"{PREFLIGHT!r} reappeared without the harness stage being restored "
+        "— either restore both together or remove the stray step"
+    )
+
+
+def test_freshener_script_still_committed_but_dormant() -> None:
+    """The freshener script stays in the repo (dormant, not deleted) so
+    re-enabling later doesn't mean rewriting it from scratch."""
     assert (ROOT / "scripts" / "freshen-harness-evidence.sh").is_file()

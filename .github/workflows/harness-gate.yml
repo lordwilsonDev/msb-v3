@@ -1,24 +1,34 @@
 name: harness-gate
 
-# Browser + video-harness evidence gate: runs the full webcheck-all suite
-# with the `endpoints` and `harness` stages in one pass and uploads the
-# harness-evidence-report/v1 artifact so CI consumers (e.g.
-# scripts/ci-harness-gate.sh) can gate downstream jobs on it.
+# Browser endpoint gate: runs the webcheck-all `endpoints` stage against the
+# live self-hosted stack.
 #
-# WHY SELF-HOSTED: these two stages exercise machine-local state that a
-# hosted runner cannot have:
-#   - ~/bin/webcheck.py (the Playwright driver, channel="chrome") is not in
-#     the repo
-#   - ~/video-harness/evidence (the evidence dir the harness stage gates) is
-#     not a git repo
-#   - the live server (:8766), Qdrant (:6333), and system Chrome
-# Pre-push local dry-run of these exact steps: make harness-gate-dryrun
-# (same probes + gate, minus the upload).
+# DROPPED 2026-09-11: the `harness` stage (video-harness evidence:
+# p0_basic/p1_ffmpeg/p2_inference). `~/video-harness` does not exist on this
+# runner's machine — confirmed absent, not just stale — and no doc anywhere
+# describes what those three experiments were supposed to verify, so there
+# is no way to rebuild them without fabricating pass criteria. This CI leg
+# had been failing on every push since the repo move (2026-09-02) as a
+# result. The job keeps its original name ("endpoints + harness evidence")
+# so it stays compatible with anything watching that check name, but only
+# runs `endpoints` now. The freshener LaunchAgent
+# (com.blackswanlabz.harness-evidence) is likewise disabled — see
+# docs/ops-runbook.md. To re-enable the harness stage: rebuild
+# ~/video-harness with real p0_basic/p1_ffmpeg/p2_inference experiments,
+# then flip STAGES back to `endpoints,harness` below and restore the
+# pre-flight freshen step (see git history, removed the same commit as this
+# comment) and the LaunchAgent.
+#
+# WHY SELF-HOSTED: the endpoints stage exercises machine-local state a
+# hosted runner cannot have: ~/bin/webcheck.py (the Playwright driver,
+# channel="chrome") is not in the repo, plus the live server (:8766), Qdrant
+# (:6333), and system Chrome.
+# Pre-push local dry-run of these exact steps: make harness-gate-dryrun.
 #
 # Register a runner on the sovereign box and set its labels to match
 # `runs-on` below (or change the labels). This gate tests the pushed commit's
-# *checks* against the machine's live stack (server/Qdrant/Chrome/evidence);
-# the hosted ci.yml / factory-gate.yml workflows test the commit's *code*.
+# *checks* against the machine's live stack (server/Qdrant/Chrome); the
+# hosted ci.yml / factory-gate.yml workflows test the commit's *code*.
 #
 # Secrets: the auth-gated /mcp/status check resolves x-mcp-secret env ->
 # .env (absent in a fresh checkout) -> shipped default, so a server running
@@ -26,17 +36,10 @@ name: harness-gate
 # secret, set the MSB_MCP_SECRET repo secret (same one factory-gate.yml
 # documents) -- it is passed through on the webcheck-all step.
 #
-# RUNNER USER ACCOUNT: $HOME is load-bearing -- ~/bin/webcheck.py,
-# ~/video-harness/evidence, miniforge python, and system Chrome all live in
-# the dev user's home. Register the runner under the SAME account
-# (lordwilson); a runner under any other account fails with not-found errors.
-#
-# EVIDENCE FRESHNESS: the job self-heals stale evidence. A pre-flight step
-# runs scripts/freshen-harness-evidence.sh (the same idempotent freshener
-# the daily 06:30 LaunchAgent com.blackswanlabz.harness-evidence uses): if
-# any experiment's evidence is older than FRESH_THRESHOLD_H (12h) it
-# re-runs make run/run-p1/run-p2 in ~/video-harness (deterministic,
-# seconds) before the evidence gate below judges it.
+# RUNNER USER ACCOUNT: $HOME is load-bearing -- ~/bin/webcheck.py, miniforge
+# python, and system Chrome all live in the dev user's home. Register the
+# runner under the SAME account (lordwilson); a runner under any other
+# account fails with not-found errors.
 #
 # Services are shared infrastructure: `make qdrant-start` / `make
 # server-start` are best-effort (both exit 1 when already healthy) and the
@@ -90,25 +93,12 @@ jobs:
           MSB_REPO: ${{ github.workspace }}
           MSB_BASE_URL: ${{ vars.MSB_BASE_URL }}
 
-      # Self-heal before the evidence gate: if the video-harness evidence is
-      # stale (e.g. the daily 06:30 freshen LaunchAgent was missed because
-      # the box was off), re-run the three baseline experiments so the
-      # harness stage below doesn't block on age. The freshener skips when
-      # every experiment's newest evidence is PASS and under 12h, so this is
-      # cheap on every run. It targets the runner's REAL ~/video-harness
-      # (HARNESS_DIR defaults to $HOME/video-harness — never the workspace)
-      # but uses THIS checkout's gate script via MSB_REPO. Best-effort on
-      # purpose: if it fails, the harness stage below still runs and ships
-      # the authoritative report.
-      - name: Pre-flight freshen (harness evidence self-heal)
-        run: |
-          bash scripts/freshen-harness-evidence.sh \
-            || { echo "[pre-flight] freshener failed — evidence may be stale; the harness gate below is authoritative"; }
-        env:
-          MSB_REPO: ${{ github.workspace }}
-
-      - name: Run webcheck-all (endpoints + harness evidence gate)
-        run: make webcheck-all STAGES=endpoints,harness
+      - name: Run webcheck-all (endpoints)
+        # STAGES was `endpoints,harness` — harness dropped 2026-09-11, see
+        # header comment. The pre-flight harness-evidence freshener step
+        # that used to run here was removed with it (nothing left to
+        # freshen).
+        run: make webcheck-all STAGES=endpoints
         env:
           MSB_REPO: ${{ github.workspace }}
           MCP_BRIDGE_SECRET: ${{ secrets.MSB_MCP_SECRET }}
@@ -157,16 +147,16 @@ jobs:
         env:
           MSB_REPO: ${{ github.workspace }}
 
-      # Upload even on failure so a red gate still ships the report, the
-      # stage logs (producer FAIL lines + consumer BLOCK detail), and the
-      # endpoint screenshots for inspection.
+      # Upload even on failure so a red gate still ships the stage logs
+      # (producer FAIL lines + consumer BLOCK detail) and the endpoint
+      # screenshots for inspection. No harness-evidence-report.json anymore
+      # (harness stage dropped 2026-09-11).
       - name: Upload report + logs + screenshots
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: harness-gate-artifacts
           path: |
-            artifacts/harness-evidence-report.json
             artifacts/webcheck-all-*.log
             artifacts/webcheck-*
           if-no-files-found: warn
