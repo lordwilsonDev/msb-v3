@@ -69,10 +69,14 @@ fi
 
 log "starting msb-v3 host=$MSB_HOST port=$MSB_PORT model=$OLLAMA_MODEL"
 
+# shellcheck source=lib/reclaim-port.sh
+. "$REPO/scripts/lib/reclaim-port.sh"
+
 # PM2-style single-process supervisor: restart on non-zero exit.
 # set -e would otherwise kill this whole loop on the first crash/SIGTERM,
 # since the loop body never reaches `code=$?` for a failing command.
 while true; do
+  reclaim_stale_port
   set +e
   "$PY" -m msb_v3
   code=$?

@@ -48,6 +48,40 @@ scheduled agents are skipped so a still-running job never false-alerts.
 `disk-health` alerts separately ("Disk usage warning") on its own
 thresholds and trend.
 
+## Known failure mode: orphaned server holding the port
+
+**Found 2026-09-12, had been happening silently since 2026-08-22 (~110k
+occurrences).** `scripts/run.sh` is a `while true` loop that restarts
+`python -m msb_v3` on any exit — including a failed bind, which it can
+never fix by retrying. If the loop's own process is ever killed directly
+(`kill -9`, a bad sleep/wake cycle, anything that bypasses the loop itself
+— e.g. a standby/nohup instance whose supervisor died), its in-flight
+child survives, reparented to init, holding the port with no supervisor of
+its own. Every future launch attempt — including a properly
+launchd-managed one — then fails forever with `address already in use`,
+since blind retry can't resolve a resource conflict. This ran unnoticed
+for three weeks because `/health` still answered the whole time (the
+orphan itself was healthy) — the app being reachable does not mean it is
+supervised.
+
+**Fixed:** `scripts/run.sh` now sources `scripts/lib/reclaim-port.sh`
+before every start attempt, which checks whether the target port is
+already held and, if the holder's command line looks like an msb-v3
+process (`*msb_v3*`), kills it and reclaims the port before starting
+fresh — SIGTERM first, SIGKILL after 5s if it doesn't exit. A port held by
+something that does *not* look like msb-v3 is left alone with a loud
+warning instead, so this can never accidentally kill an unrelated
+service. Regression-tested in `scripts/test-ops.sh` (`reclaim-port`
+section, all three branches: free port, unrelated process, msb_v3-shaped
+orphan).
+
+**Diagnosing a recurrence:** `lsof -nP -iTCP:8766 -sTCP:LISTEN` to see who
+actually holds the port; `ps -o pid,ppid -p <that pid>` — a `ppid` of `1`
+means it's orphaned. `tail logs/gateway.err.log` for repeated
+`address already in use` lines is the other tell. Since the fix, the
+supervisor should self-heal on its very next retry (~2-15s) instead of
+looping forever.
+
 **Out-of-band channels** (`scripts/lib/alert.sh`, fail-soft — a missing
 channel is logged, never fatal): on audit failure the ops-audit also fires
 email and/or Telegram when configured. Set them in the agent's plist

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # test-ops.sh — regression suite for the ops scripts: vault-backup,
-# disk-health, cache-trim, backup-watchdog, rotate-logs, housekeeping.
+# disk-health, cache-trim, backup-watchdog, rotate-logs, housekeeping,
+# reclaim-port.
 #
 # Every check runs under macOS /bin/bash (3.2 — the interpreter launchd
 # uses; homebrew bash 5 hides real bugs like the empty-array 'unbound
@@ -229,6 +230,68 @@ rc=$(rc_of hk 1)
 [ "$rc" = 0 ] && ok "sunday: exits 0" || bad "sunday: run failed (rc=$rc)"
 [ -f "$TMP/hk/cache.log" ] && ok "sunday: cache-trim ran" || bad "sunday: cache-trim did not run"
 [ -f "$TMP/hk/disk.log" ] && ok "sunday: disk-health ran" || bad "sunday: disk-health did not run"
+
+# ---------------------------------------------------------------------------
+section "reclaim-port: clears an msb_v3 orphan, leaves unrelated processes alone"
+RP_PORT=19917
+RP_SCRIPT='
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self): self.send_response(200); self.end_headers()
+    def log_message(self, *a): pass
+s = http.server.HTTPServer(("127.0.0.1", '"$RP_PORT"'), H)
+s.serve_forever()
+'
+rp() { # runs reclaim_stale_port with a test log() + MSB_PORT in a fresh shell
+  MSB_PORT="$RP_PORT" bash -c '
+    set -euo pipefail
+    MSB_PORT="'"$RP_PORT"'"
+    log() { echo "[reclaim-test] $*"; }
+    . "'"$ROOT"'/scripts/lib/reclaim-port.sh"
+    reclaim_stale_port
+  '
+}
+
+# case 1: free port -> no-op, no crash under set -e/pipefail
+rp >"$TMP/rp1.log" 2>&1
+rc=$?
+[ "$rc" = 0 ] && [ ! -s "$TMP/rp1.log" ] && ok "free port: no-op (rc=0, silent)" \
+  || bad "free port: rc=$rc, output: $(cat "$TMP/rp1.log")"
+
+# case 2: unrelated process holding the port -> warned, left alone.
+# NB: spawned directly at this scope (not via a $(...) command-substitution
+# helper) so `$!` names a real direct child of THIS shell -- a helper
+# function called as `pid=$(fn)` runs in a subshell, and a job backgrounded
+# inside it is orphaned the instant that subshell exits, making later
+# `kill`/`wait` on it unreliable.
+python3 -c "$RP_SCRIPT" >/dev/null 2>&1 &
+other_pid=$!
+sleep 0.3
+rp >"$TMP/rp2.log" 2>&1 || true
+sleep 0.2
+if kill -0 "$other_pid" 2>/dev/null; then
+  grep -q "not an msb-v3 process" "$TMP/rp2.log" \
+    && ok "unrelated process: left alone + warned" \
+    || bad "unrelated process: left alone but no warning logged"
+else
+  bad "unrelated process: was killed (should never touch a non-msb_v3 holder)"
+fi
+kill -9 "$other_pid" 2>/dev/null || true
+
+# case 3: msb_v3-shaped orphan holding the port -> reclaimed. The extra
+# "-m msb_v3" argv makes this process's command line contain "msb_v3", the
+# same way a real `python -m msb_v3` process's would.
+python3 -c "$RP_SCRIPT" -m msb_v3 >/dev/null 2>&1 &
+orphan_pid=$!
+sleep 0.3
+rp >"$TMP/rp3.log" 2>&1 || true
+sleep 0.3
+if kill -0 "$orphan_pid" 2>/dev/null; then
+  bad "msb_v3 orphan: still alive after reclaim"
+  kill -9 "$orphan_pid" 2>/dev/null || true
+else
+  ok "msb_v3 orphan: reclaimed (port freed for the real supervisor)"
+fi
 
 # ---------------------------------------------------------------------------
 section "license: issue, verify, tamper, wrong-key, missing"
