@@ -54,6 +54,8 @@ def test_registry_has_governed_tools_with_executors():
         "vault_patch",
         "vault_delete",
         "vault_move",
+        "vault_stage_draft",
+        "vault_promote_draft",
         "codegraph.explore",
         "codegraph.context",
         "codegraph.impact",
@@ -114,6 +116,84 @@ def test_vault_write_allowed_with_capability(monkeypatch, tmp_path):
     result = client.run_tool("vault_write", {"path": "notes/a.md", "content": "hello"})
     assert result.startswith("wrote notes/a.md")
     assert (tmp_path / "vault" / "notes" / "a.md").read_text() == "hello"
+
+
+# --- vault staging / promotion (converged from the uniyang_gate spike) -----
+
+
+def test_vault_stage_draft_denied_without_capability(monkeypatch):
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    client = _RecordingClient()
+    runtime.register_governed_tools(
+        client,
+        {"tools": [{"name": "vault_stage_draft"}], "session": "s"},
+    )
+    result = client.run_tool("vault_stage_draft", {"title": "My Draft", "content": "hi"})
+    assert result.startswith("[denied]")
+    assert "vault.write" in result
+
+
+def test_vault_stage_draft_writes_outside_the_live_vault(monkeypatch, tmp_path):
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "vault_path", str(tmp_path / "vault"))
+    monkeypatch.setattr(settings, "vault_staging_path", str(tmp_path / "staging"))
+    client = _RecordingClient()
+    runtime.register_governed_tools(
+        client,
+        {"tools": [{"name": "vault_stage_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+    )
+    result = client.run_tool("vault_stage_draft", {"title": "My Draft!", "content": "body"})
+    assert result.startswith("staged My Draft.md")
+    assert (tmp_path / "staging" / "My Draft.md").read_text() == "body"
+    assert not (tmp_path / "vault").exists() or not list((tmp_path / "vault").iterdir())
+
+
+def test_vault_promote_draft_requires_approval_id(monkeypatch):
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    client = _RecordingClient()
+    runtime.register_governed_tools(
+        client,
+        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+    )
+    result = client.run_tool("vault_promote_draft", {"path": "a.md", "approval_id": ""})
+    assert result.startswith("[approval-required]")
+
+
+def test_vault_promote_draft_blocked_without_an_approved_item(monkeypatch, tmp_path):
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "vault_path", str(tmp_path / "vault"))
+    monkeypatch.setattr(settings, "vault_staging_path", str(tmp_path / "staging"))
+    client = _RecordingClient()
+    runtime.register_governed_tools(
+        client,
+        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+    )
+    result = client.run_tool("vault_promote_draft", {"path": "a.md", "approval_id": "does-not-exist"})
+    assert result.startswith("[approval-required]")
+
+
+def test_vault_promote_draft_succeeds_with_an_approved_item(monkeypatch, tmp_path):
+    from msb_v3.governance.approval import ApprovalQueue
+
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "vault_path", str(tmp_path / "vault"))
+    monkeypatch.setattr(settings, "vault_staging_path", str(tmp_path / "staging"))
+    (tmp_path / "staging").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "staging" / "a.md").write_text("draft body")
+
+    queue = ApprovalQueue()
+    item = queue.submit("vault_write", "promote a.md")
+    queue.approve(item.item_id, "operator")
+
+    client = _RecordingClient()
+    runtime.register_governed_tools(
+        client,
+        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+    )
+    result = client.run_tool("vault_promote_draft", {"path": "a.md", "approval_id": item.item_id})
+    assert result.startswith("promoted a.md")
+    assert (tmp_path / "vault" / "a.md").read_text() == "draft body"
+    assert not (tmp_path / "staging" / "a.md").exists()
 
 
 def test_tool_execution_is_audited(monkeypatch):

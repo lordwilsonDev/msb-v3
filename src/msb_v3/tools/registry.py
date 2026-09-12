@@ -387,6 +387,53 @@ TOOLS: Dict[str, ToolDef] = {
         mutation_class=MUTATION_WRITE,
         required_capabilities=("factory.run",),
     ),
+    # --- Vault staging / promotion (converged from the standalone
+    # uniyang_gate spike, 2026-09-12: same staged-draft->approved-promotion
+    # shape, but routed through the existing governance.guard.Guard +
+    # ApprovalQueue "vault_write" kind instead of a second, disconnected
+    # gate/ledger) ---
+    "vault_stage_draft": ToolDef(
+        tool_id="vault_stage_draft",
+        description=(
+            "Write a draft markdown file to the vault staging area, outside "
+            "the live vault. Reversible: the draft is not visible in the "
+            "vault, not git-tracked, and not RAG-indexed until promoted with "
+            "vault_promote_draft. Requires the 'vault.write' capability."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "draft title; sanitized to a filename"},
+                "content": {"type": "string", "description": "draft body"},
+            },
+            "required": ["title", "content"],
+        },
+        risk_class=RISK_LOW,
+        mutation_class=MUTATION_WRITE,
+        required_capabilities=("vault.write",),
+    ),
+    "vault_promote_draft": ToolDef(
+        tool_id="vault_promote_draft",
+        description=(
+            "Promote a staged draft into the live vault. Irreversible: "
+            "requires an APPROVED governance approval item of kind "
+            "'vault_write' (submit via POST /governance/approvals, approve "
+            "via the operator endpoint or `make governance-approve`), whose "
+            "id is passed as approval_id. Requires the 'vault.write' "
+            "capability."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "staged file's path, relative to the staging root"},
+                "approval_id": {"type": "string", "description": "id of an APPROVED governance approval item, kind=vault_write"},
+            },
+            "required": ["path", "approval_id"],
+        },
+        risk_class=RISK_HIGH,
+        mutation_class=MUTATION_WRITE,
+        required_capabilities=("vault.write",),
+    ),
 }
 
 

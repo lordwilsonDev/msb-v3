@@ -25,6 +25,12 @@ class Settings:
     reasoning_scorer: bool = field(default_factory=lambda: os.getenv("MSB_REASONING_SCORER", "1") == "1")
     msb_home: str = field(default_factory=lambda: str(_REPO_ROOT))
     vault_path: str = field(default_factory=lambda: str(_VAULT_ROOT))
+    # Draft staging area for vault_stage_draft/vault_promote_draft — repo data
+    # (like db_path), deliberately NOT inside the vault: an unpromoted draft
+    # must not appear live, get git-tracked with the vault, or get RAG-indexed.
+    vault_staging_path: str = field(
+        default_factory=lambda: os.getenv("MSB_VAULT_STAGING_PATH") or str(_REPO_ROOT / "data" / "vault_staging")
+    )
     ollama_url: str = field(default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434"))
     ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "qwen3:8b"))
     # Absolute by default (msb_home-relative): a CWD-relative default would

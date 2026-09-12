@@ -10,8 +10,12 @@ Every executor here terminates inside a sandbox:
     vault_patch   -> replace/regex patch confined to the vault root
     vault_delete  -> unlink confined to the vault root (symlinks refused)
     vault_move    -> rename confined to the vault root (parents created)
+    vault_stage_draft   -> write confined to the staging root (reversible,
+                           no approval — outside the live vault)
+    vault_promote_draft -> staging -> live, gated by governance.guard.Guard
+                           on an APPROVED "vault_write" approval item
 
-All four vault mutations require the "vault.write" capability — denied by
+All vault mutations require the "vault.write" capability — denied by
 default, exactly like ``vault_write``.
 
 Executors are plain sync functions (the tool loop is sync); the async RAG
@@ -46,6 +50,17 @@ def _vault_root() -> Any:
     from pathlib import Path
 
     return Path(settings.vault_path).expanduser().resolve()
+
+
+def _staging_root() -> Any:
+    from pathlib import Path
+
+    return Path(settings.vault_staging_path).expanduser().resolve()
+
+
+def _sanitize_title(title: str) -> str:
+    safe = "".join(c for c in title if c.isalnum() or c in "-_ ").strip()
+    return safe
 
 
 # --- executors (signature: (args, *, tenant, session) -> str) -------------
@@ -226,6 +241,86 @@ def _move_target(root: Any, requested: str) -> Any:
     except ValueError as exc:
         raise CapabilityViolation("file path outside capability scope") from exc
     return parent_resolved / candidate.name
+
+
+def vault_stage_draft(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    """Write a draft to the staging root — reversible, no approval needed
+    (mirrors the effect-classification in the uniyang_gate spike this
+    converges: a staged write lands outside the live vault, so it can run
+    unattended)."""
+    title = str(args.get("title") or "").strip()
+    content = str(args.get("content") or "")
+    safe = _sanitize_title(title)
+    if not safe:
+        return "[tool-error] vault_stage_draft: title is required (or empty after sanitization)"
+    try:
+        writer = FileWriter(_staging_root(), settings.node_max_read_bytes)
+        receipt = writer.write(f"{safe}.md", content.encode("utf-8"))
+        pub = receipt.public()
+        return f"staged {pub['path']} ({pub['size']} bytes, sha256 {str(pub['after_sha256'])[:12]})"
+    except CapabilityViolation as exc:
+        return f"[denied] vault_stage_draft: {exc}"
+    except Exception as exc:
+        logger.debug("vault_stage_draft failed", exc_info=True)
+        return f"[tool-error] vault_stage_draft: {type(exc).__name__}: {exc}"
+
+
+def vault_promote_draft(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    """Promote staging -> live. The one irreversible step, so it goes through
+    the real governance.guard.Guard (killswitch + ApprovalQueue's existing
+    "vault_write" kind) rather than a second gate — converges the
+    uniyang_gate spike's promotion concept onto machinery that's already
+    wired to the UAC audit chain and the /governance approve/reject surface,
+    instead of adding a competing one."""
+    path = str(args.get("path") or "").strip()
+    approval_id = str(args.get("approval_id") or "").strip()
+    if not path:
+        return "[tool-error] vault_promote_draft: path is required"
+    if not approval_id:
+        return "[approval-required] vault_promote_draft: approval_id is required (submit + approve a 'vault_write' item first)"
+
+    from msb_ledger.chain_anchor import anchored_chain_from_env
+    from msb_v3.governance.approval import ApprovalQueue
+    from msb_v3.governance.budget import BudgetLedger
+    from msb_v3.governance.governor import OuroborosGovernor
+    from msb_v3.governance.guard import Guard
+    from msb_v3.governance.killswitch import KillSwitch
+
+    # Same bracket-tag vocabulary as tools/runtime.py's own gate
+    # ([blocked] / [approval-required] / [denied]) so a caller parsing tool
+    # output doesn't need a second convention for Guard-backed tools.
+    _TAGS = {
+        "HALT": "blocked",
+        "APPROVAL_REQUIRED": "approval-required",
+        "APPROVAL_PENDING": "approval-required",
+    }
+
+    guard = Guard(
+        KillSwitch(),
+        BudgetLedger.from_settings(),
+        ApprovalQueue(),
+        OuroborosGovernor.from_settings(),
+        audit_chain=anchored_chain_from_env(),
+    )
+    verdict = guard.check_run(action=f"vault.promote_draft:{path}", kind="vault_write", approval_id=approval_id)
+    if not verdict.allowed:
+        tag = _TAGS.get(verdict.action, verdict.action.lower())
+        return f"[{tag}] vault_promote_draft: {verdict.reason}"
+
+    try:
+        reader = FileReader(_staging_root(), settings.node_max_read_bytes)
+        staged = reader.read(path)
+        content = str(staged.get("content") or "").encode("utf-8")
+        writer = FileWriter(_vault_root(), settings.node_max_read_bytes)
+        receipt = writer.write(path, content)
+        FileWriter(_staging_root(), settings.node_max_read_bytes)._safe_target(path).unlink()
+        pub = receipt.public()
+        return f"promoted {pub['path']} ({pub['size']} bytes, sha256 {str(pub['after_sha256'])[:12]}) via approval {approval_id}"
+    except CapabilityViolation as exc:
+        return f"[denied] vault_promote_draft: {exc}"
+    except Exception as exc:
+        logger.debug("vault_promote_draft failed", exc_info=True)
+        return f"[tool-error] vault_promote_draft: {type(exc).__name__}: {exc}"
 
 
 # --- Code Graph executors (read-only, spec §4.2.1) ------------------------
