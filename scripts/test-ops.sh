@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # test-ops.sh — regression suite for the ops scripts: vault-backup,
-# disk-health, cache-trim, backup-watchdog, rotate-logs.
+# disk-health, cache-trim, backup-watchdog, rotate-logs, housekeeping.
 #
 # Every check runs under macOS /bin/bash (3.2 — the interpreter launchd
 # uses; homebrew bash 5 hides real bugs like the empty-array 'unbound
@@ -207,6 +207,28 @@ dd if=/dev/zero of="$f" bs=1m count=20 2>/dev/null
 rl >/dev/null
 [ -f "$f.2" ] && ok "history shifted (.2 exists)" || bad "second rotation did not shift"
 [ -f "$f" ] && [ "$(stat -f%z "$f")" -lt 1048576 ] && ok "live file capped" || bad "live file not capped"
+
+# ---------------------------------------------------------------------------
+section "housekeeping: rotate-logs always, cache-trim+disk-health Sunday-only"
+mkdir -p "$TMP/hk"
+echo x > "$TMP/hk/dummy.log"
+hk() {
+  env MSB_HOUSEKEEPING_RUN_WEEKLY="$1" \
+    MSB_HOUSEKEEPING_LOG="$TMP/hk/housekeeping.log" \
+    MSB_ROTATE_TARGETS="$TMP/hk/dummy.log" MSB_ROTATE_LOG="$TMP/hk/rotate.log" \
+    MSB_CACHE_DIRS="$TMP/hk/nocache" MSB_CACHE_LOG="$TMP/hk/cache.log" \
+    MSB_DISK_STATE="$TMP/hk/disk-state" MSB_DISK_LOG="$TMP/hk/disk.log" \
+    bash "$ROOT/scripts/housekeeping.sh"
+}
+rc=$(rc_of hk 0)
+[ "$rc" = 0 ] && [ -f "$TMP/hk/rotate.log" ] \
+  && ok "weekday: rotate-logs ran (rc=0)" || bad "weekday: rotate-logs did not run (rc=$rc)"
+[ ! -f "$TMP/hk/cache.log" ] && ok "weekday: cache-trim skipped" || bad "weekday: cache-trim ran, should skip"
+[ ! -f "$TMP/hk/disk.log" ] && ok "weekday: disk-health skipped" || bad "weekday: disk-health ran, should skip"
+rc=$(rc_of hk 1)
+[ "$rc" = 0 ] && ok "sunday: exits 0" || bad "sunday: run failed (rc=$rc)"
+[ -f "$TMP/hk/cache.log" ] && ok "sunday: cache-trim ran" || bad "sunday: cache-trim did not run"
+[ -f "$TMP/hk/disk.log" ] && ok "sunday: disk-health ran" || bad "sunday: disk-health did not run"
 
 # ---------------------------------------------------------------------------
 section "license: issue, verify, tamper, wrong-key, missing"

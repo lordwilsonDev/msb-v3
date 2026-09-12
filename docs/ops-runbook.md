@@ -20,9 +20,7 @@ make test-ops     # regression suite for the ops scripts (bash 3.2, scratch dirs
 | `com.lordwilson.msb-vault-backup` | Sun 04:30 | Fresh snapshot of msb-v3 into `~/Documents/Vault/Backups/` — integrity gate + full-suite restore verification, then retention prune (label keep 8) | `logs/vault-backup.log` |
 | `com.lordwilson.dsh-vault-backup` | Sun 05:30 | Same for deepseek-harness (label keep 4, verify runs `pnpm install` + vitest with env-sensitive files excluded) | `~/deepseek-harness/logs/vault-backup.log` |
 | `com.lordwilson.db-restore-drill` | Sun 06:30 | Restores the latest DB backup to a temp dir, re-checksums, `PRAGMA integrity_check` on every restored db + storage structure | `logs/db-restore-drill.log`, `.err` |
-| `com.lordwilson.rotate-logs` | daily 06:00 | Copy-truncate rotates launchd-captured logs past a 5M cap, keeping 3 copies | `logs/rotate-logs.log` |
-| `com.lordwilson.cache-trim` | Sun 06:40 | Clears the regenerable caches that refill the disk ~1G/day (Google, hermit, Citro Labs, SiriTTS, pnpm, ollama; ≥10M floor; pnpm prune = orphans only) | `logs/cache-trim.log` |
-| `com.lordwilson.disk-health` | Sun 06:45 | Alerts when used% ≥ 85 (warn) / 92 (crit), or when the free-space trend projects full within 14 days | `logs/disk-health.log` |
+| `com.lordwilson.housekeeping` | daily 06:40 | Runs `rotate-logs.sh` every day (copy-truncate past a 5M cap, keeping 3 copies); on Sunday only, also runs `cache-trim.sh` (clears regenerable caches that refill the disk ~1G/day — Google, hermit, Citro Labs, SiriTTS, pnpm, ollama; ≥10M floor; pnpm prune = orphans only) then `disk-health.sh` (alerts when used% ≥ 85 warn / 92 crit, or free-space trend projects full within 14 days) — one agent, three scripts, in that order so disk-health measures post-trim usage | `logs/housekeeping.log`, `.err`, plus each script's own `logs/rotate-logs.log` / `cache-trim.log` / `disk-health.log` |
 | `com.lordwilson.ops-audit` | Sun 06:50 | Full ops self-audit: regression suite + pull-signature ledger + source license; non-zero exit alerts via the watchdog AND out-of-band channels (email/Telegram when configured); with `MSB_PUBLISH_AUDIT=1` the dated report is committed + pushed to origin | `logs/ops-audit.log` |
 | `com.lordwilson.heartbeat` | daily 12:00 | Liveness line + state snapshot + `audit/` copy onto an external volume (`MSB_HEARTBEAT_DIR`); absent volume = graceful skip | `logs/heartbeat.log`, `.err` |
 | `com.lordwilson.replicate` | Sun 07:05 | Mirrors the repo (incl. `.git` signed history) to a secondary node (`MSB_REPLICATION_TARGET`); unconfigured = skip, configured-but-unreachable = alert | `logs/replicate.log`, `.err` |
@@ -31,10 +29,11 @@ make test-ops     # regression suite for the ops scripts (bash 3.2, scratch dirs
 | `com.lordwilson.qdrant` | KeepAlive | Qdrant vector store | `logs/qdrant.log` |
 
 Sunday cascade: **04:30** msb code → **05:30** dsh code → **06:30** DB drill →
-**06:40** cache trim → **06:45** disk-health (post-trim) → **06:50** ops
-self-audit (alerts via the watchdog + email/Telegram; publishes the dated
-report) → **07:05** replicate to secondary (when configured). Heartbeat
-runs daily 12:00.
+**06:40** housekeeping (rotate-logs → cache-trim → disk-health, post-trim) →
+**06:50** ops self-audit (alerts via the watchdog + email/Telegram; publishes
+the dated report) → **07:05** replicate to secondary (when configured).
+Housekeeping also runs Mon–Sat at 06:40 (rotate-logs only). Heartbeat runs
+daily 12:00.
 
 ## Failure alert flow
 

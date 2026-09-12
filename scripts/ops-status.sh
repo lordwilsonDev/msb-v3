@@ -66,7 +66,7 @@ echo "DISK:"
 df -h /System/Volumes/Data 2>/dev/null | tail -1 | awk '{printf "  %s total, %s used, %s free (%s) on %s\n", $2, $3, $4, $5, $NF}'
 warn="$(grep -o 'WARN_PCT:-[0-9]*' "$REPO/scripts/disk-health.sh" | grep -o '[0-9]*' | head -1)"
 crit="$(grep -o 'CRIT_PCT:-[0-9]*' "$REPO/scripts/disk-health.sh" | grep -o '[0-9]*' | head -1)"
-echo "  disk-health thresholds: warn ${warn}% / crit ${crit}% (Sun 06:45)"
+echo "  disk-health thresholds: warn ${warn}% / crit ${crit}% (runs Sun, inside housekeeping)"
 
 echo
 echo "BACKUPS:"
@@ -124,7 +124,7 @@ fi
 
 echo
 echo "LOGS (last line):"
-for f in disk-health backup-watchdog cache-trim rotate-logs db-restore-drill vault-backup; do
+for f in housekeeping disk-health backup-watchdog cache-trim rotate-logs db-restore-drill vault-backup; do
   logf="$REPO/logs/$f.log"
   [ -f "$logf" ] || continue
   printf '  %-20s %s\n' "$f:" "$(tail -1 "$logf")"

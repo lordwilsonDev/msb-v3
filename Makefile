@@ -18,8 +18,8 @@ test:
 	$(PY) -m pytest -q tests/
 
 # Ops-script regression suite (vault-backup, disk-health, cache-trim,
-# backup-watchdog, rotate-logs) — runs under macOS /bin/bash 3.2 against
-# scratch dirs only; never touches real vault/caches/state/agents.
+# backup-watchdog, rotate-logs, housekeeping) — runs under macOS /bin/bash
+# 3.2 against scratch dirs only; never touches real vault/caches/state/agents.
 test-ops:
 	bash scripts/test-ops.sh
 
