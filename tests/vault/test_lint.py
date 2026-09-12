@@ -75,6 +75,17 @@ def test_real_link_is_not_dangling(tmp_path):
     assert report.dangling_links == {}
 
 
+def test_link_to_a_non_markdown_file_is_not_dangling(tmp_path):
+    """Regression: found linting the real vault 2026-09-12 — a .csv prospect
+    registry and a .yaml decision-card template were both flagged as
+    dangling because known_names only indexed *.md files, but Obsidian
+    wikilinks can target any real file in the vault."""
+    _write(tmp_path, "registry.csv", "name,phone\n")
+    _write(tmp_path, "A.md", "---\nid: 1\n---\nSee [[registry]] and [[registry.csv]] for contacts.\n")
+    report = lint_vault(tmp_path)
+    assert report.dangling_links == {}
+
+
 def test_unparseable_note_is_skipped_not_crashed(tmp_path):
     _write(tmp_path, "A.md", "no frontmatter at all\n")
     report = lint_vault(tmp_path, required_fields=["id"])

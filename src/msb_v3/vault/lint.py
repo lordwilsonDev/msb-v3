@@ -39,6 +39,15 @@ def lint_vault(vault_root: str | Path, *, required_fields: list[str] | None = No
     per-note-type schemas."""
     root = Path(vault_root).expanduser().resolve()
     md_files = sorted(root.rglob("*.md"))
+    # A wikilink can target any real vault file, not just notes — Obsidian
+    # links/embeds .csv, .yaml, .pdf, images, etc. Found linting the real
+    # vault 2026-09-12: a .csv prospect registry and a .yaml decision-card
+    # template were both flagged as dangling because known_names only
+    # indexed *.md files.
+    linkable_files = [
+        p for p in root.rglob("*")
+        if p.is_file() and ".git" not in p.parts and ".obsidian" not in p.parts
+    ]
     # A wikilink target may be a bare stem ([[Note]]), a path relative to the
     # vault root ([[folder/Note]] / [[folder/Note.md]]), or — Obsidian's
     # "shortest unique path" convention, the LM-Wiki-Schema raw/wiki layout
@@ -50,12 +59,14 @@ def lint_vault(vault_root: str | Path, *, required_fields: list[str] | None = No
     # the shortest), since a link may name as many trailing segments as the
     # author chose for disambiguation.
     known_names: set = set()
-    for p in md_files:
+    for p in linkable_files:
         parts = p.relative_to(root).parts
+        ext = p.suffix  # "" for extensionless files
         for i in range(len(parts)):
-            suffix_no_ext = "/".join(parts[i:])[: -len(".md")]
+            suffix = "/".join(parts[i:])
+            suffix_no_ext = suffix[: -len(ext)] if ext else suffix
             known_names.add(suffix_no_ext)
-            known_names.add(suffix_no_ext + ".md")
+            known_names.add(suffix)
 
     notes: dict = {}
     bodies: dict = {}
