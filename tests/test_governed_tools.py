@@ -48,6 +48,7 @@ class _RecordingClient:
 def test_registry_has_governed_tools_with_executors():
     assert set(TOOLS) == {
         "search_vault",
+        "vault_lint",
         "vault_read",
         "vault_write",
         "vault_append",
@@ -279,6 +280,33 @@ def test_search_vault_returns_formatted_matches(monkeypatch, tmp_path):
 
 def test_search_vault_empty_query_errors():
     assert executors.search_vault({}, tenant="t", session="s").startswith("[tool-error]")
+
+
+# --- vault_lint --------------------------------------------------------------
+
+
+def test_vault_lint_needs_no_capability(monkeypatch, tmp_path):
+    """Read-only, same trust level as search_vault — no [denied] without a
+    granted capability."""
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "vault_path", str(tmp_path / "vault"))
+    (tmp_path / "vault").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "vault" / "a.md").write_text("---\nid: 1\n---\nbody\n")
+    client = _RecordingClient()
+    runtime.register_governed_tools(client, {"tools": [{"name": "vault_lint"}], "session": "s"})
+    result = client.run_tool("vault_lint", {})
+    assert result.startswith("clean")
+
+
+def test_vault_lint_reports_missing_required_fields(monkeypatch, tmp_path):
+    monkeypatch.setattr(runtime, "_audit_append", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "vault_path", str(tmp_path / "vault"))
+    (tmp_path / "vault").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "vault" / "a.md").write_text("---\nid: 1\n---\nbody\n")
+    client = _RecordingClient()
+    runtime.register_governed_tools(client, {"tools": [{"name": "vault_lint"}], "session": "s"})
+    result = client.run_tool("vault_lint", {"required_fields": ["id", "area"]})
+    assert "a.md" in result and "area" in result
 
 
 # --- harness wiring ---------------------------------------------------------

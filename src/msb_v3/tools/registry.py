@@ -59,6 +59,28 @@ TOOLS: Dict[str, ToolDef] = {
         risk_class=RISK_LOW,
         mutation_class=MUTATION_NONE,
     ),
+    "vault_lint": ToolDef(
+        tool_id="vault_lint",
+        description=(
+            "Scan the vault for frontmatter and cross-link hygiene issues: "
+            "missing required frontmatter fields, invalid or out-of-order "
+            "created/updated dates, duplicate ids across notes, and dangling "
+            "[[wikilinks]] with no matching note. Read-only — produces a "
+            "report, never writes anything."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "required_fields": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "frontmatter field names every note must have (optional; omit to skip this check)",
+                },
+            },
+        },
+        risk_class=RISK_LOW,
+        mutation_class=MUTATION_NONE,
+    ),
     "vault_read": ToolDef(
         tool_id="vault_read",
         description=(

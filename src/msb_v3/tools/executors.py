@@ -3,6 +3,8 @@
 Every executor here terminates inside a sandbox:
 
     search_vault  -> tenant-scoped Qdrant RAG (read-only)
+    vault_lint    -> frontmatter/cross-link hygiene report (read-only, no
+                     capability needed — never writes, same as search_vault)
     vault_read    -> FileReader confined to the configured vault root
     vault_write   -> FileWriter confined to the configured vault root
                      (atomic write + hash receipt, reversible via rollback)
@@ -64,6 +66,33 @@ def _sanitize_title(title: str) -> str:
 
 
 # --- executors (signature: (args, *, tenant, session) -> str) -------------
+
+
+def vault_lint(args: Dict[str, Any], *, tenant: str, session: str) -> str:
+    required_fields = args.get("required_fields")
+    if required_fields is not None and not isinstance(required_fields, list):
+        return "[tool-error] vault_lint: required_fields must be a list of strings"
+    try:
+        from msb_v3.vault.lint import lint_vault
+
+        report = lint_vault(_vault_root(), required_fields=required_fields)
+    except Exception as exc:
+        logger.debug("vault_lint failed", exc_info=True)
+        return f"[tool-error] vault_lint: {type(exc).__name__}: {exc}"
+
+    if report.clean:
+        return f"clean — {report.notes_scanned} notes scanned, no issues found"
+
+    lines = [f"scanned {report.notes_scanned} notes, issues found:"]
+    for rel, missing in report.missing_fields.items():
+        lines.append(f"- {rel}: missing fields {missing}")
+    for rel, violations in report.date_violations.items():
+        lines.append(f"- {rel}: {'; '.join(violations)}")
+    for id_, paths in report.duplicate_ids.items():
+        lines.append(f"- duplicate id {id_!r}: {paths}")
+    for rel, targets in report.dangling_links.items():
+        lines.append(f"- {rel}: dangling links to {targets}")
+    return "\n".join(lines)
 
 
 def search_vault(args: Dict[str, Any], *, tenant: str, session: str) -> str:
