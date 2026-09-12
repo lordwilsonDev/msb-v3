@@ -146,6 +146,24 @@ def test_numeric_bracket_annotations_are_not_wikilinks():
     assert extract_wikilinks(text) == ["Real-Note"]
 
 
+def test_json_and_code_fragments_are_not_wikilinks():
+    """Regression: found linting the real vault 2026-09-12 — pasted n8n node
+    maps and shell snippets happen to use [[...]] in the source text
+    (106 instances across one file), none of them Obsidian references."""
+    text = (
+        'Nodes: [[{"node": "Read CSV", "type": "main", "index": 0}]] then '
+        '[[ "$FEATURE" == *"$COMPONENT"* ]], plus [[Real-Note]].'
+    )
+    assert extract_wikilinks(text) == ["Real-Note"]
+
+
+def test_heading_anchor_link_is_not_a_note_reference():
+    """Regression: found linting the real vault 2026-09-12 — [[#Heading]]
+    links to a heading within the SAME note, not to another note."""
+    text = "See [[#Vendor -> partner pivot]] above, and also [[Real-Note]]."
+    assert extract_wikilinks(text) == ["Real-Note"]
+
+
 # --- find_duplicate_ids -------------------------------------------------
 
 def test_finds_shared_ids():

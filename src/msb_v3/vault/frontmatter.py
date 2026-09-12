@@ -8,6 +8,8 @@ comma lists, not nested structures.
 
 from __future__ import annotations
 
+import re
+
 
 def parse_frontmatter(text: str) -> dict | None:
     """Extract the frontmatter block from a note's raw text.
@@ -72,8 +74,6 @@ def validate_required_fields(frontmatter: dict | None, required: list[str]) -> l
 def validate_dates(frontmatter: dict) -> list[str]:
     """Check ``created``/``updated`` are ``YYYY-MM-DD`` and ``updated`` isn't
     before ``created``. Only looks at fields that are actually present."""
-    import re
-
     violations = []
     date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
     created = frontmatter.get("created")
@@ -94,20 +94,33 @@ def validate_dates(frontmatter: dict) -> list[str]:
     return violations
 
 
+_CODE_LIKE_CHARS = re.compile(r'[{}$*()"]')
+
+
 def extract_wikilinks(text: str) -> list[str]:
     """Unique ``[[target]]``/``[[target|alias]]`` targets, in first-appearance order.
 
-    Excludes purely numeric/comma bracket contents (``[[196,197]]``,
-    ``[[316]]``) — found linting the real vault 2026-09-12: some notes use
-    ``[[...]]`` for citation/page-range annotations unrelated to Obsidian
-    wikilinks, and a target with no letters can never be a real note name.
-    """
-    import re
+    Excludes forms that use the same ``[[...]]`` bracket syntax but aren't
+    Obsidian note references at all (found linting the real vault
+    2026-09-12):
 
+    - purely numeric/comma bracket contents (``[[196,197]]``, ``[[316]]``)
+      — citation/page-range annotations; no letters means it can't be a
+      note name.
+    - targets containing ``{``/``}``/``$``/``*``/``(``/``)``/``"`` or
+      ``==`` — pasted JSON/shell/code fragments (n8n node maps, shell
+      conditionals) that happen to be bracket-wrapped in the source.
+    - ``#Heading`` targets — a same-file heading link, not a reference to
+      another note.
+    """
     seen: list[str] = []
     for match in re.finditer(r"\[\[([^\]]+)\]\]", text):
         target = match.group(1).split("|", 1)[0]
         if not re.search(r"[a-zA-Z]", target):
+            continue
+        if target.startswith("#"):
+            continue
+        if _CODE_LIKE_CHARS.search(target) or "==" in target:
             continue
         if target not in seen:
             seen.append(target)
