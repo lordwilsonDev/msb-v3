@@ -117,7 +117,17 @@ def extract_wikilinks(text: str) -> list[str]:
     one — a table cell needs the escape to keep ``|`` from being read as a
     column delimiter (``70_Skills/INDEX.md``'s skill-catalog table does
     this throughout), and Obsidian's own link parser accepts both forms.
+
+    Text inside a fenced code block or an inline code span is stripped
+    before matching — Obsidian doesn't linkify ``[[...]]`` written as a
+    literal syntax example inside backticks, but a regex with no notion of
+    Markdown code spans does. Found linting the real vault 2026-09-12: this
+    session's own checkpoint notes and the LM-Wiki schema doc both use
+    backtick-wrapped ``[[...]]`` examples to describe the convention.
     """
+    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    text = re.sub(r"`[^`\n]*`", "", text)
+
     seen: list[str] = []
     for match in re.finditer(r"\[\[([^\]]+)\]\]", text):
         target = re.split(r"\\?\|", match.group(1), maxsplit=1)[0]

@@ -142,6 +142,20 @@ def test_escaped_pipe_alias_in_a_table_cell():
     assert extract_wikilinks(text) == ["70_Skills/architecture/_catalog"]
 
 
+def test_backtick_wrapped_example_is_not_a_wikilink():
+    """Regression: found linting the real vault 2026-09-12 — documentation
+    describing the wikilink convention itself (this session's own checkpoint
+    notes, LM-WIKI-SCHEMA.md) writes `[[Example]]` inside backticks as a
+    literal syntax example. Obsidian doesn't linkify code-span content."""
+    text = "Cross-reference liberally with `[[wikilink]]`s, e.g. `- [[Page Name]] — summary`, plus a real [[Real-Note]]."
+    assert extract_wikilinks(text) == ["Real-Note"]
+
+
+def test_fenced_code_block_contents_are_not_wikilinks():
+    text = "```\nSee [[Not-A-Link]] inside a fence\n```\nBut [[Real-Note]] outside one is real."
+    assert extract_wikilinks(text) == ["Real-Note"]
+
+
 def test_no_links_is_empty():
     assert extract_wikilinks("plain text, no links") == []
 
