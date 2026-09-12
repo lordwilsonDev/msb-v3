@@ -190,8 +190,14 @@ and no `${arr[@]}` expansion on an empty array under `set -u`.
   is not a Qdrant-consistent snapshot — full logical consistency would
   require a second Qdrant instance to load the restored storage. The
   checksums make a silently-corrupt backup fail loudly instead.
-- **Disk headroom**: the boot disk runs near 98% used. `cache-trim` +
-  DB keep-7 cap the *growth*; durable headroom needs relocating the
-  Docker Desktop VM image (8.7G) to another volume. (`~/models` is
-  already empty — the gemma llama.cpp weights were removed. LM Studio
+- **Disk headroom**: the boot disk runs near 98% used (verified 2026-09-11:
+  98%, 5.0G free — disk-health's CRITICAL episode is live). `cache-trim` +
+  DB keep-7 cap the *growth* but only reclaim <1G (Google/ollama caches);
+  they are not a fix by themselves. The Docker Desktop VM image previously
+  cited here as an 8.7G lever no longer applies — verified 2026-09-11 at
+  13M (Docker Desktop isn't running its VM on this machine right now).
+  `~/Library` is the actual dominant consumer at 42G of the 228G disk —
+  unsurveyed below the top level; needs a human pass (Mail/iCloud/app
+  support data live there, not safe to sweep automatically). (`~/models`
+  is already empty — the gemma llama.cpp weights were removed. LM Studio
   ~5.2G is a separate, currently-running app, not an msb-v3 dependency.)
