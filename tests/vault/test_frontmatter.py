@@ -35,6 +35,35 @@ def test_no_frontmatter_returns_none():
     assert parse_frontmatter("# Just a heading\nno frontmatter here\n") is None
 
 
+def test_nested_metadata_block_is_not_flattened():
+    """Regression: found linting the real vault 2026-09-12 — several notes
+    nest created/updated under a `metadata:` sub-block (a different field,
+    describing when the underlying fact was true) alongside their own
+    top-level created. A flat parser conflated the two, producing false
+    'updated before created' violations on files that were actually fine."""
+    text = (
+        "---\n"
+        "name: business-portfolio-map\n"
+        "metadata:\n"
+        "  type: reference\n"
+        "  updated: 2026-08-12\n"
+        "tags: [memory, note]\n"
+        "type: note\n"
+        "created: 2026-09-01\n"
+        "---\n"
+        "body\n"
+    )
+    fm = parse_frontmatter(text)
+    assert fm == {
+        "name": "business-portfolio-map",
+        "metadata": "",  # the block-starter itself: a real top-level key, empty scalar value
+        "tags": ["memory", "note"],
+        "type": "note",
+        "created": "2026-09-01",
+    }
+    assert "updated" not in fm
+
+
 def test_empty_list_value():
     text = "---\ntags: []\n---\nbody\n"
     assert parse_frontmatter(text) == {"tags": []}
@@ -107,6 +136,14 @@ def test_alias_syntax_returns_target_not_alias():
 
 def test_no_links_is_empty():
     assert extract_wikilinks("plain text, no links") == []
+
+
+def test_numeric_bracket_annotations_are_not_wikilinks():
+    """Regression: found linting the real vault 2026-09-12 — some notes use
+    [[...]] for citation/page-range annotations (e.g. [[196,197]], [[316]]),
+    not Obsidian wikilinks. A target with no letters can't be a real note."""
+    text = "See the source [[196,197]] and also [[316]] for detail, plus [[Real-Note]]."
+    assert extract_wikilinks(text) == ["Real-Note"]
 
 
 # --- find_duplicate_ids -------------------------------------------------

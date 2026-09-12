@@ -45,6 +45,16 @@ def test_dangling_link_detected(tmp_path):
     assert report.dangling_links == {"A.md": ["Nonexistent-Note"]}
 
 
+def test_path_style_link_to_a_real_note_is_not_dangling(tmp_path):
+    """Regression: found linting the real vault 2026-09-12 — several SOPs
+    link by full path ([[folder/_INDEX]]) rather than bare stem, and a
+    stem-only known-names set incorrectly flagged the note as missing."""
+    _write(tmp_path, "sub/_INDEX.md", "---\nid: 1\n---\nbody\n")
+    _write(tmp_path, "A.md", "---\nid: 2\n---\nSee [[sub/_INDEX]] for the index.\n")
+    report = lint_vault(tmp_path)
+    assert report.dangling_links == {}
+
+
 def test_real_link_is_not_dangling(tmp_path):
     _write(tmp_path, "A.md", "---\nid: 1\n---\nSee [[B]] for more.\n")
     _write(tmp_path, "B.md", "---\nid: 2\n---\nbody\n")

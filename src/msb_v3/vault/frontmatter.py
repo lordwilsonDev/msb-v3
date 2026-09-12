@@ -32,6 +32,16 @@ def parse_frontmatter(text: str) -> dict | None:
     for line in lines[1:end]:
         if not line.strip():
             continue
+        if line[:1] in (" ", "\t"):
+            # Indented -> belongs to a nested block under the previous
+            # top-level key (e.g. a `metadata:` sub-block). Not flattened:
+            # a nested `metadata.updated` is a different field from a
+            # top-level `updated`, and conflating them produces false
+            # positives (found 2026-09-12 linting the real vault: several
+            # notes' nested `metadata.created/updated` — describing when
+            # the underlying fact was true — got misread as the note's own
+            # created/updated, which come from the top-level fields only).
+            continue
         if ":" not in line:
             continue
         key, _, raw_value = line.partition(":")
@@ -85,12 +95,20 @@ def validate_dates(frontmatter: dict) -> list[str]:
 
 
 def extract_wikilinks(text: str) -> list[str]:
-    """Unique ``[[target]]``/``[[target|alias]]`` targets, in first-appearance order."""
+    """Unique ``[[target]]``/``[[target|alias]]`` targets, in first-appearance order.
+
+    Excludes purely numeric/comma bracket contents (``[[196,197]]``,
+    ``[[316]]``) — found linting the real vault 2026-09-12: some notes use
+    ``[[...]]`` for citation/page-range annotations unrelated to Obsidian
+    wikilinks, and a target with no letters can never be a real note name.
+    """
     import re
 
     seen: list[str] = []
     for match in re.finditer(r"\[\[([^\]]+)\]\]", text):
         target = match.group(1).split("|", 1)[0]
+        if not re.search(r"[a-zA-Z]", target):
+            continue
         if target not in seen:
             seen.append(target)
     return seen
