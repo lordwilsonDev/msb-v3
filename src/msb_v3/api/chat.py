@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from msb_v3.api.auth import check_auth
 from msb_v3.core.container import ApplicationContainer, get_container_dep
 from msb_v3.harnesses.base import ChatHarness, HarnessResult
+from msb_v3.memory.store import Message
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"], dependencies=[Depends(check_auth)])
@@ -82,6 +83,19 @@ async def chat(
         used = 0
 
     result: HarnessResult = harness.execute(req.query, ctx, session=session)
+
+    # Persist the exchange so the NEXT call's `recent()` read above actually
+    # has something to find. Found 2026-09-12: this call read history but
+    # never wrote it back, so multi-turn context silently never worked —
+    # every /chat call was stateless regardless of `session`. Best-effort:
+    # a memory-store hiccup must not fail a chat response that already
+    # succeeded.
+    try:
+        container.memory_store.append(session, Message(role="user", content=req.query))
+        container.memory_store.append(session, Message(role="assistant", content=result.payload["text"]))
+    except Exception:
+        logger.debug("failed to persist chat exchange to memory_store", exc_info=True)
+
     return ChatResponse(
         ok=result.ok,
         event=result.event,

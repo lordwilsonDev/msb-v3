@@ -152,6 +152,61 @@ def test_chat_includes_memory_history(monkeypatch):
     assert r.json()["history_count"] == 2
 
 
+def test_chat_persists_the_exchange_for_the_next_turn(monkeypatch, tmp_path):
+    """Found 2026-09-12 live: /chat read memory_store.recent() for context but
+    never wrote the exchange back, so every call was stateless regardless of
+    `session` — a second message never saw the first ("what number did you
+    just tell me?" got a hallucinated non-answer). This is the round-trip
+    test_chat_includes_memory_history (above) doesn't cover: that one
+    monkeypatches `.recent()` to a canned fixture, so it proves reads are
+    wired into the prompt but can't catch a missing write. This one uses a
+    real (tmp-file-backed) MemoryStore and calls /chat twice."""
+    from msb_v3.api.app import create_app
+    from msb_v3.core.container import get_container
+    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+    from msb_v3.memory.store import MemoryStore
+
+    monkeypatch.delenv("MCP_BRIDGE_SECRET", raising=False)
+
+    real_store = MemoryStore(str(tmp_path / "chat-memory-roundtrip.db"))
+    monkeypatch.setattr(get_container(), "memory_store", real_store)
+
+    class EchoHarness(ChatHarness):
+        def execute(self, query, context=None, *, session="default", **kwargs):
+            return HarnessResult(
+                ok=True, event="chat:completed",
+                payload={"query": query, "text": f"echo: {query}", "model": "fake"},
+            )
+
+    app = create_app()
+    app.state.chat = EchoHarness()
+    client = TestClient(app)
+
+    r1 = client.post("/chat", json={"query": "first message", "session": "roundtrip-1"})
+    assert r1.status_code == 200
+    assert r1.json()["history_count"] == 0, "nothing persisted yet before the first call"
+
+    persisted = real_store.recent("roundtrip-1")
+    assert [m.role for m in persisted] == ["assistant", "user"], (
+        "the exchange must be written back to memory_store after the first "
+        "call, not just read from it"
+    )
+    assert persisted[1].content == "first message"
+    assert persisted[0].content == "echo: first message"
+
+    r2 = client.post("/chat", json={"query": "second message", "session": "roundtrip-1"})
+    assert r2.status_code == 200
+    assert r2.json()["history_count"] == 2, (
+        "the second call in the same session must see the first exchange as "
+        "history -- this is the exact bug: it always read back 0"
+    )
+
+    # A different session must not see this session's history (no cross-talk).
+    r3 = client.post("/chat", json={"query": "unrelated", "session": "roundtrip-2"})
+    assert r3.status_code == 200
+    assert r3.json()["history_count"] == 0
+
+
 def test_dispatcher_metrics_increment():
     from msb_v3.harnesses.base import ChatHarness
 

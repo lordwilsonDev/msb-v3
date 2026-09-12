@@ -36,9 +36,11 @@ class _StubClient:
 
     def __init__(self):
         self.calls = 0
+        self.last_system = None
 
     def execute_tool_loop(self, query, *, system=None, tools=None, max_steps=4, max_tokens=2048):
         self.calls += 1
+        self.last_system = system
         from msb_v3.local_ai.ollama import LocalAIResponse
 
         return LocalAIResponse(
@@ -130,3 +132,37 @@ def test_matching_grant_allows_opt_in_call():
     assert result.ok
     assert stub.calls == 1
     assert result.event == "chat:completed"
+
+
+def test_context_history_reaches_the_model_call():
+    """Found 2026-09-12 live: api/chat.py builds `context["history"]` from
+    prior turns but ChatHarness.execute never read it, so history_count in
+    the API response was decoupled from what the model actually saw --
+    turn 2 of a session had zero awareness of turn 1 regardless of how
+    much history existed. Pins that history now reaches the client via
+    `system`, and that a call with no history behaves exactly as before
+    (system stays None, not an empty history block)."""
+    stub = _StubClient()
+    harness = ChatHarness(client=stub)
+
+    result = harness.execute(
+        "what did I just say?",
+        context={"history": "user: hello\nassistant: hi there"},
+        session="s5",
+    )
+    assert result.ok
+    assert stub.last_system is not None
+    assert "user: hello" in stub.last_system
+    assert "assistant: hi there" in stub.last_system
+
+    # No history in context -> system is untouched (no regression for the
+    # common single-turn / first-message case).
+    stub2 = _StubClient()
+    harness2 = ChatHarness(client=stub2)
+    harness2.execute("hello", context={"system": "be terse"}, session="s6")
+    assert stub2.last_system == "be terse"
+
+    stub3 = _StubClient()
+    harness3 = ChatHarness(client=stub3)
+    harness3.execute("hello", session="s7")
+    assert stub3.last_system is None

@@ -66,6 +66,24 @@ class ChatHarness(BaseHarness):
         system = context.get("system")
         tools = context.get("tools")
 
+        # Found 2026-09-12 live: api/chat.py fetches prior turns into
+        # `context["history"]` (a flat "role: content" block) but nothing
+        # downstream ever read it -- history_count in the response was
+        # always just "how many messages I found", completely decoupled
+        # from whether they reached the model. Fold it into the system
+        # prompt: the minimal fix that actually closes the loop without
+        # restructuring execute_tool_loop's messages-array handling (a
+        # real, separate improvement -- passing prior turns as their own
+        # role:content entries rather than flattened text -- left for
+        # later; this at least makes multi-turn context real today).
+        history = context.get("history")
+        if history:
+            history_block = (
+                f"Conversation so far:\n{history}\n\n"
+                "Continue the conversation naturally, using the above for context."
+            )
+            system = f"{system}\n\n{history_block}" if system else history_block
+
         # Capability Gateway: the runtime asks permission before it asks
         # compute. Opt-in gate fields (empty by default => no tightening,
         # identical routing to pre-gateway behavior) but the decision is
