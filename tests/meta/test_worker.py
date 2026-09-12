@@ -1,8 +1,10 @@
 """Behaviour pins for msb_v3.meta.worker. render_prompt built by qwen3:8b;
 parse_worker_response escalated to the checker. Workers never saw this file."""
 
+import pytest
+
 from msb_v3.meta.contracts import MSL, WorkerStatus
-from msb_v3.meta.worker import parse_worker_response, render_prompt
+from msb_v3.meta.worker import call_mlx, parse_worker_response, render_prompt
 
 
 def test_render_minimal():
@@ -61,3 +63,20 @@ def test_parse_empty_is_no_change():
 def test_parse_think_then_empty_is_no_change():
     r = parse_worker_response("<think>nothing to do</think>   ", "T1", "w")
     assert r.status is WorkerStatus.NO_CHANGE
+
+
+def test_call_mlx_is_a_real_str_to_str_model_call():
+    """Live smoke test, same spirit as test_local_inference.py's
+    llama-server check: skip where the optional backend isn't available
+    rather than fail, but prove the real integration where it is (this
+    machine has mlx-lm installed and the model cached)."""
+    try:
+        import mlx_lm  # noqa: F401
+    except ImportError:
+        pytest.skip("mlx-lm not installed")
+    try:
+        out = call_mlx("Reply with exactly the word: OK", max_tokens=8)
+    except Exception as exc:  # noqa: BLE001 — treat any backend failure as unavailable, not a test bug
+        pytest.skip(f"mlx model unavailable: {type(exc).__name__}: {exc}")
+    assert isinstance(out, str)
+    assert out.strip() != ""

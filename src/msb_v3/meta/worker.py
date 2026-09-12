@@ -3,9 +3,10 @@
 ``render_prompt`` (W1) is built by qwen3:8b, verbatim. ``parse_worker_response``
 (W2) escalated to the checker after two failed worker attempts — it is
 regex-heavy and self-referential (code that strips ``<think>`` blocks, written
-by a model emitting ``<think>`` blocks). ``call_ollama`` (I/O) is the
-checker's. The model is injected: ``call_ollama`` is one implementation of the
-``str -> str`` callable the driver takes, never a hard dependency.
+by a model emitting ``<think>`` blocks). ``call_ollama``/``call_mlx`` (I/O) are
+the checker's. The model is injected: both are implementations of the
+``str -> str`` callable the driver (``meta.loop.ModelCall``) takes, never a
+hard dependency — swap the worker model without touching the loop.
 """
 
 from __future__ import annotations
@@ -18,6 +19,13 @@ from msb_v3.meta.contracts import MSL, WorkerResult, WorkerStatus
 
 DEFAULT_MODEL = "qwen3:8b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+DEFAULT_MLX_MODEL = "mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit"
+
+# Loaded MLX (model, tokenizer) pairs, keyed by repo id. Weight loading is
+# the expensive part (~seconds); caching means only the first call_mlx per
+# model per process pays it. Not thread-safe by construction — the meta
+# loop calls model_call sequentially (see build_module).
+_mlx_cache: dict = {}
 
 
 def render_prompt(msl: MSL) -> str:  # built by qwen3:8b (W1), verbatim
@@ -79,3 +87,27 @@ def call_ollama(
     with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — local, injected
         payload = json.load(resp)
     return str(payload["response"])
+
+
+def call_mlx(
+    prompt: str,
+    *,
+    model: str = DEFAULT_MLX_MODEL,
+    max_tokens: int = 2048,
+) -> str:
+    """One completion from a local MLX model — in-process generation on
+    Apple Silicon (no daemon/HTTP round trip, unlike call_ollama). ``mlx_lm``
+    is imported lazily (Apple-Silicon-only; not a hard dependency of this
+    module, so importing msb_v3.meta.worker stays portable to Linux CI).
+    Fail-closed: any import/load/generate failure raises (the driver records
+    it as a WorkerResult ERROR — same contract as call_ollama). No
+    Qwen3-style ``/no_think`` suffix: Qwen2.5-Coder has no think mode."""
+    from mlx_lm import generate, load
+
+    if model not in _mlx_cache:
+        _mlx_cache[model] = load(model)
+    model_obj, tokenizer = _mlx_cache[model]
+
+    messages = [{"role": "user", "content": prompt}]
+    rendered = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+    return str(generate(model_obj, tokenizer, prompt=rendered, max_tokens=max_tokens, verbose=False))
