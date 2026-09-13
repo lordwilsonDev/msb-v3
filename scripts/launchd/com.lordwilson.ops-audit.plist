@@ -30,6 +30,12 @@
   <key>EnvironmentVariables</key>
   <dict>
     <key>MSB_PUBLISH_AUDIT</key><string>1</string>
+    <!-- Found 2026-09-12: launchd's default PATH (/usr/bin:/bin:/usr/sbin:/sbin)
+         has no Homebrew entries, so scripts/test-ops.sh (the regression-suite
+         step) silently failed only when run by this agent -- passed 48/48
+         when run interactively (full shell PATH). Same PATH com.lordwilson.msb-v3
+         already sets for the same reason. -->
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <!-- <key>MSB_ALERT_EMAIL</key><string>you@example.com</string> -->
     <!-- <key>MSB_TELEGRAM_BOT_TOKEN</key><string>123456:ABC-DEF</string> -->
     <!-- <key>MSB_TELEGRAM_CHAT_ID</key><string>123456789</string> -->
