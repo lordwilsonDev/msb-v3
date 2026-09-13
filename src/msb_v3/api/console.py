@@ -29,6 +29,8 @@ endpoints, contains no token, and renders a fixture run.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
@@ -84,6 +86,14 @@ _CONSOLE_HTML = """<!doctype html>
   .jok { color:#4ade80; } .jbad { color:#f87171; } .jwarn { color:#fbbf24; }
   .chip { background:#0b0d12; border:1px solid #1e2430; border-radius:999px;
           padding:3px 10px; display:inline-flex; gap:6px; align-items:center; }
+  /* Inline (on-blur) field validation — never color-only (icon + text), matches
+     the server's own rules exactly so a mistake surfaces before the 30s-3min
+     round trip to Run, not after (found live 2026-09-13: nothing here checked
+     a field until Run was clicked). */
+  input.invalid, textarea.invalid { border-color:#f87171; }
+  .field-error { color:#f87171; font-size:0.78rem; margin-top:4px; display:none; }
+  .field-error.show { display:block; }
+  .field-hint { color:#8b95a5; font-size:0.76rem; margin-top:4px; }
   .chip b { font-variant-numeric:tabular-nums; }
 </style>
 </head>
@@ -96,6 +106,7 @@ _CONSOLE_HTML = """<!doctype html>
 
 <label for="request">Request</label>
 <textarea id="request" placeholder="e.g. Search the vault for recent decisions about caching and write a one-page summary note"></textarea>
+<div class="field-error" id="request-error"></div>
 
 <div class="row">
   <div>
@@ -109,6 +120,8 @@ _CONSOLE_HTML = """<!doctype html>
   <div>
     <label for="output_dir">Output dir (blank = server default)</label>
     <input type="text" id="output_dir" placeholder="" />
+    <div class="field-hint">must be under __MSB_HOME__</div>
+    <div class="field-error" id="output_dir-error"></div>
   </div>
 </div>
 
@@ -330,10 +343,71 @@ function renderTasks(list) {
   }
 }
 
+// Inline (on-blur) field validation. Checked the moment you leave a field,
+// not only when Run is clicked — found live 2026-09-13 (beginner-user pass):
+// nothing here validated anything until Run was clicked, so a typo cost a
+// full 30s-3min round trip to discover. Mirrors two real server rules
+// exactly (never invents a stricter client-side rule the server doesn't
+// itself enforce): MAX_REQUEST_CHARS must match api/agent.py's
+// _MAX_REQUEST_LEN, and the output_dir home-directory containment mirrors
+// api/agent.py's Path.home() check (server-injected below — this page is
+// rendered per-request, so the real value is substituted server-side, never
+// guessed). Validated on blur (not per-keystroke — per-keystroke nagging is
+// worse for screen readers and feels aggressive while still typing), and
+// again just before Run as a safety net.
+const MAX_REQUEST_CHARS = 2000;
+const MSB_HOME = "__MSB_HOME__";
+
+function setFieldError(id, msg) {
+  const input = $(id);
+  const err = $(id + "-error");
+  if (msg) {
+    input.classList.add("invalid");
+    err.textContent = "⚠ " + msg;
+    err.classList.add("show");
+  } else {
+    input.classList.remove("invalid");
+    err.classList.remove("show");
+    err.textContent = "";
+  }
+  return !msg;
+}
+
+function validateRequest() {
+  const len = $("request").value.length;
+  if (len > MAX_REQUEST_CHARS) {
+    return setFieldError("request", `${len} chars — exceeds the ${MAX_REQUEST_CHARS} limit`);
+  }
+  return setFieldError("request", null);
+}
+
+function validateOutputDir() {
+  let v = $("output_dir").value.trim();
+  if (!v) return setFieldError("output_dir", null);  // blank = server default, always fine
+  if (v.startsWith("~")) v = MSB_HOME + v.slice(1);
+  const segments = v.split("/");
+  if (segments.includes("..")) {
+    return setFieldError("output_dir", "must not contain '..'");
+  }
+  if (v.startsWith("/") && v !== MSB_HOME && !v.startsWith(MSB_HOME + "/")) {
+    return setFieldError("output_dir", `must be under ${MSB_HOME}`);
+  }
+  return setFieldError("output_dir", null);
+}
+
+$("request").addEventListener("blur", validateRequest);
+$("output_dir").addEventListener("blur", validateOutputDir);
+
 $("run").onclick = async () => {
   const req = $("request").value.trim();
   if (!token()) { $("status").textContent = "enter the operator token first"; return; }
   if (!req) { $("status").textContent = "enter a request"; return; }
+  const requestOk = validateRequest();
+  const outputDirOk = validateOutputDir();
+  if (!requestOk || !outputDirOk) {
+    $("status").textContent = "fix the highlighted field(s) before running";
+    return;
+  }
   $("run").disabled = true;
   $("status").textContent = "running governed task … (watch the run; refused writes show as FAIL/BLOCK)";
   try {
@@ -388,4 +462,10 @@ loadMetrics();
 
 @router.get("/console", response_class=HTMLResponse)
 async def console() -> str:
-    return _CONSOLE_HTML
+    # A plain .replace on a unique placeholder, not str.format — the page is
+    # full of literal { } in its embedded JS/CSS (JSON.stringify, regex
+    # braces), and .format would need every one of those doubled to escape
+    # it. output_dir's inline validation (below) needs the real operator
+    # home directory to mirror api/agent.py's Path.home() containment check
+    # exactly — never a guessed or hardcoded path.
+    return _CONSOLE_HTML.replace("__MSB_HOME__", str(Path.home()))

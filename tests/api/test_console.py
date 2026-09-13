@@ -176,3 +176,49 @@ def test_console_js_is_syntactically_valid(client: TestClient) -> None:
         timeout=10,
     )
     assert proc.returncode == 0, f"emitted console JS fails to parse:\n{proc.stderr}"
+
+
+def test_console_has_inline_field_validation(client: TestClient) -> None:
+    """Found 2026-09-13 (beginner-user pass, live): nothing on this page
+    validated a field until Run was clicked — a typo in output_dir or an
+    over-length request cost a full 30s-3min round trip to discover. Pin
+    that on-blur validation exists for both fields, and that it never
+    invents a stricter rule than the server itself enforces."""
+    r = client.get("/console")
+    body = r.text
+    assert 'addEventListener("blur", validateRequest)' in body
+    assert 'addEventListener("blur", validateOutputDir)' in body
+    assert "function validateRequest" in body
+    assert "function validateOutputDir" in body
+    # Never color-only (accessibility): every invalid state also sets text.
+    assert "field-error" in body
+    assert "⚠" in body
+
+
+def test_console_max_request_chars_matches_the_servers_real_limit(
+    client: TestClient,
+) -> None:
+    """The client-side length check must mirror api/agent.py's actual
+    _MAX_REQUEST_LEN, not a guessed number that could silently drift from
+    the real server-enforced limit."""
+    from msb_v3.api.agent import _MAX_REQUEST_LEN
+
+    r = client.get("/console")
+    assert f"const MAX_REQUEST_CHARS = {_MAX_REQUEST_LEN};" in r.text
+
+
+def test_console_output_dir_hint_uses_the_real_home_directory(
+    client: TestClient,
+) -> None:
+    """__MSB_HOME__ must be substituted with the real operator home
+    directory at render time (never left as a literal placeholder, never a
+    hardcoded/guessed path) — it has to mirror api/agent.py's actual
+    Path.home() containment check for the inline hint to mean anything."""
+    from pathlib import Path
+
+    r = client.get("/console")
+    body = r.text
+    assert "__MSB_HOME__" not in body, "placeholder was never substituted"
+    home = str(Path.home())
+    assert f'const MSB_HOME = "{home}";' in body
+    assert f"must be under {home}" in body
