@@ -39,7 +39,12 @@ if [ "${MSB_AUDIT_SKIP_SUITE:-0}" = "1" ]; then
   SUITE=skipped
   log "regression suite skipped (MSB_AUDIT_SKIP_SUITE=1)"
 else
-  bash "$REPO/scripts/test-ops.sh" || { fails=$((fails + 1)); SUITE=fail; log "FAIL: regression suite"; }
+  bash "$REPO/scripts/test-ops.sh" 2>&1 | tee "$REPO/logs/test-ops-last-run.log"
+  suite_rc=${PIPESTATUS[0]}
+  if [ "$suite_rc" -ne 0 ]; then
+    fails=$((fails + 1)); SUITE=fail
+    log "FAIL: regression suite (rc=$suite_rc, full output in logs/test-ops-last-run.log)"
+  fi
 fi
 
 step "pull-signature ledger (per-witness attribution)"
