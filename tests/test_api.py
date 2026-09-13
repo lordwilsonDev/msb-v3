@@ -152,6 +152,22 @@ def test_chat_includes_memory_history(monkeypatch):
     assert r.json()["history_count"] == 2
 
 
+def test_chat_rejects_oversized_query(monkeypatch):
+    """Chaos-tested 2026-09-13: /chat had no size cap at all — a 2MB query
+    was accepted with 200 and forwarded straight to the local LLM. Unlike
+    /register (h10-hardened), one bad client could tie up the single local
+    Ollama backend for everyone. Mirrors the /register 413 pattern."""
+    from msb_v3.api.app import create_app
+
+    monkeypatch.delenv("MCP_BRIDGE_SECRET", raising=False)
+    app = create_app()
+    client = TestClient(app)
+    r = client.post("/chat", json={"query": "A" * 70_000, "session": "chaos-1"})
+    assert r.status_code == 413
+    r = client.post("/chat", json={"query": "short", "session": "chaos-2"})
+    assert r.status_code == 200
+
+
 def test_chat_persists_the_exchange_for_the_next_turn(monkeypatch, tmp_path):
     """Found 2026-09-12 live: /chat read memory_store.recent() for context but
     never wrote the exchange back, so every call was stateless regardless of

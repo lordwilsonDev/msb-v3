@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from msb_v3.api.auth import check_auth
@@ -16,6 +17,12 @@ from msb_v3.memory_fabric.models import MemoryType
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"], dependencies=[Depends(check_auth)])
+
+# Max query size, in bytes. Unlike /register (h10-hardened, MAX_PAYLOAD_BYTES)
+# this endpoint had no cap at all — chaos-tested 2026-09-13: a 2MB query was
+# accepted with 200 and forwarded straight to the local LLM. Enforced so one
+# bad client can't tie up the (single, local) Ollama backend for everyone.
+MAX_QUERY_BYTES = int(os.getenv("MSB_MAX_CHAT_QUERY_BYTES", "65536"))  # 64 KiB
 
 
 class ToolSpec(BaseModel):
@@ -52,6 +59,12 @@ async def chat(
     req: ChatRequest,
     container: ApplicationContainer = Depends(get_container_dep),
 ) -> ChatResponse:
+    size = len(req.query.encode("utf-8"))
+    if size > MAX_QUERY_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"query too large: {size} bytes exceeds limit {MAX_QUERY_BYTES} bytes",
+        )
     tenant_id = request.headers.get("X-Tenant-ID", "default")
     session = f"{tenant_id}:{req.session}" if tenant_id != "default" else req.session
     ctx: Dict[str, Any] = {}
