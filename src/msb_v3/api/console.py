@@ -271,20 +271,20 @@ function renderJourney(p, req) {
   const checks = exec.map(e => {
     const vf = e.verification || {};
     const ok = vf.verdict === "pass";
-    return "<span class=\"" + (ok ? "jok" : "jbad") + "\">" + esc(vf.check || "?") + ":" + esc(vf.verdict || "?") + "</span>";
-  }).join(" · ") || (v === "BLOCKED" ? "<span class=\"jv\">decision-only — nothing rerun</span>" : "<span class=\"jv\">—</span>");
+    return "<span class='" + (ok ? "jok" : "jbad") + "'>" + esc(vf.check || "?") + ":" + esc(vf.verdict || "?") + "</span>";
+  }).join(" · ") || (v === "BLOCKED" ? "<span class='jv'>decision-only — nothing rerun</span>" : "<span class='jv'>—</span>");
   const hash = p.deterministic_hash || "—";
-  const evLine = "<span class=\"muted\">run_id</span> <code>" + esc(p.run_id || "") + "</code><br>" +
-    "<span class=\"muted\">hash</span> <code>" + esc(hash) + "</code><br>" +
-    "<a href=\"/cockpit/audit\" target=\"_blank\" rel=\"noopener\">evidence stream ↗</a>";
-  const step = (label, body) => "<div class=\"jstep\"><b class=\"stage\">" + label + "</b>" + body + "</div>";
+  const evLine = "<span class='muted'>run_id</span> <code>" + esc(p.run_id || "") + "</code><br>" +
+    "<span class='muted'>hash</span> <code>" + esc(hash) + "</code><br>" +
+    "<a href='/cockpit/audit' target='_blank' rel='noopener'>evidence stream ↗</a>";
+  const step = (label, body) => "<div class='jstep'><b class='stage'>" + label + "</b>" + body + "</div>";
   $("journey-card").hidden = false;
   $("journey").innerHTML =
-    step("1 · REQUEST", "<span class=\"jv\">" + esc((req || "").slice(0, 60) || "—") + "</span>") +
-    step("2 · AUTHORIZATION", "<span class=\"jv\">MoIE <b>" + esc(moie) + "</b></span><br><span class=\"" + dcls + "\">" + esc(decision) + "</span>") +
-    step("3 · EXECUTION", "<span class=\"jv\">" + esc(execLine) + "</span>" + (exec.length ? "<br><span class=\"muted\">" + execOk + " tasks verified</span>" : "")) +
-    step("4 · VERIFICATION", "<span class=\"jv\">" + checks + "</span>") +
-    step("5 · EVIDENCE", "<span class=\"jv\">" + evLine + "</span>");
+    step("1 · REQUEST", "<span class='jv'>" + esc((req || "").slice(0, 60) || "—") + "</span>") +
+    step("2 · AUTHORIZATION", "<span class='jv'>MoIE <b>" + esc(moie) + "</b></span><br><span class='" + dcls + "'>" + esc(decision) + "</span>") +
+    step("3 · EXECUTION", "<span class='jv'>" + esc(execLine) + "</span>" + (exec.length ? "<br><span class='muted'>" + execOk + " tasks verified</span>" : "")) +
+    step("4 · VERIFICATION", "<span class='jv'>" + checks + "</span>") +
+    step("5 · EVIDENCE", "<span class='jv'>" + evLine + "</span>");
 }
 
 function renderReplay(data) {

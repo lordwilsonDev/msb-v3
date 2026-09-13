@@ -16,6 +16,10 @@ surface, no token in HTML). These tests pin that contract:
 """
 from __future__ import annotations
 
+import re
+import shutil
+import subprocess
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -140,3 +144,35 @@ def test_console_emitted_js_escapes_survive_python_string(client: TestClient) ->
     # Regex escapes the parser needs must survive too.
     assert 'actiongate_decisions_total\\{verdict=' in body, "regex brace escape was consumed"
     assert "latency_seconds_bucket\\{" in body
+
+
+def test_console_js_is_syntactically_valid(client: TestClient) -> None:
+    """Found 2026-09-13 (beginner-user pass, live): clicking "Run governed
+    task" on a fresh page load did nothing at all — no request, no error,
+    silence. Cause: renderRun() built HTML attributes with `\\"` inside a
+    non-raw Python triple-quoted string (`class=\\"" + ... + "\\"`) — Python
+    consumes the backslash, so the *emitted* JS had unescaped quotes and
+    failed to parse (`SyntaxError: Unexpected string`). A syntax error
+    anywhere in the inline <script> block breaks every listener in it, so
+    Run/Refresh silently did nothing — a full-page dead-UI bug the escape
+    pins above (for `\\n` and regex `\\{`) didn't cover because they only
+    pin previously-found instances one at a time, not the class of bug.
+    This test instead asks node to actually parse the emitted script, so
+    the next Python-escape-consumption bug fails loudly instead of shipping
+    a page where every button is silently inert. Skips if node isn't on
+    PATH (functionally covered by manual QA in that case, not CI-gated)."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node not on PATH — cannot syntax-check emitted JS")
+    r = client.get("/console")
+    body = r.text
+    match = re.search(r"<script>(.*)</script>", body, re.S)
+    assert match is not None, "console page has no inline <script> block"
+    proc = subprocess.run(
+        [node, "--check", "-"],
+        input=match.group(1),
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert proc.returncode == 0, f"emitted console JS fails to parse:\n{proc.stderr}"
