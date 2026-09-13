@@ -90,6 +90,91 @@ def test_agent_handle_runs_slice_and_forwards_privacy(
     assert seen.get("privacy") is None  # default: the intent decides
 
 
+def test_agent_handle_rejects_output_dir_escaping_home(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Found 2026-09-13 (beginner-user pass, live console): output_dir was
+    passed straight to `Path(output_dir).mkdir(parents=True)` with zero
+    sandboxing — a careless value here (a typo'd absolute path, "..",
+    "/") combined with approve=true would have the write tool create
+    directories and drop a file anywhere the process can write. Must be
+    confined to the operator's home directory; a path under it is fine."""
+    _open_operator(monkeypatch)
+    client = TestClient(create_app())
+
+    for bad in ("/etc", "/", "/tmp/msb-escape-test", "../../../../etc"):
+        r = client.post(
+            "/agent/handle",
+            json={"request": "x", "output_dir": bad},
+            headers=_auth_headers("tok"),
+        )
+        assert r.status_code == 422, (bad, r.status_code, r.text)
+        assert "home directory" in r.json()["detail"]
+
+    seen: dict = {}
+
+    async def _stub_handle(request, **kwargs):
+        from msb_v3.agent.handle import HandleResult
+
+        seen.update(kwargs)
+        return HandleResult(ok=True, run_id="r1", verdict="PASS", deterministic_hash="h")
+
+    import msb_v3.api.agent as agent_mod
+
+    monkeypatch.setattr(agent_mod, "handle", _stub_handle)
+    from pathlib import Path
+
+    good = str(Path.home() / "Desktop" / "msb-test-out")
+    r = client.post(
+        "/agent/handle",
+        json={"request": "x", "output_dir": good},
+        headers=_auth_headers("tok"),
+    )
+    assert r.status_code == 200, r.text
+    assert seen.get("output_dir") == good
+
+
+def test_agent_handle_refused_run_returns_200_with_verdict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Found 2026-09-13 (beginner-user pass, live console): a garbage/
+    malicious-looking request that the pipeline correctly refused (FAIL or
+    BLOCKED verdict) was thrown as HTTP 500 — indistinguishable from a real
+    server crash — with the whole trace dumped as `detail`, so the
+    console's structured renderer never ran and the caller saw a raw JSON
+    blob under "run failed:". handle() never raises; ok=False is always a
+    well-formed domain outcome. Both FAIL and BLOCKED must come back 200
+    with the verdict intact — that field is the signal, not the status."""
+    _open_operator(monkeypatch)
+    client = TestClient(create_app())
+    import msb_v3.api.agent as agent_mod
+    from msb_v3.agent.handle import HandleResult
+
+    for verdict in ("FAIL", "BLOCKED", "ERROR"):
+
+        async def _stub_handle(request, _verdict=verdict, **kwargs):
+            return HandleResult(
+                ok=False,
+                run_id="r-refused",
+                verdict=_verdict,
+                deterministic_hash="h",
+                error="refused",
+                trace={"intent": {"domain": "malicious"}},
+            )
+
+        monkeypatch.setattr(agent_mod, "handle", _stub_handle)
+        r = client.post(
+            "/agent/handle",
+            json={"request": "delete everything"},
+            headers=_auth_headers("tok"),
+        )
+        assert r.status_code == 200, (verdict, r.status_code, r.text)
+        body = r.json()
+        assert body["ok"] is False
+        assert body["verdict"] == verdict
+        assert body["trace"]["intent"]["domain"] == "malicious"
+
+
 _FRESH_PROCESS = r"""
 import sys
 sys.path.insert(0, "@@SRC@@")

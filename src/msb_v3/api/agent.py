@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -70,6 +71,24 @@ async def handle_slice(
     output_dir = body.get("output_dir")
     if output_dir is not None and not isinstance(output_dir, str):
         raise HTTPException(status_code=422, detail="output_dir must be a string")
+    if output_dir:
+        # BridgeProvider._write() does `Path(output_dir).mkdir(parents=True)`
+        # then writes into it with zero sandboxing (found 2026-09-13,
+        # beginner-user pass: a careless value here — "/", "..", a typo'd
+        # absolute path — combined with approve=true has the write tool
+        # create directories and drop a file anywhere the process can write,
+        # e.g. straight into the real vault or a system directory, with no
+        # confirmation beyond the request itself). Confine it to the
+        # operator's home directory — generous enough for real use (the
+        # unset default is already ~/Desktop/out) while ruling out escaping
+        # to "/", "/etc", or similar via a relative-path typo or "..".
+        resolved = Path(output_dir).expanduser().resolve()
+        home = Path.home().resolve()
+        if resolved != home and home not in resolved.parents:
+            raise HTTPException(
+                status_code=422,
+                detail=f"output_dir must be under the home directory ({home})",
+            )
     session = body.get("session") or "default"
     agent_id = body.get("agent_id")
     if agent_id is not None and not isinstance(agent_id, str):
@@ -97,8 +116,17 @@ async def handle_slice(
         "error": result.error,
         "trace": result.trace,
     }
-    if not result.ok:
-        raise HTTPException(status_code=500, detail=payload)
+    # ok=False is a well-formed domain outcome (FAIL/BLOCKED/ERROR verdict),
+    # not a server crash — handle() catches its own internal exceptions and
+    # always returns a structured HandleResult, never raises. Found
+    # 2026-09-13 (beginner-user pass, live console): a refused/failed run
+    # — the case a caller most needs a clean, structured answer for — was
+    # thrown as HTTP 500 with the whole trace as `detail`, so the console's
+    # renderRun()/renderJourney() (built to render FAIL/BLOCK verdicts
+    # nicely) never ran; the frontend's generic error catch dumped the raw
+    # stringified trace as plain text instead. Always 200: `verdict` is the
+    # signal, same contract /metrics/prometheus and the console's metrics
+    # strip already assume (SAFE/REVIEW/BLOCK/FAIL counters, not status codes).
     return payload
 
 
