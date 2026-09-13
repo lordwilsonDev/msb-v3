@@ -38,11 +38,14 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Request
 
 from msb_v3.conversation.envelope import StubModel
+from msb_v3.core.config import settings
 from msb_v3.core.event_bus import EventBus
 from msb_v3.core.identity import AgentIdentity
 from msb_v3.evidence.spine import DecisionEvidenceStore
 from msb_v3.flywheel.engine import FlywheelEngine
 from msb_v3.memory.store import MemoryStore
+from msb_v3.memory_fabric.fabric import MemoryFabric
+from msb_v3.memory_fabric.store import MemoryFabricStore
 from msb_v3.observability.audit import ArgusAuditor
 from msb_v3.retrieval.vector_store import VectorStore, get_vector_store
 from msb_v3.triumvirate.guardian_scanner import (
@@ -88,6 +91,7 @@ class ApplicationContainer:
     event_bus: EventBus
     identity: AgentIdentity
     memory_store: MemoryStore
+    memory_fabric: MemoryFabric
     conversation_stub: StubModel
     _flywheel: FlywheelEngine | None = field(default=None, repr=False)
     _vesta: VestaServices | None = field(default=None, repr=False)
@@ -165,6 +169,12 @@ def build_container(**overrides: Any) -> ApplicationContainer:
     # One shared memory store for the planners and the memory/graph/chat
     # routers — the planner's triumphirate session lives in the same store.
     memory_store = overrides.pop("memory_store", None) or MemoryStore()
+    # Separate from memory_store by design (2026-09-12) — session recency
+    # window vs. durable relevance-ranked recall, not old-vs-new. See
+    # msb_v3/memory/store.py's module docstring.
+    memory_fabric = overrides.pop("memory_fabric", None) or MemoryFabric(
+        MemoryFabricStore(settings.memory_fabric_db_path)
+    )
     services: dict[str, Any] = {
         "planner": MetaCognitivePlanner(memory_store=memory_store),
         "anchor": MissionAnchor(),
@@ -180,6 +190,7 @@ def build_container(**overrides: Any) -> ApplicationContainer:
         "event_bus": EventBus(),
         "identity": AgentIdentity(),
         "memory_store": memory_store,
+        "memory_fabric": memory_fabric,
         "conversation_stub": StubModel(),
     }
     services.update(overrides)

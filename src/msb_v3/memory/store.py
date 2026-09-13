@@ -1,16 +1,26 @@
 """Memory store — SQLite-backed message history with truncation.
 
-.. deprecated:: 0.3.2
-    This module is the legacy memory store. Use ``msb_v3.memory_fabric``
-    (primary, with provenance/verification/consolidation) instead.
-    This store will be removed in a future version.
+Not a duplicate of ``msb_v3.memory_fabric`` (checked 2026-09-12, when this
+module's deprecation warning turned out to be premature): ``MemoryItem`` has
+no ``session`` or ``role`` field, and the Fabric's only read paths
+(``list_active`` — importance/recency ranked, ``search_keywords``/
+``search_embedding`` — relevance ranked) can't reproduce "the last N
+messages of session X, in order," which is the one thing ``/chat`` needs
+turn-to-turn. Forcing that through the Fabric would mean fabricating an
+``importance``/``verification_state`` for every raw chat turn, and risking
+``consolidate()`` merging conversation turns that happen to share tags.
+
+The two stores serve different domains and both stay: this one is the
+session-scoped recency window ``/chat`` reads and writes every turn; each
+exchange is *also* recorded as an EPISODIC memory in the Fabric (see
+``api/chat.py``) for durable, cross-session, relevance-ranked recall — a
+job this store was never designed for and shouldn't try to do.
 """
 
 from __future__ import annotations
 
 import sqlite3
 import time
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -28,11 +38,6 @@ class Message:
 
 class MemoryStore:
     def __init__(self, db_path: Optional[str] = None) -> None:
-        warnings.warn(
-            "MemoryStore is deprecated — use msb_v3.memory_fabric.store instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self.db_path = Path(db_path or settings.db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()

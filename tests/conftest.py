@@ -69,3 +69,16 @@ def _isolate_wake_and_automation(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(settings, "wake_db_path", str(tmp_path / "runtime" / "wake.db"))
     monkeypatch.setattr(settings, "automation_manifest_path", str(tmp_path / "runtime" / "automation" / "manifest.jsonl"))
     monkeypatch.setattr(settings, "automation_dry_run", True)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_memory_fabric_db(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the default Memory Fabric DB at a per-test scratch file.
+
+    Added 2026-09-12 alongside container.py wiring memory_fabric into the
+    default build_container() construction (previously only api/memory_fabric.py
+    built one, standalone) — without this, any test that builds a real
+    container with no memory_fabric override would write into
+    data/memory_fabric/memory.db, the same class of gap the chaos test found
+    for settings.db_path (see _isolate_governance_db above)."""
+    monkeypatch.setattr(settings, "memory_fabric_db_path", str(tmp_path / "memory_fabric" / "memory.db"))

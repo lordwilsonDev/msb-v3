@@ -207,6 +207,78 @@ def test_chat_persists_the_exchange_for_the_next_turn(monkeypatch, tmp_path):
     assert r3.json()["history_count"] == 0
 
 
+def test_chat_records_the_exchange_as_an_episodic_memory(monkeypatch, tmp_path):
+    """2026-09-12: memory_store and memory_fabric serve different jobs (session
+    recency window vs. durable relevance-ranked recall), not old-vs-new — see
+    msb_v3/memory/store.py's module docstring. This is memory_fabric's first
+    real production write: every /chat exchange should also land there as an
+    EPISODIC memory, independent of (and never blocking) the memory_store
+    round-trip covered above."""
+    from msb_v3.api.app import create_app
+    from msb_v3.core.container import get_container
+    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+    from msb_v3.memory_fabric.fabric import MemoryFabric
+    from msb_v3.memory_fabric.models import MemoryType
+    from msb_v3.memory_fabric.store import MemoryFabricStore
+
+    monkeypatch.delenv("MCP_BRIDGE_SECRET", raising=False)
+
+    real_fabric = MemoryFabric(MemoryFabricStore(str(tmp_path / "fabric.db")))
+    monkeypatch.setattr(get_container(), "memory_fabric", real_fabric)
+
+    class EchoHarness(ChatHarness):
+        def execute(self, query, context=None, *, session="default", **kwargs):
+            return HarnessResult(
+                ok=True, event="chat:completed",
+                payload={"query": query, "text": f"echo: {query}", "model": "fake"},
+            )
+
+    app = create_app()
+    app.state.chat = EchoHarness()
+    client = TestClient(app)
+
+    r = client.post("/chat", json={"query": "remember this", "session": "fabric-1"})
+    assert r.status_code == 200
+
+    items = real_fabric.store.list_active("default", type_=MemoryType.EPISODIC)
+    assert len(items) == 1
+    assert "remember this" in items[0].content
+    assert "echo: remember this" in items[0].content
+    assert items[0].task_id == "fabric-1"
+    assert items[0].source == "chat"
+
+
+def test_chat_survives_a_memory_fabric_failure(monkeypatch):
+    """The memory_fabric write is best-effort, same contract as the
+    memory_store write above — a fabric hiccup must not fail a chat response
+    that already succeeded."""
+    from msb_v3.api.app import create_app
+    from msb_v3.core.container import get_container
+    from msb_v3.harnesses.base import ChatHarness, HarnessResult
+
+    monkeypatch.delenv("MCP_BRIDGE_SECRET", raising=False)
+
+    class ExplodingFabric:
+        def store_memory(self, *args, **kwargs):
+            raise RuntimeError("fabric db unavailable")
+
+    monkeypatch.setattr(get_container(), "memory_fabric", ExplodingFabric())
+
+    class EchoHarness(ChatHarness):
+        def execute(self, query, context=None, *, session="default", **kwargs):
+            return HarnessResult(
+                ok=True, event="chat:completed",
+                payload={"query": query, "text": "echo", "model": "fake"},
+            )
+
+    app = create_app()
+    app.state.chat = EchoHarness()
+    client = TestClient(app)
+
+    r = client.post("/chat", json={"query": "hi", "session": "fabric-fail"})
+    assert r.status_code == 200
+
+
 def test_dispatcher_metrics_increment():
     from msb_v3.harnesses.base import ChatHarness
 
