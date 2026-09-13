@@ -244,6 +244,63 @@ async def test_unknown_verification_method_coerced_to_none() -> None:
 
 
 @pytest.mark.asyncio
+async def test_destructive_goal_with_no_verification_is_dropped() -> None:
+    """Found 2026-09-13 (beginner-user pass, live): "delete everything please
+    help" produced a task {goal: "Delete all data from the vault.",
+    tools: ["search_query"], verification_method: "none"} that executed and
+    reported ok=true, verdict=pass — search_query cannot delete anything, and
+    "none" performs no check at all, so this was a confabulated success on a
+    goal the task had no real capability to perform. No tool in this slice
+    can actually delete anything, so the only safe behavior is to never let
+    such a task claim an unconditional pass. As the sole task, dropping it
+    empties the graph, and the caller falls back to the template DAG."""
+    client = _FakeClient(
+        '{"tasks": [{"task_id": "delete-all-data", '
+        '"goal": "Delete all data from the vault.", "parent_id": null, '
+        '"capabilities": ["read_vault"], "tools": ["search_query"], '
+        '"expected_output": "Confirmation that all data has been deleted.", '
+        '"verification_method": "none", "timeout_s": 30, "retry_policy": "retry:2"}]}'
+    )
+    graph = await plan(_read_intent(), client=client)
+    assert graph.source == "template"  # the sole task was dropped -> fallback
+    assert not any("delete" in t.task_id for t in graph.tasks)
+
+
+@pytest.mark.asyncio
+async def test_destructive_goal_dropped_but_sibling_tasks_survive() -> None:
+    """The drop is per-task, not a blanket reject of the whole run: a
+    legitimate sibling task in the same plan is unaffected."""
+    client = _FakeClient(
+        '{"tasks": ['
+        '{"task_id": "research", "goal": "search the vault for X", "parent_id": null, '
+        '"capabilities": ["read_vault"], "tools": ["search_query"], '
+        '"verification_method": "search_returned_hits", "timeout_s": 60, "retry_policy": "retry:2"}, '
+        '{"task_id": "delete-all-data", "goal": "delete everything in the vault", '
+        '"parent_id": null, "capabilities": [], "tools": ["search_query"], '
+        '"verification_method": "none", "timeout_s": 30, "retry_policy": "retry:2"}]}'
+    )
+    graph = await plan(_read_intent(), client=client)
+    assert graph.source == "llm"
+    assert [t.task_id for t in graph.tasks] == ["research"]
+
+
+@pytest.mark.asyncio
+async def test_destructive_goal_with_real_verification_is_kept() -> None:
+    """The gate is specifically {destructive language + no grounded check} —
+    a destructive-sounding goal paired with a real verification method (one
+    the registry can actually run) is not second-guessed here; that's the
+    verifier's job, not the parser's."""
+    client = _FakeClient(
+        '{"tasks": [{"task_id": "cleanup", "goal": "delete everything in scratch/", '
+        '"parent_id": null, "capabilities": ["write_file"], "tools": ["vault_write"], '
+        '"verification_method": "file_written", "timeout_s": 30, "retry_policy": "retry:2"}]}'
+    )
+    graph = await plan(_write_intent(), client=client)
+    assert graph.source == "llm"
+    assert graph.by_id("cleanup").verification_method == "file_written"
+
+
+@pytest.mark.asyncio
 async def test_plan_metrics_move() -> None:
     from prometheus_client.registry import REGISTRY
 

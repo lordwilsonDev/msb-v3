@@ -215,32 +215,64 @@ planner (a) doesn't actually wire a destructive tool to it and (b) assigns
 under-specified request from a real beginner user produces ("delete everything"
 with no target, no scope, no confirmation of what "everything" means).
 
-**Not fixed — flagged for a product/architecture call, not a mechanical patch.**
-Candidate directions, none applied: (a) forbid `verification_method: none` for
-any task whose granted `tools`/`capabilities` include `write_file` or whose goal
-text matches destructive-intent patterns; (b) require the MoIE panel to hard-
-escalate (not just "CONCERN") when a request's own text contains
-deletion/removal language, independent of the experts' generic risk
-assumptions; (c) add a grounded check that a task's `tools` can structurally
-satisfy its stated `goal` before allowing an unconditional PASS. Each of these
+**Update, same day (2026-09-13, later):** initially left unpatched — three
+candidate directions existed ((a) forbid `verification_method: none` for any
+task whose `tools`/`capabilities` include `write_file` or whose goal is
+destructive-sounding; (b) make MoIE hard-escalate on deletion language
+regardless of expert consensus; (c) verify a task's `tools` can structurally
+satisfy its stated `goal`) and none is a mechanical, low-risk patch — each
 changes planning/authorization behavior for every request, not just this
-shape — worth Wilson's judgment on which (if any) to take, and worth a second,
-larger sample before concluding how often this recurs.
+shape. Instructed directly to fix it regardless ("if it's broken, it still
+got to get fixed either way"). Took (a), the narrowest structural version:
+`planner.py::_parse_tasks` now drops (not coerces, not warns — drops, the
+same treatment as any other invalid task entry) any task whose resolved
+`verification_method` is `"none"` **and** whose `goal` text matches a
+destructive-intent pattern (`_DESTRUCTIVE_GOAL_RE`: delete/erase/wipe/
+destroy/purge/remove combined with all/everything/entire). Deliberately did
+**not** touch (b) — MoIE's expert-scoring is used by many other callers and
+its own test suite (`tests/moie/`) needed more study than this pass allowed
+to change safely — the planner-level drop is a stronger guarantee anyway: it
+holds regardless of what MoIE's language judgment says, because no tool in
+this slice can actually delete anything (confirmed: `CAPABILITY_TOOL` in
+`planner.py` has no delete/remove entry), so a destructive-sounding claim can
+never be genuinely grounded, full stop. (c) is effectively subsumed — the
+capability-goal mismatch is exactly what makes such a claim unverifiable.
 
-**Plausibility of the original claim:** ~40% before this pass (MoIE existing and
-documented gave real reason for confidence); ~15% after — the panel didn't
-catch either an explicit XSS/SQLi payload or a plainly destructive, capability-
-mismatched task, on the only two live samples drawn.
+Regression tests added: the original confabulating shape now drops to the
+template-DAG fallback; a destructive task dropped from a multi-task plan
+leaves its legitimate siblings untouched; a destructive-sounding goal paired
+with a *real* verification method (one the registry can actually run) is
+correctly left alone — the gate is specifically {destructive language + zero
+grounded check}, not destructive language alone. All 17 planner tests, all
+444 tests across `agent/architecture/api/moie`, and the full suite (3350
+passed, 0 failed, 17 skipped) green after the change. Live-reverified: a
+benign live `/agent/handle` call post-restart still plans/executes/verifies
+normally (`PASS`, `synthesis_nonempty`, real answer) — the fix didn't
+regress ordinary requests.
+
+**Plausibility of the original claim:** ~40% before this pass (MoIE existing
+and documented gave real reason for confidence); ~15% immediately after (the
+panel didn't catch either an explicit XSS/SQLi payload or a plainly
+destructive, capability-mismatched task, on the only two live samples drawn);
+now closed at the planner layer independent of MoIE's judgment — a future
+MoIE miss on similar language no longer produces a confabulated PASS, though
+MoIE's own scoring gap (assumption 4's `CONDITIONAL`-not-`BLOCKED` verdict on
+an explicit XSS/SQLi payload) is unchanged and still worth a look.
 
 ---
 
 ## Net
 
-Three clean, low-risk, fully-verified fixes shipped (`console.py` dead-UI,
-`agent.py` 500-vs-200 semantics, `agent.py` `output_dir` sandboxing) — each with
-a regression test, each re-verified against the live server, not just in-process.
-One deeper finding — the planner/verifier/MoIE gap on confabulated success for a
-destructive-but-toothless task — is real, reproduced without incident (no actual
-data loss, vault file count confirmed unchanged), and intentionally left
-unpatched pending a product decision on which of several architecturally-
-different fixes to take.
+Four fixes shipped, all clean and fully verified (`console.py` dead-UI,
+`agent.py` 500-vs-200 semantics, `agent.py` `output_dir` sandboxing,
+`planner.py` confabulated-destructive-task drop) — each with a regression
+test, the first three re-verified against the live server directly, the
+fourth verified via 17 targeted planner tests plus a live post-fix sanity
+call (deterministic unit coverage was the right verification here — the
+original live repro was itself non-reproducible on demand, since the LLM
+planner is stochastic and the same phrasing produced a differently-shaped
+graph on a retry). Full suite green: 3350 passed, 0 failed, 17 skipped.
+MoIE's own expert-scoring gap on explicit injection payloads (assumption 4's
+supporting evidence) is separately still open — narrower and lower-risk to
+leave for now since the planner-level fix already closes the actual
+data-integrity/false-success concern independent of it.

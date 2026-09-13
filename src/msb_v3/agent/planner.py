@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any, Dict, List
 
 from msb_v3.agent.dag import Task, TaskGraph
@@ -57,6 +58,27 @@ _KNOWN_VERIFY = {
     "none",
 }
 _KNOWN_CAPABILITIES = {"read_vault", "llm_synthesis", "write_file"}
+
+# Found 2026-09-13 (beginner-user / axiom-inversion pass, live): the request
+# "delete everything please help" produced a task {goal: "Delete all data
+# from the vault.", tools: ["search_query"], verification_method: "none"}
+# that executed and reported ok=true, verdict=pass — a confabulated success
+# on a goal the task had no real capability to perform (search_query cannot
+# delete anything, and "none" performs no grounded check at all; see
+# verify.py's own docstring — "none" is a legitimate pass-through for tasks
+# with no checkable artifact, which a claimed deletion is not). No tool in
+# this slice can actually delete anything (CAPABILITY_TOOL below has no
+# delete/remove entry), so a destructive-sounding goal can never be
+# genuinely grounded — the only safe outcome is to never let the planner
+# hand one an unconditional pass. Dropped here (like any other invalid
+# entry), not coerced to a stricter verification_method, because no
+# verifier in the registry could actually confirm a deletion happened;
+# claiming one did through "none" is the defect, not the fix.
+_DESTRUCTIVE_GOAL_RE = re.compile(
+    r"\b(delete|erase|wipe|destroy|purge|remove)\b.{0,40}\b(all|everything|entire)\b"
+    r"|\b(all|everything|entire)\b.{0,40}\b(delete|erase|wipe|destroy|purge|remove)\b",
+    re.IGNORECASE,
+)
 
 # Canonical capability -> real tool map (the BridgeProvider's vocabulary).
 # The LLM planner is told to put capability names in "tools" (same vocabulary
@@ -169,6 +191,11 @@ def _parse_tasks(data: Dict[str, Any]) -> List[Task]:
         verify = item.get("verification_method")
         if verify not in _KNOWN_VERIFY:
             verify = "none"
+        if verify == "none" and _DESTRUCTIVE_GOAL_RE.search(goal):
+            # A destructive-sounding claim with no grounded check behind it —
+            # drop the task rather than let it execute and report an
+            # unconditional pass (see _DESTRUCTIVE_GOAL_RE above).
+            continue
         parent_id = item.get("parent_id")
         if parent_id is not None and not isinstance(parent_id, str):
             parent_id = None
