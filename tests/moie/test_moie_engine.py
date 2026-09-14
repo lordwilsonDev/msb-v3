@@ -33,6 +33,35 @@ def test_danger_claim_blocks_fail_closed():
     assert sec.verdict == "BLOCK"
 
 
+def test_injection_syntax_in_the_claim_blocks_not_conditional():
+    """Found live 2026-09-13 (beginner-user chaos pass): the security
+    expert's danger keywords were English phrases about security concepts
+    ("sql injection", "prompt injection") — none of them matched literal
+    attack syntax sitting in the request text itself. A claim containing an
+    actual <script> tag and a real SQL injection terminator scored
+    CONDITIONAL (confidence 0.47), with the security/reliability/adversarial
+    experts all independently reporting SAFE and zero danger signals. Added
+    "<script" and "drop table" to config/risk_templates.json's security
+    danger keywords — both literal, near-zero-false-positive substrings
+    (chosen because they're exactly what today's live payload contained,
+    not a guessed broader net) that flip this expert straight to BLOCK,
+    which the meta-critic already treats as fail-closed for the whole
+    panel."""
+    from msb_v3.moie.experts import SECURITY
+
+    assert "<script" in SECURITY.danger_keywords
+    assert "drop table" in SECURITY.danger_keywords
+
+    d = _analyze(
+        "asdf asdf help help delete everything!!! ???!!! "
+        "<script>alert(1)</script> '; DROP TABLE users; --"
+    )
+    assert d.verdict == "BLOCK"
+    assert d.blocked is True
+    sec = [r for r in d.reports if r.expert_id == "security"][0]
+    assert sec.verdict == "BLOCK"
+
+
 def test_concern_claim_is_conditional():
     d = _analyze("Migrate the database schema with no downtime window.")
     assert d.verdict == "CONDITIONAL"

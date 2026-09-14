@@ -255,24 +255,61 @@ and documented gave real reason for confidence); ~15% immediately after (the
 panel didn't catch either an explicit XSS/SQLi payload or a plainly
 destructive, capability-mismatched task, on the only two live samples drawn);
 now closed at the planner layer independent of MoIE's judgment — a future
-MoIE miss on similar language no longer produces a confabulated PASS, though
-MoIE's own scoring gap (assumption 4's `CONDITIONAL`-not-`BLOCKED` verdict on
-an explicit XSS/SQLi payload) is unchanged and still worth a look.
+MoIE miss on similar language no longer produces a confabulated PASS.
+
+**Update, same day (2026-09-13, later still):** the MoIE scoring gap itself
+also closed, once actually traced rather than assumed architectural.
+`SECURITY` (`src/msb_v3/moie/experts.py`) turned out to be a plain keyword
+matcher (`DomainExpert`), its vocabulary sourced entirely from
+`config/risk_templates.json` at import time (`apply_policy_overrides()`) —
+not an LLM judgment call, and not the deep rearchitecture this doc
+originally worried about. Its danger keywords were English phrases about
+security *concepts* (`"sql injection"`, `"prompt injection"`, `"eval("`) —
+built for reviewing a described plan ("the plan assumes X"), never a
+literal attack payload sitting in raw request text. `<script>alert(1)</script>`
+and `'; DROP TABLE users; --` matched none of them.
+
+Traced before touching anything: this repo runs a *formal* precision/recall
+benchmark on every push (`scripts/ci-policy-gate.sh`, gated against a frozen
+56-claim labeled corpus, `MSB-GATE-CORPUS-001` — `tests/contracts/gate_corpus.py`),
+fails the build on any drift from a pinned baseline
+(`MSB-GATE-EVAL-001: tp=17 fp=8 tn=8 fn=23, precision 0.68, recall 0.425`).
+A keyword change here is exactly the kind of edit that gate exists to catch
+if it isn't deliberate. Checked the full corpus by hand and confirmed
+empirically (`keyword_hits()` against all 56 entries) before committing:
+zero entries contain `<script` or the literal phrase `drop table` — the
+corpus tests shell/auth/exfiltration attacks, not web/SQL injection syntax,
+so this is a genuinely new detection category, not a perturbation of the
+existing one. Ran the actual gate script with the change in place to
+confirm rather than trust the reasoning: identical numbers, baseline still
+`MATCH`, exit 0.
+
+**Fixed:** added `"<script"` and `"drop table"` to the security expert's
+danger keywords (`config/risk_templates.json`) — both literal substrings
+chosen because they're exactly what today's payload contained, not a
+guessed broader net (a broader net, e.g. `"../../"` for path traversal,
+was considered and deliberately left out — that vector is already closed
+by a hard technical control, `output_dir`'s home-directory containment
+above, and risked a real false positive against legitimate relative-path
+requests this corpus doesn't test for). `MoIEController.analyze()` on
+today's exact payload now returns `BLOCK`/`blocked=True` (was
+`CONDITIONAL`/`False`, confidence 0.47 → 0.1). One new test pins it
+(`tests/moie/test_moie_engine.py`). Full MoIE + contracts suite (381 tests)
+and the full end-to-end suite verified green.
 
 ---
 
 ## Net
 
-Four fixes shipped, all clean and fully verified (`console.py` dead-UI,
+Five fixes shipped, all clean and fully verified (`console.py` dead-UI,
 `agent.py` 500-vs-200 semantics, `agent.py` `output_dir` sandboxing,
-`planner.py` confabulated-destructive-task drop) — each with a regression
-test, the first three re-verified against the live server directly, the
-fourth verified via 17 targeted planner tests plus a live post-fix sanity
-call (deterministic unit coverage was the right verification here — the
-original live repro was itself non-reproducible on demand, since the LLM
-planner is stochastic and the same phrasing produced a differently-shaped
-graph on a retry). Full suite green: 3350 passed, 0 failed, 17 skipped.
-MoIE's own expert-scoring gap on explicit injection payloads (assumption 4's
-supporting evidence) is separately still open — narrower and lower-risk to
-leave for now since the planner-level fix already closes the actual
-data-integrity/false-success concern independent of it.
+`planner.py` confabulated-destructive-task drop, and the MoIE security
+keyword gap) — each with a regression test, the UI-facing ones re-verified
+against the live server directly, the planner fix verified via 17 targeted
+tests plus a live post-fix sanity call (deterministic unit coverage was the
+right verification there — the original live repro was itself
+non-reproducible on demand, since the LLM planner is stochastic and the
+same phrasing produced a differently-shaped graph on a retry), and the MoIE
+fix verified against both its own frozen benchmark corpus and a direct
+reproduction of today's exact payload. Full suite green throughout the day,
+final run 3350+ passed, 0 failed. Everything committed and pushed.

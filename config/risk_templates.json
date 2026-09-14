@@ -1,11 +1,11 @@
 {
-  "version": "20260818-1",
+  "version": "20260913-1",
   "description": "MoIE detection policy (MSB Phase 2 + keyword externalization). The file is LOAD-BEARING: it carries the full keyword detection policy (focus/danger/concern per expert) plus the risk/mitigation template overlay. The inline expert scaffolding in src/msb_v3/moie/experts.py is NOT a keyword fallback — a missing, corrupt, or incomplete policy file makes the module refuse to start (fail-closed), because keywords are the verdict and an empty policy would silently disable detection. Templates remain an overlay onto the inline prose floor.",
   "experts": {
     "security": {
       "keywords": {
         "focus": ["auth", "password", "secret", "token", "key", "shell", "sudo", "network", "firewall", "encrypt", "injection", "expose", "privilege", "permission", "credential", "api key"],
-        "danger": ["bypass", "disable auth", "privilege escalation", "shell", "eval(", "exec(", "chmod 777", "rm -rf", "sudo", "prompt injection", "sql injection", "0.0.0.0", "unauthenticated", "skip auth"],
+        "danger": ["bypass", "disable auth", "privilege escalation", "shell", "eval(", "exec(", "chmod 777", "rm -rf", "sudo", "prompt injection", "sql injection", "0.0.0.0", "unauthenticated", "skip auth", "<script", "drop table"],
         "concern": ["password", "secret", "token", "api key", "credential", "expose", "port", "firewall", "encrypt", "network"]
       },
       "risk_templates": {
