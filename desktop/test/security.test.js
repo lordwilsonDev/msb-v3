@@ -61,6 +61,7 @@ test('preload exposes exactly the allow-listed method names', () => {
   const expected = [
     'attach', 'health', 'identity', 'cockpit', 'governanceStatus',
     'approvals', 'approve', 'killswitch', 'killswitchSet', 'memory', 'search',
+    'listTasks', 'subscribeTask', 'unsubscribeTask', 'onTaskEvent',
   ].sort();
   assert.deepEqual([...new Set(exposed)].sort(), expected);
 });
@@ -74,8 +75,13 @@ test('preload has no generic channel passthrough', () => {
 
 test('every ipcRenderer.invoke target is a literal msb: channel', () => {
   const targets = [...preload.matchAll(/invoke\(\s*'([^']+)'/g)].map((m) => m[1]);
-  assert.ok(targets.length >= 11);
+  assert.ok(targets.length >= 14);
   for (const t of targets) assert.match(t, /^msb:[a-zA-Z]+$/);
+});
+
+test('ipcRenderer.on is used exactly once, for the literal msb:taskEvent channel', () => {
+  const onTargets = [...preload.matchAll(/ipcRenderer\.on\(\s*'([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(onTargets, ['msb:taskEvent']);
 });
 
 test('renderer never uses innerHTML with interpolation and has no inline handlers', () => {

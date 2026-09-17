@@ -76,6 +76,31 @@ const api = Object.freeze({
    */
   search: (query, limit) =>
     ipcRenderer.invoke('msb:search', { query: str(query), limit: int(limit) }),
+
+  /**
+   * GET /agent/tasks - recent/in-flight unified tasks.
+   * @param {number} [limit]
+   */
+  listTasks: (limit) => ipcRenderer.invoke('msb:listTasks', { limit: int(limit) }),
+
+  /** Start a live observation stream for one task. @param {string} taskId */
+  subscribeTask: (taskId) => ipcRenderer.invoke('msb:subscribeTask', { taskId: str(taskId) }),
+
+  /** Stop a task's live stream. @param {string} taskId */
+  unsubscribeTask: (taskId) => ipcRenderer.invoke('msb:unsubscribeTask', { taskId: str(taskId) }),
+
+  /**
+   * Subscribe to task-stream events (observation/done/reconnecting/stream-error)
+   * for every task currently subscribed via subscribeTask. Filter by
+   * event.taskId in the callback - this is one shared channel, not per-task.
+   * @param {(event: {taskId: string, event: string, data: object}) => void} callback
+   * @returns {() => void} call to unsubscribe
+   */
+  onTaskEvent: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('msb:taskEvent', listener);
+    return () => ipcRenderer.removeListener('msb:taskEvent', listener);
+  },
 });
 
 contextBridge.exposeInMainWorld('msb', api);

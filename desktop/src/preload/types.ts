@@ -93,6 +93,26 @@ export interface SearchHit {
   [k: string]: unknown;
 }
 
+/** GET /agent/tasks */
+export interface Task {
+  task_id: string;
+  state: 'CREATED' | 'PLANNED' | 'EXECUTING' | 'VERIFYING' | 'COMPLETED' | 'FAILED' | 'QUARANTINED' | 'DENIED';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskListPage {
+  count: number;
+  tasks: Task[];
+}
+
+/** One frame forwarded from the main-process SSE client. */
+export interface TaskStreamEvent {
+  taskId: string;
+  event: 'observation' | 'done' | 'reconnecting' | 'stream-error';
+  data: Record<string, unknown>;
+}
+
 // --- exposed API ---------------------------------------------------
 
 export interface MsbApi {
@@ -107,6 +127,10 @@ export interface MsbApi {
   killswitchSet(op: 'arm' | 'disarm', reason?: string): Promise<Result>;
   memory(session?: string, limit?: number): Promise<Result<MemoryPage>>;
   search(query: string, limit?: number): Promise<Result<{ results?: SearchHit[]; [k: string]: unknown }>>;
+  listTasks(limit?: number): Promise<Result<TaskListPage>>;
+  subscribeTask(taskId: string): Promise<Result>;
+  unsubscribeTask(taskId: string): Promise<Result>;
+  onTaskEvent(callback: (event: TaskStreamEvent) => void): () => void;
 }
 
 declare global {
