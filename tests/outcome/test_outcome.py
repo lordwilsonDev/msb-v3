@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shlex
+import sys
 from pathlib import Path
 
 import pytest
@@ -300,7 +302,12 @@ class TestPipelineIntegration:
             objective="Implement answer() that returns 42",
             metadata={
                 "verification_commands": [
-                    "python -c \"exec(open('artifact.py').read()); assert answer() == 42\""
+                    # sys.executable, not a bare "python": verification commands
+                    # run through a shell, so a bare name is resolved from PATH —
+                    # and the gate's launchd PATH has no "python" at all, which
+                    # made the command itself unrunnable instead of exercising
+                    # the assertion this test is actually about.
+                    f"{shlex.quote(sys.executable)} -c \"exec(open('artifact.py').read()); assert answer() == 42\""
                 ],
             },
         ))
@@ -329,7 +336,7 @@ class TestPipelineIntegration:
             objective="Implement answer() that returns 42",
             metadata={
                 "verification_commands": [
-                    "python -c \"exec(open('artifact.py').read()); assert answer() == 42\""
+                    f"{shlex.quote(sys.executable)} -c \"exec(open('artifact.py').read()); assert answer() == 42\""
                 ],
             },
         ))

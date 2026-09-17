@@ -7,6 +7,7 @@ to get the live test count (hermetic, no execution).
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -41,10 +42,14 @@ def ingest_tests(project_root: str | Path) -> TestFacts:
     subdirs = sorted(d.name for d in tests_dir.iterdir() if d.is_dir())
     facts.test_dirs = Provenanced.observed(subdirs, source_tag)
 
-    # Try pytest --collect-only for live count
+    # Try pytest --collect-only for live count. sys.executable, never a bare
+    # "python": a bare name is resolved from PATH, and the daily gate's
+    # launchd PATH has no "python" at all — this silently fell through to the
+    # except below and reported the FILE count (288) as the test count, which
+    # the twin's own `> 500` assertion then rejected.
     try:
         proc = subprocess.run(
-            ["python", "-m", "pytest", "--collect-only", "-q", "--no-header"],
+            [sys.executable, "-m", "pytest", "--collect-only", "-q", "--no-header"],
             cwd=str(root),
             capture_output=True,
             text=True,

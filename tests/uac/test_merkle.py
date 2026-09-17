@@ -242,13 +242,19 @@ def test_cli_receipt_roundtrip(tmp_path) -> None:
     third party."""
     import json
     import subprocess
+    import sys
 
+    # sys.executable, never a bare "python3": the CLI must run under the same
+    # interpreter as this suite (which owns the msb_ledger install). A bare
+    # name is resolved from PATH, so under the factory gate's launchd PATH it
+    # landed on a Homebrew python with no msb_ledger and exited 1 — passing
+    # here and failing only in the gate.
     chain = _chain(tmp_path)
     for i in range(5):
         chain.append("test", "event", {"n": i})
 
     out = subprocess.run(
-        ["python3", "-m", "msb_ledger.chain_anchor", "--receipt", str(chain.db_path),
+        [sys.executable, "-m", "msb_ledger.chain_anchor", "--receipt", str(chain.db_path),
          "--seq", "3"],
         capture_output=True, text=True, check=True,
     )
@@ -260,7 +266,7 @@ def test_cli_receipt_roundtrip(tmp_path) -> None:
     receipt_file = tmp_path / "receipt.json"
     receipt_file.write_text(json.dumps(data))
     verify = subprocess.run(
-        ["python3", "-m", "msb_ledger.chain_anchor", "--verify-receipt",
+        [sys.executable, "-m", "msb_ledger.chain_anchor", "--verify-receipt",
          str(chain.db_path), "--receipt-file", str(receipt_file)],
         capture_output=True, text=True,
     )
@@ -269,7 +275,7 @@ def test_cli_receipt_roundtrip(tmp_path) -> None:
 
     # Missing --seq is a CLI error, not a silent default.
     bad = subprocess.run(
-        ["python3", "-m", "msb_ledger.chain_anchor", "--receipt", str(chain.db_path)],
+        [sys.executable, "-m", "msb_ledger.chain_anchor", "--receipt", str(chain.db_path)],
         capture_output=True, text=True,
     )
     assert bad.returncode != 0
