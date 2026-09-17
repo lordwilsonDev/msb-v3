@@ -176,10 +176,12 @@ function handleTaskEvent(evt) {
   // re-rendering the whole Tasks panel (no flicker on a live-streaming task).
   if (evt.taskId === state.tasks.expandedId && taskEventsListEl && (evt.event === 'observation' || evt.event === 'done')) {
     taskEventsListEl.appendChild(taskEventRow(evt));
+    while (taskEventsListEl.childElementCount > MAX_TASK_EVENTS) taskEventsListEl.removeChild(taskEventsListEl.firstChild);
     return;
   }
   // Anything else (status change, or an event for a task whose panel isn't
   // mounted) needs a full re-render of just the tab body.
+  if (state.activeTab !== 'tasks') return;
   renderTabBody();
 }
 
