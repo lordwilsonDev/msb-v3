@@ -4,10 +4,26 @@ Endpoints:
     GET  /plei/understand   → project summary
     GET  /plei/status       → lifecycle + health
     GET  /plei/lifecycle    → detailed lifecycle classification
+
+Found live 2026-09-17: every handler here called ingest_all() (and the
+downstream risk/gap/simulation analysis) directly inside `async def`, with
+no thread offload. ingest_all() alone takes ~5s (mostly the tests-layer
+filesystem walk) - synchronous CPU/IO work inside an async handler blocks
+the ONE event-loop thread uvicorn runs on, so it doesn't just make that
+one request slow, it stalls everything else sharing the loop (the cron
+scheduler's background asyncio task among them). A clean, isolated
+/plei/status request was observed taking 27s end-to-end (vs ~5.4s for the
+identical ingest_all() call run standalone) and returning a degraded
+"IDEA / insufficient evidence" classification, consistent with the
+ingestion itself getting starved of CPU time by the interleaving. Every
+handler below now runs its blocking work via asyncio.to_thread, the same
+pattern already used for model-generation calls in
+agent/bridge_provider.py's _synthesize.
 """
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -29,15 +45,13 @@ async def understand_project(project_root: str = Query(default=_DEFAULT_ROOT, de
     evidence, and repo state — every assertion carries a provenance tag.
     """
     try:
-        twin = ingest_all(project_root)
+        twin = await asyncio.to_thread(ingest_all, project_root)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {exc}") from exc
     return twin_summary(twin)
 
 
-@plei_router.get("/status", summary="Lifecycle + project health")
-async def project_status(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """Return lifecycle position and health scores."""
+def _status_sync(project_root: str) -> dict[str, Any]:
     twin = ingest_all(project_root)
     lc = classify_lifecycle(twin)
     return {
@@ -48,30 +62,48 @@ async def project_status(project_root: str = Query(default=_DEFAULT_ROOT, descri
     }
 
 
-@plei_router.get("/lifecycle", summary="Detailed lifecycle classification")
-async def project_lifecycle(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """Classify lifecycle with full evidence and subsystem breakdown."""
+@plei_router.get("/status", summary="Lifecycle + project health")
+async def project_status(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Return lifecycle position and health scores."""
+    return await asyncio.to_thread(_status_sync, project_root)
+
+
+def _lifecycle_sync(project_root: str) -> dict[str, Any]:
     twin = ingest_all(project_root)
     lc = classify_lifecycle(twin)
     return lifecycle_as_dict(lc)
 
 
-@plei_router.get("/gaps", summary="Capability gaps for current lifecycle stage")
-async def project_gaps(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """Detect capability gaps: what the project needs vs what's available."""
+@plei_router.get("/lifecycle", summary="Detailed lifecycle classification")
+async def project_lifecycle(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Classify lifecycle with full evidence and subsystem breakdown."""
+    return await asyncio.to_thread(_lifecycle_sync, project_root)
+
+
+def _gaps_sync(project_root: str) -> dict[str, Any]:
     from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
     twin = ingest_all(project_root)
     report = detect_gaps(twin)
     return gap_report_as_dict(report)
 
 
-@plei_router.get("/capabilities", summary="Capability graph for the project's lifecycle")
-async def project_capabilities(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """What capabilities does this lifecycle stage require, and which skills provide them?"""
+@plei_router.get("/gaps", summary="Capability gaps for current lifecycle stage")
+async def project_gaps(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Detect capability gaps: what the project needs vs what's available."""
+    return await asyncio.to_thread(_gaps_sync, project_root)
+
+
+def _capabilities_sync(project_root: str) -> dict[str, Any]:
     from msb_v3.plei.engineering.capability_graph import graph_summary
     twin = ingest_all(project_root)
     lc = classify_lifecycle(twin)
     return graph_summary(lc.stage)
+
+
+@plei_router.get("/capabilities", summary="Capability graph for the project's lifecycle")
+async def project_capabilities(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """What capabilities does this lifecycle stage require, and which skills provide them?"""
+    return await asyncio.to_thread(_capabilities_sync, project_root)
 
 
 @plei_router.get("/skills", summary="Skill taxonomy — all installed skills")
@@ -81,22 +113,30 @@ async def skill_taxonomy():
     return taxonomy_summary()
 
 
-@plei_router.get("/risk", summary="Risk report — dependencies, failure modes, debt")
-async def project_risk(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """Unified risk: dependency bottlenecks, failure modes, technical debt."""
+def _risk_sync(project_root: str) -> dict[str, Any]:
     from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
     twin = ingest_all(project_root)
     report = analyze_risk(twin)
     return risk_report_as_dict(report)
 
 
-@plei_router.get("/debt", summary="Technical debt — ranked by impact × probability × irreversibility")
-async def project_debt():
-    """Ranked technical debt ledger with Monte Carlo-ready scoring."""
+@plei_router.get("/risk", summary="Risk report — dependencies, failure modes, debt")
+async def project_risk(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Unified risk: dependency bottlenecks, failure modes, technical debt."""
+    return await asyncio.to_thread(_risk_sync, project_root)
+
+
+def _debt_sync() -> dict[str, Any]:
     from msb_v3.plei.risk.debt_model import debt_report_as_dict, score_debt
     twin = ingest_all()
     report = score_debt(twin)
     return debt_report_as_dict(report)
+
+
+@plei_router.get("/debt", summary="Technical debt — ranked by impact × probability × irreversibility")
+async def project_debt():
+    """Ranked technical debt ledger with Monte Carlo-ready scoring."""
+    return await asyncio.to_thread(_debt_sync)
 
 
 @plei_router.get("/dependencies", summary="Dependency graph — critical path, bottlenecks, coupling")
@@ -112,9 +152,7 @@ async def project_dependencies():
     return dependency_graph_as_dict(graph)
 
 
-@plei_router.get("/simulate", summary="Monte Carlo simulation — probabilistic forecast")
-async def project_simulate(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"), trials: int = Query(default=2000, ge=100, le=50000, description="Number of Monte Carlo trials")):
-    """Run Monte Carlo simulation from risk data and return forecast."""
+def _simulate_sync(project_root: str, trials: int) -> dict[str, Any]:
     from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
     from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
     from msb_v3.plei.simulation.forecast import build_forecast, forecast_as_dict
@@ -144,9 +182,13 @@ async def project_simulate(project_root: str = Query(default=_DEFAULT_ROOT, desc
     }
 
 
-@plei_router.get("/what-if", summary="What-if scenarios vs baseline")
-async def project_what_if(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """Run what-if scenarios: fix top debt, zero failures, half failures, close gaps, pessimistic."""
+@plei_router.get("/simulate", summary="Monte Carlo simulation — probabilistic forecast")
+async def project_simulate(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"), trials: int = Query(default=2000, ge=100, le=50000, description="Number of Monte Carlo trials")):
+    """Run Monte Carlo simulation from risk data and return forecast."""
+    return await asyncio.to_thread(_simulate_sync, project_root, trials)
+
+
+def _what_if_sync(project_root: str) -> dict[str, Any]:
     from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
     from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
     from msb_v3.plei.simulation.monte_carlo import (
@@ -174,9 +216,13 @@ async def project_what_if(project_root: str = Query(default=_DEFAULT_ROOT, descr
     return what_if_as_dict(report)
 
 
-@plei_router.get("/sensitivity", summary="Sensitivity analysis — which variables drive uncertainty?")
-async def project_sensitivity():
-    """Tornado analysis: measure each variable's contribution to outcome variance."""
+@plei_router.get("/what-if", summary="What-if scenarios vs baseline")
+async def project_what_if(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Run what-if scenarios: fix top debt, zero failures, half failures, close gaps, pessimistic."""
+    return await asyncio.to_thread(_what_if_sync, project_root)
+
+
+def _sensitivity_sync() -> dict[str, Any]:
     from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
     from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
     from msb_v3.plei.simulation.monte_carlo import (
@@ -201,9 +247,13 @@ async def project_sensitivity():
     report = analyze_sensitivity(config, seed=42, trial_count=2000)
     return sensitivity_as_dict(report)
 
-@plei_router.get("/decide", summary="Full decision pipeline — prioritize, tradeoffs, next action, provider routing")
-async def project_decide(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
-    """Run the complete Phase 5 decision engine."""
+
+@plei_router.get("/sensitivity", summary="Sensitivity analysis — which variables drive uncertainty?")
+async def project_sensitivity():
+    """Tornado analysis: measure each variable's contribution to outcome variance."""
+    return await asyncio.to_thread(_sensitivity_sync)
+
+def _decide_sync(project_root: str) -> dict[str, Any]:
     from msb_v3.plei.decisions.next_action import (
         next_action_as_dict,
         select_next_action,
@@ -259,6 +309,12 @@ async def project_decide(project_root: str = Query(default=_DEFAULT_ROOT, descri
             selections=[provider_sel] if provider_sel else [],
         )),
     }
+
+
+@plei_router.get("/decide", summary="Full decision pipeline — prioritize, tradeoffs, next action, provider routing")
+async def project_decide(project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path")):
+    """Run the complete Phase 5 decision engine."""
+    return await asyncio.to_thread(_decide_sync, project_root)
 
 
 @plei_router.get("/providers", summary="Provider profiles and selection intelligence")
@@ -380,49 +436,21 @@ def _check_chain(store: Any) -> dict[str, Any]:
         return {"ok": False, "message": "could not verify chain"}
 
 
-@plei_router.post("/execute", summary="Execute the top PLEI recommendation through governed harness")
-async def plei_execute(
-    project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"),
-    session: str = Query(default="plei-default", description="Execution session ID"),
-):
-    """Run PLEI's top recommendation through the governed harness bridge.
-
-    This is the Phase 6 endpoint — it:
-    1. Runs the full PLEI analysis (ingest + twin + lifecycle + decide)
-    2. Converts the top NextAction into a WorkPlan
-    3. Gates every step through the ActionGate
-    4. Executes through the 10-provider seam with fallback chain
-    5. Verifies claims through MoIE
-    6. Logs evidence into the spine
-    7. Closes the evidence loop — updates twin, re-classifies lifecycle
-
-    Returns the complete ExecutionReport + LoopResult.
+def _execute_prepare_sync(root: Path) -> tuple[Any, Any, Any, dict[str, Any], Any, Any, Any] | None:
+    """Steps 1-4: full PLEI analysis, decision pipeline, WorkPlan, and governed-bridge
+    setup — all synchronous. Returns None when there's no actionable recommendation.
+    Runs off the event loop via asyncio.to_thread; execute_plan (a real async call)
+    stays in the caller.
     """
-
-    from msb_v3.plei.decisions.next_action import (
-        select_next_action,
-    )
+    from msb_v3.plei.decisions.next_action import select_next_action
     from msb_v3.plei.decisions.prioritization import prioritize
     from msb_v3.plei.decisions.provider_selection import (
         build_profiles,
         select_provider_for_task,
     )
     from msb_v3.plei.engineering.gap_detector import detect_gaps, gap_report_as_dict
-    from msb_v3.plei.harness.bridge import (
-        execute_plan,
-        execution_report_as_dict,
-    )
-    from msb_v3.plei.harness.evidence_loop import (
-        loop_result_as_dict,
-        run_evidence_loop,
-    )
     from msb_v3.plei.harness.work_plan import build_work_plan
     from msb_v3.plei.risk.report import analyze_risk, risk_report_as_dict
-
-    try:
-        root = Path(project_root).resolve()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid project_root: {e}")
 
     # Step 1: Full PLEI analysis
     twin = ingest_all(root)
@@ -440,7 +468,7 @@ async def plei_execute(
 
     top_na = next_report.primary if next_report else None
     if not top_na or not top_na.action:
-        return {"ok": False, "error": "no actionable recommendation found"}
+        return None
 
     # Build provider selection
     provider_sel = select_provider_for_task(
@@ -516,7 +544,41 @@ async def plei_execute(
     except Exception:
         pass
 
-    # Step 5: Execute through harness bridge
+    return twin, lc, plan, providers_by_id, gate, moie, spine
+
+
+@plei_router.post("/execute", summary="Execute the top PLEI recommendation through governed harness")
+async def plei_execute(
+    project_root: str = Query(default=_DEFAULT_ROOT, description="Project root path"),
+    session: str = Query(default="plei-default", description="Execution session ID"),
+):
+    """Run PLEI's top recommendation through the governed harness bridge.
+
+    This is the Phase 6 endpoint — it:
+    1. Runs the full PLEI analysis (ingest + twin + lifecycle + decide)
+    2. Converts the top NextAction into a WorkPlan
+    3. Gates every step through the ActionGate
+    4. Executes through the 10-provider seam with fallback chain
+    5. Verifies claims through MoIE
+    6. Logs evidence into the spine
+    7. Closes the evidence loop — updates twin, re-classifies lifecycle
+
+    Returns the complete ExecutionReport + LoopResult.
+    """
+    from msb_v3.plei.harness.bridge import execute_plan, execution_report_as_dict
+    from msb_v3.plei.harness.evidence_loop import loop_result_as_dict, run_evidence_loop
+
+    try:
+        root = Path(project_root).resolve()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid project_root: {e}")
+
+    prepared = await asyncio.to_thread(_execute_prepare_sync, root)
+    if prepared is None:
+        return {"ok": False, "error": "no actionable recommendation found"}
+    twin, lc, plan, providers_by_id, gate, moie, spine = prepared
+
+    # Step 5: Execute through harness bridge (a real async call — stays on the loop)
     exec_report: Any = await execute_plan(
         plan,
         providers_by_id=providers_by_id,
@@ -529,7 +591,8 @@ async def plei_execute(
 
     # Step 6: Evidence loop — close the feedback loop
     prev_stage = lc.stage.value if hasattr(lc.stage, "value") else str(lc.stage)
-    loop_result = run_evidence_loop(
+    loop_result = await asyncio.to_thread(
+        run_evidence_loop,
         exec_report,
         twin,
         previous_stage=prev_stage,

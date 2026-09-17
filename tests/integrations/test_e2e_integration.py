@@ -6,6 +6,11 @@ that the system actually works end-to-end.
 """
 from __future__ import annotations
 
+import asyncio
+import time
+
+import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from msb_v3.api.app import create_app
@@ -99,6 +104,69 @@ class TestPLEIEndpoints:
         client = _app_client(monkeypatch)
         resp = client.get("/plei/dependencies")
         assert resp.status_code == 200
+
+
+class TestPleiDoesNotBlockTheEventLoop:
+    """Regression: found live 2026-09-17 — every /plei/* handler called
+    ingest_all() (a ~5s synchronous filesystem walk, mostly the tests-layer
+    scan) directly inside `async def`, blocking the single event-loop
+    thread. A clean /plei/status request was observed taking 27s end-to-end
+    against the real server (vs ~5.4s for the identical call run
+    standalone), and starving the concurrently-running cron scheduler task
+    of CPU time. TestClient's synchronous .get() can't catch this - two
+    sequential Python calls "block" on each other either way, whether or
+    not the server itself does. asyncio.to_thread(ingest_all, ...) is
+    only slow when ingest_all itself has cold-cache filesystem work to
+    do, and a warm OS file cache within a long pytest session (ingest_all
+    ran against this same root in earlier tests in this class) makes the
+    real call finish in well under a second either way - not a reliable
+    trigger for THIS specific bug. So the delay here is injected
+    deterministically via monkeypatch, independent of real filesystem
+    speed: this test proves the actual property - a fast request must
+    complete quickly even while a slow /plei/* request is genuinely
+    in-flight on the same event loop - not just that ingest_all happens
+    to be fast today."""
+
+    @pytest.mark.asyncio
+    async def test_plei_status_does_not_delay_a_concurrent_health_check(self, monkeypatch):
+        import msb_v3.plei.api as plei_api
+
+        monkeypatch.setattr(
+            LocalAIClient,
+            "generate",
+            lambda self, *a, **k: (_ for _ in ()).throw(ConnectionError("ollama down")),
+        )
+        real_ingest_all = plei_api.ingest_all
+
+        def _slow_ingest_all(*a, **k):
+            time.sleep(1.0)  # deterministic stand-in for a cold filesystem walk
+            return real_ingest_all(*a, **k)
+
+        monkeypatch.setattr(plei_api, "ingest_all", _slow_ingest_all)
+
+        app = create_app()
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=30.0) as client:
+            # t0 starts BEFORE the slow task exists - if the event loop gets
+            # blocked, even this coroutine's own next `await` won't resume
+            # until the blocking call finishes, so the timer must bracket
+            # that entire window, not start after a same-loop await that the
+            # bug itself would silently delay.
+            t0 = time.monotonic()
+            slow_task = asyncio.create_task(client.get("/plei/status"))
+            await asyncio.sleep(0.01)  # yield once so the slow task can start
+
+            fast_resp = await client.get("/health")
+            fast_elapsed = time.monotonic() - t0
+
+            slow_resp = await slow_task
+
+        assert slow_resp.status_code == 200
+        assert fast_resp.status_code == 200
+        assert fast_elapsed < 1.0, (
+            f"/health took {fast_elapsed:.2f}s while /plei/status was in flight — "
+            "the event loop was blocked by synchronous PLEI work"
+        )
 
 
 # ── Routes ───────────────────────────────────────────────────────────────
