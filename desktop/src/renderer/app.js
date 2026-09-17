@@ -52,7 +52,16 @@ const state = {
   memorySession: 'default',
   searchQuery: '',
   notice: '',
+  tasks: {
+    list: [],
+    expandedId: null,
+    // taskId -> { events: Array<{event:string, data:object}>, status: 'idle'|'streaming'|'reconnecting'|'error', errorDetail: string }
+    streams: {},
+  },
 };
+
+const MAX_TASK_EVENTS = 200;
+let taskEventsListEl = null; // the <ul> for the currently-expanded task, for append-only updates
 
 // --- data loads (all fail-closed) ---------------------------------
 
@@ -112,36 +121,191 @@ async function killswitch(op) {
   await loadAll();
 }
 
+// --- data loads: tasks ---------------------------------------------
+
+async function loadTasks() {
+  const r = await window.msb.listTasks(25);
+  state.tasks.list = r.ok && r.data ? r.data.tasks || [] : [];
+  state.notice = r.ok ? state.notice : `tasks: ${r.error}`;
+  renderTabBody();
+}
+
+function taskState(taskId) {
+  if (!state.tasks.streams[taskId]) {
+    state.tasks.streams[taskId] = { events: [], status: 'idle', errorDetail: '' };
+  }
+  return state.tasks.streams[taskId];
+}
+
+async function expandTask(taskId) {
+  if (state.tasks.expandedId === taskId) {
+    // collapse
+    await window.msb.unsubscribeTask(taskId);
+    state.tasks.expandedId = null;
+    taskEventsListEl = null;
+    renderTabBody();
+    return;
+  }
+  if (state.tasks.expandedId) {
+    await window.msb.unsubscribeTask(state.tasks.expandedId);
+  }
+  state.tasks.expandedId = taskId;
+  const ts = taskState(taskId);
+  ts.status = 'streaming';
+  taskEventsListEl = null; // rebuilt on next renderTabBody()
+  renderTabBody();
+  await window.msb.subscribeTask(taskId);
+}
+
+/** Wired once at init via window.msb.onTaskEvent. */
+function handleTaskEvent(evt) {
+  const ts = taskState(evt.taskId);
+  if (evt.event === 'observation' || evt.event === 'done') {
+    ts.events.push(evt);
+    if (ts.events.length > MAX_TASK_EVENTS) ts.events.shift();
+    if (evt.event === 'done') ts.status = 'idle';
+  } else if (evt.event === 'reconnecting') {
+    ts.status = 'reconnecting';
+  } else if (evt.event === 'stream-error') {
+    ts.status = 'error';
+    ts.errorDetail = evt.data && evt.data.error ? evt.data.error : 'unknown error';
+  }
+
+  // Append-only fast path: if this is the currently-expanded task and its
+  // event list DOM already exists, just append the new row instead of
+  // re-rendering the whole Tasks panel (no flicker on a live-streaming task).
+  if (evt.taskId === state.tasks.expandedId && taskEventsListEl && (evt.event === 'observation' || evt.event === 'done')) {
+    taskEventsListEl.appendChild(taskEventRow(evt));
+    return;
+  }
+  // Anything else (status change, or an event for a task whose panel isn't
+  // mounted) needs a full re-render of just the tab body.
+  renderTabBody();
+}
+
 // --- rendering ---------------------------------------------------
+
+let containers = null; // { header, grid, approvals, tabs, tabBody }, built once
+
+function layout() {
+  if (containers) return containers;
+  const root = document.getElementById('root');
+  clear(root);
+  const header = el('div', { class: 'header' });
+  const body = el('div', {});
+  root.appendChild(header);
+  root.appendChild(body);
+  containers = { root, header, body, grid: null, approvals: null, tabs: null, tabBody: null };
+  return containers;
+}
+
+function renderHeader() {
+  const c = layout();
+  clear(c.header);
+  const badgeClass =
+    state.runtimeState === 'READY' ? 'connected' : state.runtimeState === 'DEGRADED' ? 'degraded' : 'disconnected';
+  c.header.appendChild(el('h1', { text: 'MSB v3 - Sovereign Operations' }));
+  c.header.appendChild(el('span', { class: `status ${badgeClass}`, text: state.runtimeState }));
+}
 
 function render() {
   window.__runtimeState = state.runtimeState; // dev/smoke visibility
-  const root = document.getElementById('root');
-  clear(root);
+  const c = layout();
+  renderHeader();
+  clear(c.body);
 
-  const badgeClass =
-    state.runtimeState === 'READY'
-      ? 'connected'
-      : state.runtimeState === 'DEGRADED'
-        ? 'degraded'
-        : 'disconnected';
-
-  root.appendChild(
-    el(
-      'div',
-      { class: 'header' },
-      el('h1', { text: 'MSB v3 - Sovereign Operations' }),
-      el('span', { class: `status ${badgeClass}`, text: state.runtimeState })
-    )
-  );
-
-  if (state.notice) root.appendChild(el('div', { class: 'notice', text: state.notice }));
+  if (state.notice) c.body.appendChild(el('div', { class: 'notice', text: state.notice }));
 
   if (state.runtimeState === 'NOT_ATTACHED' || state.runtimeState === 'OFFLINE' || state.runtimeState === 'BLOCKED') {
-    root.appendChild(renderConnect());
+    c.body.appendChild(renderConnect());
+    c.grid = c.approvals = c.tabs = c.tabBody = null;
     return;
   }
-  root.appendChild(renderDashboard());
+
+  c.grid = el('div', { class: 'grid' });
+  c.approvals = el('div', { style: 'margin-top:16px' });
+  c.tabs = el('div', {});
+  c.tabBody = el('div', {});
+  c.body.appendChild(c.grid);
+  c.body.appendChild(c.approvals);
+  c.body.appendChild(c.tabs);
+  c.body.appendChild(c.tabBody);
+
+  renderStatCards();
+  renderApprovals();
+  renderTabsBar();
+  renderTabBody();
+}
+
+function renderStatCards() {
+  const c = layout();
+  if (!c.grid) return;
+  clear(c.grid);
+  c.grid.appendChild(
+    statCard('Server', state.health ? 'Healthy' : 'Unknown', state.health ? '#4ade80' : '#888', [
+      `service: ${val(state.identity, 'service')}`,
+      `version: ${val(state.identity, 'version')}`,
+    ])
+  );
+  const verified = Boolean(state.identity && state.identity.expected === true);
+  c.grid.appendChild(
+    statCard('Runtime Identity', verified ? 'Verified' : 'Unverified', verified ? '#4ade80' : '#f87171', [
+      `model: ${val(state.identity, 'model')}`,
+      `ready: ${val(state.identity, 'ready')}`,
+    ])
+  );
+  const pending = pendingApprovals().length;
+  c.grid.appendChild(
+    statCard('Pending Approvals', String(pending), pending ? '#fbbf24' : '#4ade80', [
+      pending ? 'awaiting operator' : 'all clear',
+      `${state.approvals.length} in history`,
+    ])
+  );
+  c.grid.appendChild(renderKillswitchCard());
+}
+
+function renderApprovals() {
+  const c = layout();
+  if (!c.approvals) return;
+  clear(c.approvals);
+  c.approvals.appendChild(renderApprovalsPanel());
+}
+
+function renderTabsBar() {
+  const c = layout();
+  if (!c.tabs) return;
+  clear(c.tabs);
+  const bar = el('div', { style: 'display:flex; gap:8px; margin:16px 0' });
+  for (const t of [
+    { id: 'memory', label: 'Evidence Memory' },
+    { id: 'search', label: 'Vault Knowledge' },
+    { id: 'tasks', label: 'Live Tasks' },
+  ]) {
+    bar.appendChild(
+      el('button', {
+        class: 'btn',
+        style: `background:${state.activeTab === t.id ? '#2563eb' : '#1a1a1a'}`,
+        text: t.label,
+        onclick: () => {
+          state.activeTab = t.id;
+          renderTabsBar();
+          renderTabBody();
+          if (t.id === 'tasks' && !state.tasks.list.length) loadTasks();
+        },
+      })
+    );
+  }
+  c.tabs.appendChild(bar);
+}
+
+function renderTabBody() {
+  const c = layout();
+  if (!c.tabBody) return;
+  clear(c.tabBody);
+  taskEventsListEl = null; // will be re-set by renderTasks() if the tasks tab renders an expanded task
+  if (state.activeTab === 'memory') c.tabBody.appendChild(renderMemory());
+  if (state.activeTab === 'search') c.tabBody.appendChild(renderSearch());
+  if (state.activeTab === 'tasks') c.tabBody.appendChild(renderTasks());
 }
 
 function renderConnect() {
@@ -156,44 +320,6 @@ function renderConnect() {
   if (state.attachDetail) card.appendChild(el('p', { class: 'err', text: state.attachDetail }));
   card.appendChild(el('button', { class: 'btn', text: 'Attach', onclick: attach }));
   return card;
-}
-
-function renderDashboard() {
-  const wrap = el('div', {});
-  wrap.appendChild(
-    el(
-      'div',
-      { class: 'grid' },
-      statCard('Server', state.health ? 'Healthy' : 'Unknown', state.health ? '#4ade80' : '#888', [
-        `service: ${val(state.identity, 'service')}`,
-        `version: ${val(state.identity, 'version')}`,
-      ]),
-      (() => {
-        const verified = Boolean(state.identity && state.identity.expected === true);
-        return statCard(
-          'Runtime Identity',
-          verified ? 'Verified' : 'Unverified',
-          verified ? '#4ade80' : '#f87171',
-          [`model: ${val(state.identity, 'model')}`, `ready: ${val(state.identity, 'ready')}`]
-        );
-      })(),
-      (() => {
-        const pending = pendingApprovals().length;
-        return statCard(
-          'Pending Approvals',
-          String(pending),
-          pending ? '#fbbf24' : '#4ade80',
-          [pending ? 'awaiting operator' : 'all clear', `${state.approvals.length} in history`]
-        );
-      })(),
-      renderKillswitchCard()
-    )
-  );
-  wrap.appendChild(renderApprovalsPanel());
-  wrap.appendChild(renderTabs());
-  if (state.activeTab === 'memory') wrap.appendChild(renderMemory());
-  if (state.activeTab === 'search') wrap.appendChild(renderSearch());
-  return wrap;
 }
 
 function statCard(title, value, color, details) {
@@ -275,27 +401,6 @@ function renderApprovalsPanel() {
   return card;
 }
 
-function renderTabs() {
-  const bar = el('div', { style: 'display:flex; gap:8px; margin:16px 0' });
-  for (const t of [
-    { id: 'memory', label: 'Evidence Memory' },
-    { id: 'search', label: 'Vault Knowledge' },
-  ]) {
-    bar.appendChild(
-      el('button', {
-        class: 'btn',
-        style: `background:${state.activeTab === t.id ? '#2563eb' : '#1a1a1a'}`,
-        text: t.label,
-        onclick: () => {
-          state.activeTab = t.id;
-          render();
-        },
-      })
-    );
-  }
-  return bar;
-}
-
 function renderMemory() {
   const card = el('div', { class: 'card' });
   card.appendChild(el('h2', { text: 'Session Memory' }));
@@ -356,6 +461,62 @@ function renderSearch() {
   return card;
 }
 
+function taskEventRow(evt) {
+  const li = el('li', {});
+  li.appendChild(el('span', { class: 'badge kind', text: evt.event }));
+  const d = evt.data || {};
+  const summary = d.source || d.state || '';
+  li.appendChild(el('strong', { text: ` ${summary || '(no source)'} ` }));
+  if (d.observed_at) li.appendChild(el('span', { class: 'detail', text: String(d.observed_at) }));
+  li.appendChild(el('div', { class: 'mono', text: JSON.stringify(d) }));
+  return li;
+}
+
+function renderTasks() {
+  const card = el('div', { class: 'card' });
+  card.appendChild(el('h2', { text: 'Live Tasks' }));
+  const controls = el('div', { style: 'margin-bottom:12px' });
+  controls.appendChild(el('button', { class: 'btn', text: 'Refresh', onclick: loadTasks }));
+  card.appendChild(controls);
+
+  if (!state.tasks.list.length) {
+    card.appendChild(el('div', { class: 'empty', text: 'No tasks yet.' }));
+    return card;
+  }
+
+  const list = el('ul', { class: 'list' });
+  for (const t of state.tasks.list) {
+    const li = el('li', {});
+    const expanded = state.tasks.expandedId === t.task_id;
+    li.appendChild(el('span', { class: 'badge kind', text: t.state }));
+    li.appendChild(el('strong', { text: ` ${t.task_id} ` }));
+    li.appendChild(el('span', { class: 'detail', text: `updated ${t.updated_at || '?'}` }));
+    li.appendChild(
+      el('button', {
+        class: 'btn',
+        style: 'margin-left:8px',
+        text: expanded ? 'Collapse' : 'Watch live',
+        onclick: () => expandTask(t.task_id),
+      })
+    );
+
+    if (expanded) {
+      const ts = taskState(t.task_id);
+      const box = el('div', { style: 'margin-top:8px' });
+      if (ts.status === 'reconnecting') box.appendChild(el('div', { class: 'detail', text: 'reconnecting...' }));
+      if (ts.status === 'error') box.appendChild(el('div', { class: 'err', text: `stream error: ${ts.errorDetail}` }));
+      const events = el('ul', { class: 'list' });
+      for (const evt of ts.events) events.appendChild(taskEventRow(evt));
+      box.appendChild(events);
+      li.appendChild(box);
+      taskEventsListEl = events; // remember for append-only updates
+    }
+    list.appendChild(li);
+  }
+  card.appendChild(list);
+  return card;
+}
+
 // --- utils -------------------------------------------------------
 
 function val(obj, key) {
@@ -366,4 +527,5 @@ function val(obj, key) {
 // --- init ------------------------------------------------------
 
 render();
+window.msb.onTaskEvent(handleTaskEvent);
 attach();
