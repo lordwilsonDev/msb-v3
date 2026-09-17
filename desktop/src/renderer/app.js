@@ -161,9 +161,9 @@ async function expandTask(taskId) {
 function handleTaskEvent(evt) {
   const ts = taskState(evt.taskId);
   if (evt.event === 'observation' || evt.event === 'done') {
+    ts.status = evt.event === 'done' ? 'idle' : 'streaming';
     ts.events.push(evt);
     if (ts.events.length > MAX_TASK_EVENTS) ts.events.shift();
-    if (evt.event === 'done') ts.status = 'idle';
   } else if (evt.event === 'reconnecting') {
     ts.status = 'reconnecting';
   } else if (evt.event === 'stream-error') {
