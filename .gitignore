@@ -3,6 +3,7 @@ __pycache__/
 .env
 data/
 logs/
+.worktrees/
 # Transient pip-compile inputs (written and removed by `make deps`).
 requirements-*.in
 .artifacts/
