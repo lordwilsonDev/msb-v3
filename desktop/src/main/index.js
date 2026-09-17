@@ -18,6 +18,7 @@
 const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
 const path = require('path');
 const { MsbBridge } = require('./bridge');
+const { TaskStreamClient } = require('./sse-client');
 const { validate } = require('./validate');
 
 // --- config (main process only) -------------------------------------------
@@ -49,6 +50,7 @@ const CSP = [
 
 let mainWindow = null;
 let bridge = null;
+let taskStream = null;
 let onWindow = null;
 
 /** Register a callback invoked with the BrowserWindow after it is created.
@@ -87,6 +89,7 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    if (taskStream) taskStream.closeAll();
   });
 
   if (onWindow) onWindow(mainWindow);
@@ -174,6 +177,23 @@ function registerIpc() {
   channel('killswitchSet', (a) => bridge.killswitchSet(a.op, a.reason));
   channel('memory', (a) => bridge.memory(a.session, a.limit));
   channel('search', (a) => bridge.search(a.query, a.limit));
+  channel('listTasks', (a) => bridge.listTasks(a.limit));
+  channel(
+    'subscribeTask',
+    (a) => {
+      taskStream.open(a.taskId);
+      return { ok: true };
+    },
+    { needsBridge: false }
+  );
+  channel(
+    'unsubscribeTask',
+    (a) => {
+      taskStream.close(a.taskId);
+      return { ok: true };
+    },
+    { needsBridge: false }
+  );
 }
 
 // --- lifecycle -------------------------------------------------------
@@ -194,6 +214,22 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionCheckHandler(() => false);
 
   bridge = new MsbBridge(MSB_HOST, MSB_PORT, SECRETS);
+  taskStream = new TaskStreamClient(`http://${MSB_HOST}:${MSB_PORT}`, SECRETS.operatorToken);
+  taskStream.on('event', (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('msb:taskEvent', payload);
+    }
+  });
+  taskStream.on('reconnecting', (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('msb:taskEvent', { taskId: payload.taskId, event: 'reconnecting', data: payload });
+    }
+  });
+  taskStream.on('error', (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('msb:taskEvent', { taskId: payload.taskId, event: 'stream-error', data: payload });
+    }
+  });
   registerIpc();
   createWindow();
 
