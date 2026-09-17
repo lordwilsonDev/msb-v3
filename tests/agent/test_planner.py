@@ -192,6 +192,45 @@ async def test_llm_path_floors_synthesis_timeout_at_120s() -> None:
 
 
 @pytest.mark.asyncio
+async def test_llm_path_coerces_synthesis_nonempty_for_non_chat_tasks() -> None:
+    """Regression: a search_query task assigned verification_method
+    synthesis_nonempty must be coerced to search_returned_hits (found live,
+    2026-09-17 — a real /agent/handle run's LLM-generated DAG put
+    synthesis_nonempty on a search_query task; search_query returns a list
+    of match dicts, which _check_synthesis's text/dict-with-"text" checks
+    never match, so the task failed verification unconditionally regardless
+    of whether the search found anything: run dbb-20260917T222816-11110,
+    "task ... failed: synthesis output empty"). synthesis_nonempty is only
+    meaningful for a task that actually produces text via the chat tool."""
+    client = _FakeClient(
+        '{"tasks": ['
+        '{"task_id": "research", "goal": "search the vault", "parent_id": null, '
+        '"capabilities": ["read_vault"], "tools": ["search_query"], '
+        '"verification_method": "synthesis_nonempty", '
+        '"timeout_s": 60, "retry_policy": "retry:2"}]}'
+    )
+    graph = await plan(_read_intent(), client=client)
+    assert graph.source == "llm"
+    assert graph.by_id("research").verification_method == "search_returned_hits"
+
+
+@pytest.mark.asyncio
+async def test_llm_path_keeps_synthesis_nonempty_for_chat_tasks() -> None:
+    """Companion to the coercion regression above: a chat task's own
+    synthesis_nonempty must NOT be touched by the non-chat coercion."""
+    client = _FakeClient(
+        '{"tasks": ['
+        '{"task_id": "synthesize", "goal": "write brief", "parent_id": null, '
+        '"capabilities": ["llm_synthesis"], "tools": ["chat"], '
+        '"verification_method": "synthesis_nonempty", '
+        '"timeout_s": 120, "retry_policy": "retry:1"}]}'
+    )
+    graph = await plan(_read_intent(), client=client)
+    assert graph.source == "llm"
+    assert graph.by_id("synthesize").verification_method == "synthesis_nonempty"
+
+
+@pytest.mark.asyncio
 async def test_plan_falls_back_on_garbage() -> None:
     graph = await plan(_read_intent(), client=_FakeClient("sorry, no plan for you"))
     assert graph.source == "template"

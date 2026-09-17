@@ -191,6 +191,18 @@ def _parse_tasks(data: Dict[str, Any]) -> List[Task]:
         verify = item.get("verification_method")
         if verify not in _KNOWN_VERIFY:
             verify = "none"
+        # synthesis_nonempty checks for text output (a string, or a dict with
+        # a "text" key) - only the chat tool produces that shape. search_query
+        # returns a list of match dicts, which _check_synthesis never matches,
+        # so a non-chat task assigned synthesis_nonempty fails verification
+        # unconditionally regardless of whether the search succeeded (found
+        # live 2026-09-17 - run dbb-20260917T222816-11110's LLM-generated DAG
+        # put synthesis_nonempty on a search_query task: "task ... failed:
+        # synthesis output empty" even though governance and MoIE both
+        # approved and the search itself never ran). Coerce to the check that
+        # actually matches this task's own output shape.
+        if verify == "synthesis_nonempty" and "chat" not in tools:
+            verify = "search_returned_hits"
         if verify == "none" and _DESTRUCTIVE_GOAL_RE.search(goal):
             # A destructive-sounding claim with no grounded check behind it —
             # drop the task rather than let it execute and report an
