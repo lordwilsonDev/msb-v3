@@ -128,7 +128,7 @@ async def project_risk(project_root: str = Query(default=_DEFAULT_ROOT, descript
 
 def _debt_sync() -> dict[str, Any]:
     from msb_v3.plei.risk.debt_model import debt_report_as_dict, score_debt
-    twin = ingest_all()
+    twin = ingest_all(_DEFAULT_ROOT)
     report = score_debt(twin)
     return debt_report_as_dict(report)
 
@@ -235,7 +235,7 @@ def _sensitivity_sync() -> dict[str, Any]:
         sensitivity_as_dict,
     )
 
-    twin = ingest_all()
+    twin = ingest_all(_DEFAULT_ROOT)
     risk_dict = risk_report_as_dict(analyze_risk(twin))
     gaps = detect_gaps(twin)
     gap_dict = gap_report_as_dict(gaps)
