@@ -17,6 +17,7 @@ const read = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
 
 const bridge = read('main/bridge.js');
 const mainIndex = read('main/index.js');
+const sseClient = read('main/sse-client.js');
 
 /** Extract every HTTP path the bridge requests. */
 function bridgePaths() {
@@ -80,4 +81,10 @@ test('attach verifies runtime identity before declaring READY', () => {
   assert.match(mainIndex, /identity\.data\.expected/);
   assert.match(mainIndex, /WRONG_RUNTIME/);
   assert.match(mainIndex, /state:\s*'BLOCKED'/);
+});
+
+test('the task stream client only ever requests the observations/stream path and always sends the operator token', () => {
+  assert.match(sseClient, /\/agent\/tasks\/\$\{encodeURIComponent\(taskId\)\}\/observations\/stream/);
+  assert.match(sseClient, /Authorization:\s*`Bearer \$\{this\.operatorToken\}`/);
+  assert.match(sseClient, /if \(!this\.operatorToken\)/, 'must fail closed with no token, like the bridge');
 });

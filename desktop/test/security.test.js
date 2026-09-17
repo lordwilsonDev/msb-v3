@@ -17,6 +17,7 @@ const read = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
 const mainIndex = read('main/index.js');
 const preload = read('preload/index.js');
 const bridge = read('main/bridge.js');
+const sseClient = read('main/sse-client.js');
 const rendererHtml = read('renderer/index.html');
 const rendererApp = read('renderer/app.js');
 
@@ -45,7 +46,7 @@ test('permission requests are denied and a CSP header is set', () => {
 });
 
 test('main process never spawns a child process or a shell', () => {
-  for (const [name, src] of [['index.js', mainIndex], ['bridge.js', bridge]]) {
+  for (const [name, src] of [['index.js', mainIndex], ['bridge.js', bridge], ['sse-client.js', sseClient]]) {
     assert.doesNotMatch(src, /child_process|execSync|execFile|spawnSync|\bspawn\(|\bexec\(/, name);
   }
 });
