@@ -37,6 +37,7 @@ test('bridge only calls a known, safe set of msb-v3 endpoints', () => {
     'GET /agent/tasks',
     'GET /memory/', // prefix, session appended
     'POST /rag/search',
+    'POST /chat',
   ]);
   const allowedPrefixes = ['POST /governance/approvals/', 'POST /governance/killswitch/', 'GET /memory/'];
 

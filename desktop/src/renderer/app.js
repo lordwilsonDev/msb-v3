@@ -51,6 +51,8 @@ const state = {
   activeTab: 'memory',
   memorySession: 'default',
   searchQuery: '',
+  chatDraft: '',
+  chatSending: false,
   notice: '',
   tasks: {
     list: [],
@@ -93,6 +95,18 @@ async function loadMemory() {
   state.memory = r.ok && r.data ? r.data.messages || [] : [];
   state.notice = r.ok ? '' : `memory: ${r.error}`;
   render();
+}
+
+async function sendChatMessage() {
+  const q = state.chatDraft.trim();
+  if (!q || state.chatSending) return;
+  state.chatSending = true;
+  state.chatDraft = '';
+  render();
+  const r = await window.msb.sendChat(q, state.memorySession);
+  state.chatSending = false;
+  state.notice = r.ok ? '' : `chat: ${r.error}`;
+  await loadMemory();
 }
 
 async function loadSearch() {
@@ -414,6 +428,24 @@ function renderMemory() {
   controls.appendChild(input);
   controls.appendChild(el('button', { class: 'btn', text: 'Load', onclick: loadMemory }));
   card.appendChild(controls);
+
+  const chatRow = el('div', { style: 'margin-bottom:12px; display:flex; gap:8px' });
+  const chatInput = el('input', {
+    type: 'text',
+    value: state.chatDraft,
+    placeholder: 'message the model...',
+    class: 'in',
+    style: 'width:320px',
+  });
+  chatInput.addEventListener('input', (e) => {
+    state.chatDraft = e.target.value;
+  });
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendChatMessage();
+  });
+  chatRow.appendChild(chatInput);
+  chatRow.appendChild(el('button', { class: 'btn', text: state.chatSending ? 'Sending...' : 'Send', onclick: sendChatMessage }));
+  card.appendChild(chatRow);
 
   if (!state.memory.length) {
     card.appendChild(el('div', { class: 'empty', text: 'No messages for this session.' }));

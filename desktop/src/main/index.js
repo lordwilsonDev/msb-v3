@@ -178,6 +178,7 @@ function registerIpc() {
   channel('memory', (a) => bridge.memory(a.session, a.limit));
   channel('search', (a) => bridge.search(a.query, a.limit));
   channel('listTasks', (a) => bridge.listTasks(a.limit));
+  channel('sendChat', (a) => bridge.sendChat(a.session, a.query));
   channel(
     'subscribeTask',
     (a) => {

@@ -113,6 +113,15 @@ export interface TaskStreamEvent {
   data: Record<string, unknown>;
 }
 
+/** POST /chat */
+export interface ChatResult {
+  ok: boolean;
+  event: string;
+  payload: { query: string; text: string; model: string };
+  error?: string;
+  history_count: number;
+}
+
 // --- exposed API ---------------------------------------------------
 
 export interface MsbApi {
@@ -130,6 +139,7 @@ export interface MsbApi {
   listTasks(limit?: number): Promise<Result<TaskListPage>>;
   subscribeTask(taskId: string): Promise<Result>;
   unsubscribeTask(taskId: string): Promise<Result>;
+  sendChat(query: string, session?: string): Promise<Result<ChatResult>>;
   onTaskEvent(callback: (event: TaskStreamEvent) => void): () => void;
 }
 

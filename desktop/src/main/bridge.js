@@ -235,6 +235,21 @@ class MsbBridge {
     const n = limit || 25;
     return this._get(`/agent/tasks?limit=${encodeURIComponent(n)}`, { operator: true });
   }
+
+  /**
+   * POST /chat - single harness entrypoint; direct model conversation
+   * (NOT the governed agent-handle pipeline - no plan, no ActionGate, no
+   * tool execution). Persists the exchange into memory_store/memory_fabric
+   * under `session`, so a subsequent memory() call for the same session
+   * shows it. Gated by MCP_BRIDGE_SECRET (x-mcp-secret header), same as
+   * memory() - NOT the operator token.
+   * @param {string} session
+   * @param {string} query
+   */
+  sendChat(session, query) {
+    const headers = this._mcpSecret ? { 'x-mcp-secret': this._mcpSecret } : {};
+    return this._post('/chat', { headers, body: { session, query } });
+  }
 }
 
 /** Map an HTTP status to a stable, renderer-safe error token. */

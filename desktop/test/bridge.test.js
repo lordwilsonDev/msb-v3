@@ -191,3 +191,32 @@ test('listTasks() defaults limit to 25 when omitted', async () => {
   await m.close();
   assert.equal(m.seen[0].url, '/agent/tasks?limit=25');
 });
+
+test('sendChat() POSTs to /chat with {session, query} and the x-mcp-secret header when configured', async () => {
+  const m = await fakeMsb({
+    'POST /chat': () => ({ json: { ok: true, event: 'chat', payload: { query: 'hi', text: 'hello', model: 'qwen3:8b' }, history_count: 0 } }),
+  });
+  const b = new MsbBridge('127.0.0.1', m.port, { mcpSecret: 'MCP-123' });
+  const r = await b.sendChat('sess-1', 'hi');
+  await m.close();
+  assert.equal(r.ok, true);
+  const req = m.seen[0];
+  assert.equal(req.method, 'POST');
+  assert.equal(req.url, '/chat');
+  assert.equal(req.headers['x-mcp-secret'], 'MCP-123');
+  const sent = JSON.parse(req.body);
+  assert.equal(sent.session, 'sess-1');
+  assert.equal(sent.query, 'hi');
+});
+
+test('sendChat() still sends the request with no header when no mcpSecret is configured (not operator-gated)', async () => {
+  const m = await fakeMsb({
+    'POST /chat': () => ({ json: { ok: true, event: 'chat', payload: { query: 'hi', text: 'hello', model: 'qwen3:8b' }, history_count: 0 } }),
+  });
+  const b = new MsbBridge('127.0.0.1', m.port, {}); // no secrets configured
+  const r = await b.sendChat('default', 'hi');
+  await m.close();
+  assert.equal(r.ok, true);
+  assert.equal(m.seen.length, 1);
+  assert.equal(m.seen[0].headers['x-mcp-secret'], undefined);
+});

@@ -99,3 +99,37 @@ test('unsubscribeTask: same shape as subscribeTask', () => {
   assert.deepEqual(validate('unsubscribeTask', { taskId: 'task-2' }).value, { taskId: 'task-2' });
   assert.equal(validate('unsubscribeTask', { taskId: 123 }).ok, false);
 });
+
+test('sendChat: accepts a well-formed payload', () => {
+  const r = validate('sendChat', { query: 'hello there', session: 'sess-1' });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value, { session: 'sess-1', query: 'hello there' });
+});
+
+test('sendChat: rejects missing/empty query', () => {
+  assert.equal(validate('sendChat', {}).ok, false);
+  assert.equal(validate('sendChat', { query: '' }).ok, false);
+  assert.equal(validate('sendChat', { query: '   ' }).ok, false);
+});
+
+test('sendChat: rejects control characters in query', () => {
+  const nul = String.fromCharCode(0);
+  assert.equal(validate('sendChat', { query: `hi${nul}there` }).ok, false);
+});
+
+test('sendChat: rejects query longer than MAX_CHAT_LEN', () => {
+  const { MAX_CHAT_LEN } = require('../src/main/validate');
+  assert.equal(validate('sendChat', { query: 'x'.repeat(MAX_CHAT_LEN + 1) }).ok, false);
+  assert.equal(validate('sendChat', { query: 'x'.repeat(MAX_CHAT_LEN) }).ok, true);
+});
+
+test('sendChat: missing session defaults to "default"', () => {
+  assert.deepEqual(validate('sendChat', { query: 'hi' }).value, { session: 'default', query: 'hi' });
+});
+
+test('sendChat: session with illegal characters fails', () => {
+  const bad = ['../etc', 'a/b', 'a b', 'a;b', 'a$b', `a${String.fromCharCode(0)}`];
+  for (const session of bad) {
+    assert.equal(validate('sendChat', { query: 'hi', session }).ok, false, `session=${JSON.stringify(session)}`);
+  }
+});

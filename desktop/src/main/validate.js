@@ -16,6 +16,10 @@ const MAX_ID_LEN = 200;
 const MAX_SESSION_LEN = 200;
 const MAX_QUERY_LEN = 2000;
 const MAX_LIMIT = 500;
+// Backend /chat enforces 65536 BYTES server-side (MSB_MAX_CHAT_QUERY_BYTES).
+// This is a client-side sanity bound in CHARACTERS, intentionally looser
+// than MAX_QUERY_LEN (which is sized for short search/reason strings).
+const MAX_CHAT_LEN = 8000;
 const APPROVE_ACTIONS = Object.freeze(['approve', 'reject']);
 const KILLSWITCH_OPS = Object.freeze(['arm', 'disarm']);
 
@@ -125,6 +129,16 @@ const validators = {
   unsubscribeTask(payload) {
     return validators.subscribeTask(payload);
   },
+
+  sendChat(payload) {
+    const p = payload && typeof payload === 'object' ? payload : {};
+    const query = cleanString(p.query, MAX_CHAT_LEN);
+    if (!query) return fail('query must be a non-empty string');
+    const session = p.session === undefined ? 'default' : cleanString(p.session, MAX_SESSION_LEN);
+    if (!session) return fail('session malformed');
+    if (!SESSION_ALLOWED.test(session)) return fail('session has illegal characters');
+    return ok({ session, query });
+  },
 };
 
 /**
@@ -144,5 +158,6 @@ module.exports = {
   APPROVE_ACTIONS,
   KILLSWITCH_OPS,
   MAX_QUERY_LEN,
+  MAX_CHAT_LEN,
   MAX_LIMIT,
 };

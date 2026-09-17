@@ -90,6 +90,15 @@ const api = Object.freeze({
   unsubscribeTask: (taskId) => ipcRenderer.invoke('msb:unsubscribeTask', { taskId: str(taskId) }),
 
   /**
+   * POST /chat - send a message, get a model response. Persists to the
+   * session's memory - call memory(session) afterward to see the exchange.
+   * @param {string} query
+   * @param {string} [session]
+   */
+  sendChat: (query, session) =>
+    ipcRenderer.invoke('msb:sendChat', { query: str(query), session: str(session) }),
+
+  /**
    * Subscribe to task-stream events (observation/done/reconnecting/stream-error)
    * for every task currently subscribed via subscribeTask. Filter by
    * event.taskId in the callback - this is one shared channel, not per-task.
