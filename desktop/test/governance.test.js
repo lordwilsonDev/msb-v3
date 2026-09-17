@@ -62,7 +62,7 @@ test('every state-changing call is a /governance endpoint carrying the operator 
 });
 
 test('bridge has no tool / provider / factory / agent execution path', () => {
-  assert.doesNotMatch(bridge, /\/agent\/(?!tasks\b)|\/factory\/|\/tools?\/|\/providers?\/|\/ralph|\/flywheel\/turn|ollama|deepseek/i);
+  assert.doesNotMatch(bridge, /\/agent\/(?!tasks(?:[/?]|\s|$))|\/factory\/|\/tools?\/|\/providers?\/|\/ralph|\/flywheel\/turn|ollama|deepseek/i);
 });
 
 test('secrets never leave the main process', () => {
