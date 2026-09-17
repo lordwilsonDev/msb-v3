@@ -177,7 +177,7 @@ smoke:
 	  curl -fsS http://127.0.0.1:8767/health >/dev/null && break; \
 	  sleep 1; \
 	done; \
-	bash scripts/smoke.sh; \
+	MSB_PORT=8767 bash scripts/smoke.sh; \
 	code=$$?; \
 	kill $$(cat /tmp/msb-v3-smoke.pid 2>/dev/null) >/dev/null 2>&1 || true; \
 	rm -f /tmp/msb-v3-smoke.pid; \

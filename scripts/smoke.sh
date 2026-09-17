@@ -3,8 +3,10 @@ set -euo pipefail
 
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
+# Default to the live instance, in sync with scripts/run.sh (MSB_PORT:-8766).
+# `make smoke` boots its own throwaway server on 8767 and pins MSB_PORT there.
 HOST="${MSB_HOST:-127.0.0.1}"
-PORT="${MSB_PORT:-8767}"
+PORT="${MSB_PORT:-8766}"
 BASE="http://${HOST}:${PORT}"
 
 pass=0
