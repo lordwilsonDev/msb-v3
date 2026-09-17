@@ -57,14 +57,20 @@ module = ["asn1crypto.*"]
 ignore_missing_imports = true
 
 # Third-party packages without type stubs — added as new subsystems
-# were introduced (speech, energy_matrix). Pin per-package so a blanket
-# --ignore-missing-imports can't regress the gate silently.
+# were introduced (speech, energy_matrix, meta-inference). Pin per-package so
+# a blanket --ignore-missing-imports can't regress the gate silently.
+# mlx_lm/mlx_whisper are Apple-Silicon-only. Their imports are LAZY so the
+# modules load fine on Linux at runtime — but mypy resolves imports
+# statically, so a lazily-imported Apple-only dependency still needs an entry
+# here or Linux CI dies on import-not-found. mlx_lm was missing from this list
+# and kept factory-gate red from 2026-09-12 until it was added.
 [[tool.mypy.overrides]]
 module = [
     "pyaudio.*",
     "psutil.*",
     "torchaudio.*",
     "mlx_whisper.*",
+    "mlx_lm.*",
     "faster_whisper.*",
     "whisper.*",
     "resemblyzer.*",
