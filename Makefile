@@ -1,4 +1,4 @@
-.PHONY: test test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate production-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-tiers test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate production-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -16,6 +16,16 @@ export MSB_PORT ?= 8766
 test:
 	@bash scripts/seed-research-runtime.sh
 	$(PY) -m pytest -q tests/
+
+# Deliberate tier run. The integration / chaos / live tiers are DESELECTED
+# from a default `pytest` (tests/conftest.py) so a gate or dev run can't swing
+# on whether a live service happens to be up. This runs the hermetic core AND
+# the tiers together — it therefore needs the msb-v3 server on :8766
+# (integration), Ollama on :11434 (live), and spawns the h08 fault-injection
+# proxy subprocess (chaos).
+test-tiers:
+	@bash scripts/seed-research-runtime.sh
+	MSB_RUN_TIERS=1 $(PY) -m pytest -q tests/
 
 # Ops-script regression suite (vault-backup, disk-health, cache-trim,
 # backup-watchdog, rotate-logs, housekeeping) — runs under macOS /bin/bash

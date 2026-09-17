@@ -10,10 +10,53 @@ specific chain still inject one or monkeypatch ``_AUDIT_DB`` themselves.
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from msb_v3.core.config import settings
 from msb_v3.uac import audit_chain as ac
+
+# Test tiers, per pyproject [tool.pytest.ini_options]. All three tier markers
+# mean "this test needs something this machine may not have running":
+# integration expects a live msb-v3 on MSB_BASE_URL / :8766, live hits a real
+# Ollama endpoint, chaos spawns the h08 fault-injection proxy subprocess.
+#
+# The pyproject comment has always said the release gate runs the hermetic
+# core and that these tiers run separately — but nothing enforced it, so the
+# daily factory gate ran all 75 tier tests inline against the shared dev
+# instance. That made the gate's verdict a function of machine state rather
+# than of the commit. Concretely: test_cold_state_verification.py SIGKILLs
+# whatever owns tcp:8766 and re-spawns it mid-suite (it is *testing* restart
+# recovery), so whether each later integration test reached a live server or
+# found the gap came down to timing. Measured against one unchanged tree:
+# 3351 passed / 0 failed with the server up throughout, 3317 passed / 3 failed
+# when it blinked mid-run, and the gate's own run logged 1 failed + 20 errors.
+#
+# Deselecting them by default is deterministic and costs no coverage (84%
+# either way, against a 65% floor) — the factory's own hygiene members still
+# exercise the live contract. Opt back in for a deliberate tier run with
+# MSB_RUN_TIERS=1 (see `make test-tiers`).
+_TIER_MARKERS = ("integration", "chaos", "live")
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Keep a default collection hermetic by dropping the live tiers."""
+    if os.environ.get("MSB_RUN_TIERS") == "1":
+        return
+    keep: list[pytest.Item] = []
+    deselected: list[pytest.Item] = []
+    for item in items:
+        if any(item.get_closest_marker(m) for m in _TIER_MARKERS):
+            deselected.append(item)
+        else:
+            keep.append(item)
+    if not deselected:
+        return
+    config.hook.pytest_deselected(items=deselected)
+    items[:] = keep
 
 
 @pytest.fixture(autouse=True)

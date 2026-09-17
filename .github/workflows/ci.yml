@@ -72,7 +72,12 @@ jobs:
           # boot above — stamp them now, or test_schema_stamping.py fails
           # on every clean runner (data/ is gitignored, never ships stamped).
           python scripts/stamp-schemas.py
-          PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
+          # MSB_RUN_TIERS=1 opts back into the integration/chaos/live tiers,
+          # which tests/conftest.py deselects by default so a bare `pytest`
+          # (or the daily factory gate) can't swing on whether a dev server
+          # happens to be up. This job boots its own server above precisely
+          # to exercise that contract, so it opts in deliberately.
+          MSB_RUN_TIERS=1 PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
 
       - name: Upload coverage
         # codecov-action@v6 has NO tokenless upload for main-repo pushes
