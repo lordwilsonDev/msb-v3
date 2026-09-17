@@ -61,6 +61,12 @@ class TaskStreamClient extends EventEmitter {
 
     const path = `/agent/tasks/${encodeURIComponent(taskId)}/observations/stream`;
     let buffer = '';
+    let settled = false; // guards against end+close both firing for one drop
+    const reconnect = (reason) => {
+      if (settled) return;
+      settled = true;
+      this._scheduleReconnect(taskId, reason);
+    };
 
     const req = http.request(
       this.baseUrl + path,
@@ -71,7 +77,7 @@ class TaskStreamClient extends EventEmitter {
       (res) => {
         if (res.statusCode !== 200) {
           res.resume();
-          return this._scheduleReconnect(taskId, `HTTP_${res.statusCode}`);
+          return reconnect(`HTTP_${res.statusCode}`);
         }
         entry.attempt = 0; // connected - reset backoff
         res.setEncoding('utf8');
@@ -84,11 +90,11 @@ class TaskStreamClient extends EventEmitter {
             this._handleMessage(taskId, raw);
           }
         });
-        res.on('end', () => this._scheduleReconnect(taskId, 'STREAM_ENDED'));
-        res.on('close', () => this._scheduleReconnect(taskId, 'STREAM_CLOSED'));
+        res.on('end', () => reconnect('STREAM_ENDED'));
+        res.on('close', () => reconnect('STREAM_CLOSED'));
       }
     );
-    req.on('error', (err) => this._scheduleReconnect(taskId, `MSB_UNREACHABLE: ${err.message}`));
+    req.on('error', (err) => reconnect(`MSB_UNREACHABLE: ${err.message}`));
     req.end();
     entry.req = req;
   }

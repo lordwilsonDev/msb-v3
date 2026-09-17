@@ -149,3 +149,26 @@ test('closeAll stops every open stream', async () => {
   assert.doesNotThrow(() => client.close('a'));
   await m.close();
 });
+
+test('a graceful stream close with no done frame schedules exactly one reconnect, not two', async () => {
+  const m = await fakeSseServer((req, res, n) => {
+    if (n === 1) {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      res.write('event: observation\ndata: {"source":"a","observed_at":"t0"}\n\n', () => {
+        res.end(); // graceful close, no destroy(), no done frame — end AND close both fire
+      });
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.write('event: observation\ndata: {"source":"b","observed_at":"t1"}\n\n');
+  });
+  const client = new TaskStreamClient(`http://127.0.0.1:${m.port}`, 'tok', { backoffMs: [10, 20] });
+  const reconnects = [];
+  client.on('reconnecting', (e) => reconnects.push(e));
+  client.open('t6');
+  await new Promise((r) => setTimeout(r, 200));
+  client.close('t6');
+  await m.close();
+  assert.equal(reconnects.length, 1, 'end and close both firing for one drop must schedule exactly one reconnect');
+  assert.equal(reconnects[0].attempt, 1);
+});
