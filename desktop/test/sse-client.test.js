@@ -97,8 +97,9 @@ test('reconnects with backoff after a dropped connection, then succeeds', async 
   const m = await fakeSseServer((req, res, n) => {
     if (n === 1) {
       res.writeHead(200, { 'Content-Type': 'text/event-stream' });
-      res.write('event: observation\ndata: {"source":"a","observed_at":"t0"}\n\n');
-      res.destroy(); // simulate a dropped connection mid-stream
+      res.write('event: observation\ndata: {"source":"a","observed_at":"t0"}\n\n', () => {
+        res.destroy(); // simulate a dropped connection mid-stream, after the write actually flushed
+      });
       return;
     }
     res.writeHead(200, { 'Content-Type': 'text/event-stream' });

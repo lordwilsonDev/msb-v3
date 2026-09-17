@@ -85,6 +85,7 @@ class TaskStreamClient extends EventEmitter {
           }
         });
         res.on('end', () => this._scheduleReconnect(taskId, 'STREAM_ENDED'));
+        res.on('close', () => this._scheduleReconnect(taskId, 'STREAM_CLOSED'));
       }
     );
     req.on('error', (err) => this._scheduleReconnect(taskId, `MSB_UNREACHABLE: ${err.message}`));
