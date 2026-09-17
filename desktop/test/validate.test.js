@@ -77,3 +77,25 @@ test('attach: rejects non-loopback host and bad port', () => {
   assert.equal(validate('attach', { host: '127.0.0.1', port: 8766 }).ok, true);
   assert.equal(validate('attach', {}).ok, true);
 });
+
+test('listTasks: defaults limit to 25 and clamps to MAX_LIMIT', () => {
+  assert.deepEqual(validate('listTasks', undefined).value, { limit: 25 });
+  assert.equal(validate('listTasks', { limit: 501 }).ok, false);
+  assert.deepEqual(validate('listTasks', { limit: 5 }).value, { limit: 5 });
+});
+
+test('subscribeTask: requires a non-empty taskId', () => {
+  assert.equal(validate('subscribeTask', {}).ok, false);
+  assert.equal(validate('subscribeTask', { taskId: '' }).ok, false);
+  assert.deepEqual(validate('subscribeTask', { taskId: 'task-1' }).value, { taskId: 'task-1' });
+});
+
+test('subscribeTask: rejects control characters in taskId', () => {
+  const nul = String.fromCharCode(0);
+  assert.equal(validate('subscribeTask', { taskId: `a${nul}b` }).ok, false);
+});
+
+test('unsubscribeTask: same shape as subscribeTask', () => {
+  assert.deepEqual(validate('unsubscribeTask', { taskId: 'task-2' }).value, { taskId: 'task-2' });
+  assert.equal(validate('unsubscribeTask', { taskId: 123 }).ok, false);
+});

@@ -107,6 +107,24 @@ const validators = {
     if (limit === null) return fail('limit out of range');
     return ok({ query, limit });
   },
+
+  listTasks(payload) {
+    const p = payload && typeof payload === 'object' ? payload : {};
+    const limit = cleanLimit(p.limit, 25, MAX_LIMIT);
+    if (limit === null) return fail('limit out of range');
+    return ok({ limit });
+  },
+
+  subscribeTask(payload) {
+    const p = payload && typeof payload === 'object' ? payload : {};
+    const taskId = cleanString(p.taskId, MAX_ID_LEN);
+    if (!taskId) return fail('taskId must be a non-empty string');
+    return ok({ taskId });
+  },
+
+  unsubscribeTask(payload) {
+    return validators.subscribeTask(payload);
+  },
 };
 
 /**
