@@ -34,6 +34,7 @@ test('bridge only calls a known, safe set of msb-v3 endpoints', () => {
     'GET /cockpit/api',
     'GET /governance/status',
     'GET /governance/approvals',
+    'GET /agent/tasks',
     'GET /memory/', // prefix, session appended
     'POST /rag/search',
   ]);
@@ -61,7 +62,7 @@ test('every state-changing call is a /governance endpoint carrying the operator 
 });
 
 test('bridge has no tool / provider / factory / agent execution path', () => {
-  assert.doesNotMatch(bridge, /\/agent\/|\/factory\/|\/tools?\/|\/providers?\/|\/ralph|\/flywheel\/turn|ollama|deepseek/i);
+  assert.doesNotMatch(bridge, /\/agent\/(?!tasks)|\/factory\/|\/tools?\/|\/providers?\/|\/ralph|\/flywheel\/turn|ollama|deepseek/i);
 });
 
 test('secrets never leave the main process', () => {

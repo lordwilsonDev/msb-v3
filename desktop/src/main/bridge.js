@@ -225,6 +225,16 @@ class MsbBridge {
       body: { tenant_id: this._ragTenant, query, limit },
     });
   }
+
+  /**
+   * GET /agent/tasks - recent/in-flight unified tasks. Operator-gated
+   * (task bodies carry intent/plan content, per the backend's own docstring).
+   * @param {number} [limit]
+   */
+  listTasks(limit) {
+    const n = limit || 25;
+    return this._get(`/agent/tasks?limit=${encodeURIComponent(n)}`, { operator: true });
+  }
 }
 
 /** Map an HTTP status to a stable, renderer-safe error token. */

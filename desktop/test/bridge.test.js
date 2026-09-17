@@ -158,3 +158,36 @@ test('hasOperatorToken reflects configuration', () => {
   assert.equal(new MsbBridge('127.0.0.1', 8766, {}).hasOperatorToken(), false);
   assert.equal(new MsbBridge('127.0.0.1', 8766, { operatorToken: 'x' }).hasOperatorToken(), true);
 });
+
+test('listTasks() hits GET /agent/tasks with the operator token and a limit', async () => {
+  const m = await fakeMsb({
+    'GET /agent/tasks': () => ({ json: { ok: true, count: 1, tasks: [{ task_id: 't1', state: 'EXECUTING', created_at: '2026-09-17T00:00:00Z', updated_at: '2026-09-17T00:00:01Z' }] } }),
+  });
+  const b = new MsbBridge('127.0.0.1', m.port, { operatorToken: 'SECRET-OP' });
+  const r = await b.listTasks(10);
+  await m.close();
+  assert.equal(r.ok, true);
+  assert.equal(r.data.count, 1);
+  assert.equal(r.data.tasks[0].task_id, 't1');
+  assert.equal(m.seen[0].headers.authorization, 'Bearer SECRET-OP');
+  assert.equal(m.seen[0].url, '/agent/tasks?limit=10');
+});
+
+test('listTasks() fails closed (503) with no operator token - no request sent', async () => {
+  const m = await fakeMsb({ 'GET *': () => ({ json: {} }) });
+  const b = new MsbBridge('127.0.0.1', m.port, {});
+  const r = await b.listTasks(10);
+  await m.close();
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 503);
+  assert.equal(r.error, 'OPERATOR_TOKEN_NOT_CONFIGURED');
+  assert.equal(m.seen.length, 0);
+});
+
+test('listTasks() defaults limit to 25 when omitted', async () => {
+  const m = await fakeMsb({ 'GET /agent/tasks': () => ({ json: { ok: true, count: 0, tasks: [] } }) });
+  const b = new MsbBridge('127.0.0.1', m.port, { operatorToken: 'x' });
+  await b.listTasks();
+  await m.close();
+  assert.equal(m.seen[0].url, '/agent/tasks?limit=25');
+});
