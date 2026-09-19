@@ -54,3 +54,5 @@
 {"ts": "2026-09-17T11:21:33Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
 {"ts": "2026-09-17T11:21:33Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
 {"ts": "2026-09-18T11:22:32Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
+{"ts": "2026-09-18T11:22:32Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
+{"ts": "2026-09-19T11:22:29Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
