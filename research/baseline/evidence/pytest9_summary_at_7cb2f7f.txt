@@ -1,0 +1,5 @@
+FAILED tests/db/test_schema_stamping.py::test_live_data_dir_is_fully_stamped
+1 failed, 3286 passed, 19 skipped, 75 deselected, 1 warning in 425.83s (0:07:05)
+=========================== short test summary info ============================
+FAILED tests/db/test_schema_stamping.py::test_live_data_dir_is_fully_stamped
+1 failed, 3286 passed, 19 skipped, 75 deselected, 1 warning in 425.83s (0:07:05)

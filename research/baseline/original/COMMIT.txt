@@ -1,0 +1,22 @@
+# COMMIT (captured 2026-09-20T03:19:19Z)
+HEAD: 7cb2f7f9ca669fd0723c9fa3a54708710accea34
+branch: main
+  7cb2f7f 2026-09-19 06:22:29 -0500 chore: daily gate evidence (PASS) 2026-09-19
+  bfeba7c 2026-09-18 06:22:32 -0500 chore: daily gate evidence (PASS) 2026-09-18
+  f4b08a8 2026-09-17 18:54:27 -0500 fix(plei): pass project_root to ingest_all() in debt/sensitivity handlers
+
+## git status --short
+(empty = clean)
+
+## stash
+stash@{0}: On main: pre-R0 clean 2026-09-19: daily-job files + .vscode + cockpit plan doc
+
+## remotes
+origin	https://github.com/lordwilsonDev/msb-v3.git (fetch)
+origin	https://github.com/lordwilsonDev/msb-v3.git (push)
+
+## Post-test drift (captured 2026-09-20T03:24:39Z)
+After the full pytest run this tracked file was modified (test side effect vs daily plei job: cause UNKNOWN):
+ M .plei/calibration.jsonl
+ .plei/calibration.jsonl | 2 ++
+ 1 file changed, 2 insertions(+)

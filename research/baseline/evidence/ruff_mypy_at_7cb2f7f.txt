@@ -1,0 +1,6 @@
+## ruff check src/ tests/ (CI ci.yml selection)
+All checks passed!
+## ruff check . (factory-gate)
+All checks passed!
+## mypy src
+Success: no issues found in 372 source files

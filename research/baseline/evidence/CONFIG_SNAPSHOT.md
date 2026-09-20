@@ -1,0 +1,104 @@
+# Config snapshot at 7cb2f7f (from git show 7cb2f7f:pyproject.toml; no runtime values)
+
+```toml
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+# asn1crypto (RFC 3161 TSA tokens, uac/timestamping.py) ships no stubs and
+# no py.typed marker. Pin the override here so bare `mypy src` is green
+# (not just `mypy src --ignore-missing-imports`) and the gate can't regress
+# silently behind a blanket CLI flag.
+[[tool.mypy.overrides]]
+module = ["asn1crypto.*"]
+ignore_missing_imports = true
+
+# Third-party packages without type stubs — added as new subsystems
+# were introduced (speech, energy_matrix, meta-inference). Pin per-package so
+# a blanket --ignore-missing-imports can't regress the gate silently.
+# mlx_lm/mlx_whisper are Apple-Silicon-only. Their imports are LAZY so the
+# modules load fine on Linux at runtime — but mypy resolves imports
+# statically, so a lazily-imported Apple-only dependency still needs an entry
+# here or Linux CI dies on import-not-found. mlx_lm was missing from this list
+# and kept factory-gate red from 2026-09-12 until it was added.
+[[tool.mypy.overrides]]
+module = [
+    "pyaudio.*",
+    "psutil.*",
+    "torchaudio.*",
+    "mlx_whisper.*",
+    "mlx_lm.*",
+    "faster_whisper.*",
+    "whisper.*",
+    "resemblyzer.*",
+    "webrtcvad.*",
+    "librosa.*",
+]
+ignore_missing_imports = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests", "src/personal_intelligence/tests"]
+# Test tiers (PRODUCTION-CLOSURE-001 P1). Unmarked tests are the hermetic
+# core: no live model, no fault-injection subprocess, no assumption that a
+# dev server is already listening. The release gate runs the core; the tiers
+# below are timing-sensitive and run separately. Enforced since 2026-09-16 in
+# tests/conftest.py (pytest_collection_modifyitems): the tiers are DESELECTED
+# from a default run, so `pytest` and the daily gate stay hermetic and cannot
+# swing on whether a dev server happens to be up. Run them deliberately with
+# MSB_RUN_TIERS=1, or `make test-tiers`.
+#   live        — hits a real Ollama / model endpoint
+#   chaos       — spawns the fault-injection proxy subprocess
+#   integration — expects an msb-v3 server already reachable (MSB_BASE_URL / :8766)
+markers = [
+    "live: hits a real Ollama / model endpoint; skip-on-timeout, not a regression",
+    "chaos: spawns the h08 fault-injection proxy subprocess",
+    "integration: expects an msb-v3 server already reachable",
+]
+
+[project.scripts]
+msb-v3 = "msb_v3.__main__:run"
+```
+
+## Declared dependencies
+```
+dependencies = [
+  # No-op comment (2026-08-16): re-fire the dependency-graph submission to
+  # confirm the .in-removal fix. Touches the manifest without changing any pin.
+  "fastapi==0.141.1",
+  "uvicorn[standard]==0.34.1",
+  "pydantic==2.10.6",
+  "httpx==0.28.1",
+  "prometheus-client==0.21.1",
+  "qdrant-client==1.18.0",
+  "cryptography==50.0.0",
+  "asn1crypto==1.5.1",  # RFC 3161 trusted timestamping (uac/timestamping.py): pure-Python ASN.1 for the TSA token — zero transitive deps
+  "python-pkcs11==0.9.5",  # YubiKey PIV signing via libykcs11 PKCS#11 (uac/signing.py)
+]
+[project.optional-dependencies]
+dev = [
+  "pytest==9.0.3",  # PYSEC-2026-1845: 8.3.5 vulnerable (pip-audit gate)
+  "pytest-xdist==3.8.0",  # parallel test execution — cuts CI from 8min to ~3min
+  "pytest-asyncio==1.4.0",  # 0.24.0 requires pytest<9 — clashes with the 9.0.3 CVE pin
+  "ruff==0.9.4",
+  "mypy==2.3.0",  # CI lint job runs `mypy src` — was only an ad-hoc factory-gate arg
+  "pip-tools==7.6.1",  # `make deps` regenerates the *.lock files
+  "PyYAML==6.0.3",  # workflow-structure guard tests (tests/test_harness_gate_wiring.py)
+  "types-PyYAML==6.0.12.20260724",  # mypy stubs for the PyYAML import
+  "hypothesis==6.148.9",  # property-based security tests (tests/security/test_property_based.py, P14)
+  "requests==2.33.0",  # HTTP-level security tests (tests/security/test_{replay_protection,race_toctou,cold_state_verification}.py, P10-P13); 2.32.3 had PYSEC-2026-1872/2275
+]
+speech = [
+  "webrtcvad==2.0.10",  # VAD in msb_v3/speech/vad.py — EXPERIMENTAL subsystem, not in the release contract; tests importorskip when absent
+]
+
+# Ruff gates MUST agree across every invocation: the CI lint job runs plain
+# `ruff check src/ tests/` (default selection) while factory-gate pins
+# `--select E9,F,I`. In 2026-08 the silent-except sweep landed 138 E402s
+# (imports below a logger assignment) that E9/F/I cannot see — only the
+# default selection caught them. Pin one selection here so `ruff check`
+# (no flags) is identical everywhere: ruff's default E4/E7/E9/F + I.
+[tool.ruff.lint]
+```
