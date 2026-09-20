@@ -67,7 +67,12 @@ def test_runtime_gate_registers_factory_tool():
     c = Client()
     runtime.register_governed_tools(
         c,
-        {"tools": [{"name": "factory.run"}], "session": "s", "granted_capabilities": ["factory.run"]},
+        {
+            "tools": [{"name": "factory.run"}],
+            "session": "s",
+            "granted_capabilities": ["factory.run"],
+            "surface": "factory",
+        },
     )
     assert "factory.run" in c.registered
     out = c.registered["factory.run"](title="x", repo="/no/such/dir")
@@ -82,7 +87,9 @@ def test_runtime_gate_denies_factory_without_capability():
             self.registered[name] = fn
 
     c = Client()
-    runtime.register_governed_tools(c, {"tools": [{"name": "factory.run"}], "session": "s"})
+    runtime.register_governed_tools(
+        c, {"tools": [{"name": "factory.run"}], "session": "s", "surface": "factory"}
+    )
     assert "factory.run" in c.registered
     out = c.registered["factory.run"](title="x", repo="/tmp")
     assert out.startswith("[denied]")  # capability gate is fail-closed

@@ -99,6 +99,24 @@ its test. Add explicit SSRF + path-traversal cases if any class lacks one.
 (portability scan + CI); anchor seed in the macOS keychain (not `.env`);
 operator token via `scripts/set-operator-token.sh`.
 
+> **Corrected 2026-09-20 — this line asserted `0600` while the file was `0644`.**
+> The mode was correct when the line was written (v0.3.0, 2026-08-31 —
+> `scripts/store-anchor-key.sh` sets and re-sets `0600`), and the documented
+> creation step, `cp .env.example .env` in `docs/QUICKSTART.md`, produces exactly
+> `0644`; that is the likely mechanism, and it is an inference, not something the
+> repository records. The `C6` wrongness check pinned the claim **false** for
+> ~3 weeks rather than letting it stand. The mode is now genuinely `0600`, both
+> documented creation paths (`docs/QUICKSTART.md` and the
+> independent-user-validation playbook) now restrict the file as they create it,
+> and `tests/wrongness/test_checks.py::test_live_c6_env_mode_now_fixed` pins the
+> claim **true**, so a regression (a re-created or restored `.env`) fails the
+> suite. No writer of `.env` resets the mode: `sed -i.bak` rewrites in place and
+> preserves it, `rotate_secrets.py` writes in place, `store-anchor-key.sh`
+> chmods `0600` explicitly.
+>
+> **This closes the mode sub-claim only. H4 stays open** — the broker below is
+> untouched, and the verdict in the summary table is unchanged.
+
 **Missing:** the *broker pattern* — LLM gets a capability reference, a broker
 resolves it to the secret, the secret never enters model context. Today a
 provider client reads its key from env directly. No test proves a secret
@@ -106,6 +124,40 @@ cannot surface via prompt / tool-output / logs / errors / memory / audit / RAG.
 
 **To close:** a `SecretBroker` seam + redaction on the audit/log path + an
 exposure test across all 7 channels.
+
+> **Updated 2026-09-20 (JOB-026) — those three closure items are built; the
+> verdict above does not move, and this blockquote says why.**
+> `src/msb_v3/secrets/` now holds the seam — a `SecretBroker` ABC with env /
+> macOS-keychain / unavailable providers, a fail-closed tier-aware registry, and
+> a swap test that points one consumer at both real stores — plus a redactor
+> that masks **both** resolved values and known credential shapes. Redaction is
+> wired at **seven** choke points: prompt and tool-output at the model client's
+> wire boundary, both log formatters, the single audit INSERT, the two memory
+> write paths, retrieval matches/metadata/route-errors, and response bodies via a
+> middleware that sits inside GZip. The required exposure test is
+> `tests/secret_handling/test_exposure_channels.py`, and each channel has a
+> **paired sensitivity check** — the same path with its hook neutralised — so the
+> suite cannot go green because a secret merely stopped travelling. Startup
+> seeds the configured secrets into the redactor at process start
+> (`SEED_ENV_NAMES`, pinned to `scripts/check-env-drift.sh`'s `SECRET_KEYS`), so
+> value-based redaction is armed without waiting for a client to resolve a key,
+> and a process that would mask **nothing** while looking configured refuses to
+> start rather than serving with the redactor dark (JOB-027;
+> `msb_v3/secrets/selfcheck.py`, `msb_v3_secret_redaction_armed` on `/metrics`).
+> (It takes effect on the next service start — the running process was not
+> restarted by this change.)
+>
+> **What is still open, stated rather than glossed:** the *Missing* paragraph
+> above also says *"a provider client reads its key from env directly."* That is
+> unchanged. This job was scoped — by the operator — to the output channels so
+> that no live auth, bridge or notify path would change behaviour, and **no
+> client resolves through the broker yet**; the only live consumer is the
+> seeding. Recorded as board decision 15. Also not claimed: a long high-entropy
+> secret that never passes through the broker and matches no known shape is not
+> masked, a secret split across an SSE chunk boundary is not caught, non-JSON
+> bodies are passed through untouched, and the middleware fails open on an
+> internal error. Report:
+> `ai-workspace/job-board/done/JOB-026-secret-broker-h4/output/H4-BROKER-REPORT.md`.
 
 ---
 

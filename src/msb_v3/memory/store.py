@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from msb_v3.core.config import settings
+from msb_v3.secrets.redact import redact
 
 
 @dataclass(frozen=True)
@@ -66,10 +67,15 @@ class MemoryStore:
             )
 
     def append(self, session: str, message: Message) -> int | None:
+        # The *memory* channel, redacted on write: whatever lands here is
+        # replayed into prompts by recent()/truncate(), so a secret written once
+        # would keep re-entering model context on every later turn. Redacting at
+        # the write means it is never stored, rather than being filtered each
+        # time it is read.
         with self._conn() as conn:
             cur = conn.execute(
                 "INSERT INTO messages(session, role, content, ts, tokens) VALUES (?,?,?,?,?)",
-                (session, message.role, message.content, message.ts, message.tokens),
+                (session, message.role, redact(message.content), message.ts, message.tokens),
             )
             return cur.lastrowid
 

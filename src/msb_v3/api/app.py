@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from contextlib import asynccontextmanager
 
@@ -38,6 +39,7 @@ from msb_v3.api.moie import router as moie_router
 from msb_v3.api.notify import router as notify_router
 from msb_v3.api.openai_compat import router as openai_compat_router
 from msb_v3.api.rag import router as rag_router
+from msb_v3.api.redaction_middleware import SecretRedactionMiddleware
 from msb_v3.api.research import router as research_router
 from msb_v3.api.safety import router as safety_router
 from msb_v3.api.skill_router import router as skill_router
@@ -54,8 +56,9 @@ from msb_v3.core.container import get_container
 from msb_v3.core.rate_limit import RateLimiter
 from msb_v3.integrations.openbot import router as openbot_adapter_router
 from msb_v3.node.api import router as node_router
-from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS
+from msb_v3.observability.metrics import RATE_LIMIT_REJECTIONS, SECRET_REDACTION_ARMED
 from msb_v3.plei.api import plei_router
+from msb_v3.secrets.selfcheck import SecretRedactionUnarmed, redaction_self_check
 from msb_v3.vesta.api import router as vesta_router
 
 
@@ -141,7 +144,36 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Secret redaction sits *inside* GZip: middleware added later wraps
+    # middleware added earlier, so adding this one first means it inspects the
+    # application's plain-text body and GZip compresses the redacted result
+    # afterwards. Added after GZip it would receive compressed bytes.
+    app.add_middleware(SecretRedactionMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=500)
+
+    # Arm the redactor for every configured secret before the first request, so
+    # the value-based half of redaction bites even though nothing resolves keys
+    # through the broker yet (no provider client is rewired to it) — and then
+    # **refuse to start if a configured instance would mask nothing**. The
+    # failure this prevents is not a crash: it is a process that starts
+    # normally, serves traffic and masks nothing because its environment was not
+    # the configured one. Reasons and verdicts: msb_v3.secrets.selfcheck.
+    _status = redaction_self_check()
+    SECRET_REDACTION_ARMED.set(_status.armed)
+    _log = logging.getLogger(__name__)
+    if not _status.ok:
+        raise SecretRedactionUnarmed(_status.reason)
+    if _status.verdict == "armed":
+        _log.info(
+            "secret redaction armed",
+            extra={"structured_data": {"seeded": _status.armed, "verdict": _status.verdict}},
+        )
+    else:
+        # Not a failure (fresh clone / CI / deliberate override) but never
+        # silent: the gauge reports 0 and this line says why.
+        _log.warning(
+            "secret redaction is NOT active", extra={"structured_data": _status.as_dict()}
+        )
 
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):

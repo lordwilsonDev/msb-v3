@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -15,6 +16,32 @@ from msb_v3.local_ai.ollama import LocalAIClient
 from msb_v3.observability.metrics import Metrics
 
 logger = logging.getLogger(__name__)
+
+# The identity the chat surface acts as. Operator config, not caller input.
+CHAT_ACTOR_ENV = "MSB_CHAT_ACTOR_ID"
+
+
+def chat_actor(context: Dict[str, Any] | None = None) -> str | None:
+    """Resolve the acting principal for this surface, or None if unset.
+
+    **Operator config wins over anything in ``context``.** That precedence is the
+    whole point: when this becomes an enforcement path, a caller-supplied actor
+    must never satisfy the identity invariant, or I6 is satisfied by
+    self-authorization — precisely the hole the governance kernel spec exists to
+    close (§7, K11). A caller-supplied value is honoured only when no operator
+    identity is configured, because in-process callers have no other way to be
+    attributed.
+
+    Read live at call time (same convention as ``api.auth.check_auth``), so the
+    identity can change without a restart. Unset means this surface asserts no
+    actor — which is today's behaviour, deliberately preserved.
+    """
+    configured = os.getenv(CHAT_ACTOR_ENV, "").strip()
+    if configured:
+        return configured
+    claimed = (context or {}).get("actor_id")
+    return claimed if isinstance(claimed, str) and claimed.strip() else None
+
 
 # Gateway wiring is opt-in by default: a ChatHarness call with no
 # `requires_authorization` / `required_capabilities` in its context routes
@@ -132,7 +159,19 @@ class ChatHarness(BaseHarness):
             try:
                 from msb_v3.tools.runtime import register_governed_tools
 
-                register_governed_tools(client, {**context, "session": session})
+                # "surface" names this entry path for identity-shadow
+                # observation (governance/identity_shadow.py). The actor is
+                # operator-configured (chat_actor); it is observed and
+                # recorded, never enforced (Deliverable 02 §10).
+                register_governed_tools(
+                    client,
+                    {
+                        **context,
+                        "session": session,
+                        "surface": "chat",
+                        "actor_id": chat_actor(context),
+                    },
+                )
             except Exception:
                 logger.debug("governed tool registration failed", exc_info=True)
         started = time.perf_counter()

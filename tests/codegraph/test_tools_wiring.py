@@ -96,7 +96,14 @@ def test_runtime_gate_audits_codegraph_call(tmp_path, monkeypatch):
 
     schemas = model_schemas(["codegraph.explore", "codegraph.context"])
     register_governed_tools(
-        FakeClient(), {"tools": schemas, "granted_capabilities": [], "tenant": "t", "session": "s"}
+        FakeClient(),
+        {
+            "tools": schemas,
+            "granted_capabilities": [],
+            "tenant": "t",
+            "session": "s",
+            "surface": "codegraph",
+        },
     )
     assert set(calls) == {"codegraph.explore", "codegraph.context"}
     out = calls["codegraph.explore"](repo=REPO, name="Engine")

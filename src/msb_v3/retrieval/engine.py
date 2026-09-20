@@ -15,6 +15,7 @@ from typing import Any
 from msb_v3.retrieval.fusion import rrf
 from msb_v3.retrieval.indexes import get_adapter
 from msb_v3.retrieval.planner import plan_explicit, plan_query
+from msb_v3.secrets.redact import redact, redact_obj
 
 
 class RetrievalRouter:
@@ -44,7 +45,10 @@ class RetrievalRouter:
                     query, top_k=route["top_k"],
                 )
             except Exception as exc:  # noqa: BLE001 — degrade, don't crash
-                route_errors[route["index"]] = str(exc)
+                # An adapter's exception string is free text (it often quotes a
+                # URL or a query) and it is returned to the caller, so it is
+                # redacted like any other output.
+                route_errors[route["index"]] = redact(str(exc))
 
         await asyncio.gather(*(_dispatch(r) for r in plan["routes"]))
 
@@ -55,13 +59,18 @@ class RetrievalRouter:
                 "id": item["best"].get("id", ""),
                 "score": item["score"],
                 "source": item["best"].get("source", ""),
-                "text": item["best"].get("text", ""),
-                "metadata": item["best"].get("metadata"),
+                # The *RAG* channel: retrieved text and metadata are handed to
+                # the model as context and returned to the caller, so they are
+                # redacted at the assembly point, once, for both consumers.
+                "text": redact(item["best"].get("text", "")),
+                "metadata": redact_obj(item["best"].get("metadata")),
                 "provenance": item["routes"],
             })
 
         return {
-            "query": query,
+            # A query is echoed back and fed to the model; if someone pastes a
+            # credential into a search box, this is where it would travel.
+            "query": redact(query),
             "plan": plan,
             "matches": matches,
             "context": {"tenant_id": self.tenant_id},

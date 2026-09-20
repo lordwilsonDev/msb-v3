@@ -88,7 +88,7 @@ def test_register_skips_unknown_tools():
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "search_vault"}, {"name": "not_a_real_tool"}], "session": "s"},
+        {"tools": [{"name": "search_vault"}, {"name": "not_a_real_tool"}], "session": "s", "surface": "governed-loop"},
     )
     assert set(client.registered) == {"search_vault"}
 
@@ -98,7 +98,7 @@ def test_vault_write_denied_without_capability(monkeypatch):
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_write"}], "session": "s"},
+        {"tools": [{"name": "vault_write"}], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_write", {"path": "x.md", "content": "hi"})
     assert result.startswith("[denied]")
@@ -112,7 +112,7 @@ def test_vault_write_allowed_with_capability(monkeypatch, tmp_path):
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_write"}], "granted_capabilities": ["vault.write"], "session": "s"},
+        {"tools": [{"name": "vault_write"}], "granted_capabilities": ["vault.write"], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_write", {"path": "notes/a.md", "content": "hello"})
     assert result.startswith("wrote notes/a.md")
@@ -127,7 +127,7 @@ def test_vault_stage_draft_denied_without_capability(monkeypatch):
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_stage_draft"}], "session": "s"},
+        {"tools": [{"name": "vault_stage_draft"}], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_stage_draft", {"title": "My Draft", "content": "hi"})
     assert result.startswith("[denied]")
@@ -141,7 +141,7 @@ def test_vault_stage_draft_writes_outside_the_live_vault(monkeypatch, tmp_path):
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_stage_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+        {"tools": [{"name": "vault_stage_draft"}], "granted_capabilities": ["vault.write"], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_stage_draft", {"title": "My Draft!", "content": "body"})
     assert result.startswith("staged My Draft.md")
@@ -154,7 +154,7 @@ def test_vault_promote_draft_requires_approval_id(monkeypatch):
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_promote_draft", {"path": "a.md", "approval_id": ""})
     assert result.startswith("[approval-required]")
@@ -167,7 +167,7 @@ def test_vault_promote_draft_blocked_without_an_approved_item(monkeypatch, tmp_p
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_promote_draft", {"path": "a.md", "approval_id": "does-not-exist"})
     assert result.startswith("[approval-required]")
@@ -189,7 +189,7 @@ def test_vault_promote_draft_succeeds_with_an_approved_item(monkeypatch, tmp_pat
     client = _RecordingClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s"},
+        {"tools": [{"name": "vault_promote_draft"}], "granted_capabilities": ["vault.write"], "session": "s", "surface": "governed-loop"},
     )
     result = client.run_tool("vault_promote_draft", {"path": "a.md", "approval_id": item.item_id})
     assert result.startswith("promoted a.md")
@@ -237,7 +237,7 @@ def test_vault_read_rejects_traversal(monkeypatch, tmp_path):
     (tmp_path / "vault").mkdir(parents=True, exist_ok=True)
     (tmp_path / "secret.txt").write_text("top secret")
     client = _RecordingClient()
-    runtime.register_governed_tools(client, {"tools": [{"name": "vault_read"}], "session": "s"})
+    runtime.register_governed_tools(client, {"tools": [{"name": "vault_read"}], "session": "s", "surface": "governed-loop"})
     result = client.run_tool("vault_read", {"path": "../secret.txt"})
     assert result.startswith("[denied]")
 
@@ -248,7 +248,7 @@ def test_vault_read_round_trip(monkeypatch, tmp_path):
     (tmp_path / "vault").mkdir(parents=True, exist_ok=True)
     (tmp_path / "vault" / "note.md").write_text("# Note\nbody")
     client = _RecordingClient()
-    runtime.register_governed_tools(client, {"tools": [{"name": "vault_read"}], "session": "s"})
+    runtime.register_governed_tools(client, {"tools": [{"name": "vault_read"}], "session": "s", "surface": "governed-loop"})
     result = client.run_tool("vault_read", {"path": "note.md"})
     assert "body" in result
 
@@ -293,7 +293,7 @@ def test_vault_lint_needs_no_capability(monkeypatch, tmp_path):
     (tmp_path / "vault").mkdir(parents=True, exist_ok=True)
     (tmp_path / "vault" / "a.md").write_text("---\nid: 1\n---\nbody\n")
     client = _RecordingClient()
-    runtime.register_governed_tools(client, {"tools": [{"name": "vault_lint"}], "session": "s"})
+    runtime.register_governed_tools(client, {"tools": [{"name": "vault_lint"}], "session": "s", "surface": "governed-loop"})
     result = client.run_tool("vault_lint", {})
     assert result.startswith("clean")
 
@@ -304,7 +304,7 @@ def test_vault_lint_reports_missing_required_fields(monkeypatch, tmp_path):
     (tmp_path / "vault").mkdir(parents=True, exist_ok=True)
     (tmp_path / "vault" / "a.md").write_text("---\nid: 1\n---\nbody\n")
     client = _RecordingClient()
-    runtime.register_governed_tools(client, {"tools": [{"name": "vault_lint"}], "session": "s"})
+    runtime.register_governed_tools(client, {"tools": [{"name": "vault_lint"}], "session": "s", "surface": "governed-loop"})
     result = client.run_tool("vault_lint", {"required_fields": ["id", "area"]})
     assert "a.md" in result and "area" in result
 
@@ -353,7 +353,7 @@ def test_governed_tool_run_through_execute_tool_loop(monkeypatch, tmp_path):
     client = ToolLoopClient()
     runtime.register_governed_tools(
         client,
-        {"tools": [{"name": "vault_read"}], "session": "s"},
+        {"tools": [{"name": "vault_read"}], "session": "s", "surface": "governed-loop"},
     )
     resp = client.execute_tool_loop(
         "read facts",

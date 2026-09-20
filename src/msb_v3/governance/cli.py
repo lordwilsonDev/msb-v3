@@ -1,4 +1,4 @@
-"""CLI: python -m msb_v3.governance status|arm|disarm|approvals|approve|reject|budget|config
+"""CLI: python -m msb_v3.governance status|arm|disarm|approvals|approve|reject|budget|config|identity-status
 
 The terminal surface for the brakes (the Cockpit UI is Phase 1). Mirrors
 the msb_v3.ops CLI style: argparse subparsers, human-readable lines.
@@ -7,6 +7,7 @@ the msb_v3.ops CLI style: argparse subparsers, human-readable lines.
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import sys
 from typing import Optional
@@ -124,6 +125,84 @@ def cmd_reject(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_identity_status(args: argparse.Namespace) -> int:
+    """K22 exit-criteria status from the accumulated identity shadow records.
+
+    Read-only and consequence-free by design: it does not create the corpus
+    directory, does not touch the gate, and flips nothing. Where a criterion
+    turns on a human judgement it reports JUDGEMENT REQUIRED instead of a
+    verdict — the system may not declare its own conclusion true (blueprint §14).
+    """
+    from msb_v3.governance.identity_shadow import k22_status, load_corpus
+    from msb_v3.governance.tool_registry_view import coverage_report
+
+    corpus = load_corpus(args.path)
+    status = k22_status(corpus, coverage=coverage_report())
+    if args.json:
+        print(json.dumps(status, indent=2, default=str))
+        return 0
+
+    c = status["corpus"]
+    print(f"[governance] identity shadow corpus: {c['path']}")
+    if not c["exists"]:
+        print("[governance]   not present yet — no observation has run (that is not an error)")
+    print(
+        f"[governance]   records: {c['records']}"
+        + (f"   malformed lines: {c['malformed']}" if c["malformed"] else "")
+    )
+    if c["newest_ts"]:
+        def _stamp(ts):
+            return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        print(f"[governance]   window: {_stamp(c['oldest_ts'])} to {_stamp(c['newest_ts'])}")
+    print(
+        "[governance]   observation: "
+        + ("enabled" if status["observation_enabled"] else "DISABLED (MSB_IDENTITY_SHADOW)")
+    )
+    origins = status.get("origins") or {}
+    if origins:
+        print(
+            "[governance]   origin: "
+            + ", ".join(f"{k}={v}" for k, v in sorted(origins.items(), key=lambda kv: (-kv[1], kv[0])))
+            + f"   (runtime records: {status.get('runtime_records', 0)})"
+        )
+
+    print("")
+    print("[governance] K22 exit criteria, from shadow data (nothing here flips a box)")
+    for crit in status["criteria"]:
+        print(f"[governance]   {crit['id']}. {crit['name']}")
+        print(f"[governance]      {crit['status']}")
+        for line in crit["detail"]:
+            print(f"[governance]        {line}")
+        if crit.get("open_judgement") and crit["status"] == "MET":
+            print(f"[governance]        open judgement: {crit['open_judgement']}")
+
+    non_live = status.get("non_live") or {}
+    if non_live.get("count"):
+        by = ", ".join(
+            f"{k}={v}"
+            for k, v in sorted((non_live.get("by_surface") or {}).items(), key=lambda kv: (-kv[1], kv[0]))
+        )
+        print("")
+        print(f"[governance] non-live entry paths (criterion 1 out of scope): {by}")
+        print(
+            f"[governance]   declared in-process: {non_live.get('declared_in_process', 0)}"
+            f"   legacy unattributed: {non_live.get('legacy_unattributed', 0)}"
+        )
+
+    cov = status.get("tier_coverage") or {}
+    if cov:
+        print("")
+        print(
+            f"[governance] guard-7 tier coverage: {len(cov['declared_by_tools'])} capabilities declared by tools, "
+            f"{len(cov['unknown_tier'])} unevaluable"
+        )
+
+    print("")
+    print(f"[governance] {status['note']}")
+    return 0
+
+
 def main(argv: Optional[list] = None) -> int:
     ap = argparse.ArgumentParser(prog="msb_v3.governance")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -154,6 +233,17 @@ def main(argv: Optional[list] = None) -> int:
     rej.add_argument("reason")
     rej.add_argument("--operator", default="cli")
 
+    ids = sub.add_parser(
+        "identity-status",
+        help="K22 exit-criteria status from identity shadow records (read-only; flips nothing)",
+    )
+    ids.add_argument("--json", action="store_true", help="print the status as JSON")
+    ids.add_argument(
+        "--path",
+        default=None,
+        help="corpus path (default: runtime/governance-shadow/identity.jsonl)",
+    )
+
     args = ap.parse_args(argv)
     return {
         "status": cmd_status,
@@ -164,6 +254,7 @@ def main(argv: Optional[list] = None) -> int:
         "approvals": cmd_approvals,
         "approve": cmd_approve,
         "reject": cmd_reject,
+        "identity-status": cmd_identity_status,
     }[args.cmd](args)
 
 

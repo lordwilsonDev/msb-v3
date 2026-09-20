@@ -113,7 +113,9 @@ def test_memory_store_denied_without_capability(tmp_path, monkeypatch):
             self.registered[name] = fn
 
     c = Client()
-    runtime.register_governed_tools(c, {"tools": [{"name": "memory.store"}], "session": "s"})
+    runtime.register_governed_tools(
+        c, {"tools": [{"name": "memory.store"}], "session": "s", "surface": "memory-fabric"}
+    )
     out = c.registered["memory.store"](content="x")
     assert out.startswith("[denied]")
     assert "memory.write" in out
@@ -130,7 +132,13 @@ def test_memory_store_allowed_with_capability(tmp_path, monkeypatch):
 
     c = Client()
     runtime.register_governed_tools(
-        c, {"tools": [{"name": "memory.store"}], "granted_capabilities": ["memory.write"], "session": "s"}
+        c,
+        {
+            "tools": [{"name": "memory.store"}],
+            "granted_capabilities": ["memory.write"],
+            "session": "s",
+            "surface": "memory-fabric",
+        },
     )
     out = c.registered["memory.store"](content="remember this", tags=["t"])
     assert out.startswith("stored ")

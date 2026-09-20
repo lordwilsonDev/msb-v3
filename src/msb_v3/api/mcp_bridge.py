@@ -47,6 +47,14 @@ _MCP_GRANTED_CAPABILITIES = frozenset(
     if c.strip()
 )
 
+# Which registered agent identity this surface acts as. Unset (the default)
+# means the bridge asserts no actor — which is the honest value today: the
+# bridge is a machine surface with no per-call principal. It is read for
+# identity-shadow observation only (governance/identity_shadow.py) and changes
+# no decision. Setting it is what lets the shadow data answer "would a
+# registered bridge identity be justified?" (Deliverable 02 §10, K22).
+_MCP_ACTOR_ID = os.getenv("MSB_MCP_ACTOR_ID") or None
+
 
 def _run_governed_proxy(tool_id: str, args: dict[str, Any]) -> str:
     """Route a bridge tool call through the governed tool loop.
@@ -55,6 +63,10 @@ def _run_governed_proxy(tool_id: str, args: dict[str, Any]) -> str:
     grant + approval gate + contained executor + UAC-chain audit carrying an
     explicit verdict. No grant = fail-closed deny. The bridge-level audit
     event is still logged by the caller for actor/timestamp context.
+
+    ``actor_id`` is forwarded for identity-shadow observation only and is not
+    read by any gate; pass-through of an actor is a separate, signed-off step
+    (Deliverable 02 §10).
     """
     from msb_v3.tools.runtime import _run_governed
 
@@ -64,6 +76,8 @@ def _run_governed_proxy(tool_id: str, args: dict[str, Any]) -> str:
         granted=_MCP_GRANTED_CAPABILITIES,
         tenant="mcp-bridge",
         session="mcp-bridge",
+        actor_id=_MCP_ACTOR_ID,
+        surface="mcp-bridge",
     )
 # verify_build ids are used directly as filenames; allow only safe characters
 # so a caller can never inject path separators or control characters.

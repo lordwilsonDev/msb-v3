@@ -17,6 +17,16 @@ import pytest
 from msb_v3.core.config import settings
 from msb_v3.uac import audit_chain as ac
 
+# The startup redaction self-check refuses to build the app when a *configured*
+# process would mask nothing — and a machine with a repo `.env` looks configured
+# to it even though pytest never exports those secrets. 94 test modules call
+# create_app(), so the suite accepts an unarmed start deliberately here. This
+# does not hide the state: the app still logs a WARNING and reports
+# msb_v3_secret_redaction_armed=0, and the guard itself is covered by
+# tests/secret_handling/test_startup_selfcheck.py. The guard protects the
+# service; it should not fight the suite.
+os.environ.setdefault("MSB_ALLOW_UNARMED_REDACTION", "1")
+
 # Test tiers, per pyproject [tool.pytest.ini_options]. All three tier markers
 # mean "this test needs something this machine may not have running":
 # integration expects a live msb-v3 on MSB_BASE_URL / :8766, live hits a real

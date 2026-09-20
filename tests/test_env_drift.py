@@ -8,6 +8,11 @@ guard is gated inside the pytest suite; the remaining tests exercise the
 behavior from the outside (independent of the selftest) and guard the
 invariants the gate depends on: drift must warn + fail under --fail, a
 clean env must pass, and secret values must never leak into output.
+
+It also pins the storage invariants of the TypeSafe (Jev) key, which by
+operator disposition (2026-09-20) is **stored but deliberately unwired**:
+declared in the template, masked in the guard, and not yet consumed by any
+runtime module. See board decision 14.
 """
 from __future__ import annotations
 
@@ -94,3 +99,48 @@ def test_clean_env_passes(tmp_path) -> None:
     assert result.returncode == 0, result.stdout
     assert "clean" in result.stdout
     assert "WARN" not in result.stdout
+
+
+# --- TypeSafe (Jev) key: stored, deliberately not wired -------------------
+
+KEY = "TYPESAFE_API_KEY"
+SRC = REPO_ROOT / "src" / "msb_v3"
+
+
+def test_typesafe_key_is_declared_and_masked() -> None:
+    """A credential that is neither documented nor masked is one that will be
+    leaked by the drift check on the day it is rotated."""
+    example = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
+    assert f"{KEY}=" in example, f"{KEY} must be declared in .env.example"
+
+    guard = (REPO_ROOT / "scripts" / "check-env-drift.sh").read_text(encoding="utf-8")
+    secret_keys = guard.split("SECRET_KEYS=(", 1)[1].split(")", 1)[0].split()
+    assert KEY in secret_keys, (
+        f"{KEY} must be listed in SECRET_KEYS or the drift check may print its value"
+    )
+
+
+def test_typesafe_key_is_not_yet_consumed_by_runtime_code() -> None:
+    """The key is stored, not wired. This is the tripwire for that deferral.
+
+    It fires in the change that integrates the key — which is the point: the
+    operator deferred evaluation until the deliverables are green and required
+    a re-issue before production, so the integration commits must also update
+    board decision 14 and replace this test rather than silently relying on it.
+
+    **Re-examined 2026-09-20 (JOB-026), and narrowed rather than deleted.** It
+    fired when ``msb_v3/secrets`` began *seeding* the key into the redactor —
+    which is not consuming the credential: nothing resolves it, and the seed
+    list is precisely what masks the key on every output channel. The scope is
+    therefore "outside the secrets package". A module that reads this key to
+    call the vendor still fails this test, which is what the deferral needs.
+    """
+    offenders = sorted(
+        p.relative_to(REPO_ROOT).as_posix()
+        for p in SRC.rglob("*.py")
+        if "TYPESAFE" in p.read_text(encoding="utf-8") and not p.is_relative_to(SRC / "secrets")
+    )
+    assert offenders == [], (
+        f"runtime code now references {KEY}: {offenders}. If that is the "
+        "intended integration, update board decision 14 and replace this test."
+    )

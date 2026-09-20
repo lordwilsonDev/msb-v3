@@ -2,9 +2,11 @@
 
 The live tests are the point (the by-hand lesson: the strongest check is
 often 5 lines of shell).  C4 was closed 2026-09-01 (key revoked, untracked,
-purged from history) — its test now asserts the tree stays CLEAN.  C5/C6
-were verified against the real tree in the hardening audit — these assert
-the checks still catch them today.
+purged from history) — its test now asserts the tree stays CLEAN.  C5 was
+verified against the real tree in the hardening audit.  C6 was a real
+finding: the audit asserted `.env` was `0600` while the file was `0644`, so
+the check pinned that claim FALSE until the mode was set deliberately on
+2026-09-20 — it now pins the claim TRUE, which turns a regression red.
 """
 
 from __future__ import annotations
@@ -111,10 +113,17 @@ def test_porcelain_unstaged_is_dirty(temp_repo: Path) -> None:
 
 
 @pytest.mark.skipif(not (REPO / ".env").exists(), reason="msb-v3 .env absent")
-def test_live_c6_env_mode_still_wrong() -> None:
-    """H4 sub-claim: '.env is 0600' — audit found 0644. Still wrong?"""
+def test_live_c6_env_mode_now_fixed() -> None:
+    """H4 mode sub-claim CLOSED (2026-09-20): the audit asserted '.env is
+    0600' while the file was in fact 0644, so this check pinned the claim
+    FALSE for ~3 weeks.  The mode has now been set deliberately — the claim
+    is true, so the check must PASS: a regression (a re-created or restored
+    .env) flips this red again instead of going unnoticed.
+
+    Exact-match on purpose: the claim names one mode, so 0660 must not pass.
+    """
     res = check_file_mode(REPO, ".env", "0600")
-    assert res.ok is False, f".env should still be non-0600: {res.evidence}"
+    assert res.ok is True, f".env should now be 0600: {res.evidence}"
 
 
 def test_live_c5_ensure_schema_now_wired() -> None:

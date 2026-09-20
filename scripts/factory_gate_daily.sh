@@ -8,6 +8,11 @@
 # Automatically commits PASS evidence (pushed) or FAIL evidence (local only),
 # and records events in artifacts/hygiene/daily_gate_events.jsonl.
 #
+# It also records daily identity-shadow runtime evidence before the factory runs
+# (K22 criterion 1's only source of evidence — a test run can only ever write
+# "test" records). That step is EVIDENCE, NOT VERDICT: it never affects the
+# PASS/FAIL decision below. See scripts/identity_shadow_daily.py for why.
+#
 #   run manually:  bash scripts/factory_gate_daily.sh
 #   log:           $HOME/Library/Logs/msb-factory-gate.log
 #
@@ -77,7 +82,43 @@ if ! "$PY" "$FACTORY" --self-test > /tmp/factory_gate_self_test.log 2>>"$LOG"; t
 fi
 log "zero-spend self-test OK"
 
-# 3. Run the factory gate.
+# 3. Identity-shadow runtime evidence — the heartbeat K22 criterion 1 needs.
+#
+# Criterion 1 is judged on RUNTIME-origin records, and a test run can only ever
+# write "test" ones, so without a live caller the criterion has no source of
+# evidence and reads INSUFFICIENT DATA (its state until 2026-09-20). This step is
+# that caller, and it runs BEFORE the factory so evidence accrues even when the
+# gate later fails.
+#
+# EVIDENCE, NOT VERDICT: the exit code below is logged as a warning and never
+# reaches the PASS/FAIL decision. Two measured reasons — the /chat half depends
+# on an 8B model choosing to call a tool, so a miss is not a regression, and the
+# bridge half performs a REAL vault write (99_Meta/identity-shadow-probe.md),
+# which a gate must not escalate on. What it does do is stop the evidence rotting
+# silently: every run is recorded in the hygiene evidence this script commits and
+# pushes, and the step asks for a notification when a surface misses twice in a
+# row — the point at which "the model didn't feel like it" stops explaining it.
+IDENTITY_STEP="$REPO/scripts/identity_shadow_daily.py"
+IDENTITY_ALERT="$(mktemp -t identity-shadow-alert)"
+if [ -f "$IDENTITY_STEP" ]; then
+  log "identity-shadow: recording runtime evidence..."
+  identity_report=$(PYTHONPATH="$REPO/src" "$PY" "$IDENTITY_STEP" --alert-file "$IDENTITY_ALERT" 2>>"$LOG")
+  identity_rc=$?
+  while IFS= read -r line; do
+    if [ -n "$line" ]; then log "$line"; fi
+  done <<< "$identity_report"
+  if [ "$identity_rc" -ne 0 ]; then
+    log "WARN: identity-shadow evidence step exited $identity_rc — gate verdict unaffected"
+  fi
+  if [ -s "$IDENTITY_ALERT" ]; then
+    send_notification "$(cat "$IDENTITY_ALERT")" "IDENTITY_SHADOW"
+  fi
+else
+  log "identity-shadow: $IDENTITY_STEP missing — evidence step skipped"
+fi
+rm -f "$IDENTITY_ALERT"
+
+# 4. Run the factory gate.
 log "running factory gate..."
 MSB_REPO="$REPO" "$PY" "$FACTORY" > /tmp/factory_gate_daily_run.json 2>>"$LOG"
 rc=$?
@@ -110,7 +151,7 @@ log "gate verdict=$VERDICT unknowns=$UNKNOWNS"
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 printf '{"ts": "%s", "event": "gate_run", "verdict": "%s", "unknowns": %s}\n' "$ts" "$VERDICT" "$UNKNOWNS" >> "$EVENTS_LOG"
 
-# 4. Self-committing evidence logic
+# 5. Self-committing evidence logic
 if git -C "$REPO" status --porcelain -- artifacts/hygiene/ | grep -q .; then
   if [ "$VERDICT" = "PASS" ]; then
     git -C "$REPO" add artifacts/hygiene/
@@ -147,7 +188,7 @@ if git -C "$REPO" status --porcelain -- artifacts/hygiene/ | grep -q .; then
   fi
 fi
 
-# 5. Alert on anything that is not a clean PASS.
+# 6. Alert on anything that is not a clean PASS.
 if [ "$VERDICT" != "PASS" ]; then
   log "ALERT: gate is $VERDICT (not PASS) — investigating required"
   send_notification "Factory gate is $VERDICT ($UNKNOWNS unknowns) — not PASS" "$VERDICT"

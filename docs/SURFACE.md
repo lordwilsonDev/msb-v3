@@ -48,6 +48,7 @@ subpackage is unclassified (AC-3.1).
 | `api/notify.py` | LOAD-BEARING | `/notify` — the ops out-of-band alert surface (README ops section). |
 | `api/openai_compat.py` | LOAD-BEARING | `/v1` OpenAI-compatible adapter — Open WebUI / OpenAI SDK path (README). |
 | `api/rag.py` | LOAD-BEARING | `/rag/search` semantic vault search — used by mcp_bridge `search_query`, cockpit find, flywheel engine. |
+| `api/redaction_middleware.py` | LOAD-BEARING | Response-body secret redaction — the *errors* channel of the H4 exposure test. Must be added **before** GZipMiddleware so it inspects plain text, not compressed bytes. |
 | `api/research.py` | OPTIONAL | Research-assistant endpoints; off canonical path. |
 | `api/safety.py` | LOAD-BEARING | Safety/guardrail surface; guardrails are wired into the tool loop (`guardrails/fold.py` used by the local clients). |
 | `api/skill_router.py` | OPTIONAL | Skill discovery/execution from `~/.hermes/skills`; dormant-satellites disposition kept it deferred. |
@@ -98,6 +99,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/plei` | OPTIONAL | PLEI project lifecycle intelligence — Phase 1: project twin (ingestion + lifecycle classification). |
 | `msb_v3/replay` | FROZEN | Replay engine — release-declared frozen. |
 | `msb_v3/retrieval` | LOAD-BEARING | RAG/vector retrieval — `/rag` + flywheel novelty scan depend on it. |
+| `msb_v3/secrets` | LOAD-BEARING | SecretBroker seam (env + macOS keychain providers) + the redactor every output channel calls. Closes H4's broker clause; see `done/JOB-026`. |
 | `msb_v3/speech` | OPTIONAL | Voice pipeline — STT, speaker verify, intent, TTS, voice response loop. |
 | `msb_v3/runtime` | LOAD-BEARING | Runtime supervision (scripts/run.sh restart-on-exit); harness-gate depends on it. |
 | `msb_v3/tasks` | OPTIONAL | Unified task document surface; off canonical path. |

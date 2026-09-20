@@ -33,6 +33,7 @@ from msb_v3.memory_fabric.models import (
     VerificationState,
 )
 from msb_v3.memory_fabric.store import MemoryFabricStore
+from msb_v3.secrets.redact import redact
 
 
 @dataclass
@@ -77,6 +78,11 @@ class MemoryFabric:
     ) -> MemoryItem:
         if not content or not content.strip():
             raise ValueError("content is required")
+        # The *memory* channel, durable half. Same reasoning as
+        # msb_v3.memory.store: a memory is read back into prompts and into
+        # retrieval results, so a secret stored once is a secret re-exposed
+        # indefinitely. Redacted before it is hashed/embedded, not after.
+        content = redact(content)
         importance = max(0.0, min(1.0, importance))
         item = MemoryItem(
             memory_id=memory_id or uuid.uuid4().hex[:16],

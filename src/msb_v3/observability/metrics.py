@@ -23,6 +23,11 @@ READY = Gauge(
     "msb_v3_ready",
     "Sovereign core readiness (1=ready)",
 )
+SECRET_REDACTION_ARMED = Gauge(
+    "msb_v3_secret_redaction_armed",
+    "Configured secrets registered for masking (0 = the redactor is dark, so "
+    "secrets could reach logs, memory, audit, RAG or a model context unmasked)",
+)
 ACTIVE_CONNECTIONS = Gauge(
     "msb_v3_active_connections",
     "Open HTTP connections",

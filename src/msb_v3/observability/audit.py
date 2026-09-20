@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from msb_v3.core.config import settings
+from msb_v3.secrets.redact import redact
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "triumvirate"
 _MULCH_DB = _RUNTIME_ROOT / "mulch_learnings.db"
@@ -53,13 +54,25 @@ class ArgusAuditor:
         _init_db()
 
     def record_mulch(self, finding: MulchFinding) -> Dict[str, Any]:
+        # Redact on the single write path rather than at each call site, so a
+        # new audit description cannot leak a secret by forgetting to redact.
+        # The returned record matches what was stored, so a caller inspecting
+        # the result sees the same (masked) text it would read back later.
+        description = redact(finding.description)
         ts = datetime.now(timezone.utc).timestamp()
         with sqlite3.connect(_MULCH_DB) as conn:
             cur = conn.execute(
                 "INSERT INTO mulch_learnings(timestamp, component, finding_type, description, resolution_status) VALUES (?,?,?,?,?)",
-                (ts, finding.component, finding.finding_type, finding.description, finding.resolution_status),
+                (ts, finding.component, finding.finding_type, description, finding.resolution_status),
             )
-            return {"id": cur.lastrowid, "timestamp": ts, **finding.__dict__}
+            return {
+                "id": cur.lastrowid,
+                "timestamp": ts,
+                "component": finding.component,
+                "finding_type": finding.finding_type,
+                "description": description,
+                "resolution_status": finding.resolution_status,
+            }
 
     def audit_directives(
         self, directives_dir: Optional[str] = None, checks: Optional[List[Dict[str, Any]]] = None
@@ -178,5 +191,8 @@ class ArgusAuditor:
             "finished_at": _now_iso(),
             "findings": [],
             "count": 0,
-            "error": str(last_exc),
+            # An exception string is free text from anywhere in the stack —
+            # URLs with tokens, headers, config reprs — so it is redacted like
+            # any other output.
+            "error": redact(str(last_exc)),
         }

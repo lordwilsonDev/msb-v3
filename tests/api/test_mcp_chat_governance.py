@@ -53,7 +53,11 @@ def test_chat_surface_registers_tools_through_governed_loop(monkeypatch, tmp_pat
     client = _RecordingClient()
     register_governed_tools(
         client,
-        {"tools": [{"name": "vault_read"}, {"name": "not.real"}], "session": "s"},
+        {
+            "tools": [{"name": "vault_read"}, {"name": "not.real"}],
+            "session": "s",
+            "surface": "governed-loop",
+        },
     )
     # Unknown tools are not even registered — the model never sees them.
     assert list(client.tools) == ["vault_read"]
@@ -74,7 +78,7 @@ def test_chat_surface_denied_tool_no_side_effect_with_verdict(monkeypatch, tmp_p
     client = _RecordingClient()
     register_governed_tools(
         client,
-        {"tools": [{"name": "vault_write"}], "session": "s"},
+        {"tools": [{"name": "vault_write"}], "session": "s", "surface": "governed-loop"},
     )
     outcome = client.tools["vault_write"](path="x.md", content="should not write")
     assert outcome == "[denied] tool vault_write requires capabilities: vault.write"
@@ -100,7 +104,7 @@ def test_chat_surface_allowed_tool_verdict(monkeypatch, tmp_path) -> None:
     client = _RecordingClient()
     register_governed_tools(
         client,
-        {"tools": [{"name": "vault_read"}], "session": "s"},
+        {"tools": [{"name": "vault_read"}], "session": "s", "surface": "governed-loop"},
     )
     outcome = client.tools["vault_read"](path="note.txt")
     assert "hello sovereign" in outcome
@@ -141,7 +145,12 @@ def test_chat_surface_respects_killswitch(monkeypatch, tmp_path) -> None:
     client = _RecordingClient()
     register_governed_tools(
         client,
-        {"tools": [{"name": "vault_read"}], "granted_capabilities": [], "session": "s"},
+        {
+            "tools": [{"name": "vault_read"}],
+            "granted_capabilities": [],
+            "session": "s",
+            "surface": "governed-loop",
+        },
     )
     outcome = client.tools["vault_read"](path="note.txt")
     assert outcome.startswith("[blocked]"), f"global killswitch did not block: {outcome!r}"
@@ -158,6 +167,7 @@ def test_chat_surface_respects_killswitch(monkeypatch, tmp_path) -> None:
             "tools": [{"name": "vault_write"}],
             "granted_capabilities": ["vault.write"],
             "session": "s",
+            "surface": "governed-loop",
         },
     )
     outcome2 = client2.tools["vault_write"](path="x.md", content="should be blocked")
@@ -170,7 +180,12 @@ def test_chat_surface_respects_killswitch(monkeypatch, tmp_path) -> None:
     client3 = _RecordingClient()
     register_governed_tools(
         client3,
-        {"tools": [{"name": "vault_read"}], "granted_capabilities": [], "session": "s"},
+        {
+            "tools": [{"name": "vault_read"}],
+            "granted_capabilities": [],
+            "session": "s",
+            "surface": "governed-loop",
+        },
     )
     outcome3 = client3.tools["vault_read"](path="note.txt")
     assert "hello sovereign" in outcome3, "a scoped arm must not bleed into other tools"

@@ -11,6 +11,45 @@ import httpx
 
 from msb_v3.core.config import settings
 from msb_v3.guardrails.fold import StepEnforcer
+from msb_v3.secrets.redact import redact, redact_obj
+
+
+def _to_ollama_tools(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert tool definitions from the repo's flat contract to Ollama's shape.
+
+    The repo's internal tool contract is FLAT — ``{"type": "function",
+    "name": ..., "description": ..., "parameters": ...}`` (``ToolSpec`` in
+    ``api/chat.py``, ``ToolDef.as_model_schema`` in ``tools/registry.py``),
+    because that is the shape ``tools.runtime.register_governed_tools`` reads a
+    tool id out of. **Ollama does not accept it.** Sent verbatim, an entry in
+    that shape is ignored: the request still returns 200, the model is never
+    told the tool exists, and it therefore never calls it.
+
+    Measured 2026-09-20 against Ollama 0.33.3 with one identical prompt and two
+    otherwise-identical payloads: the nested entry returned
+    ``vault_read({"path": "README.md"})``; the flat entry returned no
+    ``tool_calls`` at all and a prose refusal. So the conversion belongs here,
+    at the wire boundary, and the flat contract stays the repo's.
+
+    Entries that are already nested pass through unchanged, so a caller holding
+    the OpenAI shape (``anthropic.py`` accepts either) is never double-wrapped.
+    """
+    out: List[Dict[str, Any]] = []
+    for tool in tools:
+        if "function" in tool:
+            out.append(tool)
+            continue
+        out.append(
+            {
+                "type": tool.get("type", "function"),
+                "function": {
+                    key: tool[key]
+                    for key in ("name", "description", "parameters")
+                    if key in tool
+                },
+            }
+        )
+    return out
 
 
 def _strip_think(text: str) -> str:
@@ -24,6 +63,45 @@ def _strip_think(text: str) -> str:
     if not text:
         return text
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
+class OllamaTimeout(ConnectionError):
+    """The model was reachable but did not finish inside ``request_timeout_s``.
+
+    Subclasses ``ConnectionError`` deliberately. A read timeout and a refused
+    connection need different *messages* but the same *handling*: every caller
+    in the tree treats ConnectionError as "the brain is unavailable"
+    (``api/automation.py`` turns it into a 503), and from a caller's point of
+    view a model that will not answer in time is unavailable. Changing the type
+    would silently turn that 503 into a 500 without making anything truer.
+
+    The message is the point. Reporting a read timeout as "ollama unreachable"
+    sent this lane's own diagnosis (JOB-022) hunting a network fault while the
+    server was up and answering: the real cause was arithmetic — a
+    ``num_predict`` budget larger than the timeout could cover at this model's
+    measured throughput (see ``_ollama_error``).
+    """
+
+    def __init__(self, base_url: str, exc: BaseException) -> None:
+        self.base_url = base_url
+        self.timeout_s = settings.request_timeout_s
+        super().__init__(
+            f"ollama timed out after {self.timeout_s}s at {base_url} "
+            f"({type(exc).__name__}: {exc})"
+        )
+
+
+def _ollama_error(base_url: str, exc: BaseException) -> Exception:
+    """Name the failure for what it was, not for what is easiest to say.
+
+    A timeout says how long was allowed, because the actionable question is
+    always "is the budget too small or is the model too slow", not "is it up".
+    Everything else keeps the existing wording, which callers and tests already
+    match on.
+    """
+    if isinstance(exc, httpx.TimeoutException):
+        return OllamaTimeout(base_url, exc)
+    return ConnectionError(f"ollama unreachable: {base_url} ({exc})")
 
 
 @dataclass
@@ -73,6 +151,13 @@ class LocalAIClient:
         temperature: float = 0.2,
         max_tokens: int = 2048,
     ) -> LocalAIResponse:
+        # The *prompt* channel, at the wire boundary: a model may reason about a
+        # credential's reference (`secret://env/...`) but never its value.
+        # Placed here rather than in each caller so the flat-string path — which
+        # skips the tool loop entirely — is covered too.
+        prompt = redact(prompt)
+        if system:
+            system = redact(system)
         payload: Dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
@@ -88,7 +173,7 @@ class LocalAIClient:
         if system:
             payload["system"] = system
         if tools:
-            payload["tools"] = tools
+            payload["tools"] = _to_ollama_tools(tools)
 
         t0 = time.perf_counter()
         last_exc: Exception | None = None
@@ -99,11 +184,21 @@ class LocalAIClient:
                     resp.raise_for_status()
                     data = resp.json()
                 break
+            except httpx.TimeoutException as exc:
+                # Do NOT retry a timeout. The retry loop exists for transient
+                # refusals (daemon restarting, connection reset) where a second
+                # attempt genuinely helps. A generation that outran its budget
+                # will outrun it again, so retrying spends another full budget
+                # of silence before reporting the same thing: with the 60s
+                # default and three attempts, a caller waits ~180s to learn
+                # what one attempt already knew.
+                raise _ollama_error(self.base_url, exc) from exc
             except Exception as exc:
                 last_exc = exc
                 time.sleep(0.15 * (attempt + 1))
         else:
-            raise ConnectionError(f"ollama unreachable: {self.base_url} ({last_exc})")
+            final_exc = last_exc if last_exc is not None else RuntimeError("no attempt ran")
+            raise _ollama_error(self.base_url, final_exc) from final_exc
         latency = round(time.perf_counter() - t0, 4)
 
         text = _strip_think(data.get("response", ""))
@@ -172,7 +267,12 @@ class LocalAIClient:
                     args = {}
                 result = self.run_tool(name, args)
                 enforcer.record(name, args)
-                messages.append({"role": "tool", "content": result})
+                # The *tool-output* channel: a tool result is the likeliest
+                # place for a secret to arrive from outside (a file read, an
+                # API body, an exception string) and it goes straight into the
+                # next model step. Redacted at the append, so it never reaches
+                # the array `chat()` is about to send.
+                messages.append({"role": "tool", "content": redact(result)})
 
         return LocalAIResponse(text=final_text, model=self.model, latency_s=0.0, tool_calls=[])
 
@@ -185,15 +285,20 @@ class LocalAIClient:
         max_tokens: int = 2048,
     ) -> LocalAIResponse:
         """Chat completion via /api/chat, with optional tool definitions."""
+        # The *prompt* channel, enforced once for every caller and every step:
+        # the message array is redacted immediately before it goes on the wire,
+        # on a copy so the caller's own list is left alone. This is also what
+        # covers the tool loop, which re-enters here with the accumulated
+        # messages.
         payload: Dict[str, Any] = {
             "model": self.model,
-            "messages": messages,
+            "messages": redact_obj(messages),
             "stream": False,
             "think": False,
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
         if tools:
-            payload["tools"] = tools
+            payload["tools"] = _to_ollama_tools(tools)
 
         t0 = time.perf_counter()
         with httpx.Client(timeout=settings.request_timeout_s) as client:
@@ -201,7 +306,7 @@ class LocalAIClient:
                 resp = client.post(f"{self.base_url}/api/chat", json=payload)
                 resp.raise_for_status()
             except httpx.HTTPError as exc:
-                raise ConnectionError(f"ollama unreachable: {self.base_url} ({exc})")
+                raise _ollama_error(self.base_url, exc) from exc
             data = resp.json()
         latency = round(time.perf_counter() - t0, 4)
 

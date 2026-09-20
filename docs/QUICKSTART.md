@@ -34,6 +34,7 @@ git clone <your-origin> msb-v3 && cd msb-v3
 
 # Secrets (required):
 cp .env.example .env
+chmod 600 .env      # `cp` leaves it 0644, and it holds live keys
 #   MSB_OPERATOR_TOKEN=<long random>        # operator gate for /agent/handle
 #   MCP_BRIDGE_SECRET=$(openssl rand -hex 32)
 #   OLLAMA_MODEL=qwen3:8b                   # already the default

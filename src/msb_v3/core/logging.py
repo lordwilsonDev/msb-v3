@@ -13,6 +13,13 @@ log aggregators, Loki, or manual inspection with ``jq``.
 
 When ``json_output=False`` (the default), logs use a human-readable format
 suitable for terminal use.
+
+**Redaction.** Both formatters pass their final rendered line through
+``msb_v3.secrets.redact``, which is the single choke point for the *logs*
+channel: every logger in the process goes through one of these two formatters,
+so a secret cannot reach a log file by being logged. Redacting the rendered
+string rather than each field means structured extras and exception
+tracebacks are covered too.
 """
 
 from __future__ import annotations
@@ -23,6 +30,8 @@ import sys
 import traceback
 from datetime import datetime, timezone
 from typing import Any
+
+from msb_v3.secrets.redact import redact
 
 
 class JSONFormatter(logging.Formatter):
@@ -56,7 +65,10 @@ class JSONFormatter(logging.Formatter):
                 "func": record.funcName,
             }
 
-        return json.dumps(log_entry, default=str, ensure_ascii=False)
+        # Redact the serialised line, not the fields: this catches structured
+        # extras, nested values and exception tracebacks in one place. The mask
+        # contains no quote or backslash, so the JSON stays valid.
+        return redact(json.dumps(log_entry, default=str, ensure_ascii=False))
 
 
 class HumanFormatter(logging.Formatter):
@@ -81,7 +93,7 @@ class HumanFormatter(logging.Formatter):
         if record.exc_info and record.exc_info[0] is not None:
             line += f"\n{traceback.format_exception(*record.exc_info, chain=False)}"
 
-        return line
+        return redact(line)
 
 
 def configure_logging(

@@ -25,6 +25,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict
 
+from msb_v3.governance.identity_shadow import (
+    SURFACE_IN_PROCESS,
+    shadow_identity_decision,
+)
 from msb_v3.governance.killswitch import KillSwitch
 from msb_v3.tools import executors
 from msb_v3.tools.registry import TOOLS
@@ -107,6 +111,8 @@ def _run_governed(
     tenant: str,
     session: str,
     approved: frozenset = frozenset(),
+    actor_id: str | None = None,
+    surface: str = SURFACE_IN_PROCESS,
 ) -> str:
     """Kill switch + approval gate + capability gate + contained execution + audit.
 
@@ -116,6 +122,14 @@ def _run_governed(
     absent result. ``approved`` is the set of tool ids the caller's context
     pre-authorized for approval-required tools (fail-closed: absent =
     refused).
+
+    ``actor_id`` is the acting principal, if any caller supplies one. It has no
+    effect on this function's decision today: it is forwarded to the identity
+    shadow recorder (governance/identity_shadow.py, Deliverable 02 §10), which
+    persists what the kernel's identity guards WOULD have decided and applies
+    nothing. ``surface`` names the entry path for those records; a caller that
+    names none is recorded as ``in-process`` — a positive statement that the
+    call did not arrive through a live surface, not the blank it used to leave.
     """
     td = TOOLS.get(tool_id)
     if td is None:
@@ -139,6 +153,22 @@ def _run_governed(
         outcome = f"[denied] tool {tool_id} requires capabilities: {', '.join(missing)}"
         _audit_append(tool_id, args, outcome, tenant=tenant, session=session, verdict="denied")
         return outcome
+    # Identity shadow — observe, change nothing (Deliverable 02 §10). Records
+    # what the identity guards would decide about this actor and discards the
+    # verdict. Deliberately placed after the existing gates so the records
+    # answer the only question worth asking: of the calls that execute TODAY,
+    # how many would an identity requirement stop? It cannot return, raise, or
+    # alter the outcome below.
+    shadow_identity_decision(
+        surface=surface,
+        tool_id=tool_id,
+        tenant=tenant,
+        session=session,
+        actor_id=actor_id,
+        capability=td.required_capabilities[0] if td.required_capabilities else None,
+        required_capabilities=tuple(td.required_capabilities),
+        declared_risk_class=td.risk_class,
+    )
     # Dotted tool ids (codegraph.explore) map to underscore executors
     # (codegraph_explore) — Python attributes cannot contain dots.
     executor: Callable[..., str] | None = getattr(executors, tool_id.replace(".", "_"), None)
@@ -157,7 +187,10 @@ def register_governed_tools(client: Any, context: Dict[str, Any]) -> None:
     ``context`` keys used: ``tools`` (advertised model schemas), optional
     ``granted_capabilities`` (fail-closed: absent = read-only tools only),
     optional ``approved_tools`` (pre-authorized approval-required tools),
-    optional ``tenant`` / ``session`` (audit + retrieval scoping). Unknown
+    optional ``tenant`` / ``session`` (audit + retrieval scoping), and optional
+    ``actor_id`` / ``surface`` (identity shadow observation only — see
+    ``governance/identity_shadow.py``; neither affects any decision here). A
+    caller that names no ``surface`` is recorded as ``in-process``. Unknown
     tool names are skipped silently — the model only ever sees schemas the
     perimeter can back.
     """
@@ -173,6 +206,16 @@ def register_governed_tools(client: Any, context: Dict[str, Any]) -> None:
     approved = frozenset(context.get("approved_tools") or [])
     tenant = context.get("tenant", "default")
     session = context.get("session", "default")
+    # A blank or non-string declaration is treated as none at all rather than
+    # coerced — same fail-closed reading as actor_id below, and for the same
+    # reason: a label that reaches the corpus must be one a caller chose.
+    # The acting principal, when a caller supplies one. Untrusted input: a
+    # non-string or blank value is treated as no actor at all (fail-closed),
+    # never coerced into something that could later read as an identity.
+    _actor = context.get("actor_id")
+    actor_id = _actor if isinstance(_actor, str) and _actor.strip() else None
+    _surface = context.get("surface")
+    surface = _surface if isinstance(_surface, str) and _surface.strip() else SURFACE_IN_PROCESS
     for tool_id in advertised:
         if tool_id not in TOOLS:
             continue
@@ -188,6 +231,8 @@ def register_governed_tools(client: Any, context: Dict[str, Any]) -> None:
                 tenant=tenant,
                 session=session,
                 approved=approved,
+                actor_id=actor_id,
+                surface=surface,
             )
 
         register(tool_id, _run)

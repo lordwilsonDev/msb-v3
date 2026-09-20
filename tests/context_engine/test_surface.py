@@ -63,7 +63,9 @@ def test_runtime_gate_registers_context_tool():
             self.registered[name] = fn
 
     c = Client()
-    runtime.register_governed_tools(c, {"tools": [{"name": "context.compose"}], "session": "s"})
+    runtime.register_governed_tools(
+        c, {"tools": [{"name": "context.compose"}], "session": "s", "surface": "context-engine"}
+    )
     assert "context.compose" in c.registered
     out = c.registered["context.compose"](task="hello")
     assert "System: msb-v3" in out

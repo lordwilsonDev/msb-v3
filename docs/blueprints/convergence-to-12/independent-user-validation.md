@@ -24,6 +24,7 @@ git clone https://github.com/lordwilsonDev/msb-v3.git msb-v3 && cd msb-v3
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-runtime.lock -r requirements-dev.lock
 cp .env.example .env        # set MSB_VAULT_PATH, MSB_OPERATOR_TOKEN, OLLAMA_URL
+chmod 600 .env              # cp leaves it 0644, and it holds live keys
 make server-start           # or: bash scripts/start.sh start
 ```
 

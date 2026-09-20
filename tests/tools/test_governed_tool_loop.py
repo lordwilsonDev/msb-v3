@@ -60,7 +60,9 @@ class _RecordingClient:
 
 def test_permitted_vault_read_executes_and_audits(chain, vault):
     (vault / "note.txt").write_text("hello sovereign")
-    result = _run_governed("vault_read", {"path": "note.txt"}, granted=frozenset(), tenant="t", session="s")
+    result = _run_governed(
+        "vault_read", {"path": "note.txt"}, granted=frozenset(), tenant="t", session="s", surface="governed-loop"
+    )
     assert "hello sovereign" in result
     assert _recorded(chain) == ["tool.vault_read"]
     assert _verdicts(chain) == ["allowed"]
@@ -74,6 +76,7 @@ def test_permitted_memory_store_executes_with_capability(chain, monkeypatch, tmp
         granted=frozenset({"memory.write"}),
         tenant="t",
         session="s",
+        surface="governed-loop",
     )
     assert result.startswith("stored ")
     assert _recorded(chain) == ["tool.memory.store"]
@@ -89,6 +92,7 @@ def test_unauthorized_vault_write_is_denied_without_execution(chain, vault):
         granted=frozenset(),
         tenant="t",
         session="s",
+        surface="governed-loop",
     )
     assert result == "[denied] tool vault_write requires capabilities: vault.write"
     assert not (vault / "x.md").exists()  # no execution
@@ -108,6 +112,7 @@ def test_unauthorized_memory_store_is_denied(chain, monkeypatch, tmp_path):
         granted=frozenset(),
         tenant="t",
         session="s",
+        surface="governed-loop",
     )
     assert result == "[denied] tool memory.store requires capabilities: memory.write"
 
@@ -133,7 +138,9 @@ def approval_demo(monkeypatch):
 
 
 def test_approval_required_refuses_then_proceeds_when_approved(chain, approval_demo):
-    refused = _run_governed("approval.demo", {}, granted=frozenset(), tenant="t", session="s")
+    refused = _run_governed(
+        "approval.demo", {}, granted=frozenset(), tenant="t", session="s", surface="governed-loop"
+    )
     assert refused == "[approval-required] tool approval.demo requires operator approval"
     # the refusal left evidence too, with an explicit verdict
     assert _recorded(chain) == ["tool.approval.demo"]
@@ -145,6 +152,7 @@ def test_approval_required_refuses_then_proceeds_when_approved(chain, approval_d
         granted=frozenset(),
         tenant="t",
         session="s",
+        surface="governed-loop",
         approved=frozenset({"approval.demo"}),
     )
     # gate passed -> falls through to the (absent) executor lookup
@@ -155,7 +163,12 @@ def test_registration_forwards_approved_tools(chain, approval_demo):
     client = _RecordingClient()
     register_governed_tools(
         client,
-        {"tools": [{"name": "approval.demo"}], "approved_tools": ["approval.demo"], "session": "s"},
+        {
+            "tools": [{"name": "approval.demo"}],
+            "approved_tools": ["approval.demo"],
+            "session": "s",
+            "surface": "governed-loop",
+        },
     )
     assert client.tools["approval.demo"]() == "[tool-error] no executor registered for approval.demo"
 
@@ -197,11 +210,15 @@ def test_kill_switch_blocks_tool_capability_and_clear_gate_allows(chain):
 
 def test_malformed_and_unknown_tool_requests_are_rejected_with_evidence(chain, vault):
     # missing required argument -> structured error, no execution
-    missing = _run_governed("vault_read", {}, granted=frozenset(), tenant="t", session="s")
+    missing = _run_governed(
+        "vault_read", {}, granted=frozenset(), tenant="t", session="s", surface="governed-loop"
+    )
     assert missing.startswith("[tool-error] vault_read: path is required")
 
     # unknown tool -> rejected with evidence (verdict "unknown")
-    unknown = _run_governed("no.such.tool", {}, granted=frozenset(), tenant="t", session="s")
+    unknown = _run_governed(
+        "no.such.tool", {}, granted=frozenset(), tenant="t", session="s", surface="governed-loop"
+    )
     assert unknown == "[tool-error] unknown tool: no.such.tool"
 
     assert _recorded(chain) == ["tool.vault_read", "tool.no.such.tool"]
@@ -215,5 +232,7 @@ def test_malformed_and_unknown_tool_requests_are_rejected_with_evidence(chain, v
 
 def test_registration_skips_unknown_tools():
     client = _RecordingClient()
-    register_governed_tools(client, {"tools": [{"name": "vault_read"}, {"name": "not.real"}]})
+    register_governed_tools(
+        client, {"tools": [{"name": "vault_read"}, {"name": "not.real"}], "surface": "governed-loop"}
+    )
     assert list(client.tools) == ["vault_read"]

@@ -23,6 +23,14 @@ set -a
 [ -f "$REPO/.env" ] && . "$REPO/.env"
 set +a
 
+# A supervised service start expects its secrets. Set here rather than in .env
+# on purpose: this flag must travel with the code that *loads* the environment,
+# not with the file that failed to load, otherwise the failure it guards
+# against would also remove the guard. The app refuses to start if nothing was
+# armed for masking; MSB_ALLOW_UNARMED_REDACTION=1 in .env accepts that
+# deliberately. See src/msb_v3/secrets/selfcheck.py.
+export MSB_REQUIRE_SECRET_REDACTION="${MSB_REQUIRE_SECRET_REDACTION:-1}"
+
 unset VIRTUAL_ENV
 export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$HOME/.local/bin:$PATH"
 export PYTHONPATH="$REPO/src:~/.local/lib/msb-v3"

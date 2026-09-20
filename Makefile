@@ -1,4 +1,4 @@
-.PHONY: test test-tiers test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate production-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
+.PHONY: test test-tiers test-ops ops-status ops-audit publish-audit heartbeat replicate install-hooks add-trusted-signer verify-pull-signatures lint policy-gate deps portability env-drift close-out-gate production-gate doctor doctor-wake doctor-automation server server-start server-stop server-status smoke vesta-loopback hygiene webcheck webcheck-desktop webcheck-all harness-gate-dryrun qdrant qdrant-start qdrant-stop qdrant-status qdrant-sweep backup restore backup-verify hooks-install hooks-uninstall governance-status governance-arm governance-disarm governance-approvals governance-approve governance-reject governance-config governance-token governance-identity-status governance-identity-probe governance-identity-daily provision-models setup flywheel-turn flywheel-status flywheel-approve flywheel-config
 
 REPO := $(shell pwd)
 PY := /opt/homebrew/Caskroom/miniforge/base/bin/python
@@ -281,6 +281,28 @@ governance-reject:
 
 governance-token:
 	bash scripts/set-operator-token.sh status
+
+governance-identity-status:
+	$(PY) -m msb_v3.governance identity-status
+
+# Produce runtime-origin identity-shadow records by exercising the live
+# surfaces (K22 criterion 1 is judged on those, never on test-origin records).
+# Requires a running server; writes nothing itself. The bridge's observation
+# point sits AFTER its capability gate, so with the shipped read-only default
+# (no MSB_MCP_GRANTED_CAPABILITIES grant) the bridge half reports a fail-closed
+# capability denial and produces no record BY DESIGN — the chat half still
+# produces evidence. See job-board/done/JOB-022-bridge-grant-decision/. A
+# consequence: `--strict` (exit 1 when a surface produces no record) cannot pass
+# while the bridge is read-only, which is why no target wires it.
+governance-identity-probe:
+	$(PY) scripts/probe_identity_shadow_runtime.py
+
+# The daily evidence step on its own — what the daily gate runs in-line (see
+# scripts/factory_gate_daily.sh step 3). Records an event in the hygiene
+# evidence log and asks for a notification when a surface misses twice in a row.
+# Evidence only: it never decides a criterion or a gate.
+governance-identity-daily:
+	$(PY) scripts/identity_shadow_daily.py
 
 governance-config:
 	$(PY) -m msb_v3.governance config

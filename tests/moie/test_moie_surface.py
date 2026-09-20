@@ -74,7 +74,9 @@ def test_runtime_gate_registers_moie_tool():
             self.registered[name] = fn
 
     c = Client()
-    runtime.register_governed_tools(c, {"tools": [{"name": "moie.analyze"}], "session": "s"})
+    runtime.register_governed_tools(
+        c, {"tools": [{"name": "moie.analyze"}], "session": "s", "surface": "moie"}
+    )
     assert "moie.analyze" in c.registered
     out = c.registered["moie.analyze"](claim="Disable auth.")
     assert "[moie] verdict=" in out
