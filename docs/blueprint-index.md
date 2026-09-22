@@ -691,10 +691,10 @@ These resolve — to a document not in this repository. They are grouped by wher
 | --- | --- | --- | --- | --- |
 | `docs/SURFACE.md:29` | §4.2.3 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
 | `docs/SURFACE.md:44` | §4.2.2 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:73` | §4.2.1 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:94` | §4.2.2 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:114` | §53 | `(bare)` | same-line | `steward-blueprint` |
-| `docs/SURFACE.md:114` | §54 | `(bare)` | same-line | `steward-blueprint` |
+| `docs/SURFACE.md:74` | §4.2.1 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
+| `docs/SURFACE.md:95` | §4.2.2 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
+| `docs/SURFACE.md:115` | §53 | `(bare)` | same-line | `steward-blueprint` |
+| `docs/SURFACE.md:115` | §54 | `(bare)` | same-line | `steward-blueprint` |
 | `docs/audits/forensic-build-audit-2026-08-15.md:406` | §31 | `unified-architecture` | anchored | `unified-architecture` |
 | `docs/audits/forensic-build-audit-2026-08-15.md:435` | §27 | `unified-architecture` | anchored | `unified-architecture` |
 | `docs/audits/forensic-build-audit-2026-08-15.md:441` | §27 | `unified-architecture` | anchored | `unified-architecture` |
