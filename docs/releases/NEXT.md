@@ -6,9 +6,14 @@ points at; read the one for the item you start.
 > **State refreshed 2026-09-22** (`v0.5.0` cut). The table below is current and
 > H9 is confirmed landed. Everything after it — the backlog, its order, the
 > "next" sections — is the 2026-08-31 handoff, kept as written and *not*
-> re-verified since. For the record: the two SHAs the original table cited
-> (`44b3685`, `68d481d`) do not resolve in this repository's history at all; it
-> was written against a different checkout (`~/msb-v3`).
+> re-verified since.
+>
+> On the two SHAs the original table cited: `44b3685` and `68d481d` are real
+> commits, and a fresh clone cannot resolve either, because that day's history
+> was rewritten — they survive only as unreachable objects on the remote. Their
+> same-message twins in `main` are `ad91737` (the H9 commit, which did land) and
+> `612e2c8`. `git cat-file -t 44b3685` failing locally is the rewrite, not a
+> typo.
 
 ---
 

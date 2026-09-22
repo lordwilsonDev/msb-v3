@@ -506,7 +506,7 @@ The label (`blueprint`, `spec`) names no specific document, so the number cannot
 | `docs/phase0-substrate-hardening.md:3` | §6 | `spec` | ambiguous-label | `?ambiguous` |
 | `docs/phase0-substrate-hardening.md:74` | §5 | `spec` | ambiguous-label | `?ambiguous` |
 | `docs/releases/HARDENING-AUDIT.md:325` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
-| `docs/releases/NEXT.md:82` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/releases/NEXT.md:87` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/releases/PRODUCTION-READINESS-ROADMAP.md:152` | §28 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/task-contract-v1.md:211` | §14 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/task-contract-v1.md:286` | §7 | `spec` | ambiguous-label | `?ambiguous` |
