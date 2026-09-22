@@ -3,18 +3,28 @@
 Pick-up doc for a fresh session. Full context lives in the four docs this
 points at; read the one for the item you start.
 
+> **State refreshed 2026-09-22** (`v0.5.0` cut). The table below is current and
+> H9 is confirmed landed. Everything after it — the backlog, its order, the
+> "next" sections — is the 2026-08-31 handoff, kept as written and *not*
+> re-verified since. For the record: the two SHAs the original table cited
+> (`44b3685`, `68d481d`) do not resolve in this repository's history at all; it
+> was written against a different checkout (`~/msb-v3`).
+
 ---
 
 ## Where things stand
 
 | | |
 |---|---|
-| `main` | `44b3685` local — **the H9 commit push is in-flight** (pre-push portability ~90% when this was written). |
-| `origin/main` | `68d481d` (last confirmed-landed). **First thing: check whether H9 pushed.** |
-| Latest tag | `v0.4.2` — `release-verify` green, first CI-verified 0.4.x |
-| Runtime | `0.4.2` on `:8766`, launchd-supervised |
+| `main` | `5120527` — landed and pushed (the `v0.5.0` version bump) |
+| `origin/main` | `5120527` — in sync |
+| Latest tag | `v0.5.0` — `release-verify` green from a virgin clone (CI run `35765344776`), 3626 passed |
+| Runtime | `0.4.2` on `:8766`, launchd-supervised — tree and tag are `0.5.0`, **restart pending** |
 
-### Check H9 push status first
+### Check H9 push status first — resolved
+
+H9 landed (`ad91737`; `scripts/stamp-schemas.py` is in the tree). The commands
+and branches below are kept as the 2026-08-31 record.
 
 ```bash
 cd ~/msb-v3
@@ -49,7 +59,9 @@ git log --oneline -1                          # local HEAD should be 44b3685
 ## Done (do not redo)
 
 - **O1** hermetic `release-verify` — self-provisions, green virgin-clone.
-- **O2** release truth — version reconciled to 0.4.2, CI-verified tag.
+- **O2** release truth — version identity reconciled across all four sources
+  (pyproject / `__version__` / `core.identity` / MANIFEST); CI-verified tag
+  `v0.4.2` at closure, `v0.5.0` since 2026-09-22.
 - **O3 / P3** authority boundary — Option B (dual-governance),
   `test_authority_boundary.py`, 14 paths, zero UNKNOWN.
 - **O4** codegraph — key was `"msb-v3"` not a path; re-indexed (7114 nodes).

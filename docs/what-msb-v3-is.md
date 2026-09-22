@@ -9,7 +9,7 @@ test names and headings, not line numbers, because line numbers rot.*
 MSB v3 is a single-operator, local-first runtime that takes a task, decides whether
 it is allowed, runs it inside a fail-closed permission boundary, and leaves a
 tamper-evident record of what happened. `pyproject.toml` gives it as `msb-v3`
-`0.4.2`; `README.md` calls it "a sovereign, local-first, governed agent runtime".
+`0.5.0`; `README.md` calls it "a sovereign, local-first, governed agent runtime".
 
 ## The loop
 
@@ -66,9 +66,9 @@ module docstring). The boundary is the capability registry behind it
 
 ## Scale, measured 2026-09-22
 
-Python under `src/`: **379 files / 74,675 lines**. Python under `tests/`: **327
-files / 57,629 lines**. Markdown under `docs/`: **132 files / 24,427 lines**.
-`pytest --collect-only` collects **3,555 tests** (75 deselected by configuration).
+Python under `src/`: **379 files / 75,009 lines**. Python under `tests/`: **330
+files / 58,600 lines**. Markdown under `docs/`: **133 files / 24,613 lines**.
+`pytest --collect-only` collects **3,661 tests** (75 deselected by configuration).
 Test source is 77% the size of product source.
 
 ## Check it in two commands
