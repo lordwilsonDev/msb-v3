@@ -62,7 +62,7 @@ Three facts found in the code change the spec slightly. Record them before build
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-22-background-windows-design.md`
 
-- [ ] **Step 1: Edit the spec**
+- [x] **Step 1: Edit the spec**
 
 In the **Window map** table, replace the Activity and PLEI rows with:
 
@@ -96,7 +96,7 @@ Add a new section at the end of the spec, before **Non-goals**:
 - `bridge.cockpit()` calls `/cockpit/api`, not `/cockpit/audit`, so Activity needs its own `auditStream()` method.
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-09-22-background-windows-design.md
@@ -121,7 +121,7 @@ git commit -m "docs(spec): background windows - phase-1 adjustments from plannin
   - `classify_cron(raw: dict, now: datetime) -> Entry`, where raw is `{"enabled": bool, "tick_s": int, "jobs": [{"job_id": str, "schedule": str, "enabled": bool, "last_run": {"status": str, "started_at": str} | None}]}`
   - cron `detail` keys: `scheduler_enabled`, `job_count`, `failed` (list of job_ids), `overdue` (list of job_ids)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/ops/test_background_snapshot.py`:
 
@@ -222,12 +222,12 @@ def test_cron_bad_schedule_does_not_blank_the_entry():
     assert e.detail["overdue"] == []
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `PY -m pytest -q tests/ops/test_background_snapshot.py`
 Expected: FAIL / collection error `ModuleNotFoundError: No module named 'msb_v3.ops.background'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/msb_v3/ops/background.py`:
 
@@ -324,12 +324,12 @@ def classify_cron(raw: Raw, now: datetime) -> Entry:
     return Entry(OK, detail)
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `PY -m pytest -q tests/ops/test_background_snapshot.py`
 Expected: 10 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/msb_v3/ops/background.py tests/ops/test_background_snapshot.py
@@ -352,7 +352,7 @@ git commit -m "feat(ops): background snapshot core + cron classifier"
   - `classify_wake(raw, now) -> Entry`. raw is `wake_status()` plus `oldest_pending_ts`. detail keys: `enabled`, `schedule`, `pending`, `outbox_count`, `job_present`, `oldest_pending_ts`.
   - `classify_plei(raw, now) -> Entry`. raw is `{"predictions", "outcomes", "pairs", "chain_ok", "chain_message", "last_forecast_at"}`; detail is the same dict.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/ops/test_background_snapshot.py` (and add `classify_automation, classify_governance, classify_plei, classify_wake` to the import list at the top):
 
@@ -493,12 +493,12 @@ def test_plei_fail_on_broken_chain():
     assert classify_plei(_plei(chain_ok=False), NOW).state == FAIL
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `PY -m pytest -q tests/ops/test_background_snapshot.py`
 Expected: ImportError for `classify_governance`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Append to `src/msb_v3/ops/background.py`:
 
@@ -585,12 +585,12 @@ def classify_plei(raw: Raw, now: datetime) -> Entry:
     return Entry(OK if raw.get("chain_ok") else FAIL, detail)
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `PY -m pytest -q tests/ops/test_background_snapshot.py`
 Expected: 27 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/msb_v3/ops/background.py tests/ops/test_background_snapshot.py
@@ -613,7 +613,7 @@ git commit -m "feat(ops): governance, automation, wake, plei classifiers"
   - `async def build_snapshot(readers=None, now=None) -> {"generated_at": str, "subsystems": {name: Entry.as_dict()}}`
   - `class SnapshotCache(ttl_s=CACHE_TTL_S, clock=time.monotonic)` with `async def get(self, build) -> dict`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/ops/test_background_snapshot.py` (add `asyncio` to the imports, plus `READERS, SnapshotCache, build_snapshot, read_cron, read_plei, read_wake` from `msb_v3.ops.background`):
 
@@ -704,12 +704,12 @@ def test_cache_reuses_within_ttl_and_rebuilds_after():
 
 Before running, confirm the `CronStore` and `WakeStore` call signatures used above match the real code (`grep -n "def create_job\|def start_run\|def finish_run" -A6 src/msb_v3/cron/store.py` and `grep -n "def post" -A3 src/msb_v3/wake/store.py`). If a positional order differs, fix **the test** to match the store; do not change the stores.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `PY -m pytest -q tests/ops/test_background_snapshot.py`
 Expected: ImportError for `READERS`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Add `import time` at the top of `src/msb_v3/ops/background.py`, extend the typing import to `from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple`, then append:
 
@@ -829,12 +829,12 @@ class SnapshotCache:
         return self._value
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `PY -m pytest -q tests/ops/test_background_snapshot.py`
 Expected: 34 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/msb_v3/ops/background.py tests/ops/test_background_snapshot.py
@@ -855,7 +855,7 @@ git commit -m "feat(ops): background readers, snapshot builder, 3s cache"
 - Consumes: `build_snapshot`, `SnapshotCache` (Task 4)
 - Produces: `GET /ops/background` → the `build_snapshot()` dict; 503 when no operator token is configured, 401 on a wrong token.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/ops/test_background_api.py`:
 
@@ -916,12 +916,12 @@ def test_no_write_methods(client: TestClient) -> None:
 
 Check the 401-vs-503 behaviour against `tests/cron/test_cron_api.py` (it asserts 503 when the token is unset). If `require_operator` returns a different code for a missing header while a token *is* set, change the first assertion to the code `tests/cron/test_cron_api.py` expects for the same case. The route must behave exactly like `/cron/*`.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `PY -m pytest -q tests/ops/test_background_api.py`
 Expected: ImportError `cannot import name 'ops_background'`.
 
-- [ ] **Step 3: Implement the router**
+- [x] **Step 3: Implement the router**
 
 Create `src/msb_v3/api/ops_background.py`:
 
@@ -956,7 +956,7 @@ async def background() -> Dict[str, Any]:
 
 (The lambda makes the route look up `build_snapshot` when it's called, so the test's monkeypatch of `ops_background.build_snapshot` takes effect.)
 
-- [ ] **Step 4: Mount it**
+- [x] **Step 4: Mount it**
 
 In `src/msb_v3/api/app.py`, add the import in alphabetical position among the other `from msb_v3.api.… import router as …_router` lines:
 
@@ -970,7 +970,7 @@ and add after the `automation_router` mount line (`app.include_router(automation
     app.include_router(ops_background_router, prefix="/ops", tags=["ops"])
 ```
 
-- [ ] **Step 5: Classify it in the surface map**
+- [x] **Step 5: Classify it in the surface map**
 
 In `docs/SURFACE.md`, in the router table (rows are alphabetical by path), add:
 
@@ -980,12 +980,12 @@ In `docs/SURFACE.md`, in the router table (rows are alphabetical by path), add:
 
 and extend the existing `msb_v3/ops` row's justification by appending: ` Also \`background.py\`, the snapshot behind \`/ops/background\`.`
 
-- [ ] **Step 6: Run the route tests and the two surface gates**
+- [x] **Step 6: Run the route tests and the two surface gates**
 
 Run: `PY -m pytest -q tests/ops/test_background_api.py tests/api/test_no_dead_routers.py tests/docs/test_surface_map.py`
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/msb_v3/api/ops_background.py src/msb_v3/api/app.py docs/SURFACE.md tests/ops/test_background_api.py
@@ -1011,7 +1011,7 @@ git commit -m "feat(api): GET /ops/background, operator-gated snapshot route"
   - `pleiCalibrate()` → `GET /plei/calibrate`
   - `auditStream(limit?)` → `GET /cockpit/audit?limit=N` (default 50); `data.receipts[]`, oldest first
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `desktop/test/bridge.test.js`:
 
@@ -1099,12 +1099,12 @@ In `desktop/test/security.test.js`, replace the `expected` array in `'preload ex
   ].sort();
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `cd desktop && npm test`
 Expected: failures such as `b.background is not a function`, the validate tests, and the preload list mismatch.
 
-- [ ] **Step 3: Implement the bridge methods**
+- [x] **Step 3: Implement the bridge methods**
 
 In `desktop/src/main/bridge.js`, add after `listTasks(limit) {...}`:
 
@@ -1148,7 +1148,7 @@ In `desktop/src/main/bridge.js`, add after `listTasks(limit) {...}`:
   }
 ```
 
-- [ ] **Step 4: Implement the validators**
+- [x] **Step 4: Implement the validators**
 
 In `desktop/src/main/validate.js`, add below `const SESSION_ALLOWED = ...`:
 
@@ -1178,7 +1178,7 @@ and add inside `validators` (after `listTasks`):
 
 (`MAX_LIMIT` is already 500. `background`, `cronJobs` and `pleiCalibrate` need no validator: `validate()` passes channels without one with `{}`.)
 
-- [ ] **Step 5: Register the channels**
+- [x] **Step 5: Register the channels**
 
 In `desktop/src/main/index.js` `registerIpc()`, after `channel('listTasks', (a) => bridge.listTasks(a.limit));` add:
 
@@ -1190,7 +1190,7 @@ In `desktop/src/main/index.js` `registerIpc()`, after `channel('listTasks', (a) 
   channel('auditStream', (a) => bridge.auditStream(a.limit));
 ```
 
-- [ ] **Step 6: Expose them in the preload**
+- [x] **Step 6: Expose them in the preload**
 
 In `desktop/src/preload/index.js`, add after the `listTasks` entry:
 
@@ -1219,12 +1219,12 @@ In `desktop/src/preload/index.js`, add after the `listTasks` entry:
   auditStream: (limit) => ipcRenderer.invoke('msb:auditStream', { limit: int(limit) }),
 ```
 
-- [ ] **Step 7: Run to verify they pass**
+- [x] **Step 7: Run to verify they pass**
 
 Run: `cd desktop && npm test`
 Expected: all tests pass (including the existing security tests).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add desktop/src/main/bridge.js desktop/src/main/validate.js desktop/src/main/index.js desktop/src/preload/index.js desktop/test/bridge.test.js desktop/test/validate.test.js desktop/test/security.test.js
@@ -1245,7 +1245,7 @@ git commit -m "feat(desktop): read-only bridge methods for the Background sectio
   - The next load is scheduled `intervalMs` after a successful load and `backoffMs` after a failed one.
   - While `isVisible()` is false it does not load or reschedule; `wake()` (call it on `visibilitychange`) resumes it immediately.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `desktop/test/poller.test.js`:
 
@@ -1373,12 +1373,12 @@ test('start() twice does not double-poll', async () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `cd desktop && node --test test/poller.test.js`
 Expected: `Cannot find module '../src/renderer/poller'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `desktop/src/renderer/poller.js`:
 
@@ -1451,12 +1451,12 @@ Create `desktop/src/renderer/poller.js`:
 })(this);
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `cd desktop && node --test test/poller.test.js`
 Expected: 7 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add desktop/src/renderer/poller.js desktop/test/poller.test.js
@@ -1477,7 +1477,7 @@ git commit -m "feat(desktop): visible-only poller with failure back-off"
 - Consumes: the `window.msb` methods from Task 6 plus the existing `governanceStatus()`/`approvals()`; `window.MsbPoller.createPoller` (Task 7); `el()` and `clear()` from `app.js` (global function declarations, resolved at call time).
 - Produces: `window.MsbBackground = { mount(): HTMLElement, unmount(): void }`. `mount()` is idempotent and starts polling the current view; `unmount()` stops all polling.
 
-- [ ] **Step 1: Write the failing security assertions**
+- [x] **Step 1: Write the failing security assertions**
 
 In `desktop/test/security.test.js`, add below `const rendererApp = read('renderer/app.js');`:
 
@@ -1507,12 +1507,12 @@ test('index.html loads poller.js and background.js before app.js', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `cd desktop && npm test`
 Expected: ENOENT for `renderer/background.js`.
 
-- [ ] **Step 3: Implement `background.js`**
+- [x] **Step 3: Implement `background.js`**
 
 Create `desktop/src/renderer/background.js`:
 
@@ -1857,7 +1857,7 @@ Create `desktop/src/renderer/background.js`:
 })();
 ```
 
-- [ ] **Step 4: Load the scripts and add the CSS**
+- [x] **Step 4: Load the scripts and add the CSS**
 
 In `desktop/src/renderer/index.html`, replace `<script src="app.js"></script>` with:
 
@@ -1883,7 +1883,7 @@ and add inside `<style>`, before `</style>`:
     .badge.st-unknown { background: #2a2a2a; color: #888; }
 ```
 
-- [ ] **Step 5: Wire the tab into `app.js`**
+- [x] **Step 5: Wire the tab into `app.js`**
 
 In `renderTabsBar()`, add a fourth entry to the tab list:
 
@@ -1909,12 +1909,12 @@ In `render()`, inside the `NOT_ATTACHED || OFFLINE || BLOCKED` branch, before `r
     window.MsbBackground.unmount(); // nothing to watch without a runtime
 ```
 
-- [ ] **Step 6: Run the desktop tests**
+- [x] **Step 6: Run the desktop tests**
 
 Run: `cd desktop && npm test`
 Expected: all pass. `npm run typecheck` should still pass too (the files are plain JS; if `tsconfig.json` includes `src/renderer/**`, fix any type complaint it reports in the new files only).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add desktop/src/renderer/background.js desktop/src/renderer/index.html desktop/src/renderer/app.js desktop/test/security.test.js
@@ -1927,17 +1927,17 @@ git commit -m "feat(desktop): Background section - six watch-only views"
 
 **Files:** none changed unless a check fails.
 
-- [ ] **Step 1: Run the full non-live Python suite**
+- [x] **Step 1: Run the full non-live Python suite**
 
 Run: `PY -m pytest -q -m "not live" -n auto`
 Expected: the new tests pass. Compare any failures against the known flaky set (`tests/plei/test_plei_is_msb_v3.py` under xdist load, `tests/docs/test_doc_records.py`, `tests/db/test_schema_stamping.py::test_live_data_dir_is_fully_stamped`, which fail without these changes too). Any *other* failure is yours to fix. Also run `git status --short` afterwards: only `.plei/calibration.jsonl` may show as modified (the known leak fixed on the unmerged `fix/plei-calibration-test-isolation` branch); restore it with `git checkout -- .plei/calibration.jsonl`.
 
-- [ ] **Step 2: Run the desktop suite**
+- [x] **Step 2: Run the desktop suite**
 
 Run: `cd desktop && npm test && npm run typecheck`
 Expected: pass.
 
-- [ ] **Step 3: Check the route against a scratch server started from the worktree**
+- [x] **Step 3: Check the route against a scratch server started from the worktree**
 
 The live runtime on `:8766` runs the main checkout's code, so it doesn't have the new route yet. Start a throwaway server from the worktree on another port. It shares the live data directories, and the route only reads:
 
@@ -1964,7 +1964,7 @@ Point the desktop app at the scratch server (attach accepts a port; if the UI ha
 
 Take one screenshot of the Overview for the handoff.
 
-- [ ] **Step 5: Final commit (only if Steps 1–4 required fixes)**
+- [x] **Step 5: Final commit (only if Steps 1–4 required fixes)**
 
 ```bash
 git add -A && git commit -m "fix(background): issues found in end-to-end check"
