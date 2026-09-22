@@ -11,11 +11,14 @@ specific chain still inject one or monkeypatch ``_AUDIT_DB`` themselves.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 
 from msb_v3.core.config import settings
 from msb_v3.uac import audit_chain as ac
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # The startup redaction self-check refuses to build the app when a *configured*
 # process would mask nothing — and a machine with a repo `.env` looks configured
@@ -37,14 +40,18 @@ os.environ.setdefault("MSB_ALLOW_UNARMED_REDACTION", "1")
 # daily factory gate ran all 75 tier tests inline against the shared dev
 # instance. That made the gate's verdict a function of machine state rather
 # than of the commit. Concretely: test_cold_state_verification.py SIGKILLs
-# whatever owns tcp:8766 and re-spawns it mid-suite (it is *testing* restart
-# recovery), so whether each later integration test reached a live server or
-# found the gap came down to timing. Measured against one unchanged tree:
+# whatever owns the target port and re-spawns it mid-suite (it is *testing*
+# restart recovery), so whether each later integration test reached a live
+# server or found the gap came down to timing. That file now refuses to kill
+# the default port unless MSB_ALLOW_RESTART_LIVE=1 is set deliberately, which
+# removes the worst form of this but not the general one: the tiers still need
+# a live server, so they stay deselected by default. Measured against one
+# unchanged tree:
 # 3351 passed / 0 failed with the server up throughout, 3317 passed / 3 failed
 # when it blinked mid-run, and the gate's own run logged 1 failed + 20 errors.
 #
 # Deselecting them by default is deterministic and costs no coverage (84%
-# either way, against a 65% floor) — the factory's own hygiene members still
+# either way, against an 80% floor) — the factory's own hygiene members still
 # exercise the live contract. Opt back in for a deliberate tier run with
 # MSB_RUN_TIERS=1 (see `make test-tiers`).
 _TIER_MARKERS = ("integration", "chaos", "live")
@@ -135,3 +142,45 @@ def _isolate_memory_fabric_db(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None
     data/memory_fabric/memory.db, the same class of gap the chaos test found
     for settings.db_path (see _isolate_governance_db above)."""
     monkeypatch.setattr(settings, "memory_fabric_db_path", str(tmp_path / "memory_fabric" / "memory.db"))
+
+
+def _run_scoped_stores() -> dict[str, str]:
+    """The stores the run-scoped server was actually started with.
+
+    `scripts/ci-runtime.sh` redirects the server's stores but deliberately does
+    not export them — exporting MSB_DB_PATH would redirect the pytest process's
+    own Settings (see the tier note above). It records them in
+    $CI_RUNTIME_DIR/server.env instead. Tests that assert on rows the *server*
+    wrote must read the server's store: under `make release-verify` the scoped
+    server writes to a temp dir, so a test reading `<repo>/data/...` asserts
+    against a file the server never touched.
+    """
+    runtime_dir = os.environ.get("CI_RUNTIME_DIR")
+    path = os.path.join(runtime_dir, "server.env") if runtime_dir else None
+    values: dict[str, str] = {}
+    if path and os.path.isfile(path):
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                key, sep, value = line.rstrip("\n").partition("=")
+                if sep:
+                    values[key] = value
+    return values
+
+
+@pytest.fixture
+def server_fabric_db_path() -> str:
+    """Memory-fabric DB of the server under test (the one at MSB_BASE_URL).
+
+    Four integration files used to hardcode `<repo>/data/memory_fabric/...`
+    instead. That was wrong in two directions at once: it wrote into the live
+    deployment when run locally (the autouse `_isolate_memory_fabric_db` above
+    exists precisely to stop that), and it read a file the run-scoped server
+    never wrote once ci-runtime.sh added the fabric redirect.
+    """
+    explicit = os.environ.get("MSB_MEMORY_FABRIC_DB_PATH")
+    if explicit:
+        return explicit
+    scoped = _run_scoped_stores().get("MSB_MEMORY_FABRIC_DB_PATH")
+    if scoped:
+        return scoped
+    return str(_REPO_ROOT / "data" / "memory_fabric" / "memory.db")

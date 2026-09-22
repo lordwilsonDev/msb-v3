@@ -27,8 +27,21 @@ if not SECRET:
     # (secrets must never be copied) — these tests need the real running
     # server's secret and cannot pass against an empty one.
     pytestmark = [pytest.mark.integration, pytest.mark.skip(reason="MCP_BRIDGE_SECRET unavailable")]
-BRIDGE_URL = "http://127.0.0.1:8766/mcp/proxy"
+# The server under test is whatever MSB_BASE_URL names, like every other live
+# test in this suite. Hardcoding :8766 meant that on an operator's machine this
+# file silently tested (and wrote rows into) the LIVE deployment instead of the
+# standby the run had started.
+BASE_URL = os.environ.get("MSB_BASE_URL", "http://127.0.0.1:8766").rstrip("/")
+BRIDGE_URL = f"{BASE_URL}/mcp/proxy"
 DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")
+
+
+@pytest.fixture(autouse=True)
+def _point_at_the_server_fabric(
+    server_fabric_db_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Read the fabric of the server under test (see conftest)."""
+    monkeypatch.setattr(sys.modules[__name__], "DB_PATH", server_fabric_db_path)
 
 
 def _headers(actor: str) -> dict:

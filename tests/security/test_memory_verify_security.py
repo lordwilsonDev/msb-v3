@@ -20,8 +20,24 @@ pytestmark = pytest.mark.integration
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
-BRIDGE_URL = "http://127.0.0.1:8766/mcp/proxy"
+# The server under test is whatever MSB_BASE_URL names, like every other live
+# test in this suite. Hardcoding :8766 meant that on an operator's machine this
+# file silently tested (and wrote rows into) the LIVE deployment instead of the
+# standby the run had started — and under a port collision it did so without
+# saying anything.
+BASE_URL = os.environ.get("MSB_BASE_URL", "http://127.0.0.1:8766").rstrip("/")
+BRIDGE_URL = f"{BASE_URL}/mcp/proxy"
+# Rebound per test by `_point_at_the_server_fabric` to the fabric of the server
+# above, not to whatever happens to sit in the checkout's data/ directory.
 DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")
+
+
+@pytest.fixture(autouse=True)
+def _point_at_the_server_fabric(
+    server_fabric_db_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Read the fabric of the server under test (see conftest)."""
+    monkeypatch.setattr(sys.modules[__name__], "DB_PATH", server_fabric_db_path)
 
 
 def _secret() -> str:

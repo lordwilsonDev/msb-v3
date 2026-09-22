@@ -15,6 +15,7 @@ import pytest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
+from msb_v3.core.config import settings  # noqa: E402
 from msb_v3.memory_fabric.fabric import (  # noqa: E402
     MemoryFabric,
     MemoryFabricStore,
@@ -22,11 +23,23 @@ from msb_v3.memory_fabric.fabric import (  # noqa: E402
     VerificationState,
 )
 
-DB_PATH = os.path.join(REPO, "data", "memory_fabric", "memory.db")
+
+def _db_path() -> str:
+    """This test's fabric DB: the per-test scratch file the autouse
+    `_isolate_memory_fabric_db` fixture points `settings` at, resolved per call
+    (the fixture patches it per test, so a module-level constant would capture
+    the deployment default at import time).
+
+    This file used to build its store at `<repo>/data/memory_fabric/memory.db`,
+    which meant every run wrote rows into the LIVE deployment fabric — and read
+    whatever earlier runs had left there. It exercises the fabric's own verify
+    logic, which needs no deployment state.
+    """
+    return settings.memory_fabric_db_path
 
 
 def _fabric() -> MemoryFabric:
-    store = MemoryFabricStore(db_path=DB_PATH)
+    store = MemoryFabricStore(db_path=_db_path())
     return MemoryFabric(store=store)
 
 
@@ -86,7 +99,7 @@ def test_d5_hash_chain():
     fab.verify_memory(item.memory_id, VerificationState.CONTRADICTED, by="pytest", reason="issue")
     fab.verify_memory(item.memory_id, VerificationState.VERIFIED, by="pytest", reason="fix", resolution="done")
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with sqlite3.connect(_db_path()) as conn:
         conn.row_factory = sqlite3.Row
         rows = [dict(r) for r in conn.execute(
             "SELECT * FROM verification_history WHERE memory_id = ? ORDER BY id", (item.memory_id,)
