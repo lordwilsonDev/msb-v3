@@ -224,7 +224,10 @@ class TestBitNetStatus:
         models = r.json().get("models", [])
         model_names = [m["name"] for m in models]
         assert len(model_names) > 0, "No models in Ollama"
-        # We know qwen3:8b should be there
-        assert any("qwen" in n.lower() for n in model_names), (
-            f"Expected qwen model in Ollama, found: {model_names}"
+        # The configured primary model must actually be pulled.
+        from msb_v3.core.config import Settings
+
+        expected = Settings().ollama_model
+        assert expected in model_names, (
+            f"Expected configured model {expected!r} in Ollama, found: {model_names}"
         )
