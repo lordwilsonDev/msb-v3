@@ -1,6 +1,6 @@
 # MSB-v3 Governance Hardening — Implementation Plan
 
-**Source blueprint:** `docs/blueprints/governance-hardening.md` (post-forensic, capability-centric, UNKNOWN ≠ SAFE).  
+**Source blueprint:** `docs/blueprints/governance-hardening.md` (post-forensic, capability-centric, UNKNOWN ≠ SAFE). **Note:** that file was never committed — the document now at that path is a **reconstruction written 2026-09-22** from in-tree artifacts, and says so itself. It is not this plan's antecedent.  
 **Scope:** one controlled progression — deterministic boundary first, model layer only as challenger, fail-closed for unknown consequential from day 1.  
 **Current baseline:** v0.4.2, PID 2500, port 8766, HEALTHY (2026-09-02).
 
@@ -686,7 +686,7 @@ change.
 
 ## Throughout — observability + invariants
 
-**Add governance metrics** (from blueprint §53), wired as you build each piece:
+**Add governance metrics**, wired as you build each piece. (This list was previously attributed here to "blueprint §53" — but §53 is the *Steward* blueprint's health vector: nine project-state axes, not a metric set. The list is this plan's own. Corrected 2026-09-22.)
 - `governance_requests_total`
 - `capability_unknown_total`
 - `capability_review_total`
