@@ -388,14 +388,50 @@ class TestRegistryInterchangeability:
         )
 
     def test_select_by_tier_returns_interchangeable(self):
-        """Selecting by max_risk_tier must return providers that are
-        all within the same tier — any of them can satisfy the request."""
+        """``max_risk_tier`` is an UPPER bound: every selected provider stays
+        within it, and widening it only adds.
+
+        The bound is asserted at tiers that exist. The previous version of this
+        test selected ``max_risk_tier=1``, which no provider satisfies (the
+        lowest in the registry is 3), so its loop iterated an empty list and
+        passed without asserting anything — a test named for a property it
+        never checked. A non-empty floor is therefore part of the claim, not
+        decoration: an empty selection must not read as success.
+        """
         from msb_v3.agent.providers import ProviderRegistry
         registry = ProviderRegistry()
-        # Select tier-1 providers
-        selected = registry.select(max_risk_tier=1, available_only=False)
-        for p in selected:
-            assert p.spec.max_risk_tier <= 1
+
+        widest = registry.select(max_risk_tier=4, available_only=False)
+        assert widest, "no providers at the widest tier — registry is empty"
+
+        bounded = registry.select(max_risk_tier=3, available_only=False)
+        assert bounded, (
+            "no providers within tier 3 — the bound excludes everything, so "
+            "this test could not observe a broken bound"
+        )
+        for provider in bounded:
+            assert provider.spec.max_risk_tier <= 3, (
+                f"{provider.spec.provider_id} tier={provider.spec.max_risk_tier} "
+                f"exceeds the requested bound of 3"
+            )
+        for provider in widest:
+            assert provider.spec.max_risk_tier <= 4
+
+        # The interchangeability pair must be selectable within its own tier...
+        bounded_ids = {p.spec.provider_id for p in bounded}
+        missing = set(_INTERCHANGEABLE_IDS) - bounded_ids
+        assert not missing, (
+            f"interchangeable providers not selectable at tier 3: {sorted(missing)}"
+        )
+        # ...and the bound must actually exclude, or widening it would be a no-op
+        # and this test could not detect a tier filter that stopped filtering.
+        assert bounded_ids <= {p.spec.provider_id for p in widest}, (
+            "widening the tier bound dropped providers"
+        )
+        assert len(bounded) < len(widest), (
+            f"tier-3 selection ({len(bounded)}) equals the full registry "
+            f"({len(widest)}) — the tier bound is not filtering anything"
+        )
 
     def test_registry_deterministic(self):
         """ProviderRegistry must return the same results on repeated calls."""
