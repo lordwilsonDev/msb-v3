@@ -178,6 +178,11 @@ function registerIpc() {
   channel('memory', (a) => bridge.memory(a.session, a.limit));
   channel('search', (a) => bridge.search(a.query, a.limit));
   channel('listTasks', (a) => bridge.listTasks(a.limit));
+  channel('background', () => bridge.background());
+  channel('cronJobs', () => bridge.cronJobs());
+  channel('cronHistory', (a) => bridge.cronHistory(a.jobId, a.limit));
+  channel('pleiCalibrate', () => bridge.pleiCalibrate());
+  channel('auditStream', (a) => bridge.auditStream(a.limit));
   channel('sendChat', (a) => bridge.sendChat(a.session, a.query));
   channel(
     'subscribeTask',

@@ -220,3 +220,49 @@ test('sendChat() still sends the request with no header when no mcpSecret is con
   assert.equal(m.seen.length, 1);
   assert.equal(m.seen[0].headers['x-mcp-secret'], undefined);
 });
+
+test('background() GETs /ops/background with the operator token', async () => {
+  const m = await fakeMsb({ 'GET /ops/background': () => ({ json: { subsystems: {} } }) });
+  const b = new MsbBridge('127.0.0.1', m.port, { operatorToken: 'OP' });
+  const r = await b.background();
+  await m.close();
+  assert.equal(r.ok, true);
+  assert.equal(m.seen[0].headers.authorization, 'Bearer OP');
+});
+
+test('background() fails closed without an operator token - no request sent', async () => {
+  const m = await fakeMsb({ 'GET *': () => ({ json: {} }) });
+  const b = new MsbBridge('127.0.0.1', m.port, {});
+  const r = await b.background();
+  await m.close();
+  assert.equal(r.ok, false);
+  assert.equal(m.seen.length, 0);
+});
+
+test('cronJobs() and cronHistory() hit the operator-gated cron reads', async () => {
+  const m = await fakeMsb({
+    'GET /cron/jobs': () => ({ json: { jobs: [] } }),
+    'GET /cron/jobs/wake-agent/history': () => ({ json: { runs: [] } }),
+  });
+  const b = new MsbBridge('127.0.0.1', m.port, { operatorToken: 'OP' });
+  await b.cronJobs();
+  await b.cronHistory('wake-agent');
+  await m.close();
+  assert.equal(m.seen[0].url, '/cron/jobs');
+  assert.equal(m.seen[1].url, '/cron/jobs/wake-agent/history?limit=20');
+  assert.equal(m.seen[1].headers.authorization, 'Bearer OP');
+});
+
+test('pleiCalibrate() and auditStream() are open reads', async () => {
+  const m = await fakeMsb({
+    'GET /plei/calibrate': () => ({ json: { total_pairs: 0 } }),
+    'GET /cockpit/audit': () => ({ json: { receipts: [] } }),
+  });
+  const b = new MsbBridge('127.0.0.1', m.port, {});
+  const a = await b.pleiCalibrate();
+  const s = await b.auditStream(10);
+  await m.close();
+  assert.equal(a.ok, true);
+  assert.equal(s.ok, true);
+  assert.equal(m.seen[1].url, '/cockpit/audit?limit=10');
+});

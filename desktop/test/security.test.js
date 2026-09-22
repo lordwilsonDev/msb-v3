@@ -62,6 +62,7 @@ test('preload exposes exactly the allow-listed method names', () => {
     'attach', 'health', 'identity', 'cockpit', 'governanceStatus',
     'approvals', 'approve', 'killswitch', 'killswitchSet', 'memory', 'search',
     'listTasks', 'subscribeTask', 'unsubscribeTask', 'onTaskEvent', 'sendChat',
+    'background', 'cronJobs', 'cronHistory', 'pleiCalibrate', 'auditStream',
   ].sort();
   assert.deepEqual([...new Set(exposed)].sort(), expected);
 });

@@ -25,6 +25,7 @@ const KILLSWITCH_OPS = Object.freeze(['arm', 'disarm']);
 
 const CONTROL_CHARS = new RegExp('[\u0000-\u001F\u007F]');
 const SESSION_ALLOWED = /^[A-Za-z0-9_.:-]+$/;
+const JOB_ID_ALLOWED = /^[a-z0-9][a-z0-9_-]*$/;
 
 function fail(detail) {
   return { ok: false, error: 'IPC_VALIDATION_FAILED', detail };
@@ -115,6 +116,22 @@ const validators = {
   listTasks(payload) {
     const p = payload && typeof payload === 'object' ? payload : {};
     const limit = cleanLimit(p.limit, 25, MAX_LIMIT);
+    if (limit === null) return fail('limit out of range');
+    return ok({ limit });
+  },
+
+  cronHistory(payload) {
+    const p = payload && typeof payload === 'object' ? payload : {};
+    const jobId = cleanString(p.jobId, MAX_ID_LEN);
+    if (!jobId || !JOB_ID_ALLOWED.test(jobId)) return fail('jobId must be a slug');
+    const limit = cleanLimit(p.limit, 20, 200);
+    if (limit === null) return fail('limit out of range');
+    return ok({ jobId, limit });
+  },
+
+  auditStream(payload) {
+    const p = payload && typeof payload === 'object' ? payload : {};
+    const limit = cleanLimit(p.limit, 50, MAX_LIMIT);
     if (limit === null) return fail('limit out of range');
     return ok({ limit });
   },
