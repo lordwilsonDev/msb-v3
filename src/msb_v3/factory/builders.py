@@ -1,11 +1,11 @@
-"""Software Factory builders (spec §4.2.6 — implement stage).
+"""Software Factory builders (sovereign-architecture §4.2.6 — implement stage).
 
 A Builder turns the plan into a real change inside an **isolated worktree**
 (a copy of the repo — the original is never touched). Two builders:
 
     PatchBuilder    deterministic — runs a script/patch in the worktree
-    CliAgentBuilder delegates to an agent worker (CliAgentProvider) with
-                    the plan as the goal; fails loudly without a funded
+    CliAgentBuilder delegates to an agent worker chosen by the ProviderRegistry
+                    with the plan as the goal; fails loudly without a funded
                     model, never silently
 
 The diff/changed-files evidence is computed against the original repo by
@@ -145,23 +145,76 @@ class PatchBuilder(Builder):
         )
 
 
+# How the factory routes to a worker: by provider KIND, not by capability.
+#
+# Selecting on a capability would mean asking a CLI provider to declare one, and
+# a declared capability is a trust grant — the CLI isolation model requires the
+# tuple stay empty until an operator registers scoped capabilities by hand
+# ("no implicit trust": tests/integrations/test_cli_provider_isolation.py,
+# which names `kind` as the routing key for exactly this reason). An external
+# agent on the operator's account must not acquire a granted capability as a
+# side effect of the factory wanting to describe it.
+_WORKER_KIND = "cli"
+
+
+def _select_worker(registry: Any = None) -> Any:
+    """The default worker for CliAgentBuilder, chosen by the ProviderRegistry.
+
+    A Consumer must not construct a Provider — that is the seam's one invariant
+    (`interchangeable-components`: consumers import the Definition, not the
+    Provider). This used to be a direct ``CliAgentProvider(("claude", "-p"),
+    timeout_s=…)`` right here, which pinned the factory to one binary on PATH,
+    ignored the risk tier, and made the swap test a claim about a seam this file
+    did not actually use: the Registry could flip providers while the factory
+    kept its own.
+
+    Selection inputs are the provider's declared facts — kind, risk tier,
+    availability — in registration order, so the choice is deterministic. The
+    order is the registry's, not this file's: reorder the registry and the
+    factory follows.
+    """
+    from msb_v3.agent.providers import ProviderRegistry
+
+    reg = registry if registry is not None else ProviderRegistry()
+    available = [p for p in reg.select() if p.spec.kind == _WORKER_KIND]
+    if available:
+        return available[0]
+    # Nothing is available. Keep the honest-failure path rather than raising:
+    # `build()` below reports `unavailable_reason()` as a recorded BuildResult
+    # error, and the four in-tree callers construct this builder bare, so a raise
+    # here would replace a recorded failure with a 500. Selecting the first
+    # registered worker with availability ignored preserves that, and it can
+    # still say *why* it cannot run.
+    registered = [
+        p
+        for p in reg.select(available_only=False)
+        if p.spec.kind == _WORKER_KIND
+    ]
+    if registered:
+        return registered[0]
+    raise LookupError(
+        f"no kind='{_WORKER_KIND}' provider is registered — CliAgentBuilder has no "
+        f"worker to delegate to"
+    )
+
+
 class CliAgentBuilder(Builder):
     """Delegates implementation to an agent worker (CLI subprocess).
 
     The plan is the worker's goal; the worker runs inside the worktree.
     Without a funded provider the worker fails loudly and the factory
     records the honest error — implementation is never faked.
+
+    The worker comes from the ProviderRegistry unless one is injected. Its time
+    budget is the worker's own declared ``spec.timeout_s``
+    (`cli_provider_timeout_s()`, MSB_CLI_TIMEOUT_S) rather than a second number
+    chosen here.
     """
 
     builder_id = "cli-agent"
 
-    def __init__(self, provider: Any = None, *, timeout_s: float = 300.0) -> None:
-        if provider is None:
-            from msb_v3.agent.providers import CliAgentProvider
-
-            provider = CliAgentProvider(("claude", "-p"), timeout_s=timeout_s)
-        self._provider = provider
-        self._timeout_s = timeout_s
+    def __init__(self, provider: Any = None, *, registry: Any = None) -> None:
+        self._provider = provider if provider is not None else _select_worker(registry)
         # Builder model = the worker's identity ("cli.claude" -> "claude"),
         # used by the reviewer-panel invariant so a worker never reviews itself.
         self.model = self._provider.spec.provider_id.split(".")[-1]

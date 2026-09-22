@@ -252,6 +252,15 @@ class CliAgentProvider(AgentProvider):
             display_name=display_name or f"CLI agent: {binary}",
             kind="cli",
             command=command,
+            # Deliberately empty, and load-bearing: a declared capability is a
+            # TRUST grant, not a description. An external agent on the
+            # operator's account gets none until the operator registers scoped
+            # ones — "no implicit trust" (tests/integrations/
+            # test_cli_provider_isolation.py states the model and pins it, incl.
+            # TestCliProviderCapabilityEscape). Routing therefore uses `kind`,
+            # which those tests name as the registry's routing key for CLI.
+            # Adding a name here without an operator grant is a privilege
+            # escalation, not a selection hint.
             capabilities=(),
             max_risk_tier=4,
             timeout_s=timeout_s,
@@ -704,29 +713,229 @@ class DshAgentProvider(AgentProvider):
         )
 
 
+def cli_provider_timeout_s() -> float:
+    """Time budget declared once for every CLI agent worker.
+
+    It used to be two values for the same worker: this class defaulted to 120 s,
+    while `factory/builders.py` constructed its own with 300 s — so a worker's
+    budget depended on which code built it, and the Spec's ``timeout_s`` (the
+    field the Registry is supposed to select on) said 120 while the factory ran
+    at 300. 300 s is the value the factory already used for real code-writing
+    runs, and it sits below the 600 s the dsh/paseo workers declare. Operators
+    move it with ``MSB_CLI_TIMEOUT_S``.
+    """
+    try:
+        return float(os.environ.get("MSB_CLI_TIMEOUT_S", "300"))
+    except ValueError:
+        # A non-numeric override must not silently become a 0 s budget.
+        return 300.0
+
+
 def default_providers() -> Tuple[AgentProvider, ...]:
     """Local slice + the common CLI workers + DeepSeek Harness (dsh) +
     Paseo-managed agents + the Anthropic API provider (availability checked
     lazily). The DeepSeek API provider was retired with the frontier seam
     (D1, 2026-09-09)."""
+    _cli_timeout = cli_provider_timeout_s()
     return (
         LocalAgentProvider(),
         AnthropicAgentProvider(),
         DshAgentProvider(),
-        CliAgentProvider(("claude", "-p")),
-        CliAgentProvider(("codex", "exec")),
-        CliAgentProvider(("opencode", "run")),
+        CliAgentProvider(("claude", "-p"), timeout_s=_cli_timeout),
+        CliAgentProvider(("codex", "exec"), timeout_s=_cli_timeout),
+        CliAgentProvider(("opencode", "run"), timeout_s=_cli_timeout),
         PaseoAgentProvider("claude"),
         PaseoAgentProvider("codex"),
         PaseoAgentProvider("opencode"),
     )
 
 
+# ---------------------------------------------------------------------------
+# Drop-in registration
+# ---------------------------------------------------------------------------
+#
+# A worker arrives by *registration*, not by editing this file. The operator
+# names a `module:attr` entry point in MSB_PROVIDER_PLUGINS; the loader below
+# validates it against the seam and the Registry routes to it. Nothing in
+# `default_providers()` needs to change, and no consumer learns a new name —
+# which is the whole point of a seam for systems that show up later.
+
+# Refusals are logged once per (source, reason): a Registry is constructed on
+# every `handle()` call, so logging on every construction would bury the line
+# that matters.
+_LOGGED_REFUSALS: set[tuple[str, str]] = set()
+
+
+@dataclass(frozen=True)
+class ProviderLoadFailure:
+    """A configured worker that was refused, and why.
+
+    Recorded rather than swallowed. A worker that fails to load silently is a
+    substitution hazard: the Registry routes to whatever else is available and
+    nothing says the configured one is missing.
+    """
+
+    source: str
+    reason: str
+
+
+def provider_plugin_specs() -> Tuple[str, ...]:
+    """`module:attr` worker entry points named by MSB_PROVIDER_PLUGINS."""
+    raw = getattr(settings, "provider_plugins", "") or ""
+    return tuple(spec.strip() for spec in raw.split(",") if spec.strip())
+
+
+def _known_capability_vocabulary() -> frozenset[str]:
+    """Names a worker may declare — the two tables that own the vocabulary.
+
+    Imported here, not at module scope: `tools.registry` and `agent.safety` sit
+    above this module, and a worker catalogue must not become an import cycle.
+    """
+    from msb_v3.agent.safety import TOOL_CAPABILITY
+    from msb_v3.tools.registry import TOOLS
+
+    return frozenset(TOOL_CAPABILITY) | frozenset(
+        cap for tool in TOOLS.values() for cap in tool.required_capabilities
+    )
+
+
+def _refusal(provider: Any, *, taken: frozenset[str]) -> str:
+    """Why `provider` may not be registered — "" when it may.
+
+    Fail-closed: anything not clearly a conforming worker is refused, and the
+    reason names the missing piece so a registration can be fixed without
+    reading this module.
+    """
+    spec = getattr(provider, "spec", None)
+    if spec is None:
+        return "no `spec` attribute — a worker must expose a ProviderSpec"
+    for attr in ("provider_id", "kind", "capabilities", "max_risk_tier", "timeout_s"):
+        if not hasattr(spec, attr):
+            return f"ProviderSpec has no `{attr}`"
+    if not isinstance(spec.provider_id, str) or not spec.provider_id.strip():
+        return "provider_id must be a non-empty string"
+    if spec.provider_id in taken:
+        return f"provider_id {spec.provider_id!r} is already registered by another plugin"
+    if not isinstance(spec.kind, str) or not spec.kind.strip():
+        return "kind must be a non-empty string"
+    if not isinstance(spec.max_risk_tier, int) or not 1 <= spec.max_risk_tier <= 4:
+        return f"max_risk_tier {spec.max_risk_tier!r} is outside 1..4"
+    if not isinstance(spec.timeout_s, (int, float)) or spec.timeout_s <= 0:
+        return f"timeout_s {spec.timeout_s!r} must be positive"
+    if not isinstance(spec.command, tuple):
+        return "command must be a tuple"
+    if not isinstance(spec.capabilities, tuple):
+        return "capabilities must be a tuple"
+    # A declared capability is a trust grant (see CliAgentProvider's spec note).
+    # Accepting an unknown name would look registered while resolving to nothing:
+    # governance.capability_registry returns None for ids it does not know.
+    unknown = sorted(set(spec.capabilities) - _known_capability_vocabulary())
+    if unknown:
+        return (
+            f"declares {unknown}, which no capability table knows — a name must be "
+            f"a governed tool (safety.TOOL_CAPABILITY) or a tool capability "
+            f"(tools.registry), or it can be selected on but never gated"
+        )
+    for attr in ("available", "unavailable_reason", "execute"):
+        if not callable(getattr(provider, attr, None)):
+            return f"`{attr}()` is missing or not callable"
+    return ""
+
+
+def _resolve_plugin(source: str) -> Any:
+    """Import `module:attr`, calling it when it is a class or factory."""
+    import importlib
+
+    module_name, _, attr = source.partition(":")
+    if not module_name or not attr:
+        raise ValueError("expected the form 'module:attr'")
+    module = importlib.import_module(module_name)
+    target = getattr(module, attr)
+    if isinstance(target, AgentProvider):
+        return target
+    if callable(target):
+        return target()
+    raise TypeError(f"{source} is neither an AgentProvider nor a factory for one")
+
+
+def load_provider_plugins(
+    specs: Optional[Tuple[str, ...]] = None,
+    *,
+    existing: Tuple[AgentProvider, ...] = (),
+) -> Tuple[Tuple[AgentProvider, ...], Tuple[ProviderLoadFailure, ...]]:
+    """Load the configured workers. Returns ``(loaded, refusals)``.
+
+    A plugin whose ``provider_id`` matches a built-in *replaces* it — the seam
+    promises components can be replaced, not only added — which the Registry
+    applies; the loader only refuses two *plugins* claiming one id, since that is
+    a configuration error rather than an override and resolving it by import
+    order would be invisible.
+    """
+    requested = provider_plugin_specs() if specs is None else tuple(specs)
+    loaded: List[AgentProvider] = []
+    failures: List[ProviderLoadFailure] = []
+    builtin_kinds = {p.spec.kind for p in existing}
+    for source in requested:
+        failure: Optional[ProviderLoadFailure] = None
+        try:
+            provider = _resolve_plugin(source)
+        except Exception as exc:  # noqa: BLE001 — any import/build failure is a refusal
+            failure = ProviderLoadFailure(source, f"{type(exc).__name__}: {exc}")
+        else:
+            reason = _refusal(provider, taken=frozenset(p.spec.provider_id for p in loaded))
+            if reason:
+                failure = ProviderLoadFailure(source, reason)
+            else:
+                if provider.spec.kind not in builtin_kinds:
+                    logger.info(
+                        "provider plugin %s declares new kind %r — no consumer routes "
+                        "on it yet (routing keys are declared by consumers, e.g. "
+                        "factory.builders._WORKER_KIND)",
+                        source,
+                        provider.spec.kind,
+                    )
+                loaded.append(provider)
+        if failure is not None:
+            failures.append(failure)
+            key = (failure.source, failure.reason)
+            if key not in _LOGGED_REFUSALS:
+                _LOGGED_REFUSALS.add(key)
+                logger.error("provider plugin refused: %s — %s", failure.source, failure.reason)
+    return tuple(loaded), tuple(failures)
+
+
 class ProviderRegistry:
     """Deterministic provider selection: available + capable + within tier."""
 
     def __init__(self, providers: Optional[Tuple[AgentProvider, ...]] = None) -> None:
-        self._providers = providers if providers is not None else default_providers()
+        self._load_failures: Tuple[ProviderLoadFailure, ...] = ()
+        if providers is None:
+            builtins = default_providers()
+            loaded, self._load_failures = load_provider_plugins(existing=builtins)
+            replacements = {p.spec.provider_id: p for p in loaded}
+            replaced = set(replacements) & {p.spec.provider_id for p in builtins}
+            if replaced:
+                logger.info(
+                    "provider plugin(s) replace built-in(s): %s", sorted(replaced)
+                )
+            # Substituted IN PLACE, not appended. Selection is registration order,
+            # so a plugin that only removed the built-in's id would leave the
+            # original's slot empty and an *earlier* worker would win — the
+            # override would silently do nothing (found by
+            # test_a_dropped_in_worker_takes_over_the_factory_with_no_consumer_edit).
+            # Genuinely new workers keep their configured order, after the built-ins.
+            composed: List[AgentProvider] = []
+            for builtin in builtins:
+                substitute = replacements.pop(builtin.spec.provider_id, None)
+                composed.append(substitute if substitute is not None else builtin)
+            composed.extend(replacements.values())
+            self._providers = tuple(composed)
+        else:
+            self._providers = providers
+
+    def load_failures(self) -> Tuple[ProviderLoadFailure, ...]:
+        """Configured workers that were refused, with their reasons."""
+        return self._load_failures
 
     def get(self, provider_id: str) -> Optional[AgentProvider]:
         for p in self._providers:

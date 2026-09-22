@@ -114,6 +114,14 @@ class Settings:
     dsh_binary: str = field(default_factory=lambda: os.getenv("DSH_BINARY", "dsh"))
     dsh_profile: str = field(default_factory=lambda: os.getenv("DSH_PROFILE", "headless"))
     dsh_timeout_s: float = field(default_factory=lambda: float(os.getenv("DSH_TIMEOUT_S", "600")))
+    # Drop-in agent workers: comma-separated `module:attr` entry points, each
+    # resolving to an AgentProvider instance or a zero-arg factory returning one
+    # (e.g. MSB_PROVIDER_PLUGINS="my_pkg.worker:WORKER"). Registered by
+    # agent.providers.load_provider_plugins, which validates every entry against
+    # the seam and records refusals on the registry — a configured worker that
+    # does not load is never silently dropped, because routing would then fall
+    # through to a different worker with nothing saying so.
+    provider_plugins: str = field(default_factory=lambda: os.getenv("MSB_PROVIDER_PLUGINS", ""))
     # /v1/embeddings guards: per-request batch cap (413 when exceeded) and a
     # per-client sliding-window cap on total embedded items (429). A batch of
     # N items consumes N units toward the window cap.

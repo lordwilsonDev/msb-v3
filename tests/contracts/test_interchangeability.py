@@ -19,9 +19,11 @@ The acceptance condition:
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import inspect
 from dataclasses import dataclass, fields, replace
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
@@ -62,7 +64,8 @@ _GOVERNED_HANDLE_KWARGS = frozenset(
 # defaults handle() already builds. Never a divergence in the contract.
 _ALLOWED_EXTRA_HANDLE_KWARGS = frozenset({"provider", "gate"})
 
-# CLI providers that share the same contract shape (no capabilities, tier 4).
+# CLI providers that share the same contract shape: the same declared
+# capabilities, tier 4, and the same command contract.
 _CLI_PAIRS: List[Tuple[str, str]] = [
     ("cli.claude", "cli.codex"),
     ("cli.claude", "cli.opencode"),
@@ -163,6 +166,70 @@ class TestCLIInterchangeability:
         assert isinstance(b.spec.command, tuple)
         assert len(a.spec.command) > 0
         assert len(b.spec.command) > 0
+
+    def test_declare_no_capabilities_as_a_trust_boundary(self):
+        """The CLI workers' capability tuple must stay empty.
+
+        A declared capability is a TRUST grant, not a description of what the
+        worker can do: the isolation model is "no implicit trust", and an
+        external agent on the operator's account only gets capabilities an
+        operator registers with a scope. The temptation is real — an empty tuple
+        makes the registry unable to select a CLI worker on capability — but a
+        name added here to make routing convenient would be a privilege
+        escalation dressed as metadata. Routing uses `kind` instead; see
+        tests/integrations/test_cli_provider_isolation.py (and
+        TestCliProviderCapabilityEscape for the injection cases).
+        """
+        for provider_id, provider in _provider_map().items():
+            if provider.spec.kind == "cli":
+                assert provider.spec.capabilities == (), (
+                    f"{provider_id} declares {provider.spec.capabilities} — a CLI "
+                    f"worker holds no capabilities until an operator grants them"
+                )
+
+    def test_kind_is_the_routing_key_for_cli(self):
+        """Why the empty tuple above is not a blocker: `kind` is the documented
+        routing key for CLI workers, and the factory uses it (see
+        `builders._WORKER_KIND`)."""
+        from msb_v3.factory.builders import _WORKER_KIND
+
+        cli_ids = [pid for pid, p in _provider_map().items() if p.spec.kind == "cli"]
+        assert cli_ids, "no CLI workers in the default registry"
+        assert _WORKER_KIND == "cli", (
+            f"the factory routes on kind={_WORKER_KIND!r} but its workers are cli"
+        )
+
+
+class TestProviderCapabilityVocabulary:
+    """A declared capability must be a name the governance layer knows.
+
+    Two tables carry the vocabulary: `safety.TOOL_CAPABILITY` (governed tool
+    names) and each ToolDef's `required_capabilities` in `tools/registry.py`.
+    Declaring anything else would be a claim nothing can select on or gate —
+    `governance.capability_registry` resolves unknown ids to None by design, so
+    an invented name would look registered while resolving to nothing.
+
+    This constrains the providers that DO declare capabilities (local.slice,
+    api.anthropic); the CLI workers declare none at all, by design — see the
+    trust-boundary test in TestCLIInterchangeability.
+    """
+
+    def test_every_declared_capability_comes_from_a_known_table(self):
+        from msb_v3.agent.safety import TOOL_CAPABILITY
+        from msb_v3.tools.registry import TOOLS
+
+        known = set(TOOL_CAPABILITY) | {
+            cap for tool in TOOLS.values() for cap in tool.required_capabilities
+        }
+        offenders = {
+            p.spec.provider_id: sorted(set(p.spec.capabilities) - known)
+            for p in default_providers()
+            if set(p.spec.capabilities) - known
+        }
+        assert not offenders, (
+            f"provider(s) declare capabilities in no known table: {offenders} — "
+            f"add the name to TOOL_CAPABILITY or to a ToolDef, or do not declare it"
+        )
 
 
 class TestPaseoInterchangeability:
@@ -361,6 +428,151 @@ class TestBehavioralInterchangeability:
 # ---------------------------------------------------------------------------
 # Registry interchangeability
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Consumer role: the factory must SELECT a worker, never build one
+# ---------------------------------------------------------------------------
+
+_BUILDERS_SOURCE = (
+    Path(__file__).resolve().parents[2] / "src" / "msb_v3" / "factory" / "builders.py"
+)
+
+
+def _providers_imported_by(source: Path) -> set[str]:
+    """Names imported by a module from ``msb_v3.agent.providers``."""
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    return {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "msb_v3.agent.providers"
+        for alias in node.names
+    }
+
+
+class _StubSpec:
+    provider_id = "cli.stub"
+    display_name = "stub CLI worker"
+    kind = "cli"
+    capabilities: Tuple[str, ...] = ()
+    max_risk_tier = 4
+    timeout_s = 300.0
+    command = ("stub",)
+
+
+class _StubWorker:
+    """A CLI-kind worker carrying the Spec fields the registry selects on."""
+
+    def __init__(self, *, available: bool = True) -> None:
+        self.spec = _StubSpec()
+        self._available = available
+
+    def available(self) -> bool:
+        return self._available
+
+    def unavailable_reason(self) -> str:
+        return "" if self._available else "stub not on PATH"
+
+
+class _StubRegistry:
+    """Stands in for ProviderRegistry, recording the selection inputs it got."""
+
+    def __init__(self, worker: _StubWorker) -> None:
+        self._worker = worker
+        self.calls: List[Dict[str, Any]] = []
+
+    def select(
+        self,
+        *,
+        required_capabilities: Tuple[str, ...] = (),
+        max_risk_tier: int = 4,
+        available_only: bool = True,
+    ) -> List[Any]:
+        self.calls.append(
+            {
+                "available_only": available_only,
+                "max_risk_tier": max_risk_tier,
+                "required_capabilities": required_capabilities,
+            }
+        )
+        if available_only and not self._worker.available():
+            return []
+        return [self._worker]
+
+
+class TestFactoryBuilderIsARegistryConsumer:
+    """`factory/builders.py` is a Consumer: it must select its worker THROUGH the
+    registry, never construct a Provider.
+
+    Its default used to be a direct ``CliAgentProvider(("claude", "-p"))`` in the
+    consumer file, which pinned the factory to one binary on PATH, ignored the
+    risk tier, and made `TestRegistryInterchangeability` below a claim about a
+    seam the factory did not actually use: the registry could flip providers
+    while the consumer kept its own.
+    """
+
+    def test_consumer_names_no_concrete_provider(self):
+        """The Definition is allowed; any other ``*Provider`` import or call in a
+        consumer file is the seam leak. Parsed, not grepped, so the file may
+        still *discuss* the old class in a comment without failing."""
+        tree = ast.parse(_BUILDERS_SOURCE.read_text(encoding="utf-8"))
+        offenders = sorted(
+            {
+                alias.name
+                for node in ast.walk(tree)
+                if isinstance(node, ast.ImportFrom)
+                and node.module == "msb_v3.agent.providers"
+                for alias in node.names
+                if alias.name.endswith("Provider") and alias.name != "AgentProvider"
+            }
+            | {
+                node.func.id
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id.endswith("Provider")
+                and node.func.id != "AgentProvider"
+            }
+        )
+        assert not offenders, (
+            f"factory/builders.py names concrete provider(s) {offenders} — a Consumer "
+            f"selects through ProviderRegistry; naming a Provider is the seam leak"
+        )
+
+    def test_consumer_selects_through_the_registry(self):
+        """The positive half: closing the leak by dropping the provider call
+        without importing the Registry would just be a different hardcode."""
+        assert "ProviderRegistry" in _providers_imported_by(_BUILDERS_SOURCE)
+
+    def test_the_registry_decides_which_worker_the_factory_gets(self):
+        """Swap the registered worker and the factory's worker changes with no
+        consumer edit — the property the seam exists to provide."""
+        from msb_v3.factory.builders import CliAgentBuilder
+
+        worker = _StubWorker()
+        registry = _StubRegistry(worker)
+        builder = CliAgentBuilder(registry=registry)
+        assert builder._provider is worker
+        # The worker's identity drives the reviewer-panel invariant
+        # ("cli.stub" -> "stub"), so it must come from the selected spec.
+        assert builder.model == "stub"
+        assert registry.calls[0]["available_only"] is True
+        assert registry.calls[0]["max_risk_tier"] == 4
+
+    def test_unavailable_worker_is_kept_so_build_can_report_why(self):
+        """With nothing available the builder must still hold a worker and say
+        why, because `build()` records `unavailable_reason()` as a BuildResult
+        error — raising here would turn four recorded failures into 500s."""
+        from msb_v3.factory.builders import CliAgentBuilder
+
+        worker = _StubWorker(available=False)
+        registry = _StubRegistry(worker)
+        builder = CliAgentBuilder(registry=registry)
+        assert builder._provider is worker
+        assert builder._provider.unavailable_reason()
+        assert [c["available_only"] for c in registry.calls] == [True, False], (
+            "expected an available-only selection followed by an availability-ignored one"
+        )
 
 
 class TestRegistryInterchangeability:
