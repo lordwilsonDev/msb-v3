@@ -19,7 +19,10 @@ The acceptance condition:
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+import asyncio
+import inspect
+from dataclasses import dataclass, fields, replace
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
@@ -44,6 +47,20 @@ from msb_v3.agent.providers import (
 _INTERCHANGEABLE_PAIRS: List[Tuple[str, str]] = [
     ("local.slice", "api.anthropic"),  # both: search_query, chat, vault_write; tier 3
 ]
+
+# Both sides of that pair, for the behavioral tests below.
+_INTERCHANGEABLE_IDS: Tuple[str, ...] = ("local.slice", "api.anthropic")
+
+# The governed-loop surface EVERY provider must drive through handle() — this
+# is the part a caller can rely on regardless of which provider ran.
+_GOVERNED_HANDLE_KWARGS = frozenset(
+    {"client", "spine", "session", "tenant", "approve", "output_dir"}
+)
+
+# Provider-specific extras a provider may legitimately add on top. local.slice
+# injects its own DAG provider + ActionGate; api.anthropic relies on the
+# defaults handle() already builds. Never a divergence in the contract.
+_ALLOWED_EXTRA_HANDLE_KWARGS = frozenset({"provider", "gate"})
 
 # CLI providers that share the same contract shape (no capabilities, tier 4).
 _CLI_PAIRS: List[Tuple[str, str]] = [
@@ -167,25 +184,165 @@ class TestPaseoInterchangeability:
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class _StubHandleResult:
+    """The slice of ``agent.handle()``'s HandleResult that every provider
+    reads when it builds its ProviderResult."""
+
+    ok: bool = True
+    trace: Optional[Dict[str, Any]] = None
+    deterministic_hash: str = "hash-1"
+    run_id: str = "run-1"
+    error: Optional[str] = None
+
+
+# Which collaborator attributes each provider needs faked so ``execute()``
+# stays hermetic. ``_spine`` matters: leaving it None makes the provider build
+# a real DecisionEvidenceStore against the live settings paths.
+_COLLABORATORS: Dict[str, Tuple[str, ...]] = {
+    "local.slice": ("_client", "_provider", "_gate", "_spine"),
+    "api.anthropic": ("_client", "_spine"),
+}
+
+
+def _install_stub_handle(monkeypatch, result: _StubHandleResult) -> List[Dict[str, Any]]:
+    """Replace the ``agent.handle`` boundary both providers drive.
+
+    Both LocalAgentProvider and AnthropicAgentProvider import ``handle``
+    lazily inside ``execute()``, so patching the attribute on the module is
+    enough to intercept them — no model, DB, or network is touched.
+    """
+    import msb_v3.agent.handle as handle_module
+
+    calls: List[Dict[str, Any]] = []
+
+    async def fake_handle(goal: str, **kwargs: Any) -> _StubHandleResult:
+        calls.append({"goal": goal, **kwargs})
+        return result
+
+    monkeypatch.setattr(handle_module, "handle", fake_handle)
+    return calls
+
+
+def _hermetic_provider(provider_id: str) -> AgentProvider:
+    """A registry provider with its collaborators faked, so no concrete
+    provider class has to be imported here (the registry stays the only
+    source of provider identity, exactly as a consumer sees it)."""
+    provider = _provider_map()[provider_id]
+    for attr in _COLLABORATORS[provider_id]:
+        setattr(provider, attr, object())
+    return provider
+
+
+def _shape(result: ProviderResult) -> Dict[str, str]:
+    """Structural fingerprint: field name -> runtime type name."""
+    return {f.name: type(getattr(result, f.name)).__name__ for f in fields(ProviderResult)}
+
+
+def _equal_but_for_duration(a: ProviderResult, b: ProviderResult) -> bool:
+    """Value-identical apart from duration_s, which is wall-clock by design."""
+    return replace(a, duration_s=0.0) == replace(b, duration_s=0.0)
+
+
 class TestBehavioralInterchangeability:
     """Both providers must return the same result shape from execute(),
-    proving the caller doesn't need provider-specific code."""
+    proving the caller doesn't need provider-specific code.
 
-    @pytest.mark.parametrize("provider_id", ["local.slice", "api.anthropic"])
-    def test_execute_returns_provider_result(self, provider_id: str):
-        """execute() must return a ProviderResult with standard fields."""
-        provider = _provider_map()[provider_id]
-        # We can't call execute() without a real goal and running server,
-        # but we can verify the return type annotation exists and the
-        # ProviderResult dataclass has the expected fields.
-        import inspect
-        sig = inspect.signature(provider.execute)
-        return_annotation = sig.return_annotation
-        assert return_annotation is not ProviderResult or True, (
-            f"{provider_id}: execute() must return ProviderResult"
+    Hermetic: the ``agent.handle`` boundary the providers drive is stubbed,
+    so what is asserted is each provider's own result construction — not the
+    governed loop behind it.
+    """
+
+    @pytest.mark.parametrize("provider_id", _INTERCHANGEABLE_IDS)
+    def test_execute_returns_provider_result(self, provider_id: str, monkeypatch):
+        """execute() must return a fully-populated ProviderResult."""
+        _install_stub_handle(monkeypatch, _StubHandleResult())
+        result = asyncio.run(_hermetic_provider(provider_id).execute("goal"))
+        assert isinstance(result, ProviderResult), (
+            f"{provider_id}: execute() returned {type(result).__name__}, not ProviderResult"
+        )
+        assert result.ok is True
+        assert _shape(result) == {
+            "ok": "bool",
+            "output": "str",
+            "artifacts": "dict",
+            "error": "NoneType",
+            "duration_s": "float",
+        }, f"{provider_id}: unexpected result shape {_shape(result)}"
+
+    def test_execute_result_is_identical_across_providers(self, monkeypatch):
+        """Same stubbed handle output => value-identical ProviderResult from
+        every provider in the pair. This is the actual interchangeability
+        claim: given identical inputs the caller cannot tell which provider
+        ran, so no provider-specific handling is required."""
+        _install_stub_handle(monkeypatch, _StubHandleResult(trace={"outcome": {"x": 1}}))
+        local = asyncio.run(_hermetic_provider("local.slice").execute("goal"))
+        anthropic = asyncio.run(_hermetic_provider("api.anthropic").execute("goal"))
+        assert _shape(local) == _shape(anthropic), (
+            f"result shapes diverge: {_shape(local)} != {_shape(anthropic)}"
+        )
+        assert _equal_but_for_duration(local, anthropic), (
+            f"results differ for identical input:\n  local.slice   = {local}\n"
+            f"  api.anthropic = {anthropic}"
         )
 
-    @pytest.mark.parametrize("provider_id", ["local.slice", "api.anthropic"])
+    def test_execute_failure_shape_is_identical_across_providers(self, monkeypatch):
+        """The failure path is interchangeable too — a caller must be able to
+        read ``ok``/``error`` without knowing which provider failed."""
+        _install_stub_handle(monkeypatch, _StubHandleResult(ok=False, error="boom"))
+        local = asyncio.run(_hermetic_provider("local.slice").execute("goal"))
+        anthropic = asyncio.run(_hermetic_provider("api.anthropic").execute("goal"))
+        assert local.ok is False and anthropic.ok is False
+        assert local.error == anthropic.error == "boom"
+        assert _shape(local) == _shape(anthropic)
+        assert _equal_but_for_duration(local, anthropic)
+
+    def test_both_providers_drive_the_same_governed_surface(self, monkeypatch):
+        """Both providers must drive the same governed loop: the goal plus the
+        full documented handle() surface (client/spine/session/tenant/approve/
+        output_dir), so neither carries a provider-specific execution
+        protocol. A provider-specific extra is allowed; an unexpected kwarg —
+        or a missing governed one — is not."""
+        calls = _install_stub_handle(monkeypatch, _StubHandleResult())
+        for provider_id in _INTERCHANGEABLE_IDS:
+            asyncio.run(_hermetic_provider(provider_id).execute("goal", session="s1"))
+        assert len(calls) == 2
+
+        permitted = _GOVERNED_HANDLE_KWARGS | _ALLOWED_EXTRA_HANDLE_KWARGS
+        for call in calls:
+            keys = frozenset(call) - {"goal"}
+            assert _GOVERNED_HANDLE_KWARGS <= keys, (
+                f"a provider skipped governed kwargs: {sorted(_GOVERNED_HANDLE_KWARGS - keys)}"
+            )
+            assert keys <= permitted, (
+                f"a provider passed unvetted handle() kwargs: {sorted(keys - permitted)}"
+            )
+
+        common = frozenset.intersection(*(frozenset(c) - {"goal"} for c in calls))
+        assert common == _GOVERNED_HANDLE_KWARGS, (
+            f"the common handle() surface is {sorted(common)}, "
+            f"expected {sorted(_GOVERNED_HANDLE_KWARGS)}"
+        )
+        assert all(c["goal"] == "goal" and c["session"] == "s1" for c in calls)
+
+    @pytest.mark.parametrize(
+        "provider_id", [p.spec.provider_id for p in default_providers()]
+    )
+    def test_execute_annotation_is_provider_result(self, provider_id: str):
+        """Every provider must declare ProviderResult as its return type.
+
+        ``providers.py`` defers annotations, so the signature must be
+        evaluated (``eval_str=True``) — the un-evaluated form is the string
+        ``'ProviderResult'``, which is why a plain identity check here used to
+        be written as an assertion that could never fail.
+        """
+        provider = _provider_map()[provider_id]
+        annotation = inspect.signature(provider.execute, eval_str=True).return_annotation
+        assert annotation is ProviderResult, (
+            f"{provider_id}: execute() annotated {annotation!r}, not ProviderResult"
+        )
+
+    @pytest.mark.parametrize("provider_id", _INTERCHANGEABLE_IDS)
     def test_health_returns_same_shape(self, provider_id: str):
         """health() must return a dict with 'ok' key for all providers."""
         provider = _provider_map()[provider_id]
