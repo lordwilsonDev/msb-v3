@@ -117,9 +117,17 @@ fi
 trap 'ci_runtime_cleanup; cleanup' EXIT
 echo "[verify-release] scoped server healthy at $MSB_BASE_URL"
 
-# Suite from the clone against the scoped server. Default selection excludes the
-# `live` tier (real model generation — not a release gate; measured elsewhere).
-# Override with VERIFY_PYTEST_M.
+# Suite from the clone against the scoped server. Selection is everything but
+# `live` (real model generation — measured elsewhere, not gated); override the
+# expression itself with VERIFY_PYTEST_M.
+#
+# MSB_RUN_TIERS=1 is what makes that true: tests/conftest.py DESELECTS the
+# integration + chaos tiers from any default collection, so a bare
+# `-m "not live"` ran only the hermetic core — this gate booted a run-scoped
+# server and then ran a suite whose members assume no server is listening
+# (found 2026-09-22: the gate had never exercised the runtime it provisions).
+# The integration members resolve the server under test from MSB_BASE_URL
+# (set below), so they hit the scoped server and never a hand-managed :8766.
 # -rfE: name failures AND errors in the short summary, so _emit_failures can
 # surface them into the workflow log (scripts/test.sh defaults to -rs = skips
 # only, which hid the real failing tests through v0.3.2 / v0.4.0 / v0.4.1).
@@ -128,7 +136,7 @@ LOG="$(mktemp /tmp/msb-verify-suite-XXXXXX).log"
 echo "[verify-release] running the suite (${PYTEST_SELECT[*]}) from the clone; log: $LOG ..."
 set +e
 (cd "$CLONE_DIR" && MSB_HOME="$CLONE_DIR" MSB_REPO="$CLONE_DIR" MSB_BASE_URL="$MSB_BASE_URL" \
-  bash scripts/test.sh "${PYTEST_SELECT[@]}") >"$LOG" 2>&1
+  MSB_RUN_TIERS=1 bash scripts/test.sh "${PYTEST_SELECT[@]}") >"$LOG" 2>&1
 SUITE_RC=$?
 set -e
 

@@ -83,6 +83,12 @@ ai-wworkspace/
 # Vesta evidence blobs are local forensic artifacts, referenced by hashes but
 # never committed to the source repository.
 /runtime/vesta-evidence/
+# Secret-rotation history is machine state: scripts/rotate_secrets.py appends
+# the key NAMES it rotated and when, never a value. It was committed once by a
+# broad `git add` (e3e91fe, 2026-09-20), and a single tracked path under
+# runtime/ makes `make release-verify` fail its virginity check in every fresh
+# clone — before it boots anything.
+/runtime/secret-rotation.log
 .superpowers/
 
 # Replication target is external scaffolding, NOT project source. The live

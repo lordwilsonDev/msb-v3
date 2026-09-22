@@ -131,7 +131,8 @@ portability:
 # from the remote, confirm the checkout is virgin, seed the research-runtime
 # fixtures, and run the full suite from the clone — fails on any test failure
 # or seeded-artifact skip. Run right after tagging; keep the clone with
-# VERIFY_KEEP=1, pin the pass count with EXPECTED_PASS=814.
+# VERIFY_KEEP=1, pin the pass count with EXPECTED_PASS=<n> (strict; unpinned by
+# default, so a selection change can't leave a stale number gating it).
 verify-release:
 	bash scripts/verify-release.sh
 
