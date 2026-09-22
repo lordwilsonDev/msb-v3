@@ -23,12 +23,12 @@ All windows live in a new **Background** section of the cockpit. Each can be pop
 | # | Window | Shows | Source |
 | --- | --- | --- | --- |
 | 1 | Overview | One tile per subsystem and per launchd job, coloured ok/warn/fail/unknown, with "last seen". Tile click opens its window | `GET /ops/background` |
-| 2 | Activity | Latest audit-chain entries as a timeline, filterable by source | `GET /cockpit/audit` |
+| 2 | Activity | Phase 1: latest governed-run receipts (newest first). Phase 3: the full audit-chain feed, including cron. There is no read route for the hash chain today | `GET /cockpit/audit` (phase 1) |
 | 3 | Scheduled jobs (cron) | Per job: schedule, enabled, running now, last result, next run, run history | `GET /cron/jobs`, `GET /cron/jobs/{id}/history` |
 | 4 | Machine services (launchd) | Per agent: loaded, PID, last exit code + plain meaning, kind, schedule; last 50 log lines on click | `GET /ops/background` (`launchd`), `GET /ops/background/launchd/{label}/log` |
 | 5 | Governance | Kill-switch state, budget used vs limit, pending approvals (read-only) | `GET /governance/budget`, `GET /governance/approvals`, existing kill-switch read |
 | 6 | Automation & wake | Automation manifest status + dry-run flag; wake inbox/outbox counts, oldest pending item | `GET /automation/status`, `wake` in `/ops/background` |
-| 7 | PLEI | Latest prediction, calibration status (pairs, error, recalibration due), last evidence-loop run | `GET /plei/status`, `GET /plei/calibrate` |
+| 7 | PLEI | Prediction / outcome / pair counts, chain integrity, last prediction time, and the calibration report | `plei` in `/ops/background`, `GET /plei/calibrate` |
 
 Colour rules:
 
@@ -106,9 +106,10 @@ Rules:
 | `launchdLog(label, lines)` | `label` matches `^[a-z0-9.\-]+$`; `lines` integer 1–200 |
 | `cronJobs()` | no args |
 | `cronHistory(jobId)` | `jobId` is a slug |
-| `pleiStatus()` | no args |
+| `pleiCalibrate()` | no args |
+| `auditStream(limit)` | `limit` integer 1–500, default 50 |
 
-Activity reuses `cockpit()`; Governance reuses `governanceStatus()`, `approvals()`, `killswitch()`. The operator token stays in the main process.
+Activity uses auditStream(); Governance reuses governanceStatus() and approvals(). The operator token stays in the main process.
 
 **Renderer.** A "Background" section in `renderer/app.js` (vanilla JS, no framework), with a side list of the 7 windows.
 
@@ -141,9 +142,15 @@ Manual, once built: open the cockpit against the live runtime; the Hermes gatewa
 
 ## Phases
 
-1. `/ops/background` with subsystems only; Overview, Cron, Governance, Automation & wake, PLEI windows; bridge methods except `launchdLog`.
+1. `/ops/background` with subsystems only; Overview, Activity (governed-run receipts), Cron, Governance, Automation & wake, PLEI views; bridge methods except `launchdLog`.
 2. launchd section, log route, `launchdLog` bridge method, Machine services window, pop-out windows.
 3. Activity moves from polling to a live SSE stream of the audit chain (reusing the cockpit's SSE client); Guardian status route and window.
+
+## Adjustments made while planning (2026-09-22)
+
+- `GET /plei/status` runs a full project ingest (`ingest_all`) on every call, which is too heavy for 10 s polling. The PLEI view uses the cheap `plei` snapshot entry plus `GET /plei/calibrate` (reads the store only).
+- `GET /cockpit/audit` returns governed-run receipts (`logs/audit.jsonl`), not the hash-chained audit log that cron writes to. Phase 1 Activity shows receipts. A chain read route and the merged feed move to phase 3.
+- `bridge.cockpit()` calls `/cockpit/api`, not `/cockpit/audit`, so Activity needs its own `auditStream()` method.
 
 ## Non-goals
 
