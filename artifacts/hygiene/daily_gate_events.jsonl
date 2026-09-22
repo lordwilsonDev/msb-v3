@@ -60,3 +60,6 @@
 {"ts": "2026-09-20T11:21:29Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
 {"ts": "2026-09-21T11:15:00Z", "event": "identity_shadow_probe", "probe_ok": true, "new_records": {"chat": 1, "mcp-bridge": 0}, "with_actor": {"chat": 1, "mcp-bridge": 0}, "declared": {"vault_write_granted": false, "source": ".env"}, "surface_state": {"chat": "on", "mcp-bridge": "off-declared"}, "runtime_records": 10, "criterion_1": "MET"}
 {"ts": "2026-09-21T11:23:32Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
+{"ts": "2026-09-21T11:23:32Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
+{"ts": "2026-09-22T11:15:03Z", "event": "identity_shadow_probe", "probe_ok": true, "new_records": {"chat": 1, "mcp-bridge": 0}, "with_actor": {"chat": 1, "mcp-bridge": 0}, "declared": {"vault_write_granted": false, "source": ".env"}, "surface_state": {"chat": "on", "mcp-bridge": "off-declared"}, "runtime_records": 11, "criterion_1": "MET"}
+{"ts": "2026-09-22T11:24:56Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
