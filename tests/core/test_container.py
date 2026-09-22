@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from msb_v3.core.config import settings
 from msb_v3.core.container import (
     ApplicationContainer,
     build_container,
@@ -10,7 +13,7 @@ from msb_v3.core.container import (
     reset_container,
     set_container,
 )
-from msb_v3.retrieval.vector_store import SQLiteVectorStore
+from msb_v3.retrieval.vector_store import QdrantVectorStore, SQLiteVectorStore
 
 
 def test_build_container_populates_all_services() -> None:
@@ -64,3 +67,46 @@ def test_get_container_dep_falls_back_to_default() -> None:
     reset_container()
     got = get_container_dep(_FakeRequest(None))
     assert isinstance(got, ApplicationContainer)
+
+
+# --- hippocampus backend selection (the VectorStore seam) -------------------
+# The backend is selected from configuration, not hardcoded: unset keeps the
+# always-available SQLite store, and MSB_VECTOR_BACKEND swaps it with no change
+# to the consumer (api/triumvirate.py only ever touches container.hippocampus).
+
+
+def test_hippocampus_defaults_to_sqlite_when_unconfigured(monkeypatch) -> None:
+    """Unconfigured deployments keep the always-available local store, so
+    hippocampus never blocks on a remote Qdrant."""
+    monkeypatch.setattr(settings, "vector_backend", "")
+    assert isinstance(build_container().hippocampus, SQLiteVectorStore)
+
+
+def test_hippocampus_follows_the_configured_backend(monkeypatch) -> None:
+    """The swap: MSB_VECTOR_BACKEND selects the backend and the container
+    follows it, with no consumer change."""
+    monkeypatch.setattr(settings, "vector_backend", "qdrant")
+    assert isinstance(build_container().hippocampus, QdrantVectorStore)
+
+
+def test_unknown_vector_backend_fails_closed(monkeypatch) -> None:
+    """A typo in config must raise at composition time, not silently fall back
+    to a different store than the operator asked for."""
+    monkeypatch.setattr(settings, "vector_backend", "milvus")
+    with pytest.raises(ValueError, match="unknown vector backend"):
+        build_container()
+
+
+def test_vector_backend_setting_reads_the_env(monkeypatch) -> None:
+    """MSB_VECTOR_BACKEND reaches the container through the settings field
+    (settings is import-time, so the field's own factory is what reads it)."""
+    factory = type(settings).__dataclass_fields__["vector_backend"].default_factory
+
+    monkeypatch.setenv("MSB_VECTOR_BACKEND", "qdrant")
+    assert factory() == "qdrant"
+
+    monkeypatch.setenv("MSB_VECTOR_BACKEND", "  ")
+    assert factory() == "", "whitespace-only config must not select a backend"
+
+    monkeypatch.delenv("MSB_VECTOR_BACKEND")
+    assert factory() == ""

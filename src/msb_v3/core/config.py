@@ -38,6 +38,14 @@ class Settings:
     # script happens to be run from instead of the deployment. MSB_DB_PATH
     # still overrides.
     db_path: str = field(default_factory=lambda: os.getenv("MSB_DB_PATH") or str(_REPO_ROOT / "data" / "msb_v3.db"))
+    # Vector-store backend for the container's hippocampus (`qdrant` |
+    # `sqlite`). Empty = the container's own default (sqlite — hippocampus is
+    # the always-available sovereign memory and must not depend on a remote
+    # Qdrant). Read once at import like every other setting, so it selects the
+    # backend at process start; an unknown value fails closed (ValueError from
+    # retrieval.vector_store.get_vector_store) rather than silently falling
+    # back to a different store.
+    vector_backend: str = field(default_factory=lambda: os.getenv("MSB_VECTOR_BACKEND", "").strip())
     log_level: str = field(default_factory=lambda: os.getenv("MSB_LOG_LEVEL", "info"))
     # Canonical evidence-receipt event stream (one JSON line per handle()
     # cycle). Absolute by default (msb_home-relative) so the stream lands in

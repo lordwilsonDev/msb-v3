@@ -460,6 +460,11 @@ def get_vector_store(
     ``backend`` (or ``MSB_VECTOR_BACKEND``, default ``qdrant``) selects the
     implementation; any extra kwargs are forwarded to the constructor
     (``db_path``/``embedder`` for sqlite, ``embedder`` for qdrant).
+
+    The container's hippocampus passes its own default explicitly (sqlite —
+    see ``core/container.py``), so ``MSB_VECTOR_BACKEND`` still selects the
+    live backend while an unset var keeps the always-available local store.
+    An unknown name raises rather than falling back to a different store.
     """
     name: str = backend or os.getenv("MSB_VECTOR_BACKEND") or "qdrant"
     if name == "qdrant":

@@ -57,6 +57,11 @@ from msb_v3.triumvirate.hardware_sovereignty import ClusterAwareDiscovery
 from msb_v3.triumvirate.meta_cognitive_planner import MetaCognitivePlanner
 from msb_v3.triumvirate.mission_anchor import MissionAnchor
 
+# The container's default hippocampus backend. SQLite, because hippocampus is
+# the always-available sovereign memory and must not depend on a remote Qdrant
+# being up. Override per deployment with MSB_VECTOR_BACKEND (no code change).
+_DEFAULT_HIPPOCAMPUS_BACKEND = "sqlite"
+
 # Imported lazily (see the ``vesta`` property) to break the import cycle
 # api.chat -> core.container -> vesta.services -> vesta.adapter -> api.chat.
 # The name is available to mypy under TYPE_CHECKING; at runtime the dataclass
@@ -185,8 +190,13 @@ def build_container(**overrides: Any) -> ApplicationContainer:
         "cluster_discovery": ClusterAwareDiscovery(),
         # Hippocampus is the always-available sovereign memory: SQLite-backed
         # through the unified VectorStore interface so it never blocks on a
-        # remote Qdrant (see retrieval/vector_store.py).
-        "hippocampus": get_vector_store(backend="sqlite"),
+        # remote Qdrant (see retrieval/vector_store.py). The backend is still
+        # selectable from config alone — MSB_VECTOR_BACKEND=qdrant opts this
+        # deployment into the remote ANN store with no code change; unset keeps
+        # the always-available SQLite default.
+        "hippocampus": get_vector_store(
+            backend=settings.vector_backend or _DEFAULT_HIPPOCAMPUS_BACKEND
+        ),
         "event_bus": EventBus(),
         "identity": AgentIdentity(),
         "memory_store": memory_store,
