@@ -4,6 +4,7 @@ Classifiers are pure (raw dict + now -> Entry), so most tests need no DB.
 """
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 from msb_v3.ops.background import (
@@ -19,6 +20,12 @@ from msb_v3.ops.background import (
     classify_wake,
     missed_fire,
     parse_ts,
+    READERS,
+    SnapshotCache,
+    build_snapshot,
+    read_cron,
+    read_plei,
+    read_wake,
 )
 
 NOW = datetime(2026, 9, 22, 12, 0, tzinfo=timezone.utc)
@@ -226,3 +233,89 @@ def test_plei_ok():
 
 def test_plei_fail_on_broken_chain():
     assert classify_plei(_plei(chain_ok=False), NOW).state == FAIL
+
+
+# --- readers (real stores; conftest redirects their DBs to tmp_path) --------
+def test_read_cron_reports_jobs_with_last_run():
+    from msb_v3.cron.store import CronStore
+
+    store = CronStore()
+    store.create_job("hb", "Heartbeat", "*/5 * * * *", {"type": "health_check", "params": {}})
+    run_id = store.start_run("hb", "manual")
+    store.finish_run(run_id, "SUCCESS")
+    raw = asyncio.run(read_cron())
+    assert [j["job_id"] for j in raw["jobs"]] == ["hb"]
+    assert raw["jobs"][0]["last_run"]["status"] == "SUCCESS"
+    assert "tick_s" in raw and "enabled" in raw
+
+
+def test_read_wake_adds_oldest_pending_ts():
+    from msb_v3.wake.store import WakeStore
+
+    WakeStore().post("hello", sender="test")
+    raw = asyncio.run(read_wake())
+    assert raw["pending"] == 1
+    assert raw["oldest_pending_ts"]
+
+
+def test_read_plei_from_explicit_store(tmp_path):
+    from msb_v3.plei.calibration.store import CalibrationStore
+
+    raw = asyncio.run(read_plei(store=CalibrationStore(path=tmp_path / "cal.jsonl")))
+    assert raw == {
+        "predictions": 0,
+        "outcomes": 0,
+        "pairs": 0,
+        "chain_ok": True,
+        "chain_message": "empty chain",
+        "last_forecast_at": None,
+    }
+
+
+# --- snapshot ----------------------------------------------------------------
+def test_readers_cover_the_five_subsystems_in_order():
+    assert list(READERS) == ["cron", "governance", "automation", "wake", "plei"]
+
+
+def test_build_snapshot_isolates_a_failing_reader():
+    async def good():
+        return {"predictions": 1, "outcomes": 0, "pairs": 0, "chain_ok": True,
+                "chain_message": "ok", "last_forecast_at": None}
+
+    async def broken():
+        raise RuntimeError("db locked")
+
+    snap = asyncio.run(build_snapshot(
+        readers={"plei": (good, classify_plei), "cron": (broken, classify_cron)}, now=NOW,
+    ))
+    assert snap["generated_at"] == NOW.isoformat()
+    assert snap["subsystems"]["plei"]["state"] == OK
+    assert snap["subsystems"]["cron"] == {"state": UNKNOWN, "detail": {}, "error": "RuntimeError: db locked"}
+
+
+def test_build_snapshot_isolates_a_failing_classifier():
+    async def read():
+        # Enabled job whose latest run FAILED but with no job_id: classify_cron's
+        # job["job_id"] raises KeyError -> must surface as unknown. (The plan's
+        # original {"jobs": [{"job_id": "x"}]} never raises — .get()-safe code
+        # skips an unenabled job — so it produced warn, not unknown.)
+        return {"enabled": True, "jobs": [{"enabled": True, "last_run": {"status": "FAILED"}}]}
+
+    snap = asyncio.run(build_snapshot(readers={"cron": (read, classify_cron)}, now=NOW))
+    assert snap["subsystems"]["cron"]["state"] == UNKNOWN
+
+
+def test_cache_reuses_within_ttl_and_rebuilds_after():
+    t = [100.0]
+    calls = []
+
+    async def build():
+        calls.append(t[0])
+        return {"n": len(calls)}
+
+    cache = SnapshotCache(ttl_s=3.0, clock=lambda: t[0])
+    assert asyncio.run(cache.get(build)) == {"n": 1}
+    t[0] = 102.0
+    assert asyncio.run(cache.get(build)) == {"n": 1}
+    t[0] = 103.5
+    assert asyncio.run(cache.get(build)) == {"n": 2}

@@ -9,9 +9,10 @@ subsystem only; the others still report. Nothing here writes.
 
 from __future__ import annotations
 
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from msb_v3.cron.parser import CronExpr
 
@@ -169,3 +170,118 @@ def classify_plei(raw: Raw, now: datetime) -> Entry:
     """fail: the calibration hash chain does not verify."""
     detail = dict(raw)
     return Entry(OK if raw.get("chain_ok") else FAIL, detail)
+
+
+# --- readers (in-process; never HTTP self-calls) ---------------------------
+#
+# They reuse the existing status route functions where one exists, so the
+# snapshot and the per-subsystem routes can never disagree about the numbers.
+
+
+async def read_cron() -> Raw:
+    from msb_v3.core.config import settings
+    from msb_v3.cron.store import CronStore
+
+    store = CronStore()
+    jobs = []
+    for job in store.list_jobs():
+        latest = store.history(job["job_id"], limit=1)
+        jobs.append(
+            {
+                "job_id": job["job_id"],
+                "schedule": job["schedule"],
+                "enabled": bool(job["enabled"]),
+                "last_run": (
+                    {"status": latest[0]["status"], "started_at": latest[0]["started_at"]} if latest else None
+                ),
+            }
+        )
+    return {"enabled": bool(settings.cron_enabled), "tick_s": int(settings.cron_tick_s), "jobs": jobs}
+
+
+async def read_governance() -> Raw:
+    # The governance singletons (kill switch, ledger, queue) live in the
+    # router module; its status() is the one fail-closed reading of them.
+    from msb_v3.api import governance as governance_api
+
+    return await governance_api.status()
+
+
+async def read_automation() -> Raw:
+    from msb_v3.api.automation import automation_status
+
+    return automation_status()
+
+
+async def read_wake() -> Raw:
+    from msb_v3.api.wake import wake_status
+    from msb_v3.wake.store import WakeStore
+
+    raw = dict(wake_status())
+    oldest = WakeStore().pending(limit=1)
+    raw["oldest_pending_ts"] = oldest[0]["ts"] if oldest else None
+    return raw
+
+
+async def read_plei(store: Any = None) -> Raw:
+    from msb_v3.plei.calibration.store import CalibrationStore
+
+    store = store or CalibrationStore()
+    predictions = store.predictions()
+    chain_ok, chain_message = store.verify_chain()
+    return {
+        "predictions": len(predictions),
+        "outcomes": store.outcome_count(),
+        "pairs": store.pair_count(),
+        "chain_ok": chain_ok,
+        "chain_message": chain_message,
+        "last_forecast_at": predictions[-1].forecast_at if predictions else None,
+    }
+
+
+Reader = Callable[[], Awaitable[Raw]]
+Classifier = Callable[[Raw, datetime], Entry]
+
+READERS: Dict[str, Tuple[Reader, Classifier]] = {
+    "cron": (read_cron, classify_cron),
+    "governance": (read_governance, classify_governance),
+    "automation": (read_automation, classify_automation),
+    "wake": (read_wake, classify_wake),
+    "plei": (read_plei, classify_plei),
+}
+
+
+async def build_snapshot(
+    readers: Optional[Dict[str, Tuple[Reader, Classifier]]] = None,
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Read and classify every subsystem. One broken subsystem becomes
+    ``unknown`` with its error; it never blanks the others."""
+    readers = READERS if readers is None else readers
+    now = now or datetime.now(timezone.utc)
+    subsystems: Dict[str, Any] = {}
+    for name, (read, classify) in readers.items():
+        try:
+            entry = classify(await read(), now)
+        except Exception as exc:  # noqa: BLE001 - isolation is the point
+            entry = Entry(UNKNOWN, {}, f"{type(exc).__name__}: {exc}")
+        subsystems[name] = entry.as_dict()
+    return {"generated_at": now.isoformat(), "subsystems": subsystems}
+
+
+class SnapshotCache:
+    """Serve one snapshot for ``ttl_s`` so several polling windows share it.
+    Two concurrent misses may both build; that is harmless (reads only)."""
+
+    def __init__(self, ttl_s: float = CACHE_TTL_S, clock: Callable[[], float] = time.monotonic) -> None:
+        self._ttl = ttl_s
+        self._clock = clock
+        self._value: Optional[Dict[str, Any]] = None
+        self._at = 0.0
+
+    async def get(self, build: Callable[[], Awaitable[Dict[str, Any]]]) -> Dict[str, Any]:
+        now = self._clock()
+        if self._value is None or now - self._at >= self._ttl:
+            self._value = await build()
+            self._at = now
+        return self._value
