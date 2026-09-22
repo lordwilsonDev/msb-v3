@@ -3,6 +3,13 @@
 Date: 2026-08-28
 Status: convergence-in-progress (C1–C3 closed, C4 authorized)
 
+> **Superseded — noted 2026-09-22.** This is the state of 2026-08-28 and is kept
+> as a dated record, not a current claim: C1–C4 have all closed since, the
+> release line has moved from `v0.3.2` to `v0.5.0`, and every count below
+> (3,001 passed / 347 mypy files / 190 conformance tests) is from that date.
+> Current state: `docs/releases/NEXT.md`. A tag is proven by
+> `make verify-release`, not by this page.
+
 ## Known-good baseline
 
 - Release: `v0.3.2`

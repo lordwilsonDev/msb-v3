@@ -13,8 +13,8 @@ the owners of the most-cited labels are not in this repository. Cite as
 
 - Numbered documents under `docs/`: **38**
 - External or unfound documents cited by number: **11**, of which **5** could not be located at all
-- `§` citations in the tree: **718**
-  — anchored 210 · same-line 17 · file-default 66 · own-section 3 · single-candidate 0 · ambiguous 196 · ambiguous-label 220 · unresolved 6
+- `§` citations in the tree: **719**
+  — anchored 210 · same-line 17 · file-default 66 · own-section 3 · single-candidate 0 · ambiguous 197 · ambiguous-label 220 · unresolved 6
 - Of those, **213** resolve only to a document outside this repository
 
 Statuses — how each citation was resolved, in order of how much the citation
@@ -149,8 +149,8 @@ range:
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | `docs/PRODUCTION-READINESS.md` | 3 sections (3 top-level, 1–3) | 0 | 0 | 0 | 0 | 18 |
 | `docs/QUICKSTART.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 76 |
-| `docs/audits/forensic-build-audit-2026-08-15.md` | 20 sections (20 top-level, 1–20) | 0 | 0 | 0 | 0 | 194 |
-| `docs/audits/forensic-grill-2026-09-02.md` | 37 sections (33 top-level, 1–33) | 24 | 0 | 0 | 0 | 196 |
+| `docs/audits/forensic-build-audit-2026-08-15.md` | 20 sections (20 top-level, 1–20) | 0 | 0 | 0 | 0 | 195 |
+| `docs/audits/forensic-grill-2026-09-02.md` | 37 sections (33 top-level, 1–33) | 24 | 0 | 0 | 0 | 197 |
 | `docs/audits/smi-017-forensic-review/current_architecture.md` | 5 sections (5 top-level, 1–5) | 0 | 0 | 0 | 0 | 53 |
 | `docs/audits/smi-017-forensic-review/scale_failure_analysis.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 90 |
 | `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 135 |
@@ -178,7 +178,7 @@ range:
 | `docs/operations/vesta-security-review.md` | 3 sections (3 top-level, 1–3) | 0 | 0 | 0 | 0 | 18 |
 | `docs/operations/yubikey-piv-anchor.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 135 |
 | `docs/paseo-adapter-v1.md` | 11 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 149 |
-| `docs/project-map.md` | 22 sections (22 top-level, 1–22) | 3 | 0 | 0 | 0 | 196 |
+| `docs/project-map.md` | 22 sections (22 top-level, 1–22) | 3 | 0 | 0 | 0 | 197 |
 | `docs/pull-signature-and-access.md` | 4 sections (4 top-level, 1–4) | 0 | 0 | 0 | 0 | 36 |
 | `docs/releases/NEXT.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 144 |
 | `docs/superpowers/specs/2026-09-05-production-gate.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 135 |
@@ -252,7 +252,7 @@ No document owning the number was found in the repo or the vault, so the citatio
 | `src/msb_ledger/timestamping.py:347` | §5.4 | `(bare)` | unresolved | — |
 | `tests/uac/test_timestamping.py:6` | §5.4 | `(bare)` | unresolved | — |
 
-### Ambiguous — 196 site(s)
+### Ambiguous — 197 site(s)
 
 Bare `§N` where several in-repo documents own that number.
 
@@ -336,6 +336,7 @@ Bare `§N` where several in-repo documents own that number.
 | `docs/paseo-adapter-v1.md:51` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
 | `docs/paseo-adapter-v1.md:106` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+35) |
 | `docs/paseo-adapter-v1.md:128` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+13) |
+| `docs/project-map.md:8` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
 | `docs/releases/v0.2.3-baseline.md:53` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+30) |
 | `docs/releases/v0.3.0-rc1-baseline.md:40` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+30) |
 | `docs/releases/v0.3.0-rc1-baseline.md:52` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+30) |
@@ -506,7 +507,7 @@ The label (`blueprint`, `spec`) names no specific document, so the number cannot
 | `docs/phase0-substrate-hardening.md:3` | §6 | `spec` | ambiguous-label | `?ambiguous` |
 | `docs/phase0-substrate-hardening.md:74` | §5 | `spec` | ambiguous-label | `?ambiguous` |
 | `docs/releases/HARDENING-AUDIT.md:325` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
-| `docs/releases/NEXT.md:87` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/releases/NEXT.md:74` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/releases/PRODUCTION-READINESS-ROADMAP.md:152` | §28 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/task-contract-v1.md:211` | §14 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/task-contract-v1.md:286` | §7 | `spec` | ambiguous-label | `?ambiguous` |

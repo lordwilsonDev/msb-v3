@@ -3,6 +3,12 @@
 **Maintained by:** `sovereign-project-lifecycle-orchestrator`
 **Evidence snapshot:** commit `1ddea5c` (2026-08-19) · tree clean · all 13 launchd agents green · ops suite 39/39
 
+> **Snapshot, not current — noted 2026-09-22.** Every rating below is measured at
+> that commit on 2026-08-19, and two of its numbers have moved a long way: the
+> "1706 tests" in §15 and in the code-quality row is 3,692 collected tests today,
+> and the release line has passed `v0.3.0` to `v0.5.0`. Kept as the dated evidence
+> record; for current state see `docs/releases/NEXT.md`.
+
 > **Evidence legend** (per the orchestrator's hierarchy — confidence rises down the list):
 > `CLAIM` (unverified statement) → `DOCUMENTED` (requirement/spec) → `IMPLEMENTED` (code exists) →
 > `TEST` (automated) → `ADVERSARIAL` (attack/failure testing) → `BENCHMARK` (measured) →

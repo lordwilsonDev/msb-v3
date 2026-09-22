@@ -98,6 +98,9 @@ policy-gate:
 
 # Lint + typecheck + policy drift gate — the exact gates CI's lint job runs.
 # Cheap; the pre-push hook calls this so a red lint job can never land.
+# doc_records.py is the record-layer gate: the checkable claims the docs make
+# about this repo (commit citations, named tags, moving-ref claims, measured
+# counts). Offline; `--online` proves the orphan rows against the remote.
 # Bare mypy (no --ignore-missing-imports): the blanket suppress masked the
 # P4 extraction's red state — sys.modules shim aliases are runtime-only and
 # invisible to static mypy. Targeted overrides live in pyproject.toml.
@@ -106,6 +109,7 @@ lint:
 	$(PY) -m mypy src
 	$(PY) scripts/gen-requirements.py --check
 	$(PY) scripts/verify-claims.py
+	$(PY) scripts/doc_records.py
 	MSB_PYTHON=$(PY) bash scripts/ci-policy-gate.sh
 
 # Regenerate requirements-{runtime,dev}.lock from pyproject.toml (the single

@@ -21,32 +21,19 @@ points at; read the one for the item you start.
 
 | | |
 |---|---|
-| `main` | `5120527` — landed and pushed (the `v0.5.0` version bump) |
-| `origin/main` | `5120527` — in sync |
-| Latest tag | `v0.5.0` — `release-verify` green from a virgin clone (CI run `35765344776`), 3626 passed |
+| `main` | `5120527` — the `v0.5.0` version bump — **as of 2026-09-22**; check the tip with `git rev-parse --short main` |
+| `origin/main` | the same commit, in sync when this page was refreshed (2026-09-22) |
+| Latest tag | `v0.5.0` — `release-verify` green from a virgin clone (CI run `35765344776`, 2026-09-22), 3626 passed |
 | Runtime | `0.4.2` on `:8766`, launchd-supervised — tree and tag are `0.5.0`, **restart pending** |
 
-### Check H9 push status first — resolved
+### H9 push status — resolved
 
-H9 landed (`ad91737`; `scripts/stamp-schemas.py` is in the tree). The commands
-and branches below are kept as the 2026-08-31 record.
-
-```bash
-cd ~/msb-v3
-git rev-parse --short origin/main            # 44b3685 = landed; 68d481d = not
-git log --oneline -1                          # local HEAD should be 44b3685
-```
-
-- **If `origin/main` is `68d481d`** (portability failed or was interrupted):
-  the H9 code is committed locally at `44b3685`. Re-push:
-  `git push origin main`. If portability flakes on a **live** test
-  (`tests/api/test_retrieval_router.py`, `tests/local_ai/...`,
-  `tests/triumvirate/...` — `httpx.ReadTimeout`), that's box saturation, not
-  the code — restart the server (`bash scripts/start.sh stop && sleep 3 &&
-  bash scripts/start.sh start`) and re-push. `tests/db/` (20) + `test-ops`
-  (39) + local `-m "not live"` were all green for H9.
-- **If it's `44b3685`**: confirm the 3 primary CI gates go green
-  (`gh run list --branch main -L4`), then continue below.
+H9 landed (`ad91737`; `scripts/stamp-schemas.py` is in the tree). The
+conditional push instructions that stood here described the two outcomes of a
+2026-08-31 push, both long resolved, and named SHAs (`44b3685`, `68d481d`) no
+fresh clone can resolve. Removed 2026-09-22 rather than kept as instructions
+nobody should follow; the box-saturation symptom they warned about is in
+*Standing gotchas* below, where it applies to any push.
 
 ---
 
@@ -74,7 +61,7 @@ git log --oneline -1                          # local HEAD should be 44b3685
   (`make hygiene` 12/12).
 - **H9** DB migration — `stamp_all_db` + `scripts/stamp-schemas.py`, all 25
   DBs stamped v1, WAL-checkpointed, ops-audit drift check, regression test.
-  *(pending the push landing.)*
+  Landed as `ad91737`.
 
 ---
 
