@@ -1,4 +1,5 @@
-"""MoIE engine tests (spec §3, §23-25; Phase 3 §31 items 18-24).
+"""MoIE engine tests (Sovereign Architecture v4.0 §3, §23-25; Phase 3 §31
+items 18-24).
 
 Hermetic by default: no retriever is injected, so evidence comes from the
 default fabric seam (empty in tests — IDS reports the honest zero) unless

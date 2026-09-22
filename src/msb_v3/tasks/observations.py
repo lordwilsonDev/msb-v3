@@ -1,7 +1,8 @@
 """Observation pub/sub bus (SSE live streaming).
 
 Worker activity streams into a unified task via the lifecycle sink
-(``OBSERVATION_RECORDED`` + the §27 observations section) — that is the
+(``OBSERVATION_RECORDED`` + the unified-architecture §27 observations section)
+— that is the
 durable record. This module adds the *live* channel: a process-wide
 registry of per-task subscriber queues that the sink also publishes to, so
 dashboards can watch a run as it happens without polling.

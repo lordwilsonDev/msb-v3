@@ -352,7 +352,7 @@ def vault_promote_draft(args: Dict[str, Any], *, tenant: str, session: str) -> s
         return f"[tool-error] vault_promote_draft: {type(exc).__name__}: {exc}"
 
 
-# --- Code Graph executors (read-only, spec §4.2.1) ------------------------
+# --- Code Graph executors (read-only, sovereign-architecture §4.2.1) ------------------------
 # Every executor terminates inside the perimeter: it reads the local SQLite
 # graph (never the source tree directly) and returns a string the model can
 # reason over. Unknown repos return an honest "not indexed" — never a fake
@@ -470,7 +470,7 @@ def codegraph_rename(args: Dict[str, Any], *, tenant: str, session: str) -> str:
     return _cg_rename(_codegraph_repo_arg(args), args)
 
 
-# --- Memory Fabric executors (spec §4.2.2) ---------------------------------
+# --- Memory Fabric executors (sovereign-architecture §4.2.2) ---------------------------------
 # recall is read-only over the local SQLite fabric; store is a WRITE that
 # the capability gate already guards (memory.write required — fail-closed).
 

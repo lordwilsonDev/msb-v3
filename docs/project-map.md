@@ -104,7 +104,7 @@ Dormant resilience slots (all config-driven, one line each): second witness adde
 
 ## 20. Business constraints
 
-Single operator · one Mac Mini · no cloud dependency on the core path · storage-bound (multi-modal parked on disk, v4) · MIT license + source-available access model. (`DOCUMENTED`)
+Single operator · one Mac Mini · no cloud dependency on the core path · storage-bound (multi-modal parked on disk, v4) · MIT license, plus a startup gate that asks for an owner-signed key (a technical guard, not a licence term). (`DOCUMENTED`)
 
 ## 21. Security constraints
 

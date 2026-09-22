@@ -66,7 +66,7 @@ From `docs/audits/forensic-grill-2026-09-02.md`:
 - **The gate is a keyword pre-filter, not a security boundary.** Its measured
   performance over the frozen corpus is **precision 0.68 / recall 0.425** — it misses
   more than half of dangerous inputs. Pinned in `tests/contracts/test_gate_contract.py`.
-- **"Proven safe" was not established.** The grill's §1.4 states plainly that the
+- **"Proven safe" was not established.** The `forensic-grill` §1.4 states plainly that the
   system does *not* prove the governance layer catches all dangerous actions.
 - **The specific defect that started the program.** An unregistered capability
   silently defaulted to **tier 1 = SAFE**. `ActionGate().gate("nuke")` returned
@@ -137,10 +137,10 @@ assumed*, so introducing the registry could not silently change what the gate al
 **The rule.** The deterministic resolver is the boundary. Model output — including MoIE
 inversion and AIL — is **advisory only** and carries no authority.
 
-**Where it comes from.** Forensic grill §8 ("MODEL COMPROMISE") asks what happens if the
-model is wrong *on purpose*; §9 ("ZERO-MODEL SAFETY") asks what survives with no model
-at all. The blueprint's answer is structural: the model's output is an input to
-resolution, never a verdict.
+**Where it comes from.** `forensic-grill` §8 ("MODEL COMPROMISE") asks what happens if the
+model is wrong *on purpose*; `forensic-grill` §9 ("ZERO-MODEL SAFETY") asks what survives
+with no model at all. The blueprint's answer is structural: the model's output is an input
+to resolution, never a verdict.
 
 **What it forbids.** Confidence as permission. `docs/governance/capability-resolver-v1.md` is explicit:
 *"`confidence=1.0` means the request matched an explicit source; it does not mean the
@@ -207,9 +207,9 @@ failure mode is a green suite standing in for a measurement nobody took.
 > benchmark-derived"). The numbers collide; the invariants do not.
 
 **A second reading of this principle, from the grill:** verification must test more than
-"did the expected outcome occur?" — §10 ("VERIFICATION GRILL") asks what a hash does and
-does not prove, and §4 ("FALSE GREEN TEST") asks whether a system that believes it
-succeeded can be caught. That is why invariant 010 exists as a *named* invariant rather
+"did the expected outcome occur?" — `forensic-grill` §10 ("VERIFICATION GRILL") asks what a
+hash does and does not prove, and `forensic-grill` §4 ("FALSE GREEN TEST") asks whether a
+system that believes it succeeded can be caught. That is why invariant 010 exists as a *named* invariant rather
 than an assumption.
 
 ---
@@ -266,22 +266,22 @@ Mapping, with the phase that addresses each topic:
 
 | Grill section | Addressed by |
 |---|---|
-| §6 ACTION GATE GRILL | Phase 0 (UNKNOWN verdict) |
-| §7 TOOL ESCAPE | Phase 8 (tool escape tests) |
-| §8 MODEL COMPROMISE | Phase 13 (MoIE as challenge, not authority) |
-| §9 ZERO-MODEL SAFETY | Phase 0 / the "Fourth principle — fail closed" disposition |
-| §10 VERIFICATION GRILL | Phase 12 (green-gate expansion) |
-| §11 AUDIT GRILL | Phase 18 (receipt + versioning) |
-| §12 MEMORY POISONING | Phase 10 (memory governance) |
-| §13 RAG GRILL | Phase 11 (RAG conflict) |
-| §14 MULTI-MODEL GRILL, §15 SPECIALIST COLLUSION | Phase 14 (independence tests) |
-| §17 CRASH GRILL, §19 RESOURCE GRILL, §20 88% DISK GRILL | Phase 16 (chaos + thresholds) |
-| §25 MEMORYSTORE DEPRECATION | Phase 17 (MemoryStore cleanup) |
-| §27 ADVERSARIAL INPUT | Phase 15 (adversarial corpus) |
-| §30 THE REAL TEST, §31 THE BIGGEST FAILURE | Phase 19 (final production gate) |
+| `forensic-grill` §6 ACTION GATE GRILL | Phase 0 (UNKNOWN verdict) |
+| `forensic-grill` §7 TOOL ESCAPE | Phase 8 (tool escape tests) |
+| `forensic-grill` §8 MODEL COMPROMISE | Phase 13 (MoIE as challenge, not authority) |
+| `forensic-grill` §9 ZERO-MODEL SAFETY | Phase 0 / the "Fourth principle — fail closed" disposition |
+| `forensic-grill` §10 VERIFICATION GRILL | Phase 12 (green-gate expansion) |
+| `forensic-grill` §11 AUDIT GRILL | Phase 18 (receipt + versioning) |
+| `forensic-grill` §12 MEMORY POISONING | Phase 10 (memory governance) |
+| `forensic-grill` §13 RAG GRILL | Phase 11 (RAG conflict) |
+| `forensic-grill` §14 MULTI-MODEL GRILL, §15 SPECIALIST COLLUSION | Phase 14 (independence tests) |
+| `forensic-grill` §17 CRASH GRILL, §19 RESOURCE GRILL, §20 88% DISK GRILL | Phase 16 (chaos + thresholds) |
+| `forensic-grill` §25 MEMORYSTORE DEPRECATION | Phase 17 (MemoryStore cleanup) |
+| `forensic-grill` §27 ADVERSARIAL INPUT | Phase 15 (adversarial corpus) |
+| `forensic-grill` §30 THE REAL TEST, §31 THE BIGGEST FAILURE | Phase 19 (final production gate) |
 
 Phases 6, 7 and 9 (tier-4 fail-closed, DAG capability closure, taint integration) have no
-single grill section; they are the *composition* consequences of the grill's §6–§9 — what happens when
+single grill section; they are the *composition* consequences of `forensic-grill` §6–§9 — what happens when
 low-risk nodes compose into a consequential mission.
 
 **Delivered state lives in `PLAN.md` → "Phase status — reconciled 2026-09-22"**, which is
@@ -319,10 +319,10 @@ interchangeable, and a bare `§N` in this codebase is ambiguous unless it names 
 | `docs/blueprints/2026-09-09-production-hardening.md` | Production readiness; **CLOSED 2026-09-12** | `§3.2`, `§3.3` (quarantined settings, keep-alive) in `src/msb_v3/core/config.py` |
 | Steward blueprint (`AIL-MoIE-Project-Steward`) | Project-state layer, health vector | `§53`, `§54` in `src/msb_v3/steward/` |
 | `convergence-to-12` | Convergence programme | `§12` in `docs/governance/authority-model.md` |
-| unified-architecture spec | Tool registry / capability table | `§5`, `§6` in `src/msb_v3/tools/` |
+| `unified-architecture` (written in code as *spec*) | Tool registry / capability table | `unified-architecture` §5, §6 in `src/msb_v3/tools/` |
 | `PRODUCTION-CLOSURE-001` P3 / O3 | Authority closure | `docs/releases/O3-AUTHORITY-CLOSURE-PLAN.md` |
 | `docs/blueprints/plans/m1-governance-node-architecture.md` | Node architecture | `§5` in `src/msb_v3/harnesses/base.py` |
-| Meta/multi-agent blueprint | Worker envelope, failure compiler | `§7`–`§31` in `src/msb_v3/meta/` |
+| Meta/multi-agent blueprint | Worker envelope, failure compiler | Meta-System blueprint `§7`–`§31` in `src/msb_v3/meta/` |
 
 *(Table compiled by grepping the tree for §-references; it is a map of what exists, not a
 claim about how these documents relate to one another.)*
@@ -332,10 +332,11 @@ claim about how these documents relate to one another.)*
 ## 12. Citation corrections
 
 **Corrected here:** `PLAN.md` previously attributed its list of 15 governance metrics to
-"blueprint §53". **§53 is the Steward blueprint's health vector** (nine axes with
-per-axis GREEN/YELLOW/RED/UNKNOWN, and §54 "UNKNOWN != GREEN" — see
-`src/msb_v3/steward/state.py` and `tests/steward/test_project_state.py`). It is a project-state
-report, not a Prometheus metric set. The metric list is `PLAN.md`'s own and now says so.
+"blueprint §53". That number belongs to the **Steward blueprint** — §53 is its project
+health vector (nine axes with per-axis GREEN/YELLOW/RED/UNKNOWN; Steward blueprint §54
+"UNKNOWN != GREEN") — see `src/msb_v3/steward/state.py` and
+`tests/steward/test_project_state.py`. It is a project-state report, not a Prometheus metric
+set. The metric list is `PLAN.md`'s own and now says so.
 
 **Left unresolved on purpose:** the reconstructed blueprint asserts **no section numbers**.
 Any future `§N` citation to *this* file would be unresolvable by construction, and
@@ -348,4 +349,4 @@ reconstruction exists to avoid.
 
 | Date | Change |
 |---|---|
-| 2026-09-22 | File created as a reconstruction. Closes the dangling `docs/blueprints/governance-hardening.md` citation in `PLAN.md` and `docs/audits/governance-hardening-baseline.md`, and corrects the `§53` misattribution. |
+| 2026-09-22 | File created as a reconstruction. Closes the dangling `docs/blueprints/governance-hardening.md` citation in `PLAN.md` and `docs/audits/governance-hardening-baseline.md`, and corrects the Steward blueprint §53 misattribution. |

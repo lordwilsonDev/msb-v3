@@ -1,4 +1,5 @@
-"""MoIE §25 integration at the external-agent delegation boundary.
+"""MoIE inversion-gate integration at the external-agent delegation boundary
+(Sovereign Architecture v4.0 §25).
 
 The worker is never started before inversion completes. BLOCK and failed
 inversion deny; CONDITIONAL requires the explicit operator approval already

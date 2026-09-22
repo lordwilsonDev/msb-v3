@@ -1,4 +1,4 @@
-"""Software Factory planner (spec §4.2.6 — plan stage; §8 Agent 1).
+"""Software Factory planner (sovereign-architecture §4.2.6 — plan stage; §8 Agent 1).
 
 Deterministic decomposition of the issue into ordered implementation
 steps, each with verifiable acceptance criteria. The plan carries risks

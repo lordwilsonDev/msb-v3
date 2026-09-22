@@ -1,4 +1,4 @@
-"""Software Factory classifier (spec §4.2.6 — classify stage).
+"""Software Factory classifier (sovereign-architecture §4.2.6 — classify stage).
 
 Deterministic: issue type and severity come from the issue's own
 language; scope is a best-effort code-graph lookup of the symbols the

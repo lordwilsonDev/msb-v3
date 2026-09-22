@@ -1,4 +1,5 @@
-"""MoIE controller (spec §3, §24, §25; Phase 3 §31 items 18-24).
+"""MoIE controller (Sovereign Architecture v4.0 §3, §24, §25; Phase 3 §31
+items 18-24).
 
     claim → router → experts (each: extract assumptions → invert →
     falsifiable predictions) → evidence merger (fabric recall) →

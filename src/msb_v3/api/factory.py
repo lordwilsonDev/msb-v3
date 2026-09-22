@@ -1,4 +1,4 @@
-"""Software Factory API (spec §4.2.6, P3) — operator-gated.
+"""Software Factory API (sovereign-architecture §4.2.6, P3) — operator-gated.
 
 POST /factory/run processes one issue end-to-end (classify → plan →
 build in an isolated worktree → test → independent review → verify) and

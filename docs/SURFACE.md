@@ -26,7 +26,7 @@ subpackage is unclassified (AC-3.1).
 | `api/chat.py` | LOAD-BEARING | `/chat` surface; MCP bridge proxies to it (`mcp_bridge.py` case `chat`). |
 | `api/codegraph.py` | OPTIONAL | Read-only repo intelligence; indexing operator-gated; no canonical-path caller (mcp_bridge `codegraph_*` only). |
 | `api/console.py` | OPTIONAL | Operator console UI; release-declared "implemented and supported" but an operator surface, not the canonical path. |
-| `api/context.py` | OPTIONAL | Context-engine compose endpoint (spec §4.2.3); no canonical-path caller. |
+| `api/context.py` | OPTIONAL | Context-engine compose endpoint (sovereign-architecture §4.2.3); no canonical-path caller. |
 | `api/conversation.py` | LOAD-BEARING | Conversation contract — E2E-probed in CI (`factory-gate.yml` "Conversation E2E probe"). |
 | `api/cron.py` | LOAD-BEARING | The scheduler's REST surface (README: "/cron — scheduled governed jobs"). |
 | `api/dashboard.py` | LOAD-BEARING | `/cockpit` read-only observability + `/cockpit/find` vault search (README; CLAUDE.md Cockpit). |
@@ -41,7 +41,7 @@ subpackage is unclassified (AC-3.1).
 | `api/knowledge.py` | LOAD-BEARING | Ralph research surface; `ralph_loop_dashboard`/`ralph_loop_run` proxied from mcp_bridge. |
 | `api/mcp_bridge.py` | LOAD-BEARING | The Make.com/HTTP MCP bridge (`/mcp/proxy`, `/mcp/tools`) — live-probed in CI auth gate. |
 | `api/memory.py` | LOAD-BEARING | `/memory/{session}` — MCP bridge `memory_recent`/`memory_append`/`memory_clear` proxy to it. |
-| `api/memory_fabric.py` | OPTIONAL | Memory-fabric surface (spec §4.2.2); off canonical path. |
+| `api/memory_fabric.py` | OPTIONAL | Memory-fabric surface (sovereign-architecture §4.2.2); off canonical path. |
 | `api/metrics.py` | LOAD-BEARING | `/metrics/` + Prometheus scrape — the observability spine the cockpit and console read. |
 | `api/models.py` | OPTIONAL | Model listing surface; no canonical-path caller. |
 | `api/moie.py` | OPTIONAL | MoIE analysis surface; MoIE "exists and powers the factory reviewer" (release doc — experimental tier). |
@@ -70,7 +70,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/agent` | LOAD-BEARING | The canonical governed loop — release-declared frozen, but contract.py (ProviderContract v1) added for convergence C3. AgentProvider ABC extended with health() method and contract_version field on ProviderSpec. |
 | `msb_v3/api` | LOAD-BEARING | Router layer — all of the table above. |
 | `msb_v3/business` | OPTIONAL | Business-report surface (hygiene h02/h04 experiments probe it); off canonical path. |
-| `msb_v3/codegraph` | OPTIONAL | Repo symbol graph (spec §4.2.1); operator-gated indexing, query-only use. |
+| `msb_v3/codegraph` | OPTIONAL | Repo symbol graph (sovereign-architecture §4.2.1); operator-gated indexing, query-only use. |
 | `msb_v3/conversation` | LOAD-BEARING | Conversation contract — CI E2E probe (factory-gate). |
 | `msb_v3/core` | LOAD-BEARING | `config.py` settings — "env-var-first, every default declared there" (vault manifest). Everything imports it. |
 | `msb_v3/cron` | LOAD-BEARING | The scheduler (README heartbeat section; 57 tests) — the wake-agent job rides it. |
@@ -91,7 +91,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/integrations` | OPTIONAL | External-system adapters that keep the trust boundary on the MSB side. `openbot.py` mounts `/openbot/*` into the composition root (`api/app.py`) — supervisor lifecycle + `contract` are operator-gated, Docker stays on the supervisor and fails closed (503 without a token) — and `/openbot/run` translates an inbound message into the canonical governed `handle()` path. Pinned by `tests/integrations/test_openbot_adapter.py`. The external supervisor is not part of the canonical runtime, so OPTIONAL. |
 | `msb_v3/local_ai` | LOAD-BEARING | Ollama + llama clients (DeepSeek retired 2026-09-09, D1) — the model layer under `/chat`, `/agent`, `/v1`. |
 | `msb_v3/memory` | LOAD-BEARING | SQLite session/message memory — `/memory` + MCP bridge depend on it. |
-| `msb_v3/memory_fabric` | OPTIONAL | Memory fabric (spec §4.2.2); off canonical path. |
+| `msb_v3/memory_fabric` | OPTIONAL | Memory fabric (sovereign-architecture §4.2.2); off canonical path. |
 | `msb_v3/meta` | OPTIONAL | Meta-System project compiler — META-0: contract types only (`MetaTask`/`MSL`/`TaskState`/`ProjectState`/`VerificationResult`/`FailureRecord`/`WorkerResult`), no orchestration. Off canonical path. |
 | `msb_v3/moie` | OPTIONAL | MoIE engine — powers the factory reviewer (release doc: experimental tier, not a general chat path). |
 | `msb_v3/node` | OPTIONAL | Sovereign Node enrollment/engage — INTEGRATE phase, first slice FILE_READ. |

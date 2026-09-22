@@ -12,8 +12,8 @@ resolves to a deterministic, externally-checkable check:
                                  with the expected heading")?
     none                   -> pass-through (no verification declared)
 
-Every result is a spec-shaped receipt (Sovereign-Agentic-Runtime-Build-Spec
-§3.4): {"ok", "detail", "kind", "check", "trust"}. All of these checks are
+Every result is a spec-shaped receipt (Sovereign-Agentic-Runtime-Build-Spec §3.4):
+{"ok", "detail", "kind", "check", "trust"}. All of these checks are
 GROUNDED (external ground truth) and HIGH-trust — the spec forbids an LLM
 judge from ever being a sole gate, so no advisory receipt appears here.
 
@@ -116,7 +116,8 @@ _CHECKS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
 
 def verify_task(task: Task, output: Dict[str, Any]) -> Dict[str, Any]:
     """Grounded check for a task's output (registry dispatch). Returns a
-    spec-shaped receipt (§3.4): kind=grounded, trust=high, verdict, confidence."""
+    spec-shaped receipt (Build-Spec §3.4): kind=grounded, trust=high, verdict,
+    confidence."""
     check = _CHECKS.get(task.verification_method)
     if check is None:
         return _receipt(False, f"unknown verification method: {task.verification_method}", task.verification_method)

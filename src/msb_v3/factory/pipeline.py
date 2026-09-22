@@ -1,4 +1,4 @@
-"""Software Factory pipeline (spec §4.2.6, P3; §8-10, §31 items 25-30).
+"""Software Factory pipeline (sovereign-architecture §4.2.6, P3; §8-10, §31 items 25-30).
 
     issue → classify → plan (MoIE risks) → build (isolated worktree) →
     test (real command) → review (independent MoIE + code graph) →

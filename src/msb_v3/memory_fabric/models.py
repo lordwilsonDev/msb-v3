@@ -1,6 +1,6 @@
 """Memory Fabric models — memory types, verification states, item schema.
 
-Mirrors spec §4.2.2: memory types (episodic / semantic / procedural /
+Mirrors sovereign-architecture §4.2.2: memory types (episodic / semantic / procedural /
 architectural), verification states (UNVERIFIED → VERIFIED → CONTRADICTED
 → DEPRECATED), and a provenance-carrying memory item (source_agent,
 task_id, importance, decay_factor, verification state, relationships).

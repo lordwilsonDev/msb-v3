@@ -1,4 +1,4 @@
-"""Graph queries for the Code Graph subsystem (spec §4.2.1).
+"""Graph queries for the Code Graph subsystem (sovereign-architecture §4.2.1).
 
 The query surface an agent actually uses:
 

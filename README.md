@@ -28,9 +28,19 @@ foundation.
 
 ## Access & licensing
 
-This repo is **source-available**: the code is public, but it only *runs*
-under a **source license** signed by the owner's key — a bare pull
-(anonymous clone or API tarball) is inert code. To use it:
+**MIT — see [`LICENSE`](LICENSE).** The grant is the ordinary one: use, copy,
+modify, run, redistribute, sublicense, sell. This build additionally carries a
+**technical** access control — `run()` verifies an owner-signed key at
+`~/.msb-v3/source-license` before it will start (`src/msb_v3/__main__.py`;
+opt-outs `MSB_CONTAINER=1`, `MSB_CI=1`), so an anonymous clone or API tarball
+boots nothing until a key is present. That guard is **not an extra licence term**:
+MIT already grants the right to run the code, and to remove the guard.
+
+> This paragraph used to call the repo *source-available* — the wrong word for it,
+> because it read as a licence and there is only one. Other documents that still
+> say it mean this startup gate, not the grant.
+
+To have the authors' build run as shipped:
 
 1. **Fork the repo** and clone your fork.
 2. Run `bash scripts/request-access.sh` to request a license (it opens a

@@ -1,4 +1,4 @@
-"""MoIE data model (spec §3, §23-25).
+"""MoIE data model (Sovereign Architecture v4.0 §3, §23-25).
 
 The unit of analysis is an ExpertReport per expert; the unit of decision is
 a MoIEDecision from the meta-critic. Every verdict is one of SAFE /

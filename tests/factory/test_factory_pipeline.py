@@ -1,4 +1,4 @@
-"""Software Factory pipeline tests (spec §4.2.6, §8-10).
+"""Software Factory pipeline tests (sovereign-architecture §4.2.6, §8-10).
 
 Real worktrees, real patch scripts, real pytest runs — the pipeline's
 verdicts are decided by observed evidence, and these tests assert exactly
@@ -183,7 +183,7 @@ def test_factory_evidence_chain_references_stages(repo, good_patch):
     assert all(len(h) == 16 for h in run.evidence_chain)
 
 
-# --- reviewer (independent review, spec §4.2.6 / §9) ------------------------
+# --- reviewer (independent review, sovereign-architecture §4.2.6 / §9) ------------------------
 
 
 def test_review_benign_severity_does_not_escalate():

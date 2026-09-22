@@ -1,4 +1,4 @@
-"""Memory Fabric operations (spec §4.2.2).
+"""Memory Fabric operations (sovereign-architecture §4.2.2).
 
     store_memory(...)    persist a memory with provenance
     recall_memories(...) score + rank memories for a query

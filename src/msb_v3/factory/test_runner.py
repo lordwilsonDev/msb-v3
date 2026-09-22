@@ -1,4 +1,4 @@
-"""Software Factory test runner (spec §4.2.6 — test stage).
+"""Software Factory test runner (sovereign-architecture §4.2.6 — test stage).
 
 Detects the repo's test command from its own tooling and runs it in the
 worktree, capturing real evidence: command, exit code, output, duration.

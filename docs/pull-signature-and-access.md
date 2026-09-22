@@ -98,9 +98,10 @@ integrations — deliberate before doing it.
 
 ## 3. The source-license gate: anonymous pulls are inert
 
-Because GitHub cannot block anonymous pulls on a public repo, the repo is
-**source-available**: the code is public, but the server refuses to start
-without a **source license** — a single signed line:
+Because GitHub cannot block anonymous pulls on a public repo, this build carries a
+runtime guard rather than a licence restriction: the code is **MIT** (see
+`LICENSE`), but the server refuses to start without a **source license** — a
+single signed line:
 
 ```
 holder=<name>|granted=<YYYY-MM-DD>|scope=<full|demo>|repo=lordwilsonDev/msb-v3|SIG:<base64 ssh signature>

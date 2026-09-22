@@ -1,4 +1,4 @@
-"""Software Factory data model (spec §4.2.6, §8-10).
+"""Software Factory data model (sovereign-architecture §4.2.6, §8-10).
 
 A FactoryRun is the complete, self-contained record of one issue processed
 end-to-end: plan, build evidence, test evidence, independent review,

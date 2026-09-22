@@ -1,5 +1,5 @@
 """MoIE — Mixture of Inversion Experts (Sovereign Architecture v4.0 §3,
-§23-25; Phase 3 spec §31 items 18-24).
+§23-25; Phase 3 §31 items 18-24).
 
 AIL asks *what assumptions are we accepting without question?*; MoIE
 answers it with *adversarial diversity*: a router selects experts (security,

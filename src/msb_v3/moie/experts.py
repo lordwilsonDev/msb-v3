@@ -1,4 +1,4 @@
-"""MoIE experts (spec §3, §31 item 18).
+"""MoIE experts (Sovereign Architecture v4.0 §3, §31 item 18).
 
 Ten deterministic experts, each a ``DomainExpert`` with its own domain
 metadata: focus keywords (router selection), BLOCK-level danger keywords,

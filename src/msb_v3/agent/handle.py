@@ -114,7 +114,7 @@ def _resolve_agent(agent_id: str, registry: Any = None) -> Any:
 
 
 def _make_observation_sink(lifecycle: TaskLifecycle | None, run_id: str):
-    """Best-effort sink wiring worker activity into the task's §27
+    """Best-effort sink wiring worker activity into the unified-architecture §27
     observations (OBSERVATION_RECORDED event + appended observation row).
     Returns None when the lifecycle is unavailable — the run never breaks
     because observations cannot be recorded."""
@@ -152,7 +152,7 @@ async def _delegation_inversion_gate(
     approve: bool,
     moie: Any = None,
 ) -> tuple[bool, str, Dict[str, Any]]:
-    """Run the §25 MoIE gate before an external worker may start.
+    """Run the MoIE gate (spec §25) before an external worker may start.
 
     A delegated CLI/Paseo worker is a high-risk execution seam even when its
     requested task sounds harmless. MoIE is therefore a preflight, not a
@@ -376,14 +376,14 @@ async def _run_delegated_agent(
     it the provider falls back to the server's cwd (honest but often wrong).
 
     Delegated runs (CLI worker or Paseo worker) start from a composed
-    Context Engine package (spec §4.2.3): the worker's initial prompt is
+    Context Engine package (sovereign-architecture §4.2.3): the worker's initial prompt is
     L0..L7 curated context + the task, and the composition ledger (layers,
     tokens, G3 reduction) is recorded as a CONTEXT_COMPOSED event + the
     task's context section. Composition is best-effort and injectable — a
     failure degrades to the raw request.
 
     After the run, the composed context is persisted into the Memory
-    Fabric as an architectural memory (spec §4.2.2 — a CONTEXT_COMPOSED
+    Fabric as an architectural memory (sovereign-architecture §4.2.2 — a CONTEXT_COMPOSED
     consumer): future runs can recall what context a task was executed
     under. Also best-effort and injectable — a storage failure degrades
     provenance, never the run.
@@ -476,7 +476,7 @@ async def _run_delegated_agent(
     if repo:
         context["repo"] = repo
 
-    # Context Engine (spec §4.2.3, P1): every delegated run (CLI worker or
+    # Context Engine (sovereign-architecture §4.2.3, P1): every delegated run (CLI worker or
     # Paseo worker) starts with a composed, budgeted context — L0 system
     # invariants through L7 — so the worker's initial prompt is curated,
     # not a bare task string. The raw request is appended verbatim as a
@@ -512,7 +512,8 @@ async def _run_delegated_agent(
             )
 
     # Observation sink: worker activity streams into the unified task
-    # (OBSERVATION_RECORDED events + the §27 observations section) — the
+    # (OBSERVATION_RECORDED events + the unified-architecture §27 observations
+    # section) — the
     # task document becomes a live record of what the worker actually did.
     # Paseo workers stream the daemon's curated activity feed; CLI workers
     # stream their subprocess stdout (both via the same sink contract).
@@ -531,7 +532,7 @@ async def _run_delegated_agent(
         {"provider": agent_provider.spec.provider_id, "ok": result.ok, "duration_s": result.duration_s},
     )
 
-    # CONTEXT_COMPOSED consumer (spec §4.2.2): the composed context handed
+    # CONTEXT_COMPOSED consumer (sovereign-architecture §4.2.2): the composed context handed
     # to the worker is persisted into the Memory Fabric as an architectural
     # memory once the run is done, so future runs can recall what context a
     # task was executed under. Best-effort — a storage failure logs and
@@ -620,7 +621,7 @@ def _persist_composed_context(
     repo: str | None,
     memory_fabric: Any = None,
 ) -> Optional[str]:
-    """Best-effort CONTEXT_COMPOSED consumer (spec §4.2.2): the composed
+    """Best-effort CONTEXT_COMPOSED consumer (sovereign-architecture §4.2.2): the composed
     context handed to a delegated worker (CLI or Paseo) is persisted as an
     architectural memory with full provenance (source_agent, task_id,
     tenant, project). Returns the memory_id on success; None on failure —
@@ -653,7 +654,7 @@ def _persist_composed_context(
 
 def _consolidate_composed_memories(memory_fabric: Any, tenant: str) -> Optional[Dict[str, Any]]:
     """Best-effort consolidation pass after a delegated run (CLI or Paseo,
-    spec §4.2.2): merge near-duplicate architectural memories — including
+    sovereign-architecture §4.2.2): merge near-duplicate architectural memories — including
     the one just stored — and decay every active memory by recency.
     Returns the honest report ({merged, deprecations, decayed, kept}) or
     None on failure; never breaks the run."""
@@ -719,7 +720,8 @@ def _lifecycle_emit(lifecycle: TaskLifecycle | None, task_id: str, event_type: s
     authoritative record when it is reachable).
 
     ``state`` without an explicit event means a state-machine transition
-    (emits the canonical §28 event: PLAN_CREATED, AGENT_STARTED, ...).
+    (emits the canonical unified-architecture §28 event: PLAN_CREATED,
+    AGENT_STARTED, ...).
     """
     if lifecycle is None:
         return
@@ -981,8 +983,8 @@ async def handle(
         if provider is None:
             provider = BridgeProvider(tenant=tenant, output_dir=output_dir, client=client_any)
 
-        # Capability-scoped permissions (§17): an agent does only what its
-        # identity was granted. None = no whitelist (legacy behavior).
+        # Capability-scoped permissions (unified-architecture §17): an agent does
+        # only what its identity was granted. None = no whitelist (legacy behavior).
         granted: set[str] | None = set(agent_identity.granted_capabilities) if agent_identity is not None else None
         safe: ToolProvider = SafeProvider(provider, gate, approved=approved, granted=granted)
         if lifecycle is not None:

@@ -1,6 +1,6 @@
 """Code Graph schema — node/edge kinds and SQLite DDL.
 
-Schema mirrors the spec §4.2.1: nodes (files, modules, classes, functions,
+Schema mirrors the sovereign-architecture §4.2.1: nodes (files, modules, classes, functions,
 methods, types, routes) + edges (calls, imports, inherits, references,
 contains). Storage is plain SQLite graph tables — zero new dependencies,
 fully auditable, indexable for the <1s query gate.

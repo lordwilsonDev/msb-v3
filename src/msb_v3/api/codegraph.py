@@ -1,4 +1,4 @@
-"""Code Graph API — operator-gated repository intelligence (spec §4.2.1).
+"""Code Graph API — operator-gated repository intelligence (sovereign-architecture §4.2.1).
 
 Agents (and dashboards) ask the graph questions about a repository:
 symbol search, callers, callees, blast radius, context bundles, and

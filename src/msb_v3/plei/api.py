@@ -24,6 +24,8 @@ agent/bridge_provider.py's _synthesize.
 from __future__ import annotations
 
 import asyncio
+import importlib
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -436,6 +438,33 @@ def _check_chain(store: Any) -> dict[str, Any]:
         return {"ok": False, "message": "could not verify chain"}
 
 
+logger = logging.getLogger(__name__)
+
+
+def _wire_component(name: str, module: str, attribute: str, *, consequence: str) -> Any | None:
+    """Import and construct one governance component, loudly.
+
+    The import can fail for a real reason — a broken module, a bad config, a
+    missing dependency — and returning ``None`` still lets the caller decide what
+    a missing component means. What it must never be is a silent ``pass``: a run
+    that quietly drops the ActionGate, MoIE or the evidence spine still reports
+    itself as a governed run, and claims the three of them happened.
+    """
+    try:
+        return getattr(importlib.import_module(module), attribute)()
+    except Exception as exc:
+        logger.warning(
+            "%s unavailable (%s: %s — importing %s.%s) — %s",
+            name,
+            type(exc).__name__,
+            exc,
+            module,
+            attribute,
+            consequence,
+        )
+        return None
+
+
 def _execute_prepare_sync(root: Path) -> tuple[Any, Any, Any, dict[str, Any], Any, Any, Any] | None:
     """Steps 1-4: full PLEI analysis, decision pipeline, WorkPlan, and governed-bridge
     setup — all synchronous. Returns None when there's no actionable recommendation.
@@ -517,32 +546,35 @@ def _execute_prepare_sync(root: Path) -> tuple[Any, Any, Any, dict[str, Any], An
                 if hasattr(ap, "spec"):
                     real_map[ap.spec.provider_id] = ap
             providers_by_id = real_map
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "provider registry unavailable (%s: %s) — the plan will run with "
+                "no provider fallbacks",
+                type(exc).__name__,
+                exc,
+            )
 
-    # ActionGate
-    gate = None
-    try:
-        from msb_v3.agent.safety import ActionGate
-        gate = ActionGate()
-    except Exception:
-        pass
-
-    # MoIE
-    moie = None
-    try:
-        from msb_v3.moie.engine import MoIEController
-        moie = MoIEController()
-    except Exception:
-        pass
-
-    # Evidence spine
-    spine = None
-    try:
-        from msb_v3.evidence.spine import DecisionEvidenceStore
-        spine = DecisionEvidenceStore()
-    except Exception:
-        pass
+    # The authorization boundary. Nothing downstream may substitute a default
+    # verdict for a missing gate, so `/execute` refuses on this one — see the
+    # guard in `plei_execute`.
+    gate = _wire_component(
+        "ActionGate",
+        "msb_v3.agent.safety",
+        "ActionGate",
+        consequence="/plei/execute will refuse to run ungated",
+    )
+    moie = _wire_component(
+        "MoIE controller",
+        "msb_v3.moie.engine",
+        "MoIEController",
+        consequence="claim verification is skipped and reported as degraded",
+    )
+    spine = _wire_component(
+        "evidence spine",
+        "msb_v3.evidence.spine",
+        "DecisionEvidenceStore",
+        consequence="the run is not recorded in the evidence spine",
+    )
 
     return twin, lc, plan, providers_by_id, gate, moie, spine
 
@@ -578,6 +610,25 @@ async def plei_execute(
         return {"ok": False, "error": "no actionable recommendation found"}
     twin, lc, plan, providers_by_id, gate, moie, spine = prepared
 
+    # Fail closed. `_gate_step` defaults to SAFE when it is handed no gate, so
+    # running without one would execute every step of a plan this endpoint
+    # advertises as "Gates every step through the ActionGate" — the substitution
+    # of unknown for safe that the governance programme exists to remove.
+    if gate is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "refusing to execute: the ActionGate could not be constructed, and an "
+                "ungated run would default every step to SAFE. The import error is in "
+                "the server log."
+            ),
+        )
+
+    # MoIE and the evidence spine are degradations rather than refusals, but the
+    # caller is told: the report below claims verification and evidence, and it
+    # must not claim them for a run that had neither.
+    degraded = [name for name, comp in (("moie", moie), ("evidence_spine", spine)) if comp is None]
+
     # Step 5: Execute through harness bridge (a real async call — stays on the loop)
     exec_report: Any = await execute_plan(
         plan,
@@ -599,8 +650,11 @@ async def plei_execute(
         previous_confidence=lc.confidence,
     )
 
-    return {
+    response = {
         "ok": exec_report.ok,
         "execution": execution_report_as_dict(exec_report),
         "evidence_loop": loop_result_as_dict(loop_result),
     }
+    if degraded:
+        response["degraded"] = degraded
+    return response

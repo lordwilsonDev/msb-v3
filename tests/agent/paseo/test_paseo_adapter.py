@@ -247,7 +247,8 @@ def test_drive_run_streams_observations(daemon, http_client, tmp_path):
 
 def test_handle_delegation_streams_observations_into_task(daemon, http_client, tmp_path):
     """The full production path: handle() -> PaseoAgentProvider -> drive_run
-    streams OBSERVATION_RECORDED events + the §27 observations section into
+    streams OBSERVATION_RECORDED events + the unified-architecture §27 observations
+section into
     the unified task."""
     daemon.wait_block_s = 0.15
     daemon.wait_queue["agent-1"] = [{"status": "idle", "permission": None, "lastMessage": "done"}]

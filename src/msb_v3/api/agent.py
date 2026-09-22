@@ -408,7 +408,8 @@ async def stream_task_observations(task_id: str) -> StreamingResponse:
 
 @router.get("/tasks", dependencies=[Depends(require_operator)])
 async def list_tasks(limit: int = 25) -> Dict[str, Any]:
-    """List unified tasks (event-sourced lifecycle, §27-28). Operator-gated:
+    """List unified tasks (event-sourced lifecycle, unified-architecture §27-28).
+    Operator-gated:
     task bodies carry intent/plan content."""
     tasks = _lifecycle().list(limit=limit)
     return {"ok": True, "count": len(tasks), "tasks": tasks}
@@ -416,7 +417,8 @@ async def list_tasks(limit: int = 25) -> Dict[str, Any]:
 
 @router.get("/tasks/{task_id}", dependencies=[Depends(require_operator)])
 async def get_task(task_id: str) -> Dict[str, Any]:
-    """Full unified task: the §27 document + its event sequence."""
+    """Full unified task: the unified-architecture §27 document + its event
+    sequence."""
     from msb_v3.tasks.events import TaskLifecycleError
 
     try:

@@ -207,7 +207,7 @@ in one pass. `db-restore-drill` covers SQLite.
 ## H8 · Memory / Storage authority · **PARTIAL**
 
 **Built:** two-authority split is documented (`docs/desktop-architecture.md`
-§24): MSB-v3 `memory.py` / `memory_fabric` = execution/evidence/provenance
+→ **Authority**): MSB-v3 `memory.py` / `memory_fabric` = execution/evidence/provenance
 memory; Obsidian vault = project/decision/knowledge memory. `memory_fabric`
 has types (`MemoryType`) + retrieval + verification state.
 

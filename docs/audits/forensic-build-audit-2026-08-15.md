@@ -437,8 +437,9 @@ auth unchanged).
 Unified task object + event-sourced lifecycle implemented (994 passed, 4
 skipped — up from 978):
 
-- **`src/msb_v3/tasks/`** — `models.py` (UnifiedTask covering the full §27
-  section map, JSON round-trip, DAG adapter), `events.py` (§28 event
+- **`src/msb_v3/tasks/`** — `models.py` (UnifiedTask covering the full
+  unified-architecture §27 section map, JSON round-trip, DAG adapter),
+  `events.py` (unified-architecture §28 event
   vocabulary + state machine + state→event mapping), `lifecycle.py`
   (durable sqlite task + event store, `create`/`emit`/`transition`/`update`,
   `recover_incomplete`, AuditChain mirror as the authoritative sequence).
@@ -452,7 +453,8 @@ skipped — up from 978):
 - **`agent/handle()` wired** — every run becomes a unified task: TASK_CREATED
   → INTENT_INTERPRETED → PLAN_CREATED → AGENT_STARTED → tool events →
   VERIFICATION_STARTED → VERIFICATION_PASSED/FAILED → EVIDENCE_RECORDED →
-  TASK_COMPLETED/FAILED; the §27 document carries intent/plan/verification/
+  TASK_COMPLETED/FAILED; the unified-architecture §27 document carries
+  intent/plan/verification/
   evidence/outcome. All lifecycle writes best-effort (never break the run).
 - **API** — `GET /agent/tasks`, `GET /agent/tasks/{id}`, `GET /agent/tasks/{id}/events`
   (operator-gated, consistent with /agent).
@@ -582,7 +584,8 @@ tests, deployed via launchd restart, live-verified.
   concurrently while `wait_for_agent` blocks (best-effort — a failed
   poll never breaks the run) and feeds each sample to an
   `on_observation` sink; the delegation path wires a lifecycle sink
-  (`OBSERVATION_RECORDED` events + the §27 `observations` section, capped
+  (`OBSERVATION_RECORDED` events + the unified-architecture §27 `observations`
+  section, capped
   at 50); `GET /agent/paseo/activity/{id}` exposes the curated timeline
   (503 when the daemon is down). Suite 1039 → **1045 passed**.
   **Live-verified** against the real daemon: a handle() run recorded two
@@ -839,7 +842,8 @@ for both kinds (`kind in ("cli", "paseo")`), and `CliAgentProvider.execute`
 replaced the final `proc.communicate()` with a streaming drain loop: each
 non-empty stdout line becomes an `{source: "cli.output", observed_at,
 update_count, content}` sample awaited into the sink (OBSERVATION_RECORDED
-event + §27 observations + SSE live channel). Total captured output stays
+event + unified-architecture §27 observations + SSE live channel). Total captured
+output stays
 bounded at `_MAX_OUTPUT_BYTES`; the timeout/kill path is unchanged; a
 sinking failure logs and continues — never breaks the worker run. Fixed a
 missing `datetime` import in providers.py (ruff caught it).
@@ -904,12 +908,12 @@ fails loudly with evidence, per the no-silent-fallback rule.
 
 ## Update — Phase 3 MoIE built: expert registry, inversion pipeline, router, evidence merger, contradiction detector, meta-critic, IDS (2026-08-15)
 
-The full Mixture-of-Inversion-Experts subsystem (spec §3, §23-25; §31
+The full Mixture-of-Inversion-Experts subsystem (spec §3, §23-25 and §31
 items 18-24) is implemented, tested, deployed and live-verified:
 
 - `moie/models.py` — Assumption (text/kind/confidence + inversion +
   risk), ExpertReport, Contradiction, IDS, MoIEDecision (verdict
-  APPROVE/CONDITIONAL/BLOCK + `blocked` = the §25 inversion-gate surface).
+  APPROVE/CONDITIONAL/BLOCK + `blocked` = the spec §25 inversion-gate surface).
 - `moie/experts.py` — Expert interface (pluggable; an LLM-backed domain
   expert only implements `analyze`) + ExpertRegistry + ten deterministic
   `DomainExpert`s (security, reliability, adversarial — the always-on
@@ -956,7 +960,7 @@ gate 503-when-unconfigured vs 401-on-mismatch.
   Seeded memory forgotten after.
 
 Phase 3 is complete. Remaining spec gaps: Agent Sandbox (P1) and
-Software Factory (P3); the §25 inversion-gate *integration* (feeding
+Software Factory (P3); the spec §25 inversion-gate *integration* (feeding
 MoIEDecision into the Governor / delegation path) is a follow-up.
 
 ## Update — Software Factory (P3) — reviewer severity fix + live verification

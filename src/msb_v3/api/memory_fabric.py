@@ -1,4 +1,4 @@
-"""Memory Fabric API — operator-gated durable agent memory (spec §4.2.2).
+"""Memory Fabric API — operator-gated durable agent memory (sovereign-architecture §4.2.2).
 
 The fabric persists what the system learned (episodic / semantic /
 procedural / architectural), tracks verification states with a full audit

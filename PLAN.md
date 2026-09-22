@@ -26,6 +26,13 @@ freeze; this block is the current state.
 | 7 — DAG closure | ❌ NOT STARTED — `agent/dag.py` carries no capability/closure code |
 | 8–19 | ❌ NOT STARTED — no declared deliverable present; no equivalent implementation found under another name, with two partial traces: `RAG_CONFLICT` exists as a state constant in `governance/decision.py` (P11's vocabulary only, no conflict detection), and `scripts/production_gate.py` is a *different* gate, not P19's |
 
+**Committed scope.** The programme this plan commits to is **Phases 0–6**, and it is
+finished except for the two open items below. **Phases 7–19 are not committed work:**
+they are kept as design analysis for work that has not started, and nothing in them
+should be read as scheduled or promised. They were named as numbered phases while the
+plan was being written; dated 2026-09-22, the numbering below Phase 6 is a backlog, not
+an itinerary.
+
 Two things in the "Throughout" section are also unbuilt: **all 15 declared
 governance metrics are absent from `src/`**, and **invariants 003–010 are not
 pinned as tests** (001 and 002 are). Beware a grep trap when checking the
@@ -345,6 +352,14 @@ change.
 **Deliverables:**
 - Updated `src/msb_v3/agent/safety.py` (or new capability-governance layer)
 - Updated `tests/agent/test_unknown_capability.py`
+
+---
+
+> **⛔ Backlog — unstarted and uncommitted (marked 2026-09-22).** Everything from here
+to "Throughout" describes work that has not begun: no deliverable in these sections
+exists in the tree, and "Phase status — reconciled 2026-09-22" at the top of this file
+records that. The analysis is kept because it is worth keeping, not because these
+phases are next. The committed programme ends at Phase 6.
 
 ---
 
@@ -726,6 +741,11 @@ change.
 ---
 
 ## What to do first (today)
+
+> **Stale heading, kept on purpose (2026-09-22): "today" meant 2026-09-02**, when this
+> plan was frozen. All four steps below were Phase 0, and Phase 0 is ✅ DONE —
+> re-verified live in "Phase status — reconciled 2026-09-22". This is the record of the
+> plan's first move, not a current instruction.
 
 1. Write baseline freeze doc.
 2. Add the nuke regression test (fails under current code).

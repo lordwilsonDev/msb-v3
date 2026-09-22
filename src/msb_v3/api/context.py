@@ -1,4 +1,4 @@
-"""Context Engine API — operator-gated layered context composition (spec §4.2.3).
+"""Context Engine API — operator-gated layered context composition (sovereign-architecture §4.2.3).
 
 Compose a token-budgeted, layered context (L0 system invariants → L7
 research) for a task, drawn from the Code Graph, Memory Fabric, skill

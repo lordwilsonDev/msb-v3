@@ -19,3 +19,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+**Note on running this build — not part of the licence text above, and not a
+condition of the grant.**
+
+The text above is the whole grant: use, copy, modify, merge, publish, distribute,
+sublicense, sell, and run it — including removing the access control described
+here.
+
+This build separately ships a **technical** access control. `msb-v3` verifies an
+owner-signed key at `~/.msb-v3/source-license` before it will start
+(`src/msb_v3/__main__.py`; opt-outs `MSB_CONTAINER=1` and `MSB_CI=1`), so an
+anonymous clone or API tarball boots nothing until a key is present. That is a
+guard in this build, not a restriction attached to the copyright grant.
+See `README.md` → "Access & licensing".

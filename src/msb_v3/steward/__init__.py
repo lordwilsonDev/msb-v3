@@ -1,4 +1,4 @@
-"""Steward — the canonical project-state layer (AIL–MoIE blueprint, Layer 02).
+"""Steward — the canonical project-state layer (AIL-MoIE Steward blueprint, Layer 02).
 
 Holds a machine-readable ``project-state.json`` schema, a deterministic
 validator, and a CLI that enforces the blueprint's core rules:

@@ -7,8 +7,11 @@ name: factory-gate
 # (the ask->retrieve->guardrail->answer->log contract) against freshly booted
 # servers. Any non-PASS leg fails the job, which blocks the push/merge.
 #
-# Coverage baseline: 72% measured (2026-08-12). The gate prevents
-# regression below 70% — raise it as coverage grows.
+# Coverage baseline: 84% measured (2026-09-22, hermetic core: 29,809 statements,
+# 4,643 missed, 3,545 passed). The gate prevents regression below 80%; the margin
+# is so an ordinary refactor does not fail the gate. Raise the floor as coverage
+# grows. (The 72% recorded here on 2026-08-12 was stale before this change — the
+# same number was written down as 84% in tests/conftest.py.)
 #
 # Requires one repo secret:
 #   MSB_MCP_SECRET  ->  the MCP_BRIDGE_SECRET the server must accept.
@@ -82,7 +85,7 @@ jobs:
           # deselected by default in tests/conftest.py so a bare `pytest` or
           # the daily gate can't swing on whether a dev server is up. This
           # workflow boots a server above to exercise that contract on purpose.
-          MSB_RUN_TIERS=1 pytest --cov=msb_v3 --cov-report=term --cov-fail-under=70 -q
+          MSB_RUN_TIERS=1 pytest --cov=msb_v3 --cov-report=term --cov-fail-under=80 -q
 
       # Full scope: types ALL three packages, not just src/msb_v3 — the
       # msb_v3 test surface blind spot cost 5 real errors

@@ -55,7 +55,8 @@ class ReplayEngine:
         """Derive a task's state from its event sequence, not its projection.
 
         Walks the events in order, records each state change, validates every
-        transition against the §28 state machine, and compares the derived
+        transition against the unified-architecture §28 state machine, and compares the
+derived
         final state to the stored projection. Returns ``consistent=False``
         when the projection has drifted from the events and ``legal=False``
         when the event sequence contains an illegal transition (both are

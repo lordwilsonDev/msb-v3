@@ -289,7 +289,8 @@ high-water mark with the baseline measured before the governed run.
 
 ## 9. Remaining gates (per the frozen manifest)
 
-**None.** All §23 minimum acceptance criteria are now met: governance (every
+**None.** All research blueprint §23 minimum acceptance criteria are now met:
+governance (every
 mutation path governed, V1–V8 suites), fail-closed (single + cascading),
 effectiveness (≥800 trials, FAR 0%, every unexpected allow investigated),
 performance (baseline + governed, N≥1,000, P50/P95/P99, CPU/memory), audit

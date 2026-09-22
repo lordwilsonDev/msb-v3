@@ -91,5 +91,8 @@ stages of one request and what each leaves behind.
 
 ---
 
-Built by [Lord Wilson](https://github.com/lordwilsonDev). MIT licensed.
+Built by [Lord Wilson](https://github.com/lordwilsonDev). **MIT licensed** — see
+[`LICENSE`](LICENSE). Separately from the licence, this build verifies an
+owner-signed key before it will start, so a bare clone boots nothing; that gate is
+a guard in the build, not a condition of the MIT grant.
 Cite via [`CITATION.cff`](CITATION.cff).

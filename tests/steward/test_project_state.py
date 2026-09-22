@@ -1,4 +1,4 @@
-"""Canonical project-state validator tests (steward Layer 02).
+"""Canonical project-state validator tests (AIL-MoIE Steward blueprint, Layer 02).
 
 Covers the blueprint's hard rules:
   R1  required sections + shapes

@@ -331,7 +331,7 @@ setup:
 	bash scripts/setup.sh
 
 # Close-out gate (close-out blueprint FR-4.2 / AC-4.1): the definition of
-# done — full suite (coverage>=70 against a booted server) + lint (ruff +
+# done — full suite (coverage>=80 against a booted server) + lint (ruff +
 # mypy all of src + claims + policy drift) + pip-audit + container /health
 # smoke. Red on any single failure. Legs skip only via explicit
 # MSB_CLOSE_OUT_SKIP=<lint,pytest,pip-audit,docker>.

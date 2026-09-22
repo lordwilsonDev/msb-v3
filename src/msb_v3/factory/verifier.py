@@ -1,4 +1,4 @@
-"""Software Factory verifier (spec §4.2.6 — verify stage; §9-10).
+"""Software Factory verifier (sovereign-architecture §4.2.6 — verify stage; §9-10).
 
 Checks each acceptance criterion against **observed evidence** — executed
 test results and worktree artifacts — never against the builder's claims.

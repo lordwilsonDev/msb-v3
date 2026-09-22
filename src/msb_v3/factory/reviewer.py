@@ -1,4 +1,4 @@
-"""Software Factory independent reviewer (spec §4.2.6 — review stage; §9).
+"""Software Factory independent reviewer (sovereign-architecture §4.2.6 — review stage; §9).
 
 The review is **independent by construction**: it never reads the
 builder's own summary. It inverts the change with MoIE and, when a code

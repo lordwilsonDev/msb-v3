@@ -77,7 +77,10 @@ jobs:
           # (or the daily factory gate) can't swing on whether a dev server
           # happens to be up. This job boots its own server above precisely
           # to exercise that contract, so it opts in deliberately.
-          MSB_RUN_TIERS=1 PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=70
+          # floor=80: measured 84% on 2026-09-22 (29,809 statements, 4,643 missed),
+          # hermetic core. The 4-point margin is so an ordinary refactor does not
+          # fail the gate; raise the floor as coverage grows.
+          MSB_RUN_TIERS=1 PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=80
 
       - name: Upload coverage
         # codecov-action@v6 has NO tokenless upload for main-repo pushes

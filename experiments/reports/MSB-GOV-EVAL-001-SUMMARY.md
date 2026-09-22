@@ -96,6 +96,6 @@ Weights frozen pre-measurement (inference .25, memory .15, planning .15, executi
 | Approval-bypass suite | 9/9 attacks denied | ✅ |
 | Dangling-approval watchdog | live daily, live ledger clean | ✅ |
 
-**Claims supported (§26):** explicit governance over defined mutation classes · tested unauthorized mutations prevented at measured rate · fail-closed for evaluated component failures · tampering detected for evaluated classes · measured capability retention · measured bounded overhead.
+**Claims supported (research blueprint §26):** explicit governance over defined mutation classes · tested unauthorized mutations prevented at measured rate · fail-closed for evaluated component failures · tampering detected for evaluated classes · measured capability retention · measured bounded overhead.
 **Not claimed:** MSB is safe / corrigible / un-compromisable / sovereign-guaranteed / aligned.
 **All gates closed.** Residual trust boundary: anchor-key compromise (out of threat model) — the same boundary every external anchor carries.

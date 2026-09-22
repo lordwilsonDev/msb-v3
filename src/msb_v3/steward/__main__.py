@@ -1,5 +1,8 @@
 """``python -m msb_v3.steward`` — canonical project-state CLI.
 
+Implements the AIL-MoIE Steward blueprint, Layer 02 (`~/Documents/Vault/
+30_Architecture/AIL-MoIE-Project-Steward/00_Blueprint-V2.md`).
+
 Commands:
     validate <state.json>
         Parse + validate a project-state document against the §7/§53/§54

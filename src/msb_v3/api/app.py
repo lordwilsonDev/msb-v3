@@ -74,8 +74,18 @@ async def lifespan(app: FastAPI):
         anchored_chain_from_env().append(
             "boot", "boot.started", {"pid": __import__("os").getpid(), "version": __version__}
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        # Still best-effort — a chain that refuses the append must never block
+        # startup — but never silent. This is the ledger's first record, and a
+        # missing boot event is exactly what the restart detection it feeds would
+        # need in order to notice anything. `pass` here made a broken chain
+        # indistinguishable from a working one.
+        logging.getLogger(__name__).warning(
+            "boot record not written to the audit chain (%s: %s) — restart "
+            "detection will not see this start",
+            type(exc).__name__,
+            exc,
+        )
 
     # The heartbeat: an in-process cron scheduler (MSB_CRON_ENABLED=0 turns
     # it off; the CLI still runs jobs on demand). Started only when enabled

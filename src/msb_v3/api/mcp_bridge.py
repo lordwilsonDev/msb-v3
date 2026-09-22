@@ -198,7 +198,7 @@ def _codegraph_rename(repo: str, name: str) -> dict[str, Any]:
     return _codegraph_store().rename_preview(repo, name)
 
 
-# --- Memory Fabric helpers (spec §4.2.2) -----------------------------------
+# --- Memory Fabric helpers (sovereign-architecture §4.2.2) -----------------------------------
 # recall is read-only; store/verify/forget/consolidate mutate the fabric.
 # The bridge is secret-gated (same as every other tool); verification and
 # consolidation are audited state changes, which is exactly what the fabric
@@ -311,7 +311,7 @@ def _mf_consolidate(args: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-# --- Context Engine helper (spec §4.2.3) -----------------------------------
+# --- Context Engine helper (sovereign-architecture §4.2.3) -----------------------------------
 
 
 def _context_compose(args: dict[str, Any]) -> dict[str, Any]:
@@ -359,7 +359,7 @@ def _moie_analyze(args: dict[str, Any]) -> dict[str, Any]:
     return decision.as_dict()
 
 
-# --- Software Factory helper (spec §4.2.6, P3) ------------------------------
+# --- Software Factory helper (sovereign-architecture §4.2.6, P3) ------------------------------
 
 
 async def _factory_run(args: dict[str, Any]) -> dict[str, Any]:
@@ -715,7 +715,7 @@ async def mcp_proxy(call: ToolCall, request: Request) -> dict[str, Any]:
                         if not repo or not name:
                             raise HTTPException(status_code=400, detail="repo and name required")
                         return {"ok": True, "tool": call.tool, "result": _codegraph_rename(repo, name)}
-                    # --- Memory Fabric (spec §4.2.2) ---
+                    # --- Memory Fabric (sovereign-architecture §4.2.2) ---
                     case "memory_store":
                         return {"ok": True, "tool": call.tool, "result": _mf_store(call.args)}
                     case "memory_recall":
