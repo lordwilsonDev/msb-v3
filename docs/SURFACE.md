@@ -45,7 +45,7 @@ subpackage is unclassified (AC-3.1).
 | `api/metrics.py` | LOAD-BEARING | `/metrics/` + Prometheus scrape — the observability spine the cockpit and console read. |
 | `api/models.py` | OPTIONAL | Model listing surface; no canonical-path caller. |
 | `api/moie.py` | OPTIONAL | MoIE analysis surface; MoIE "exists and powers the factory reviewer" (release doc — experimental tier). |
-| `api/notify.py` | LOAD-BEARING | `/notify` — the ops out-of-band alert surface (README ops section). |
+| `api/notify.py` | LOAD-BEARING | `/notify` — the ops out-of-band alert surface (README ops section). **Verified channel: Telegram** — `POST /telegram` delivers to the configured bot; the home channel (chat_id 8276057240) is Lord Wilson's Telegram and is confirmed live (2026-09-20: `hermes send --to telegram` delivered). The cron alert system (`cron/actions.py: action_alert_check`) pushes via the same path through `hermes send`. |
 | `api/openai_compat.py` | LOAD-BEARING | `/v1` OpenAI-compatible adapter — Open WebUI / OpenAI SDK path (README). |
 | `api/rag.py` | LOAD-BEARING | `/rag/search` semantic vault search — used by mcp_bridge `search_query`, cockpit find, flywheel engine. |
 | `api/redaction_middleware.py` | LOAD-BEARING | Response-body secret redaction — the *errors* channel of the H4 exposure test. Must be added **before** GZipMiddleware so it inspects plain text, not compressed bytes. |
@@ -88,6 +88,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/guardrails` | LOAD-BEARING | `fold.StepEnforcer` — wired into the governed tool loops (local clients, conversation). |
 | `msb_v3/harnesses` | OPTIONAL | Harness scaffolding; off canonical path. |
 | `msb_v3/infrastructure` | LOAD-BEARING | Centralized environment contracts, including Qdrant preflight consumed by CI harness gates. |
+| `msb_v3/integrations` | OPTIONAL | External-system adapters that keep the trust boundary on the MSB side. `openbot.py` mounts `/openbot/*` into the composition root (`api/app.py`) — supervisor lifecycle + `contract` are operator-gated, Docker stays on the supervisor and fails closed (503 without a token) — and `/openbot/run` translates an inbound message into the canonical governed `handle()` path. Pinned by `tests/integrations/test_openbot_adapter.py`. The external supervisor is not part of the canonical runtime, so OPTIONAL. |
 | `msb_v3/local_ai` | LOAD-BEARING | Ollama + llama clients (DeepSeek retired 2026-09-09, D1) — the model layer under `/chat`, `/agent`, `/v1`. |
 | `msb_v3/memory` | LOAD-BEARING | SQLite session/message memory — `/memory` + MCP bridge depend on it. |
 | `msb_v3/memory_fabric` | OPTIONAL | Memory fabric (spec §4.2.2); off canonical path. |

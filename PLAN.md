@@ -6,6 +6,93 @@
 
 ---
 
+## Phase status — reconciled 2026-09-22
+
+Reconciled against the tree by direct inspection, not memory: every declared
+deliverable path checked on disk, every declared test file run, and each
+phase's green-gate evidence re-executed live. **Declared deliverables present:
+17/33.** The 2026-09-02 ``Current baseline`` line above is the original
+freeze; this block is the current state.
+
+| Phase | Status |
+|---|---|
+| 0 — baseline freeze | ✅ DONE — re-verified live |
+| 1 — capability registry | ✅ DONE |
+| 2 — tool manifests | ⚠️ DONE except the executor wiring → **Open item 1** |
+| 3 — capability resolver | ✅ DONE (library-only, as this phase required) |
+| 4 — canonical decision object | ✅ DONE |
+| 5 — shadow mode | ✅ MET (2026-09-22) — dataset regenerated from a real corpus; enforcement still not wired → **Open item 2** |
+| 6 — tier-4 fail-closed | ✅ DONE — re-verified live |
+| 7 — DAG closure | ❌ NOT STARTED — `agent/dag.py` carries no capability/closure code |
+| 8–19 | ❌ NOT STARTED — no declared deliverable present; no equivalent implementation found under another name, with two partial traces: `RAG_CONFLICT` exists as a state constant in `governance/decision.py` (P11's vocabulary only, no conflict detection), and `scripts/production_gate.py` is a *different* gate, not P19's |
+
+Two things in the "Throughout" section are also unbuilt: **all 15 declared
+governance metrics are absent from `src/`**, and **invariants 003–010 are not
+pinned as tests** (001 and 002 are). Beware a grep trap when checking the
+latter — `tests/contracts/test_phase1_contract.py` pins `INVARIANT-003…006`,
+but those belong to the earlier v0.3.x "Phase 1 release" and mean different
+things.
+
+### Open item 1 — Phase 2 stopped at the test
+
+`tool_manifest.py` and `ToolManifestRegistry` exist, and the registry is
+consumed by the resolver (`capability_resolver.py`) and the shadow recorder.
+But the **execution path** references manifests only in a comment
+(`agent/safety.py:110`) — nothing in `agent/`, `api/`, `harnesses/` or
+`gateway/` loads one. Phase 2 task 4 says "Start as a test, **then wire into
+the executor/gate**"; only the first half landed. The phase's green gate
+("tool mismatch is detectable and blocked in test") is met, so this is a gap
+against the task, not against the gate.
+
+### Open item 2 — Phase 5's dataset had no producer (fixed); enforcement still unwired
+
+**Dataset half resolved 2026-09-22.** The 794-record dataset was not the product
+of a shadow run. Nothing in the repo deliberately produced it, and
+`ShadowRecorder`'s default root is the live `runtime/governance-shadow/` — so
+`tests/governance/test_shadow.py`, which built a bare `ShadowRecorder()` in six
+places, wrote six records into the live dataset on every `make test`. Measured:
+794 records holding **two** distinct requests under **one** `request_id` at
+**one** disagreement class, accumulated over ~132 runs (2026-09-02 →
+2026-09-22). The earlier "manual batch tool" reading of this was wrong — it was
+test-suite pollution.
+
+Fixed three ways: the suite now passes `shadow_root` in all nine constructions;
+`scripts/probe_governance_shadow_corpus.py` is the deliberate producer (drives
+the real recorder over the representative batch + the frozen gate corpus,
+archives rather than appends, and fails loudly on a degenerate dataset); and the
+polluted file is preserved as `shadow.jsonl.pre-20260922T081551`. The dataset is
+now 68 records / 68 distinct requests, and
+`docs/audits/governance-hardening-shadow-report.md` is rewritten from it.
+
+Two findings the old dataset could not have produced:
+
+- **The single-class result is structural, not a corpus problem.** Against the
+  post-Phase-0 baseline, 65/68 records land in `OLD_BLOCK_NEW_NOT_BLOCK` — the
+  old path BLOCKs every unregistered raw string, so no corpus can change it.
+  The previous report's proposed fix ("run a larger representative corpus")
+  would not have worked. The high-signal classes need the *pre-fix* baseline,
+  which no longer exists in code, so the report reconstructs it and labels it as
+  a reconstruction.
+- **The resolver resolves 16/68 (24%)** — 0 of 15 obfuscated and 0 of 5
+  multilingual claims. False-allow is 0/56, but that safety is carried by the
+  UNKNOWN → BLOCK fallback, not by resolution. Wiring this resolver into the
+  gate today would add no safety while still blocking everything but 16 entries.
+
+**Still open:** `shadow.py` has no caller in the live path — nothing in `agent/`
+invokes it — so it remains a batch producer rather than the instrumentation in
+`handle()` that task 1 specifies (task 1 allowed "or a wrapper around the
+gate"; that wrapper is not built). Raising resolver coverage is the precondition
+for enforcement, and the producer script now makes coverage measurable per
+change.
+
+> Also noted (pre-existing, not caused by this reconciliation): the source
+> blueprint cited on line 3, `docs/blueprints/governance-hardening.md`, **has
+> never existed in this repo's history**. It was first cited by the same commit
+> that added this file. Left uncorrected deliberately — rewiring the citation
+> to an existing doc would be inventing a source.
+
+---
+
 ## Guiding rules (from the blueprint, restated as implementation constraints)
 
 1. **UNKNOWN ≠ SAFE.** The smallest behavioral change is the highest-value change. Do that first.
@@ -19,7 +106,7 @@
 
 ## Phase 0 — Freeze baseline + stop the bleed (0.5-1 day)
 
-**Status:** DONE (2026-09-02).
+**Status:** DONE (2026-09-02); re-verified 2026-09-22 — the gate probes below reproduce the recorded evidence verbatim and `tests/agent/test_unknown_capability.py` passes 23/23.
 
 **What was done:**
 
@@ -55,6 +142,8 @@
 
 ## Phase 1 — Capability Registry (1-2 days)
 
+**Status:** DONE (2026-09-22) — `capability_registry.py`, `test_capability_registry.py` (16 pass) and `capability-registry-v1.md` all present; unknown capability resolves to `None`, not a default tier.
+
 **Why:** capability is the unit of authority. Start by making the currently-implicit tier table an explicit, queryable registry.
 
 **Tasks:**
@@ -88,6 +177,8 @@
 
 ## Phase 2 — Tool manifests (1 day)
 
+**Status:** DONE except the executor wiring (2026-09-22) — **see Open item 1** above. `tool_manifest.py` + `test_tool_manifest.py` (20 pass) present and consumed by the resolver; the executor/gate half of task 4 never landed.
+
 **Why:** tools must declare what they can do. Today's `TOOL_CAPABILITY` is a static dict in `safety.py`. Generalize it.
 
 **Tasks:**
@@ -119,6 +210,8 @@
 ---
 
 ## Phase 3 — Deterministic capability resolver V1 (1-2 days)
+
+**Status:** DONE (2026-09-22) — `capability_resolver.py` + `test_capability_resolver.py` (26 pass). Still library-only as this phase required: no `agent/` or `api/` caller, only `governance/shadow.py`.
 
 **Why:** you need a capability resolution step before the gate, so the system isn't gating on a raw string. V1 must be deterministic. No LLM authority.
 
@@ -157,6 +250,8 @@
 
 ## Phase 4 — Canonical decision object (0.5 day)
 
+**Status:** DONE (2026-09-22) — `decision.py` + `test_decision.py` (22 pass); UNKNOWN is a valid decision value.
+
 **Why:** the gate, the receipt, and shadow mode all need a common governance contract.
 
 **Tasks:**
@@ -180,6 +275,8 @@
 ---
 
 ## Phase 5 — Shadow mode (2-3 days)
+
+**Status:** MET (2026-09-22) — **see Open item 2** above. The dataset is regenerated from a real corpus (68 records, 68 distinct requests) by `scripts/probe_governance_shadow_corpus.py`, and the report is rewritten from those results. The recorder is still not wired into the live path.
 
 **Why:** measure disagreements before you enforce. This is where you find out whether the deterministic resolver is producing useful signal or just noise.
 
@@ -220,6 +317,8 @@
 ---
 
 ## Phase 6 — Tier-4 fail-closed (1 day)
+
+**Status:** DONE (2026-09-22); re-verified live — UNKNOWN consequential → BLOCK, and Invariant-002 is pinned in `tests/agent/test_unknown_capability.py`.
 
 **Why:** Invariant-002. Unknown consequential capability cannot execute. Start with tier 4; don't expand everywhere at once.
 

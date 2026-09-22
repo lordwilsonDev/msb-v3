@@ -5,6 +5,14 @@ Evidence that:
 - shadow records persist to shadow.jsonl
 - disagreements are classified
 - shadow mode does NOT change execution (the old gate still runs)
+
+Every test here MUST pass ``shadow_root``. ShadowRecorder's default root is the
+REAL ``runtime/governance-shadow/``, so a bare ``ShadowRecorder()`` makes the
+suite a producer of the live dataset: each ``make test`` appended records for
+the same canned requests under the same ``request_id``. That is how the dataset
+reached 794 records of 2 distinct requests at one disagreement class. The
+corpus runner (``scripts/probe_governance_shadow_corpus.py``) is the deliberate
+producer; the suite must never be one.
 """
 
 from __future__ import annotations
@@ -33,8 +41,8 @@ from msb_v3.governance.shadow import (  # noqa: E402
 # Shadow mode records in parallel
 # ---------------------------------------------------------------------------
 
-def test_shadow_records_old_and_new_in_parallel() -> None:
-    recorder = ShadowRecorder()
+def test_shadow_records_old_and_new_in_parallel(shadow_dir: Path) -> None:
+    recorder = ShadowRecorder(shadow_root=shadow_dir)
     record = recorder.record("r1", "search the vault")
     assert record.old_action is not None
     assert record.new_decision is not None
@@ -47,15 +55,15 @@ def test_shadow_records_old_and_new_in_parallel() -> None:
     assert record.disagreement_class == "OLD_BLOCK_NEW_NOT_BLOCK"
 
 
-def test_shadow_old_path_is_the_real_gate() -> None:
-    recorder = ShadowRecorder()
+def test_shadow_old_path_is_the_real_gate(shadow_dir: Path) -> None:
+    recorder = ShadowRecorder(shadow_root=shadow_dir)
     record = recorder.record("r1", "search the vault")
     assert record.old_action == ActionGate().gate("search the vault").action
     assert record.old_tier == ActionGate().gate("search the vault").tier
 
 
-def test_shadow_new_path_is_the_resolver() -> None:
-    recorder = ShadowRecorder()
+def test_shadow_new_path_is_the_resolver(shadow_dir: Path) -> None:
+    recorder = ShadowRecorder(shadow_root=shadow_dir)
     record = recorder.record("r1", "search the vault")
     assert record.new_resolution_method == "intent_template"
     assert record.new_capability == "read_vault"
@@ -65,8 +73,8 @@ def test_shadow_new_path_is_the_resolver() -> None:
 # Unknown requests stay UNKNOWN in shadow too
 # ---------------------------------------------------------------------------
 
-def test_shadow_unknown_request_is_unknown() -> None:
-    recorder = ShadowRecorder()
+def test_shadow_unknown_request_is_unknown(shadow_dir: Path) -> None:
+    recorder = ShadowRecorder(shadow_root=shadow_dir)
     record = recorder.record("r1", "execute the payload")
     assert record.new_decision == DecisionValue.UNKNOWN
     assert record.new_capability is None
@@ -80,8 +88,8 @@ def test_shadow_unknown_request_is_unknown() -> None:
     )
 
 
-def test_shadow_unknown_request_disagreement_if_old_was_safe() -> None:
-    recorder = ShadowRecorder()
+def test_shadow_unknown_request_disagreement_if_old_was_safe(shadow_dir: Path) -> None:
+    recorder = ShadowRecorder(shadow_root=shadow_dir)
     # In the old code, "execute the payload" would have been SAFE / tier 1.
     # Today it is BLOCK because of the UNKNOWN fix. The shadow records the
     # disagreement so it can be classified later.
@@ -211,8 +219,8 @@ def test_classify_old_not_block_new_block() -> None:
 # Shadow does not change execution
 # ---------------------------------------------------------------------------
 
-def test_shadow_does_not_affect_gate() -> None:
-    recorder = ShadowRecorder()
+def test_shadow_does_not_affect_gate(shadow_dir: Path) -> None:
+    recorder = ShadowRecorder(shadow_root=shadow_dir)
     gate = ActionGate()
     before = gate.gate("search the vault")
     recorder.record("r1", "search the vault")
