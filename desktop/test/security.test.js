@@ -20,6 +20,8 @@ const bridge = read('main/bridge.js');
 const sseClient = read('main/sse-client.js');
 const rendererHtml = read('renderer/index.html');
 const rendererApp = read('renderer/app.js');
+const rendererBackground = read('renderer/background.js');
+const rendererPoller = read('renderer/poller.js');
 
 test('BrowserWindow is hardened: no node, isolated, sandboxed', () => {
   assert.match(mainIndex, /nodeIntegration:\s*false/);
@@ -102,4 +104,21 @@ test('renderer has no direct network access', () => {
 test('bridge talks to loopback only', () => {
   assert.match(bridge, /http:\/\/\$\{host\}:\$\{this\.port\}/);
   assert.doesNotMatch(bridge, /https?:\/\/(?!\$\{)/); // no hard-coded external URL
+});
+
+test('background + poller: no network, no interpolated innerHTML, no inline handlers', () => {
+  for (const [name, src] of [['background.js', rendererBackground], ['poller.js', rendererPoller]]) {
+    assert.doesNotMatch(src, /\bfetch\(|XMLHttpRequest|WebSocket|EventSource|import\(/, name);
+    assert.doesNotMatch(src, /innerHTML/, name);
+    assert.doesNotMatch(src, /setAttribute\(\s*['"]on/, name);
+  }
+});
+
+test('background section is watch-only: it calls no write method', () => {
+  assert.doesNotMatch(rendererBackground, /msb\.(approve|killswitchSet|sendChat)\(/);
+});
+
+test('index.html loads poller.js and background.js before app.js', () => {
+  const order = [...rendererHtml.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(order, ['poller.js', 'background.js', 'app.js']);
 });
