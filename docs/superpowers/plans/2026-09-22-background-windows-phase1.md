@@ -1953,7 +1953,7 @@ curl -s -H "Authorization: Bearer $MSB_OPERATOR_TOKEN" http://127.0.0.1:8799/ops
 
 Expected: five subsystems, each with a `state` in ok/warn/fail/unknown, and real detail (cron `job_count` > 0, a `wake` entry, `plei` predictions count). Stop the scratch server afterwards. `MSB_CRON_ENABLED=0` stops the scratch server's scheduler from firing jobs.
 
-- [ ] **Step 4: Look at it in the cockpit**
+- [x] **Step 4: Look at it in the cockpit** (partial; see the verification note below)
 
 Point the desktop app at the scratch server (attach accepts a port; if the UI has no port field, start it with the env var the main process reads for the port. Check `MSB_PORT` in `desktop/src/main/index.js`) and open the Background tab. Confirm:
 - Overview shows five coloured tiles with summaries, and clicking a tile opens its view.
@@ -1963,6 +1963,11 @@ Point the desktop app at the scratch server (attach accepts a port; if the UI ha
 - Stopping the scratch server shows "read failed ... last good data: Ns ago" and the retry slows to 30 s.
 
 Take one screenshot of the Overview for the handoff.
+
+> **Verification note (2026-09-22).** Worktree code at `0d996d8` on a scratch server on `:8799` (live data, `MSB_CRON_ENABLED=0`), cockpit on Electron 35.7.5 started with `MSB_PORT=8799`. Attach: READY. Background → Overview rendered five tiles:
+> cron WARN "2 jobs; failed 0; overdue 0; scheduler OFF" (expected: the scratch server's scheduler was off on purpose); governance OK "kill switch off; 0 pending approvals"; automation OK "dry-run; spent $0 of $10"; wake OK "0 pending; 9 replies"; plei OK "99 predictions; 99 pairs; chain ok".
+> Screenshot taken (not committed; the repo keeps no images in `docs/`).
+> **Not checked by eye:** clicking a tile, the Scheduled jobs / Governance / Activity / Automation & wake / PLEI views, polling stopping while minimised, and the 30 s back-off after the server stops. The poller's behaviour is covered by `desktop/test/poller.test.js` (7/7), not by watching the running app. Recheck the cron tile against `:8766` (scheduler on) after merge; it should be OK there.
 
 - [x] **Step 5: Final commit (only if Steps 1–4 required fixes)**
 

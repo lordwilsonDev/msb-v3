@@ -1,7 +1,7 @@
 # Background Windows — Design
 
 **Date:** 2026-09-22
-**Status:** Approved design, not built
+**Status:** Phase 1 built on branch `docs/background-windows-spec` (`0d996d8`), not merged. Phases 2 (launchd, pop-outs) and 3 (live audit feed, Guardian) not built.
 **Scope:** `desktop/` cockpit + one new read-only msb-v3 endpoint
 **Goal:** See what is running in the background — inside the runtime and on the machine — from the desktop cockpit. Watch only.
 
