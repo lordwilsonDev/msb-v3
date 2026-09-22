@@ -58,7 +58,7 @@ async def register_tenant(payload: dict[str, Any]) -> dict[str, Any]:
         "id": tenant_id,
         "name": payload.get("name", tenant_id),
         "llm_provider": payload.get("llm_provider", "ollama"),
-        "llm_model": payload.get("llm_model", "qwen3:8b"),
+        "llm_model": payload.get("llm_model", "ornith:9b"),
         "vault_path": payload.get("vault_path", str(Path.home() / "Documents" / "Vault")),
         "metadata": payload.get("metadata", {}),
     }

@@ -169,7 +169,7 @@ def identity(repo: Path) -> dict[str, Any]:
         # Local-only after the frontier retirement (D1, 2026-09-09): the
         # model inventory is chat + embedding on the local stack.
         "models": {
-            "chat": os.getenv("OLLAMA_MODEL", "qwen3:8b"),
+            "chat": os.getenv("OLLAMA_MODEL", "ornith:9b"),
             "embedding": os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
         },
     }

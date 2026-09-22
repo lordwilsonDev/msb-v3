@@ -34,7 +34,7 @@ export MSB_REQUIRE_SECRET_REDACTION="${MSB_REQUIRE_SECRET_REDACTION:-1}"
 unset VIRTUAL_ENV
 export PATH="/opt/homebrew/Caskroom/miniforge/base/bin:$HOME/.local/bin:$PATH"
 export PYTHONPATH="$REPO/src:~/.local/lib/msb-v3"
-export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen3:8b}"
+export OLLAMA_MODEL="${OLLAMA_MODEL:-ornith:9b}"
 export MSB_DB_PATH="${MSB_DB_PATH:-$REPO/data/msb_v3.db}"
 export MSB_HOST="${MSB_HOST:-127.0.0.1}"
 export MSB_PORT="${MSB_PORT:-8766}"

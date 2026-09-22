@@ -54,7 +54,7 @@ fi
 # --- ollama (local model backend) -----------------------------------------
 if curl -sf -m 3 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   verdict PASS "ollama (http://127.0.0.1:11434)"
-  MODEL="${OLLAMA_MODEL:-qwen3:8b}"
+  MODEL="${OLLAMA_MODEL:-ornith:9b}"
   if curl -sf -m 3 "http://127.0.0.1:11434/api/tags" 2>/dev/null | grep -q "\"$MODEL\""; then
     verdict PASS "ollama model $MODEL"
   else

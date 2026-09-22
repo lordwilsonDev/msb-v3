@@ -26,7 +26,7 @@ FastAPI + SQLite + Ollama + Prometheus. No `.venv`; Python is at `/opt/homebrew/
   hook that runs the portability gate before every push
 - `make governance-status|arm|disarm|approvals|approve|reject|config` — the brakes;
   `config` prints the guard/brake/approval/flywheel settings (`--json` for verbatim)
-- `make provision-models` — idempotent `ollama pull` of qwen3:8b + nomic-embed-text
+- `make provision-models` — idempotent `ollama pull` of ornith:9b + nomic-embed-text
 - `make setup` — idempotent host rebuild from a fresh clone (deps, launchd agents, qdrant, models, /health smoke)
 - `scripts/start.sh` / `scripts/stop.sh` (`start` / `stop` / `status`) — launchd-aware server control
 - `scripts/start-qdrant.sh` (`start` / `stop` / `status`) — Qdrant control
@@ -125,7 +125,9 @@ release tag: `CLAUDE.archive.md` → "Tag ruleset".
 
 ## Defaults
 
-- Primary LLM: local Qwen3 (`qwen3:8b`) via Ollama. The remote frontier seam
+- Primary LLM: local Ornith 1.0 9B (`ornith:9b`, replaced qwen3:8b 2026-09-22) via Ollama.
+  Agent/tool-heavy workers need the 32K variant `ornith:9b-32k` (`num_ctx 32768`):
+  Ollama defaults to 4096 and silently clips prompts past half the window. The remote frontier seam
   (DeepSeek) was retired 2026-09-09 (D1) — local-only now. llama.cpp is a real,
   fully-wired alternate local backend (`_active_backend=llamacpp`), just with
   its `/system/health` probe off by default (`MSB_LLAMACPP_ENABLED=0`) unless

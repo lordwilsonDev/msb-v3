@@ -14,7 +14,7 @@ if ! ollama list >/dev/null 2>&1; then
   exit 1
 fi
 
-MODELS=(qwen3:8b nomic-embed-text)
+MODELS=(ornith:9b nomic-embed-text)
 for m in "${MODELS[@]}"; do
   if ollama list | awk '{print $1}' | grep -qx "$m"; then
     echo "[provision] $m already present — skipping"
