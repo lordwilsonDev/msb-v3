@@ -32,7 +32,7 @@ class Settings:
         default_factory=lambda: os.getenv("MSB_VAULT_STAGING_PATH") or str(_REPO_ROOT / "data" / "vault_staging")
     )
     ollama_url: str = field(default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434"))
-    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "qwen3:8b"))
+    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "ornith:9b"))
     # Absolute by default (msb_home-relative): a CWD-relative default would
     # scatter the audit chain and DBs under whatever directory a CLI or
     # script happens to be run from instead of the deployment. MSB_DB_PATH
@@ -211,7 +211,7 @@ class Settings:
     # easy toggle for when he does. Off = the ordinary OLLAMA_KEEP_ALIVE
     # default governs (adaptive, unloads when idle).
     model_keepalive_enabled: bool = field(default_factory=lambda: os.getenv("MSB_MODEL_KEEPALIVE_ENABLED", "0") == "1")
-    model_keepalive_models: str = field(default_factory=lambda: os.getenv("MSB_MODEL_KEEPALIVE_MODELS", "qwen3:8b"))
+    model_keepalive_models: str = field(default_factory=lambda: os.getenv("MSB_MODEL_KEEPALIVE_MODELS", "ornith:9b"))
     # --- Wake loop (the 5-minute resident agent) ---
     # A cron job (wake-agent, schedule below) wakes the resident agent to
     # process messages left in the wake inbox from any session; responses
