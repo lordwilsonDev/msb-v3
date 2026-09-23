@@ -363,7 +363,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 7 — DAG capability annotation + closure (2-3 days)
+## Phase 7 — DAG capability annotation + closure (2-3 days) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** individual nodes may be low-risk; the mission may be consequential.
 
@@ -400,7 +400,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 8 — Tool escape tests (1 day)
+## Phase 8 — Tool escape tests (1 day) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** governance must follow capability, not interface.
 
@@ -420,7 +420,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 9 — Taint integration (1 day)
+## Phase 9 — Taint integration (1 day) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** taint already exists, but capability decisions must incorporate it consistently.
 
@@ -442,7 +442,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 10 — Memory governance (1-2 days)
+## Phase 10 — Memory governance (1-2 days) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** memory must provide context, not unbounded authority.
 
@@ -467,7 +467,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 11 — RAG conflict governance (1-2 days)
+## Phase 11 — RAG conflict governance (1-2 days) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** conflicting evidence must become explicit conflict, not silent consensus.
 
@@ -490,7 +490,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 12 — Green-Gate expansion (1 day)
+## Phase 12 — Green-Gate expansion (1 day) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** verification must test more than "did the expected outcome occur?"
 
@@ -521,7 +521,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 13 — AIL/MoIE challenge layer (1-2 days, only after deterministic boundary is stable)
+## Phase 13 — AIL/MoIE challenge layer (1-2 days, only after deterministic boundary is stable) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** MoIE should challenge, not authorize.
 
@@ -547,7 +547,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 14 — Multi-model independence tests (1 day)
+## Phase 14 — Multi-model independence tests (1 day) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** consensus is not proof.
 
@@ -571,7 +571,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 15 — Adversarial test corpus (2-3 days)
+## Phase 15 — Adversarial test corpus (2-3 days) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** FSSR needs a corpus. The existing gate_corpus is keyword-heavy. Expand it.
 
@@ -594,7 +594,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 16 — Chaos + resource tests (1-2 days)
+## Phase 16 — Chaos + resource tests (1-2 days) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** governance must fail closed under stress, and disk/resource pressure must not silently degrade governance.
 
@@ -620,7 +620,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 17 — MemoryStore cleanup + operational cleanup (1 day)
+## Phase 17 — MemoryStore cleanup + operational cleanup (1 day) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** technical debt before declaring the governance layer production-ready.
 
@@ -642,7 +642,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 18 — Policy versioning + change control + receipt upgrade (2 days)
+## Phase 18 — Policy versioning + change control + receipt upgrade (2 days) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** every decision must be reconstructable against the exact governance configuration that produced it.
 
@@ -671,7 +671,7 @@ phases are next. The committed programme ends at Phase 6.
 
 ---
 
-## Phase 19 — Final production gate (1 day)
+## Phase 19 — Final production gate (1 day) [backlog — not scheduled, dated 2026-09-22]
 
 **Why:** a falsifiable definition of "governance-hardened."
 
