@@ -85,7 +85,7 @@ jobs:
           # deselected by default in tests/conftest.py so a bare `pytest` or
           # the daily gate can't swing on whether a dev server is up. This
           # workflow boots a server above to exercise that contract on purpose.
-          MSB_RUN_TIERS=1 pytest --cov=msb_v3 --cov-report=term --cov-fail-under=80 -q
+          MSB_RUN_TIERS=1 pytest --cov=msb_v3 --cov-report=term --cov-fail-under=82 -q
 
       # Full scope: types ALL three packages, not just src/msb_v3 — the
       # msb_v3 test surface blind spot cost 5 real errors

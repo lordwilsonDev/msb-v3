@@ -80,7 +80,7 @@ jobs:
           # floor=80: measured 84% on 2026-09-22 (29,809 statements, 4,643 missed),
           # hermetic core. The 4-point margin is so an ordinary refactor does not
           # fail the gate; raise the floor as coverage grows.
-          MSB_RUN_TIERS=1 PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=80
+          MSB_RUN_TIERS=1 PYTHONPATH=src pytest tests/ -v --cov=msb_v3 --cov-report=xml --cov-report=json --cov-fail-under=82
 
       - name: Upload coverage
         # codecov-action@v6 has NO tokenless upload for main-repo pushes
