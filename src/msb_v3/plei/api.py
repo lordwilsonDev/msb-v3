@@ -465,6 +465,31 @@ def _wire_component(name: str, module: str, attribute: str, *, consequence: str)
         return None
 
 
+def _prov_dict_or_none(provider_sel: Any) -> dict[str, Any] | None:
+    """Shape ``provider_sel`` for the WorkPlan.
+
+    Degraded (None) is allowed — the plan runs without a provider choice — but
+    it must never be *silent*: a shaping failure here is governance wiring
+    failing quietly, so the log carries the cause and the consequence, the
+    same treatment ``_wire_component`` and the provider-registry site give
+    theirs.
+    """
+    try:
+        return {
+            "primary": {"provider_id": provider_sel.primary.provider_id} if provider_sel.primary else None,
+            "fallbacks": [{"provider_id": f.provider_id} for f in provider_sel.fallbacks],
+            "rationale": provider_sel.rationale,
+        }
+    except Exception as exc:
+        logger.warning(
+            "provider selection dropped from the WorkPlan (%s: %s) — the plan "
+            "will run with no provider choice",
+            type(exc).__name__,
+            exc,
+        )
+        return None
+
+
 def _execute_prepare_sync(root: Path) -> tuple[Any, Any, Any, dict[str, Any], Any, Any, Any] | None:
     """Steps 1-4: full PLEI analysis, decision pipeline, WorkPlan, and governed-bridge
     setup — all synchronous. Returns None when there's no actionable recommendation.
@@ -518,14 +543,7 @@ def _execute_prepare_sync(root: Path) -> tuple[Any, Any, Any, dict[str, Any], An
     }
     prov_dict = None
     if provider_sel:
-        try:
-            prov_dict = {
-                "primary": {"provider_id": provider_sel.primary.provider_id} if provider_sel.primary else None,
-                "fallbacks": [{"provider_id": f.provider_id} for f in provider_sel.fallbacks],
-                "rationale": provider_sel.rationale,
-            }
-        except Exception:
-            prov_dict = None
+        prov_dict = _prov_dict_or_none(provider_sel)
 
     plan = build_work_plan(na_dict, prov_dict)
 
