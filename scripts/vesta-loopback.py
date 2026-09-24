@@ -46,7 +46,7 @@ def main() -> int:
     try:
         with LoopbackDevice(**kwargs) as device:
             result = device.probe(pairing_code, args.query)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — reported on stderr and exits non-zero
         print(f"loopback probe failed: {exc}", file=sys.stderr)
         return 1
 

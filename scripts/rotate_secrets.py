@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         _restart_msb()
         print("msb-v3 restart initiated")
         return 0
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — reported on stderr and exits non-zero
         print(f"error: {e}", file=sys.stderr)
         return 1
 

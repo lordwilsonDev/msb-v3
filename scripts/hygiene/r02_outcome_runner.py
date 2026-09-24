@@ -78,7 +78,7 @@ def _infra_available() -> bool:
         if httpx.get(f"{ollama}/api/tags", timeout=2).status_code != 200:
             return False
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreachable service is reported as not healthy
         return False
 
 

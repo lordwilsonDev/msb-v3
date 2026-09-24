@@ -117,10 +117,10 @@ def http_request(method: str, path: str, payload: dict | None = None) -> tuple[i
     except HTTPError as e:
         try:
             body = json.loads(e.read().decode('utf-8', errors='ignore'))
-        except Exception:
+        except Exception:  # noqa: BLE001 — an unparseable error body is recorded as empty
             body = {}
         return e.code, body
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any transport failure is the measurement itself
         return 0, str(e)
 
 
@@ -142,7 +142,7 @@ def listener_pids() -> list[int]:
             ['lsof', '-t', f'-iTCP:{PORT}', '-sTCP:LISTEN'],
             capture_output=True, text=True, timeout=10,
         ).stdout.strip()
-    except Exception:
+    except Exception:  # noqa: BLE001 — a failed lookup means nothing found
         return []
     return [int(p) for p in out.splitlines() if p.strip().isdigit()]
 
@@ -164,7 +164,7 @@ def supervisor_present() -> bool:
             ['pgrep', '-f', 'scripts/run.sh'],
             capture_output=True, text=True, timeout=10,
         ).stdout.strip()
-    except Exception:
+    except Exception:  # noqa: BLE001 — a failed lookup means nothing found
         return False
     pids = [p for p in out.splitlines() if p.strip().isdigit()]
     if not pids:
@@ -178,7 +178,7 @@ def supervisor_present() -> bool:
             for line in cwd_out.splitlines():
                 if line.startswith('n') and Path(line[1:]).resolve() == REPO.resolve():
                     return True
-        except Exception:
+        except Exception:  # noqa: BLE001 — a failed lookup means nothing found
             continue
     return False
 
@@ -309,7 +309,7 @@ def main() -> int:
             record['recovery'] = 'restart did not preserve API-visible state (see errors)'
     except SystemExit:
         raise
-    except Exception as e:  # defensive
+    except Exception as e:  # defensive  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
         record['verdict'] = 'fail'
         record['errors'].append(str(e))
     finally:

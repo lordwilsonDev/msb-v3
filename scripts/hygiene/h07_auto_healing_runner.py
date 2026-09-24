@@ -178,7 +178,7 @@ def main() -> int:
             if not repair_event_auditable:
                 record['errors'].append('repair event not auditable in the chain')
         record['verdict'] = 'pass' if (tamper_detected and heal_succeeded and repair_event_auditable) else 'fail'
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
         record['verdict'] = 'fail'
         record['errors'].append(str(e))
     finally:

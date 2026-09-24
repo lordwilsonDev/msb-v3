@@ -21,7 +21,7 @@ def main():
     try:
         health = requests.get(f"{BASE}/health", timeout=5).json()
         ok = health.get("ok") is True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         print(f"  health error: {e}")
     check("msb-v3 running", ok)
@@ -30,7 +30,7 @@ def main():
     try:
         r = requests.get(f"{BASE}/tenants/tenants", timeout=5)
         ok = r.status_code == 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         print(f"  tenants error: {e}")
     check("GET /tenants/tenants", ok)
@@ -47,7 +47,7 @@ def main():
         r = requests.post(f"{BASE}/tenants/tenants/register", json=test_tenant, timeout=5)
         ok = r.status_code == 200
         data = r.json() if ok else {}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         data = {}
         print(f"  register error: {e}")
@@ -58,7 +58,7 @@ def main():
         r = requests.get(f"{BASE}/tenants/tenants/test-tenant-001", timeout=5)
         ok = r.status_code == 200
         data = r.json() if ok else {}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         data = {}
         print(f"  retrieve error: {e}")
@@ -74,7 +74,7 @@ def main():
         )
         ok = r.status_code == 200
         data = r.json() if ok else {}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         print(f"  chat error: {e}")
     check("POST /chat with X-Tenant-ID", ok, f"model={data.get('payload',{}).get('model','?')}")
@@ -84,7 +84,7 @@ def main():
         r = requests.get(f"{BASE}/memory/test-tenant-001", timeout=5)
         ok = r.status_code == 200
         data = r.json() if ok else {}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         data = {}
         print(f"  memory error: {e}")
@@ -94,7 +94,7 @@ def main():
     try:
         dirs = sorted([d.name for d in VAULT.iterdir() if d.is_dir() and not d.name.startswith('.')])
         ok = len(dirs) >= 10
-    except Exception:
+    except Exception:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         dirs = []
     check("Vault directory structure", ok, f"{len(dirs)} top-level dirs")
@@ -103,7 +103,7 @@ def main():
     try:
         r = requests.get("http://localhost:5678/healthz", timeout=5)
         ok = r.status_code == 200
-    except Exception:
+    except Exception:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
     check("n8n running", ok)
 
@@ -112,7 +112,7 @@ def main():
         r = requests.get("http://localhost:11434/api/tags", timeout=5)
         ok = r.status_code == 200
         models = r.json().get("models", []) if ok else []
-    except Exception:
+    except Exception:  # noqa: BLE001 — any failure is reported as a failed check
         ok = False
         models = []
     check("Ollama running", ok, f"{len(models)} models")

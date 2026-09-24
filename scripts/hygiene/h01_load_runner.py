@@ -86,7 +86,7 @@ def fire(n: int) -> tuple[int, int]:
             code = resp.status
     except HTTPError as e:
         code = e.code
-    except Exception:
+    except Exception:  # noqa: BLE001 — any transport failure is the measurement itself
         code = 0  # timeout / transport failure
     return code, int((time.perf_counter() - t0) * 1000)
 
@@ -145,7 +145,7 @@ def main() -> int:
             record['recovery'] = 'server remained reachable; failing requests need review'
         else:
             record['recovery'] = 'all requests succeeded under burst load'
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
         record['verdict'] = 'fail'
         record['errors'].append(str(e))
     finally:

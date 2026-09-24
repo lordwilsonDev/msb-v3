@@ -43,8 +43,8 @@ async def _relay_client_to_upstream(reader: asyncio.StreamReader, uwriter: async
     finally:
         try:
             uwriter.close()
-        except Exception:
-            pass
+        except OSError:
+            pass  # closing a socket that already failed; nothing left to report
 
 
 async def _relay_upstream_to_client(
@@ -80,8 +80,8 @@ async def _relay_upstream_to_client(
     finally:
         try:
             writer.close()
-        except Exception:
-            pass
+        except OSError:
+            pass  # closing a socket that already failed; nothing left to report
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, args) -> None:
@@ -91,8 +91,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         # Upstream unreachable — surface the failure to the client.
         try:
             writer.close()
-        except Exception:
-            pass
+        except OSError:
+            pass  # closing a socket that already failed; nothing left to report
         return
 
     await asyncio.gather(
@@ -101,8 +101,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     )
     try:
         await writer.wait_closed()
-    except Exception:
-        pass
+    except OSError:
+        pass  # peer already gone; the relay above has finished either way
 
 
 async def main(args) -> None:

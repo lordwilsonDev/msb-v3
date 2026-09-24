@@ -383,7 +383,7 @@ def execute(
         else:
             try:
                 rc, stdout, stderr, evidence = leg.runner(repo)
-            except Exception as exc:  # the gate must record an unexpected leg failure
+            except Exception as exc:  # the gate must record an unexpected leg failure  # noqa: BLE001 — a crashed runner is recorded as that stage failing
                 rc, stdout, stderr, evidence = 1, "", f"runner error: {type(exc).__name__}: {exc}", []
             detail = bounded("\n".join(part for part in (stdout, stderr) if part).strip())
             status = classify_result(leg, rc, detail, stderr, waivers)

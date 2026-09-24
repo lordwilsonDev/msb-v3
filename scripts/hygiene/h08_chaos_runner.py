@@ -148,7 +148,7 @@ def request_through(base: str, path: str, timeout_s: int = 30, read_body: bool =
     except IncompleteRead as e:
         latency = int((time.perf_counter() - start) * 1000)
         return 0, latency, f'INCOMPLETE: {e}'
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any transport failure is the measurement itself
         latency = int((time.perf_counter() - start) * 1000)
         return 0, latency, str(e)[:120]
 
@@ -165,7 +165,7 @@ def register_through(base: str, probe_id: str, claim: str = 'chaos recovery prob
             return resp.status, ''
     except HTTPError as e:
         return e.code, ''
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any transport failure is the measurement itself
         return 0, str(e)[:120]
 
 
@@ -178,7 +178,7 @@ def retrieve_through(base: str, probe_id: str) -> tuple[int, str]:
             return resp.status, body
     except HTTPError as e:
         return e.code, e.read().decode('utf-8', errors='ignore')[:200]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — any transport failure is the measurement itself
         return 0, str(e)[:120]
 
 
@@ -187,8 +187,10 @@ def purge_through(base: str, probe_id: str) -> None:
         req = Request(f'{base}/business/purge/{probe_id}', method='DELETE',
                       headers={'x-mcp-secret': SECRET, 'authorization': f'Bearer {OPERATOR_TOKEN}'})
         urlopen(req, timeout=15)
-    except Exception:
-        pass
+    except OSError as exc:  # URLError/HTTPError/timeouts are all OSError
+        # Not fatal to the run, but a failed purge leaves the probe's data in
+        # the live store, so say so instead of hiding it.
+        print(f"warning: purge of probe {probe_id} failed: {exc}", file=sys.stderr)
 
 
 def start_proxy(fault: str, ms: int, truncate_bytes: int, port: int) -> subprocess.Popen:
@@ -226,8 +228,10 @@ def main() -> int:
             ['pkill', '-f', 'h08_chaos_proxy.py'],
             capture_output=True, timeout=10,
         )
-    except Exception:
-        pass
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        # Best effort: a stale proxy only matters if it holds the port, and
+        # the bind below will fail loudly in that case.
+        print(f"warning: could not clear stale proxies: {exc}", file=sys.stderr)
     time.sleep(0.3)
 
     try:
@@ -367,7 +371,7 @@ def main() -> int:
                         f'{n}: recovery failed — health={r.get("recovered_health")} '
                         f'register={r.get("recovery_register")} retrieve={r.get("recovery_retrieve")}'
                     )
-    except Exception as e:  # defensive
+    except Exception as e:  # defensive  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
         record['verdict'] = 'fail'
         record['errors'].append(str(e))
     finally:
@@ -377,8 +381,8 @@ def main() -> int:
         for p in proxies:
             try:
                 p.kill()
-            except Exception:
-                pass
+            except OSError:
+                pass  # proxy already exited
         purge_through(BASE_URL, big_probe_id)
         for i in range(len(SCENARIOS)):
             purge_through(BASE_URL, f'h08_recovery_probe_{run_ts}_{i}')

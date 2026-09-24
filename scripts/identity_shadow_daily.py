@@ -99,7 +99,7 @@ def _read_json(path: Path) -> Dict[str, Any]:
     """Parse a capture, or {} — an unreadable capture is a recorded fact, not a crash."""
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable capture is a recorded fact, not a crash
         return {}
     return data if isinstance(data, dict) else {}
 

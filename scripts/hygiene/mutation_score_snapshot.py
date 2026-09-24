@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -69,8 +70,8 @@ def build_snapshot() -> dict:
         if OUT_PATH.exists():
             try:
                 return json.loads(OUT_PATH.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except (OSError, ValueError) as exc:  # unreadable or corrupt artifact
+                print(f"warning: ignoring unreadable {OUT_PATH}: {exc}", file=sys.stderr)
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "generator": "scripts/hygiene/mutation_score_snapshot.py",

@@ -166,7 +166,7 @@ try:
         record['verdict'] = 'pass' if tamper_detected else 'fail'
         if not tamper_detected:
             record['errors'].append('tampered truth entity was accepted after checksum mismatch')
-except Exception as e:
+except Exception as e:  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
     record['verdict'] = 'fail'
     record['errors'].append(str(e))
 finally:

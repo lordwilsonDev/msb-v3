@@ -109,7 +109,7 @@ def http_post(payload: dict[str, Any], path: str) -> tuple[int, str, int]:
     except HTTPError as e:
         body = e.read().decode('utf-8', errors='ignore')
         code = e.code
-    except Exception as e:  # transport-level failure
+    except Exception as e:  # transport-level failure  # noqa: BLE001 — any transport failure is the measurement itself
         body, code = str(e), 0
     latency = int((dt.datetime.now(dt.timezone.utc) - start).total_seconds() * 1000)
     return code, body, latency
@@ -120,7 +120,7 @@ def health_ok() -> tuple[bool, int]:
     try:
         with urlopen(req, timeout=10) as resp:
             return resp.status == 200, resp.status
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreachable service is reported as not healthy
         return False, 0
 
 
@@ -198,7 +198,7 @@ def main() -> int:
             raw = p.read_text(encoding='utf-8', errors='replace')
             try:
                 data = json.loads(raw)
-            except Exception:
+            except Exception:  # noqa: BLE001 — an unreadable file is recorded as a torn write
                 torn_writes.append(str(p))
                 continue
             stored_checksum = data.get('checksum', '')
@@ -249,7 +249,7 @@ def main() -> int:
             record['errors'].append(f'torn writes detected: {torn_writes}')
         if not no_checksum_violation:
             record['errors'].append(f'checksum violations detected: {checksum_violations}')
-    except Exception as e:  # defensive
+    except Exception as e:  # defensive  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
         record['verdict'] = 'fail'
         record['errors'].append(str(e))
     finally:

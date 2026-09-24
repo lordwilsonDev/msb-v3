@@ -29,7 +29,7 @@ def _data_dir() -> Path:
         from msb_v3.core.config import settings
 
         return Path(settings.db_path).resolve().parent
-    except Exception:
+    except Exception:  # noqa: BLE001 — falls back to the repo data dir when config cannot load
         return (Path(__file__).resolve().parents[1] / "data").resolve()
 
 

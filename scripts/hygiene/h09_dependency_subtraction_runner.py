@@ -161,7 +161,7 @@ try:
         record['errors'].append('service crashed or became unreachable during dependency subtraction')
     if not recovered:
         record['errors'].append('service did not recover after restoring dependency')
-except Exception as e:
+except Exception as e:  # noqa: BLE001 — any runner error is recorded as a FAIL verdict
     record['verdict'] = 'fail'
     record['errors'].append(str(e))
 finally:
