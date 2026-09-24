@@ -10,12 +10,15 @@ Schedulers are immutable snapshots of calibration state.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 from msb_v3.plei.calibration.error import ErrorMetrics
 from msb_v3.plei.calibration.store import CalibrationStore
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -96,9 +99,10 @@ def compute_schedule(
                     if sched.days_since_last >= time_threshold_days:
                         sched.time_triggered = True
                 except (ValueError, TypeError):
+                    # An unparseable timestamp is not a calibration trigger.
                     pass
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — one trigger must not void the schedule
+            logger.warning("calibration time-trigger unavailable: %s", exc)
 
     # ── Drift trigger ──
     if previous_error is not None and pairs:

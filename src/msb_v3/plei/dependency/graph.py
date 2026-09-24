@@ -112,7 +112,11 @@ def build_dependency_graph(project_root: str | Path) -> DependencyGraph:
         for f in py_files:
             try:
                 total_lines += len(f.read_text().split("\n"))
-            except Exception:
+            except (OSError, UnicodeDecodeError):
+                # A file that cannot be read is not counted. Narrowed rather
+                # than caught broadly: a read failure is the only thing
+                # expected here, and anything else should surface rather than
+                # quietly deflate the line count.
                 pass
             all_imports.update(_collect_imports(f))
 

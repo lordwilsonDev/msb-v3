@@ -7,11 +7,14 @@ reports. Gracefully degrades when the server isn't running — marks UNKNOWN.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from msb_v3.plei.provenance import Provenance, Provenanced
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -49,8 +52,12 @@ def ingest_evidence(project_root: str | Path) -> EvidenceFacts:
                 except json.JSONDecodeError:
                     pass
             facts.audit_recent = Provenanced.observed(recent, str(audit_log.relative_to(root)))
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — bad evidence must not void ingestion
+            # The audit chain is one evidence layer among several, so losing
+            # it degrades the twin to UNKNOWN instead of failing the run. It
+            # is logged because a silent loss leaves the twin looking
+            # complete when it is missing a layer.
+            logger.warning("audit.jsonl evidence not ingested: %s", exc)
 
     # Ops audits
     audit_dir = root / "audit"

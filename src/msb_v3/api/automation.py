@@ -1,7 +1,8 @@
 """Automation router — the brain's control surface.
 
-POST /automation/create {description, approve?} plans a request with
-DeepSeek and executes it under the runtime's discipline: dry-run by default
+POST /automation/create {description, approve?} plans a request with the
+local model (the frontier seam was retired 2026-09-09, D1) and executes it
+under the runtime's discipline: dry-run by default
 (approve=true is the operator token acting as approval — same rule as the
 cron requires_approval jobs), spend capped by MSB_AUTOMATION_BUDGET_USD,
 every attempt recorded in the manifest. GET /automation/manifest is the

@@ -100,8 +100,9 @@ class Settings:
     # retired 2026-09-09 (decision D1, docs/blueprints/2026-09-09-production-hardening.md).
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
     # Anthropic native Messages API (the api.anthropic provider). Strictly
-    # ANTHROPIC_API_KEY — no fallback to OPENAI_API_KEY: unlike DeepSeek,
-    # Anthropic's wire protocol is not OpenAI-compatible, so sharing the key
+    # ANTHROPIC_API_KEY — no fallback to OPENAI_API_KEY: unlike the retired
+    # DeepSeek seam (D1, 2026-09-09), Anthropic's wire protocol is not
+    # OpenAI-compatible, so sharing the key
     # would fail confusingly at the HTTP layer, not degrade gracefully.
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
     anthropic_base_url: str = field(default_factory=lambda: os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"))

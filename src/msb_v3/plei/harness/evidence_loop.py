@@ -16,6 +16,7 @@ observes the EFFECT of its own decisions, closing the loop.
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -23,6 +24,8 @@ from typing import Any
 
 from msb_v3.plei.harness.bridge import ExecutionReport
 from msb_v3.plei.twin import ProjectTwin
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -226,8 +229,15 @@ def _auto_record_outcome(
             error_note=report.review_summary[:200] if report.review_summary else "",
         )
         store.record_outcome(outcome)
-    except Exception:
-        pass  # calibration recording must never break the evidence loop
+    except Exception as exc:  # noqa: BLE001 — recording must never fail the loop
+        # Deliberate swallow, but a *visible* one. This runs after execution
+        # has already succeeded, so a recording error must not turn a good run
+        # into an error. It is logged because a silently missing outcome makes
+        # the calibration set incomplete — and an incomplete set is the one
+        # failure this phase cannot detect from its own numbers.
+        logger.warning(
+            "calibration outcome not recorded (prediction pairing skipped): %s", exc
+        )
 
 
 def loop_result_as_dict(loop: LoopResult) -> dict[str, Any]:

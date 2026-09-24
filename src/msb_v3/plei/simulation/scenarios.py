@@ -2,7 +2,7 @@
 
 The what-if engine answers questions like:
     "What if we fix the top debt item?"
-    "What if provider DeepSeek goes down for 24h?"
+    "What if the local inference backend goes down for 24h?"
     "What if we close 2 of the 6 capability gaps?"
 
 Each scenario modifies one or more simulation variables and re-runs the

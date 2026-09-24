@@ -193,9 +193,11 @@ class QdrantVectorStore(_EmbeddingMixin, VectorStore):
                 collection_name=collection,
                 vectors_config={"size": 768, "distance": "Cosine"},
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 — qdrant raises one type for two causes
             # Already-exists and reachability errors both surface here; an
-            # unreachable server fails again on the subsequent upsert.
+            # unreachable server fails again on the subsequent upsert, which
+            # is the real check. Narrowing this would couple the store to
+            # qdrant's exception taxonomy for no gain.
             pass
 
     async def index(self, documents: Iterable[VectorDocument]) -> int:

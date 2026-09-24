@@ -1,0 +1,123 @@
+{
+  "what": "The BLE001 backlog. Every file here has blind `except Exception:` catches whose justification is not yet written down, and is suppressed per-file in pyproject.toml's [tool.ruff.lint.per-file-ignores] instead of by turning the rule off. Losing a row here means losing the suppression, so ruff fails: the list can only shrink by triage or grow by a deliberate edit to this file.",
+  "measured": "2026-09-23",
+  "provenance": "Initial bulk classification, 2026-09-23, from an external audit. Grouped by the idiom the catches serve, not by a per-site reading of all 152. The basis is measured rather than assumed: an AST pass over these files found 193 blind catches, of which 192 already log, re-raise, or convert to a reported value, and exactly 1 discards silently (retrieval/vector_store.py:196, which carries an inline reason). Groups sampled and confirmed: api/research.py, tools/executors.py, observability/audit.py, wrongness/checks.py. Refine per-file during burn-down.",
+  "ceilings": {
+    "files": 60,
+    "sites": 152,
+    "note": "The ratchet. Exceeding either fails the gate; lower them when you burn the backlog down (`--update` rewrites them from live measurement)."
+  },
+  "class_exemptions": {
+    "tests/**": "Not a backlog. A test that provokes a failure has to catch it: capturing a worker thread's exception into a result dict in order to assert on it (chaos), falling back to raw bytes when a server answers non-JSON (the security helpers), and deliberately feeding an invalid migration to prove the schema version does not advance (db). BLE001 asks 'is this catch a considered decision?' — in these tests the assertion is the answer, so 21 rows would manufacture debt that does not exist."
+  },
+  "groups": [
+    {
+      "id": "api",
+      "reason": "HTTP handlers: the catch converts a failure into a structured response, and usually logs it, so a missing artifact or bad request returns JSON rather than escaping as an unhandled 500.",
+      "files": [
+        "src/msb_v3/api/agent.py",
+        "src/msb_v3/api/app.py",
+        "src/msb_v3/api/chat.py",
+        "src/msb_v3/api/conversation.py",
+        "src/msb_v3/api/dashboard.py",
+        "src/msb_v3/api/flywheel.py",
+        "src/msb_v3/api/governance.py",
+        "src/msb_v3/api/health.py",
+        "src/msb_v3/api/home.py",
+        "src/msb_v3/api/mcp_bridge.py",
+        "src/msb_v3/api/notify.py",
+        "src/msb_v3/api/rag.py",
+        "src/msb_v3/api/research.py",
+        "src/msb_v3/api/skill_router.py",
+        "src/msb_v3/api/system.py",
+        "src/msb_v3/api/tenants.py"
+      ]
+    },
+    {
+      "id": "governed-loop",
+      "reason": "The governed loop: a step-level failure is recorded as a step result so one bad step does not abort the run, and the run's own evidence/audit recording must never fail the loop it is recording.",
+      "files": [
+        "src/msb_v3/agent/execution_loop.py",
+        "src/msb_v3/agent/handle.py",
+        "src/msb_v3/agent/intent.py",
+        "src/msb_v3/agent/planner.py",
+        "src/msb_v3/agent/safety.py"
+      ]
+    },
+    {
+      "id": "fail-closed-control-plane",
+      "reason": "Control-plane guards: an unreadable or failing guard must resolve to deny/halt, never to allow. The catch is part of failing closed, not an escape from it.",
+      "files": [
+        "src/msb_v3/governance/approval.py",
+        "src/msb_v3/governance/governor.py",
+        "src/msb_v3/governance/killswitch.py",
+        "src/msb_v3/governance/tool_manifest.py",
+        "src/msb_v3/triumvirate/guardian_scanner.py",
+        "src/msb_v3/triumvirate/hardware_sovereignty.py",
+        "src/msb_v3/triumvirate/mission_anchor.py"
+      ]
+    },
+    {
+      "id": "tools-and-harnesses",
+      "reason": "Tool and harness execution: a failing tool returns a `[tool-error] ...` string or a failed step result instead of raising into the loop that invoked it.",
+      "files": [
+        "src/msb_v3/tools/executors.py",
+        "src/msb_v3/tools/runtime.py",
+        "src/msb_v3/harnesses/base.py",
+        "src/msb_v3/harnesses/research_assistant.py"
+      ]
+    },
+    {
+      "id": "best-effort-analysis",
+      "reason": "Best-effort analysis: a probe that cannot read one source degrades a single field to UNKNOWN, leaving the twin partial rather than failing the analysis outright.",
+      "files": [
+        "src/msb_v3/plei/api.py",
+        "src/msb_v3/plei/orchestrator.py",
+        "src/msb_v3/plei/calibration/store.py",
+        "src/msb_v3/plei/engineering/skill_taxonomy.py",
+        "src/msb_v3/plei/harness/bridge.py",
+        "src/msb_v3/plei/ingestion/dependencies.py",
+        "src/msb_v3/plei/ingestion/evidence.py",
+        "src/msb_v3/plei/ingestion/repository.py",
+        "src/msb_v3/plei/ingestion/tests.py",
+        "src/msb_v3/plei/risk/report.py"
+      ]
+    },
+    {
+      "id": "durable-state-and-telemetry",
+      "reason": "Durable state and telemetry: a read or write retries and then reports, because losing a metric, a receipt, or a log line must not break the caller.",
+      "files": [
+        "src/msb_v3/core/calibration.py",
+        "src/msb_v3/db/sqlite.py",
+        "src/msb_v3/evidence/receipt.py",
+        "src/msb_v3/memory_fabric/store.py",
+        "src/msb_v3/observability/audit.py",
+        "src/msb_v3/observability/audit_log.py"
+      ]
+    },
+    {
+      "id": "optional-local-capability",
+      "reason": "Optional local capability: an absent model backend, microphone, or audio device is an expected condition on a headless machine, so the feature disables itself rather than propagating.",
+      "files": [
+        "src/msb_v3/local_ai/llama_client.py",
+        "src/msb_v3/local_ai/ollama.py",
+        "src/msb_v3/speech/pipeline.py",
+        "src/msb_v3/speech/stream.py"
+      ]
+    },
+    {
+      "id": "mixed-surfaces",
+      "reason": "Mixed surfaces: each catch converts an expected failure into a reported value (a degraded check result, a None, a partial report) rather than swallowing it. This is the least homogeneous group — triage it first, and expect it to dissolve into the groups above.",
+      "files": [
+        "src/msb_v3/business/registry.py",
+        "src/msb_v3/conversation/producer.py",
+        "src/msb_v3/fabric/context_engine.py",
+        "src/msb_v3/flywheel/engine.py",
+        "src/msb_v3/ops/repair.py",
+        "src/msb_v3/retrieval/vector_store.py",
+        "src/msb_v3/wrongness/__main__.py",
+        "src/msb_v3/wrongness/checks.py"
+      ]
+    }
+  ]
+}

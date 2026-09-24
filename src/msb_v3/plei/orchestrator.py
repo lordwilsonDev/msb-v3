@@ -7,6 +7,7 @@ complete model.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,8 @@ from msb_v3.plei.twin import (
     ProjectLifecycle,
     ProjectTwin,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def ingest_all(project_root: str | Path) -> ProjectTwin:
@@ -362,8 +365,11 @@ def _extract_pyproject_version(root: Path) -> str:
         import tomllib
         data = tomllib.loads((root / "pyproject.toml").read_text())
         return str(data.get("project", {}).get("version", "unknown"))
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — "unknown" is a valid answer here
+        # Degrading to "unknown" is the intended fallback, but the reason is
+        # still recorded: a version that silently reads "unknown" is a stated
+        # fact that is wrong, which is worse than not stating it at all.
+        logger.debug("pyproject version unreadable, reporting unknown: %s", exc)
     return "unknown"
 
 
@@ -413,8 +419,12 @@ def _simulation_section(
     # Auto-record prediction for Phase 7 calibration
     try:
         _auto_record_prediction(risk_dict, mc_result, forecast, project_name="msb-v3")
-    except Exception:
-        pass  # calibration recording must never break the analysis
+    except Exception as exc:  # noqa: BLE001 — recording must never fail the analysis
+        # Mirrors the swallow in harness/evidence_loop.py: the analysis has
+        # already succeeded and must not fail on a recording error, but the
+        # loss is logged because PLEI calibrates against these predictions —
+        # an unrecorded one is invisible to the calibration phase.
+        logger.warning("calibration prediction not recorded: %s", exc)
 
     return {
         "monte_carlo": monte_carlo_as_dict(mc_result),

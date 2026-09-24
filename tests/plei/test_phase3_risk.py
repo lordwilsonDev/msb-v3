@@ -11,6 +11,7 @@ from msb_v3.plei.dependency.graph import (
     dependency_graph_as_dict,
 )
 from msb_v3.plei.orchestrator import ingest_all
+from msb_v3.plei.provenance import Provenanced
 from msb_v3.plei.risk.debt_model import (
     DebtReport,
     debt_report_as_dict,
@@ -129,6 +130,26 @@ def test_failure_report_as_dict_is_json_safe():
     json.dumps(d)
     assert "modes" in d
     assert "risk_distribution" in d
+
+
+def test_failure_model_ignores_the_retired_circuit_probe():
+    """Locks Finding 2 (retire stale provider refs).
+
+    The ``deepseek_circuit`` probe was deleted with the frontier seam
+    (D1, 2026-09-09): no producer writes that key, so a twin carrying it must
+    not fabricate a provider-outage mode naming the retired provider. Asserting
+    the absence alone would pass against the old code too, so the stale key is
+    fed in deliberately and the whole report is checked.
+    """
+    twin = ingest_all(ROOT)
+    twin.evidence.live_health = Provenanced.observed(
+        {"ok": True, "deepseek_circuit": {"open": True, "reason": "HTTP 402"}},
+        "test",
+    )
+    report = analyze_failures(twin)
+    blob = " ".join(f"{m.component} {m.evidence}" for m in report.modes)
+    assert "DeepSeek" not in blob, f"retired provider leaked into the report: {blob}"
+    assert all(m.component != "DeepSeek API" for m in report.modes)
 
 
 # --- Unified Risk Report ---

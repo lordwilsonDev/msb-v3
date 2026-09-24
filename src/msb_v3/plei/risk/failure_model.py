@@ -3,7 +3,7 @@
 Derives failure modes from:
     1. Audit.jsonl — recent failures in the evidence stream
     2. Dependency graph — single points of failure (high fan-in modules)
-    3. Operational state — launchd agent failures, disk warnings
+    3. Static known modes — disk saturation, single-host risk, license expiry
 
 Each failure mode carries severity, likelihood, and a recovery assessment.
 """
@@ -11,11 +11,14 @@ Each failure mode carries severity, likelihood, and a recovery assessment.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from msb_v3.plei.twin import ProjectTwin
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -65,12 +68,18 @@ def analyze_failures(twin: ProjectTwin) -> FailureReport:
 
             for event, count in failure_counts.items():
                 likelihood = min(0.95, count / 50.0)  # normalize over 50 samples
+                # Circuit-open events. The "deepseek" token is matched only so
+                # entries already written to the append-only audit log (some of
+                # which predate the frontier retirement, D1 2026-09-09) still
+                # classify; the retired seam produces no new events. The
+                # component is named generically rather than "DeepSeek API",
+                # which would assert a live provider that no longer exists.
                 if "circuit" in event.lower() or "deepseek" in event.lower():
                     modes.append(FailureMode(
                         kind="provider_outage",
                         severity=6,
                         likelihood=round(likelihood, 2),
-                        component="DeepSeek API",
+                        component="model provider (circuit breaker)",
                         evidence=f"{count} circuit-open events in last 500 audit entries",
                         recovery_assessment="automatic (circuit breaker cooldown)",
                     ))
@@ -83,8 +92,8 @@ def analyze_failures(twin: ProjectTwin) -> FailureReport:
                         evidence=f"{count} cron job failures in recent audit",
                         recovery_assessment="automatic (retry + overlap guard)",
                     ))
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — one probe must not void the report
+        logger.warning("failure probe 1/2 (audit stream) unavailable: %s", exc)
 
     # --- 2. Dependency graph — single points of failure ---
     try:
@@ -104,30 +113,21 @@ def analyze_failures(twin: ProjectTwin) -> FailureReport:
                     ),
                     recovery_assessment="manual",
                 ))
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — one probe must not void the report
+        logger.warning("failure probe 2/2 (dependency graph) unavailable: %s", exc)
 
-    # --- 3. Operational state ---
-    try:
-        live_health = twin.evidence.live_health.value
-        if isinstance(live_health, dict):
-            circuit = live_health.get("deepseek_circuit", {})
-            if isinstance(circuit, dict) and circuit.get("open"):
-                modes.append(FailureMode(
-                    kind="provider_outage",
-                    severity=6,
-                    likelihood=0.90,
-                    component="DeepSeek API",
-                    evidence=(
-                        f"Circuit open: {circuit.get('reason', 'unknown')} "
-                        f"(cooldown: {circuit.get('cooldown_remaining_s', 0)}s remaining)"
-                    ),
-                    recovery_assessment="automatic (cooldown)",
-                ))
-    except Exception:
-        pass
+    # NOTE: the old "operational state" probe read ``deepseek_circuit`` from the
+    # twin's live /health evidence. Nothing produces that key any more — the
+    # frontier seam was retired 2026-09-09 (D1), the producer was deleted, and
+    # /health's body carries no circuit field — so the branch was unreachable and
+    # has been deleted rather than left reading dead state.
+    #
+    # ``twin`` is retained in the signature for the uniform PLEI analyzer
+    # interface (``score_debt(twin)``, ``analyze_risk(twin)``) even though no
+    # probe reads it after this removal. Deliberately not renamed to ``_twin``:
+    # it is a public entry point the tests and orchestrator call by position.
 
-    # --- 4. Static known failure modes ---
+    # --- 3. Static known failure modes ---
     static_modes = [
         FailureMode(
             kind="disk_saturation",

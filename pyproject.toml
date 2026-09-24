@@ -44,9 +44,109 @@ speech = [
 # `--select E9,F,I`. In 2026-08 the silent-except sweep landed 138 E402s
 # (imports below a logger assignment) that E9/F/I cannot see — only the
 # default selection caught them. Pin one selection here so `ruff check`
-# (no flags) is identical everywhere: ruff's default E4/E7/E9/F + I.
+# (no flags) is identical everywhere: ruff's default E4/E7/E9/F + I, plus
+# BLE001 — see the backlog table below for why it is on and what is left.
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I"]
+select = ["E4", "E7", "E9", "F", "I", "BLE001"]
+
+# --- BLE001 (flake8-blind-except): on, with a written-down backlog --------
+#
+# 130 sites across `src/` already carried a `# noqa: BLE001` with a stated
+# reason before this rule was enabled. Those annotations were INERT: BLE001
+# was not in `select`, so nothing ever evaluated them, and a deliberate
+# swallowing decision looked identical to an unconsidered one. Enabling the
+# rule is what makes that reasoning load-bearing. (Audit finding, 2026-09-23.)
+#
+# The table below is the remainder: 60 files / 152 blind `except Exception:`
+# sites that have no recorded reason yet, measured 2026-09-23. They are
+# ignored per-file rather than by turning the rule off, so the backlog stays
+# visible and countable:
+#
+#   * a file that stops appearing here has been triaged;
+#   * a NEW blind except in any file NOT listed fails `make lint` immediately.
+#
+# Burn-down: triage a file, delete its row. Start where the counts are worst —
+# api/research.py (14) and tools/executors.py (10). Each site wants one of:
+#   - a narrowed type (`except (OSError, UnicodeDecodeError)`),
+#   - a logged swallow carrying a reason,
+#   - or `# noqa: BLE001 — <why a blanket catch is correct here>`.
+#
+# The 14 silent `except Exception: pass` sites (which discarded the failure
+# entirely, logging nothing) were the actual defect and are fixed: 8 files —
+# including the whole PLEI analysis path — were cleaned out of this list, and
+# the sites that remain swallow nothing silently.
+[tool.ruff.lint.per-file-ignores]
+"src/msb_v3/agent/execution_loop.py" = ["BLE001"]
+"src/msb_v3/agent/handle.py" = ["BLE001"]
+"src/msb_v3/agent/intent.py" = ["BLE001"]
+"src/msb_v3/agent/planner.py" = ["BLE001"]
+"src/msb_v3/agent/safety.py" = ["BLE001"]
+"src/msb_v3/api/agent.py" = ["BLE001"]
+"src/msb_v3/api/app.py" = ["BLE001"]
+"src/msb_v3/api/chat.py" = ["BLE001"]
+"src/msb_v3/api/conversation.py" = ["BLE001"]
+"src/msb_v3/api/dashboard.py" = ["BLE001"]
+"src/msb_v3/api/flywheel.py" = ["BLE001"]
+"src/msb_v3/api/governance.py" = ["BLE001"]
+"src/msb_v3/api/health.py" = ["BLE001"]
+"src/msb_v3/api/home.py" = ["BLE001"]
+"src/msb_v3/api/mcp_bridge.py" = ["BLE001"]
+"src/msb_v3/api/notify.py" = ["BLE001"]
+"src/msb_v3/api/rag.py" = ["BLE001"]
+"src/msb_v3/api/research.py" = ["BLE001"]
+"src/msb_v3/api/skill_router.py" = ["BLE001"]
+"src/msb_v3/api/system.py" = ["BLE001"]
+"src/msb_v3/api/tenants.py" = ["BLE001"]
+"src/msb_v3/business/registry.py" = ["BLE001"]
+"src/msb_v3/conversation/producer.py" = ["BLE001"]
+"src/msb_v3/core/calibration.py" = ["BLE001"]
+"src/msb_v3/db/sqlite.py" = ["BLE001"]
+"src/msb_v3/evidence/receipt.py" = ["BLE001"]
+"src/msb_v3/fabric/context_engine.py" = ["BLE001"]
+"src/msb_v3/flywheel/engine.py" = ["BLE001"]
+"src/msb_v3/governance/approval.py" = ["BLE001"]
+"src/msb_v3/governance/governor.py" = ["BLE001"]
+"src/msb_v3/governance/killswitch.py" = ["BLE001"]
+"src/msb_v3/governance/tool_manifest.py" = ["BLE001"]
+"src/msb_v3/harnesses/base.py" = ["BLE001"]
+"src/msb_v3/harnesses/research_assistant.py" = ["BLE001"]
+"src/msb_v3/local_ai/llama_client.py" = ["BLE001"]
+"src/msb_v3/local_ai/ollama.py" = ["BLE001"]
+"src/msb_v3/memory_fabric/store.py" = ["BLE001"]
+"src/msb_v3/observability/audit.py" = ["BLE001"]
+"src/msb_v3/observability/audit_log.py" = ["BLE001"]
+"src/msb_v3/ops/repair.py" = ["BLE001"]
+"src/msb_v3/plei/api.py" = ["BLE001"]
+"src/msb_v3/plei/calibration/store.py" = ["BLE001"]
+"src/msb_v3/plei/engineering/skill_taxonomy.py" = ["BLE001"]
+"src/msb_v3/plei/harness/bridge.py" = ["BLE001"]
+"src/msb_v3/plei/ingestion/dependencies.py" = ["BLE001"]
+"src/msb_v3/plei/ingestion/evidence.py" = ["BLE001"]
+"src/msb_v3/plei/ingestion/repository.py" = ["BLE001"]
+"src/msb_v3/plei/ingestion/tests.py" = ["BLE001"]
+"src/msb_v3/plei/orchestrator.py" = ["BLE001"]
+"src/msb_v3/plei/risk/report.py" = ["BLE001"]
+"src/msb_v3/retrieval/vector_store.py" = ["BLE001"]
+"src/msb_v3/speech/pipeline.py" = ["BLE001"]
+"src/msb_v3/speech/stream.py" = ["BLE001"]
+"src/msb_v3/tools/executors.py" = ["BLE001"]
+"src/msb_v3/tools/runtime.py" = ["BLE001"]
+"src/msb_v3/triumvirate/guardian_scanner.py" = ["BLE001"]
+"src/msb_v3/triumvirate/hardware_sovereignty.py" = ["BLE001"]
+"src/msb_v3/triumvirate/mission_anchor.py" = ["BLE001"]
+"src/msb_v3/wrongness/__main__.py" = ["BLE001"]
+"src/msb_v3/wrongness/checks.py" = ["BLE001"]
+
+# Tests are exempt as a CLASS, not as a backlog — the distinction matters.
+# A test that provokes a failure has to catch it. The sites this covers are
+# the idiom of test code: capturing a worker thread's exception into a result
+# dict so it can be asserted on (chaos), falling back to raw bytes when a
+# server answers non-JSON (the security helpers), and deliberately feeding an
+# invalid migration to prove the schema version does not advance (db).
+# BLE001 asks "is this catch a considered decision?" — in these tests the
+# assertion is the answer, so 21 rows here would manufacture debt that is not
+# real. Unlike the src/ rows above, this line is not meant to be deleted.
+"tests/**" = ["BLE001"]
 
 # asn1crypto (RFC 3161 TSA tokens, uac/timestamping.py) ships no stubs and
 # no py.typed marker. Pin the override here so bare `mypy src` is green

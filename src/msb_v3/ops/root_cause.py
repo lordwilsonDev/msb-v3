@@ -15,9 +15,12 @@ Design rules (from the Level 3→4 roadmap):
     a reasoner can consume the same JSON later.
   - Failure-isolated collection: a store that is missing or unreadable
     yields no signals from that source, never a crash.
-  - The canonical incident to detect: provider outage (e.g. DeepSeek 402 →
-    circuit open) → wake/cron task failures → queue backlog → degraded
-    processing (and, with restart signals present, resource exhaustion).
+  - The canonical incident to detect: provider outage (the original real
+    shape was DeepSeek's 402 → circuit open; that frontier seam was retired
+    2026-09-09, D1, and the pattern is kept historical-only because the
+    append-only wake/audit stores are immutable) → wake/cron task failures →
+    queue backlog → degraded processing (and, with restart signals present,
+    resource exhaustion).
 
 CLI:
     python -m msb_v3.ops.root_cause diagnose --window 24
@@ -79,6 +82,9 @@ class Signal:
 # ---------------------------------------------------------------------------
 
 _PROVIDER_PATTERNS: List[tuple] = [
+    # Historical-only: the frontier seam was retired 2026-09-09 (D1), so no new
+    # deepseek failures are produced. The pattern stays because it still
+    # classifies entries already written to the append-only stores.
     ("deepseek", re.compile(r"deepseek|ds-api", re.I)),
     ("ollama", re.compile(r"ollama|qwen", re.I)),
     ("qdrant", re.compile(r"qdrant", re.I)),
@@ -102,7 +108,8 @@ _ERROR_KINDS: List[tuple] = [
 def parse_error(error: str) -> Dict[str, Any]:
     """Attribute one failure string → ``{provider?, kind?, code?}``.
 
-    Handles the real observed shapes, e.g.:
+    Handles the real observed shapes, e.g. (historical — the frontier seam
+    that produced this shape was retired 2026-09-09, D1):
       "ConnectionError: deepseek circuit open: HTTP 402 (payment required) (cooldown 300.0s)"
     → provider=deepseek, kind=circuit_open, code=402.
     """
@@ -347,7 +354,8 @@ class RootCauseEngine:
 
         # R1 — provider failure → task failures on the same resource, or
         # whose error text names the provider (e.g. a cron job failing with
-        # "deepseek circuit open").
+        # the provider's name — historically "deepseek circuit open" — in its
+        # error text).
         for pf in provider_fails:
             related = [
                 t

@@ -106,6 +106,7 @@ policy-gate:
 # invisible to static mypy. Targeted overrides live in pyproject.toml.
 lint:
 	$(PY) -m ruff check src/ tests/
+	$(PY) scripts/ble001_backlog.py
 	$(PY) -m mypy src
 	$(PY) scripts/gen-requirements.py --check
 	$(PY) scripts/verify-claims.py

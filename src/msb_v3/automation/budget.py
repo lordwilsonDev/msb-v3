@@ -25,9 +25,10 @@ from msb_v3.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Conservative per-call estimates (DeepSeek pricing, USD). The brain's plan
-# + creation turn is small; flat estimates keep the ledger honest without
-# needing token counters everywhere.
+# Conservative per-call estimates (USD). The brain plans on the local model
+# after the frontier retirement (D1, 2026-09-09), so the real spend is zero;
+# these flat estimates are retained only as a ceiling guard, and keep the
+# ledger honest without needing token counters everywhere.
 PLAN_ESTIMATE_USD = 0.001
 CREATE_ESTIMATE_USD = 0.002
 

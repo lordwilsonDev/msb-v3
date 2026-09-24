@@ -11,9 +11,10 @@ the same duck-typed contract ``agent.handle()`` expects from a local client
 (``generate``/``chat``/``execute_tool_loop`` + the tool registry), so a
 governed run through ``AnthropicAgentProvider`` reuses every existing
 mechanism — MoIE -> ActionGate -> evidence spine -> ledger -> receipt —
-with zero new governance code (the same pattern as DeepSeek).
+with zero new governance code (the same pattern as the retired DeepSeek
+client, D1 2026-09-09).
 
-Circuit breaker (mirror of the DeepSeek client, Phase 0): a 402 (Payment
+Circuit breaker (mirror of the retired DeepSeek client, Phase 0): a 402 (Payment
 Required) or 429 (rate limit) opens a process-local circuit that
 short-circuits all calls for a cooldown period — a dead API key must never
 starve the server's thread pool.
@@ -300,7 +301,7 @@ class AnthropicClient:
         max_tokens: int = 2048,
     ) -> LocalAIResponse:
         """Bounded tool-call loop over Anthropic's tool_use/tool_result blocks
-        (mirrors the local + DeepSeek loops; tool_use ids round-trip through
+        (mirrors the local loop and the retired DeepSeek one; tool_use ids round-trip through
         the tool_result blocks)."""
         if not tools:
             return self.generate(query, system=system, max_tokens=max_tokens)

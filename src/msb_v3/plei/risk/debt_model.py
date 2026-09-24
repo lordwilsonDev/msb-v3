@@ -17,11 +17,14 @@ Output is a ranked debt ledger with Monte Carlo-ready data.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from msb_v3.plei.twin import ProjectTwin
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Hardcoded debt items from project-map.md — the AUTHORITATIVE source
@@ -178,8 +181,8 @@ def score_debt(twin: ProjectTwin) -> DebtReport:
                     priority=round(priority, 1),
                     note="Cycles complicate topological reasoning and increase coupling",
                 ))
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — one probe must not void the score
+        logger.warning("debt probe (dependency cycles) unavailable: %s", exc)
 
     # Augment from test data
     test_count = twin.evidence.test_count.value

@@ -2,8 +2,8 @@
 
 A governed engineering intelligence layer that reconstructs a project's
 engineering state from evidence, classifies its lifecycle position, and
-determines what should happen next — without replacing MSB, DeepSeek, or
-the provider registry.
+determines what should happen next — without replacing MSB or the provider
+registry.
 
 Phase 1: Project Twin — ingest, model, classify.
 """

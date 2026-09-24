@@ -476,7 +476,8 @@ class PaseoAgentProvider(AgentProvider):
 
 class AnthropicAgentProvider(AgentProvider):
     """Anthropic's native Messages API as a worker — the third harness
-    (api.anthropic), same governed pattern as DeepSeek: ``execute()`` drives a
+    (api.anthropic), same governed pattern as the retired DeepSeek client
+    (D1, 2026-09-09): ``execute()`` drives a
     full run through ``agent.handle()`` with an Anthropic-backed client, so
     MoIE -> ActionGate -> evidence spine -> ledger -> receipt all fire with
     zero new governance code.

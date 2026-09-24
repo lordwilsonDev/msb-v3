@@ -119,8 +119,12 @@ def read_flywheel_health() -> FlywheelHealth:
         latency_count = int(LATENCY.labels(harness="default")._count.get())  # type: ignore[attr-defined]
         if latency_count > 0:
             health.api_latency_p50 = latency_sum / latency_count
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — reads private attrs; latency is optional
+        # prometheus_client exposes no public p50 accessor, so this reads
+        # private attributes and can fail across versions. Latency is one
+        # health input among several and its absence is not fatal — but a
+        # silent 0.0 would read as "no latency" rather than "unmeasured".
+        logger.debug("latency p50 unavailable from histogram: %s", exc)
 
     # EnergyMatrix telemetry
     _apply_energy_matrix(health)

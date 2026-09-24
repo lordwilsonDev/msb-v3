@@ -1,7 +1,8 @@
 """Automation brain — msb-v3 creates its own automations.
 
 The brain turns a request (from the wake agent, /chat, or the /automation
-API) into a structured plan via DeepSeek, then executes it through the
+API) into a structured plan via the local model (the frontier seam was
+retired 2026-09-09, D1), then executes it through the
 provider clients: n8n (self-hosted, free, live), Make / Zapier / GoHighLevel
 (activated as their keys are configured). Discipline matches the rest of the
 runtime: dry-run by default (creation requires explicit approval), a spend
