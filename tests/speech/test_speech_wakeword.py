@@ -71,6 +71,68 @@ class TestWakeWordDetector:
         assert "command_text" in d
 
 
+class TestRequirePrefix:
+    """`require_prefix` makes the `hey` mandatory.
+
+    Always-on mode uses this so ordinary conversation containing "msb" or
+    "sovereign" cannot activate the agent. The default stays permissive so
+    every detector above is unaffected.
+    """
+
+    def setup_method(self):
+        self.detector = WakeWordDetector(require_prefix=True)
+
+    def test_default_is_permissive(self):
+        assert WakeWordDetector().require_prefix is False
+
+    def test_bare_word_is_rejected(self):
+        assert self.detector.detect("Sovereign, deploy canary").detected is False
+
+    def test_bare_msb_is_rejected(self):
+        assert self.detector.detect("msb, system status").detected is False
+
+    def test_bare_word_mid_sentence_is_rejected(self):
+        assert self.detector.detect("ask msb about it").detected is False
+
+    def test_hey_prefixed_word_is_accepted(self):
+        result = self.detector.detect("Hey Sovereign, what's the status?")
+        assert result.detected is True
+        assert result.command_text == "what's the status?"
+
+    def test_hey_prefixed_msb_is_accepted(self):
+        assert self.detector.detect("Hey MSB, system status").detected is True
+
+    def test_case_insensitive(self):
+        assert self.detector.detect("HEY sovereign, status").detected is True
+
+    def test_extract_command_still_works(self):
+        assert self.detector.extract_command("hey sovereign, research AI") == (
+            "research AI"
+        )
+
+    def test_custom_wake_words_with_prefix(self):
+        detector = WakeWordDetector(wake_words=["computer"], require_prefix=True)
+        assert detector.detect("hey computer, status").detected is True
+        assert detector.detect("computer, status").detected is False
+
+    # Whisper punctuates speech: "hey sovereign" commonly comes back as
+    # "Hey, Sovereign." The prefix must survive that punctuation.
+    def test_comma_after_hey_is_accepted(self):
+        result = self.detector.detect("Hey, Sovereign. Sleep.")
+        assert result.detected is True
+        assert result.command_text == "Sleep."
+
+    def test_punctuated_msb_is_accepted(self):
+        result = self.detector.detect("Hey, MSB, system status")
+        assert result.detected is True
+        assert result.command_text == "system status"
+
+    def test_hey_in_a_prior_sentence_does_not_count(self):
+        # A sentence break is not a wake phrase: "hey" ends one thought,
+        # "msb" appears in the next.
+        assert self.detector.detect("I said hey. Then msb crashed").detected is False
+
+
 class TestVoiceStreamDetector:
     def setup_method(self):
         self.detector = VoiceStreamDetector()

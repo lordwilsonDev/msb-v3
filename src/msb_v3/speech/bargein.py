@@ -22,12 +22,15 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
 
 from msb_v3.speech.vad import VADConfig, VoiceDetector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -141,9 +144,13 @@ class BargeInController:
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
-        except Exception:
-            # If mic unavailable, barge-in disabled
-            pass
+        except Exception as exc:  # noqa: BLE001 — no mic must not kill the loop
+            # Barge-in is an optional capability: with no microphone, or no
+            # PortAudio at all, staying disabled is the correct behaviour
+            # rather than propagating. Logged at debug so "why didn't
+            # barge-in work?" has an answer without making the common
+            # headless case noisy.
+            logger.debug("barge-in disabled (audio input unavailable): %s", exc)
 
 
 class TTSInterrupter:

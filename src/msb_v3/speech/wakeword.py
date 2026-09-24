@@ -66,18 +66,30 @@ class WakeWordDetector:
         self,
         wake_words: Optional[List[str]] = None,
         case_sensitive: bool = False,
+        require_prefix: bool = False,
     ) -> None:
         self.wake_words = wake_words or ["sovereign", "msb"]
         self.case_sensitive = case_sensitive
+        self.require_prefix = require_prefix
         self._patterns = self._compile_patterns()
 
     def _compile_patterns(self) -> List[re.Pattern]:
-        """Compile wake word regex patterns."""
+        """Compile wake word regex patterns.
+
+        By default a bare ``<word>`` counts. With ``require_prefix=True`` the
+        ``hey`` is mandatory, so ordinary conversation containing "msb" or
+        "sovereign" cannot activate the agent.
+        """
         flags = 0 if self.case_sensitive else re.IGNORECASE
         patterns = []
         for word in self.wake_words:
-            # Match "hey <word>" or just "<word>"
-            pattern = rf"\b(?:hey\s+)?{re.escape(word)}\b"
+            if self.require_prefix:
+                # Whisper often writes "Hey, Sovereign." — allow a comma
+                # between the two words, but not a sentence break.
+                pattern = rf"\bhey(?:\s*,\s*|\s+){re.escape(word)}\b"
+            else:
+                # Match "hey <word>" or just "<word>"
+                pattern = rf"\b(?:hey\s+)?{re.escape(word)}\b"
             patterns.append(re.compile(pattern, flags))
         return patterns
 
