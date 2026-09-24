@@ -145,3 +145,37 @@ def test_cockpit_guards_panel_merges_caps_brakes_policy(client: TestClient, monk
 
     monkeypatch.setattr(settings, "openai_chat_rate_max", 9)
     assert client.get("/cockpit/api").json()["guards"]["caps"]["OPENAI_CHAT_RATE_MAX"] == 9
+
+
+def test_cockpit_audit_panel_verifies_at_most_once_per_ttl(monkeypatch, tmp_path) -> None:
+    """Full-chain verification is expensive and the cockpit polls every 15 s:
+    within the TTL the cached verdict is reused, the recent rows stay live."""
+    from msb_ledger.audit_chain import AuditChain
+
+    db = tmp_path / "audit.db"
+    monkeypatch.setattr("msb_ledger.audit_chain._AUDIT_DB", db)
+    monkeypatch.setattr(cockpit_api, "_audit_verify_cache", {})
+    calls = {"n": 0}
+    real_verify = AuditChain.verify_chain
+
+    def counting_verify(self):
+        calls["n"] += 1
+        return real_verify(self)
+
+    monkeypatch.setattr(AuditChain, "verify_chain", counting_verify)
+    chain = AuditChain(db_path=str(db))
+    for i in range(10):
+        chain.append("test", "tick", {"i": i})
+
+    first = cockpit_api._audit_state()
+    chain.append("test", "tick", {"i": 10})
+    second = cockpit_api._audit_state()
+
+    assert calls["n"] == 1
+    assert first["valid"] is True and first["verified_at"] == second["verified_at"]
+    assert [r["seq"] for r in second["recent"]] == sorted(r["seq"] for r in second["recent"])
+    assert len(second["recent"]) == 8 and second["recent"][-1]["seq"] == first["recent"][-1]["seq"] + 1
+
+    monkeypatch.setattr(cockpit_api, "_AUDIT_VERIFY_TTL_S", 0.0)
+    cockpit_api._audit_state()
+    assert calls["n"] == 2

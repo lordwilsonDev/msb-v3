@@ -23,6 +23,9 @@ import asyncio
 import json
 import logging
 import sqlite3
+import threading
+import time
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -100,23 +103,42 @@ def _hygiene_state() -> Dict[str, Any]:
     }
 
 
+# Full-chain verification re-hashes every record (~200k rows, ~1 s). The
+# cockpit refreshes every 15 s per open tab, so verify at most once per TTL per
+# chain and say when it last ran. Tampering still surfaces within one TTL.
+_AUDIT_VERIFY_TTL_S = 60.0
+_audit_verify_cache: Dict[str, Dict[str, Any]] = {}
+_audit_verify_lock = threading.Lock()
+
+
 def _audit_state() -> Dict[str, Any]:
     from msb_ledger.audit_chain import AuditChain
 
     chain = AuditChain()
-    verify = chain.verify_chain()
-    recent = chain.get_chain()[-8:]
+    key = str(chain.db_path)
+    with _audit_verify_lock:
+        cached = _audit_verify_cache.get(key)
+        if cached is None or time.monotonic() - cached["at"] >= _AUDIT_VERIFY_TTL_S:
+            cached = {
+                "at": time.monotonic(),
+                "verified_at": datetime.now(timezone.utc).isoformat(),
+                "result": chain.verify_chain(),
+            }
+            _audit_verify_cache[key] = cached
+    verify = cached["result"]
+    # Only the newest 8 rows are shown; read just those, not the whole chain.
+    with closing(sqlite3.connect(f"file:{chain.db_path}?mode=ro", uri=True)) as conn:
+        rows = conn.execute(
+            "SELECT seq, component, event_type, timestamp FROM audit_records "
+            "ORDER BY seq DESC LIMIT 8"
+        ).fetchall()
     return {
         "valid": verify.get("valid"),
         "record_count": verify.get("record_count", 0),
+        "verified_at": cached["verified_at"],
         "recent": [
-            {
-                "seq": r.seq,
-                "component": r.component,
-                "event_type": r.event_type,
-                "timestamp": r.timestamp,
-            }
-            for r in recent
+            {"seq": seq, "component": component, "event_type": event_type, "timestamp": ts}
+            for seq, component, event_type, ts in reversed(rows)
         ],
     }
 
@@ -301,22 +323,39 @@ async def cockpit_api() -> dict:
             _probe_json(client, "/evolution/memory/summary"),
             _probe_json(client, "/evolution/memory/latest"),
         )
+    # In-process panels do blocking file/sqlite/qdrant reads. Run them in
+    # worker threads, concurrently, so a cockpit refresh never stalls the
+    # event loop that serves every other endpoint.
+    panels = {
+        "research_runs": _research_runs,
+        "mission": _mission_state,
+        "flywheel": _flywheel_state,
+        "guards": _guards_state,
+        "limits": _rate_limits_state,
+        "hygiene": _hygiene_state,
+        "audit": _audit_state,
+        "vault": _vault_state,
+        "errors": _recent_errors,
+    }
+    results = dict(zip(panels, await asyncio.gather(
+        *(asyncio.to_thread(_safe, fn) for fn in panels.values())
+    )))
     return {
         "ts": datetime.now(timezone.utc).isoformat(),
         "services": {"status": status, "ready": ready, "models": models},
         "research": {
             **{"active": active, "latest": latest},
-            **_safe(_research_runs),
+            **results["research_runs"],
         },
         "memory": {"summary": mem_summary, "latest": mem_latest},
-        "mission": _safe(_mission_state),
-        "flywheel": _safe(_flywheel_state),
-        "guards": _safe(_guards_state),
-        "limits": _safe(_rate_limits_state),
-        "hygiene": _safe(_hygiene_state),
-        "audit": _safe(_audit_state),
-        "vault": _safe(_vault_state),
-        "errors": _safe(_recent_errors),
+        "mission": results["mission"],
+        "flywheel": results["flywheel"],
+        "guards": results["guards"],
+        "limits": results["limits"],
+        "hygiene": results["hygiene"],
+        "audit": results["audit"],
+        "vault": results["vault"],
+        "errors": results["errors"],
     }
 
 
@@ -393,6 +432,12 @@ def _audit_stream(
                 try:
                     rec = json.loads(line)
                 except json.JSONDecodeError:
+                    continue
+                # The same file carries operational events (e.g. the 5-minute
+                # ``cron.run`` wake job). They are not agent receipts; shown
+                # here they rendered as blank "? no-moie" rows and inflated
+                # the run count. The log itself is left untouched.
+                if not isinstance(rec, dict) or (rec.get("event") and not rec.get("request_id")):
                     continue
                 if verdict and (rec.get("execution_result") or {}).get("verdict") != verdict:
                     continue

@@ -95,6 +95,24 @@ def test_cockpit_audit_skips_corrupt_lines(
     assert body["receipts"][0]["request_id"] == "ok"
 
 
+def test_cockpit_audit_excludes_operational_events(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """cron.run events share audit.jsonl but are not receipts: they must not
+    appear as blank rows or count toward the total."""
+    log = tmp_path / "audit.jsonl"
+    monkeypatch.setattr(settings, "audit_log_path", str(log))
+    cron = {"event": "cron.run", "job_id": "wake-agent", "status": "SUCCESS",
+            "verification": {"basis": "rerun", "method": "cron-run"}}
+    log.write_text(
+        "\n".join(json.dumps(r) for r in (cron, _receipt("r1", "PASS", "APPROVE", "x"), cron)) + "\n",
+        encoding="utf-8",
+    )
+    body = client.get("/cockpit/audit").json()
+    assert body["total"] == 1
+    assert [r["request_id"] for r in body["receipts"]] == ["r1"]
+
+
 def test_dashboard_redirects_to_cockpit(client: TestClient) -> None:
     """The studio link-card page is folded into the cockpit — /dashboard
     redirects to the single observability surface instead of serving a
