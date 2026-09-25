@@ -236,6 +236,44 @@ class MsbBridge {
     return this._get(`/agent/tasks?limit=${encodeURIComponent(n)}`, { operator: true });
   }
 
+  // --- Background section (watch-only reads) -------------------------
+
+  /** GET /ops/background - per-subsystem state snapshot. Operator-gated. */
+  background() {
+    return this._get('/ops/background', { operator: true });
+  }
+
+  /** GET /cron/jobs - scheduled jobs with next_run. Operator-gated. */
+  cronJobs() {
+    return this._get('/cron/jobs', { operator: true });
+  }
+
+  /**
+   * GET /cron/jobs/{id}/history - newest runs first. Operator-gated.
+   * @param {string} jobId
+   * @param {number} [limit]
+   */
+  cronHistory(jobId, limit) {
+    const n = limit || 20;
+    return this._get(`/cron/jobs/${encodeURIComponent(jobId)}/history?limit=${encodeURIComponent(n)}`, {
+      operator: true,
+    });
+  }
+
+  /** GET /plei/calibrate - calibration report (reads the store only). */
+  pleiCalibrate() {
+    return this._get('/plei/calibrate');
+  }
+
+  /**
+   * GET /cockpit/audit - last N governed-run receipts, oldest first.
+   * @param {number} [limit]
+   */
+  auditStream(limit) {
+    const n = limit || 50;
+    return this._get(`/cockpit/audit?limit=${encodeURIComponent(n)}`);
+  }
+
   /**
    * POST /chat - single harness entrypoint; direct model conversation
    * (NOT the governed agent-handle pipeline - no plan, no ActionGate, no

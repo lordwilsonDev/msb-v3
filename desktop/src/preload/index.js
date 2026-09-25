@@ -83,6 +83,29 @@ const api = Object.freeze({
    */
   listTasks: (limit) => ipcRenderer.invoke('msb:listTasks', { limit: int(limit) }),
 
+  /** GET /ops/background - watch-only snapshot of background subsystems. */
+  background: () => ipcRenderer.invoke('msb:background'),
+
+  /** GET /cron/jobs - scheduled jobs. */
+  cronJobs: () => ipcRenderer.invoke('msb:cronJobs'),
+
+  /**
+   * GET /cron/jobs/{id}/history - recent runs of one job.
+   * @param {string} jobId
+   * @param {number} [limit]
+   */
+  cronHistory: (jobId, limit) =>
+    ipcRenderer.invoke('msb:cronHistory', { jobId: str(jobId), limit: int(limit) }),
+
+  /** GET /plei/calibrate - calibration report. */
+  pleiCalibrate: () => ipcRenderer.invoke('msb:pleiCalibrate'),
+
+  /**
+   * GET /cockpit/audit - recent governed-run receipts.
+   * @param {number} [limit]
+   */
+  auditStream: (limit) => ipcRenderer.invoke('msb:auditStream', { limit: int(limit) }),
+
   /** Start a live observation stream for one task. @param {string} taskId */
   subscribeTask: (taskId) => ipcRenderer.invoke('msb:subscribeTask', { taskId: str(taskId) }),
 

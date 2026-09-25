@@ -235,6 +235,7 @@ function render() {
   if (state.runtimeState === 'NOT_ATTACHED' || state.runtimeState === 'OFFLINE' || state.runtimeState === 'BLOCKED') {
     c.body.appendChild(renderConnect());
     c.grid = c.approvals = c.tabs = c.tabBody = null;
+    window.MsbBackground.unmount(); // nothing to watch without a runtime
     return;
   }
 
@@ -296,6 +297,7 @@ function renderTabsBar() {
     { id: 'memory', label: 'Evidence Memory' },
     { id: 'search', label: 'Vault Knowledge' },
     { id: 'tasks', label: 'Live Tasks' },
+    { id: 'background', label: 'Background' },
   ]) {
     bar.appendChild(
       el('button', {
@@ -319,9 +321,11 @@ function renderTabBody() {
   if (!c.tabBody) return;
   clear(c.tabBody);
   taskEventsListEl = null; // will be re-set by renderTasks() if the tasks tab renders an expanded task
+  if (state.activeTab !== 'background') window.MsbBackground.unmount();
   if (state.activeTab === 'memory') c.tabBody.appendChild(renderMemory());
   if (state.activeTab === 'search') c.tabBody.appendChild(renderSearch());
   if (state.activeTab === 'tasks') c.tabBody.appendChild(renderTasks());
+  if (state.activeTab === 'background') c.tabBody.appendChild(window.MsbBackground.mount());
 }
 
 function renderConnect() {

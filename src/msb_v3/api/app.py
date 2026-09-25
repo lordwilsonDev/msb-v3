@@ -38,6 +38,7 @@ from msb_v3.api.models import router as models_router
 from msb_v3.api.moie import router as moie_router
 from msb_v3.api.notify import router as notify_router
 from msb_v3.api.openai_compat import router as openai_compat_router
+from msb_v3.api.ops_background import router as ops_background_router
 from msb_v3.api.rag import router as rag_router
 from msb_v3.api.redaction_middleware import SecretRedactionMiddleware
 from msb_v3.api.research import router as research_router
@@ -241,6 +242,7 @@ def create_app() -> FastAPI:
     app.include_router(cron_router, prefix="/cron", tags=["cron"])
     app.include_router(wake_router, prefix="/wake", tags=["wake"])
     app.include_router(automation_router, prefix="/automation", tags=["automation"])
+    app.include_router(ops_background_router, prefix="/ops", tags=["ops"])
     app.include_router(hook_router, prefix="/hook", tags=["hook"])
     app.include_router(agent_router, prefix="/agent", tags=["agent"])
     app.include_router(node_router, prefix="/node/v1", tags=["sovereign-node"])

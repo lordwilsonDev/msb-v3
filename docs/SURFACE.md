@@ -47,6 +47,7 @@ subpackage is unclassified (AC-3.1).
 | `api/moie.py` | OPTIONAL | MoIE analysis surface; MoIE "exists and powers the factory reviewer" (release doc — experimental tier). |
 | `api/notify.py` | LOAD-BEARING | `/notify` — the ops out-of-band alert surface (README ops section). **Verified channel: Telegram** — `POST /telegram` delivers to the configured bot; the home channel (chat_id 8276057240) is Lord Wilson's Telegram and is confirmed live (2026-09-20: `hermes send --to telegram` delivered). The cron alert system (`cron/actions.py: action_alert_check`) pushes via the same path through `hermes send`. |
 | `api/openai_compat.py` | LOAD-BEARING | `/v1` OpenAI-compatible adapter — Open WebUI / OpenAI SDK path (README). |
+| `api/ops_background.py` | OPTIONAL | `/ops/background` — watch-only snapshot of background subsystems for the desktop cockpit's Background section (docs/superpowers/specs/2026-09-22-background-windows-design.md). Operator-gated, no write routes. |
 | `api/rag.py` | LOAD-BEARING | `/rag/search` semantic vault search — used by mcp_bridge `search_query`, cockpit find, flywheel engine. |
 | `api/redaction_middleware.py` | LOAD-BEARING | Response-body secret redaction — the *errors* channel of the H4 exposure test. Must be added **before** GZipMiddleware so it inspects plain text, not compressed bytes. |
 | `api/research.py` | OPTIONAL | Research-assistant endpoints; off canonical path. |
@@ -96,7 +97,7 @@ subpackage is unclassified (AC-3.1).
 | `msb_v3/moie` | OPTIONAL | MoIE engine — powers the factory reviewer (release doc: experimental tier, not a general chat path). |
 | `msb_v3/node` | OPTIONAL | Sovereign Node enrollment/engage — INTEGRATE phase, first slice FILE_READ. |
 | `msb_v3/observability` | LOAD-BEARING | Prometheus metrics — `/metrics`, cockpit, console all read it. |
-| `msb_v3/ops` | LOAD-BEARING | Ops module (backup/restore) — `make backup` / `make restore` targets. |
+| `msb_v3/ops` | LOAD-BEARING | Ops module (backup/restore) — `make backup` / `make restore` targets. Also `background.py`, the snapshot behind `/ops/background`. |
 | `msb_v3/plei` | OPTIONAL | PLEI project lifecycle intelligence — Phase 1: project twin (ingestion + lifecycle classification). |
 | `msb_v3/replay` | FROZEN | Replay engine — release-declared frozen. |
 | `msb_v3/retrieval` | LOAD-BEARING | RAG/vector retrieval — `/rag` + flywheel novelty scan depend on it. |

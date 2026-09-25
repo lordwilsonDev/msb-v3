@@ -38,8 +38,13 @@ test('bridge only calls a known, safe set of msb-v3 endpoints', () => {
     'GET /memory/', // prefix, session appended
     'POST /rag/search',
     'POST /chat',
+    // Background section: watch-only reads (2026-09-22, phase 1)
+    'GET /ops/background',
+    'GET /cron/jobs',
+    'GET /plei/calibrate',
+    'GET /cockpit/audit',
   ]);
-  const allowedPrefixes = ['POST /governance/approvals/', 'POST /governance/killswitch/', 'GET /memory/'];
+  const allowedPrefixes = ['POST /governance/approvals/', 'POST /governance/killswitch/', 'GET /memory/', 'GET /cron/jobs/'];
 
   for (const { method, path: p } of bridgePaths()) {
     const key = `${method} ${p}`;

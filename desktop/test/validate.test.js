@@ -133,3 +133,24 @@ test('sendChat: session with illegal characters fails', () => {
     assert.equal(validate('sendChat', { query: 'hi', session }).ok, false, `session=${JSON.stringify(session)}`);
   }
 });
+
+test('cronHistory requires a slug jobId and an optional limit 1-200', () => {
+  assert.equal(validate('cronHistory', { jobId: 'wake-agent' }).ok, true);
+  assert.deepEqual(validate('cronHistory', { jobId: 'wake-agent' }).value, { jobId: 'wake-agent', limit: 20 });
+  assert.equal(validate('cronHistory', { jobId: '../etc' }).ok, false);
+  assert.equal(validate('cronHistory', { jobId: 'a b' }).ok, false);
+  assert.equal(validate('cronHistory', {}).ok, false);
+  assert.equal(validate('cronHistory', { jobId: 'x', limit: 201 }).ok, false);
+});
+
+test('auditStream takes an optional limit 1-500', () => {
+  assert.deepEqual(validate('auditStream', {}).value, { limit: 50 });
+  assert.equal(validate('auditStream', { limit: 500 }).ok, true);
+  assert.equal(validate('auditStream', { limit: 0 }).ok, false);
+});
+
+test('background, cronJobs and pleiCalibrate take no arguments', () => {
+  for (const ch of ['background', 'cronJobs', 'pleiCalibrate']) {
+    assert.deepEqual(validate(ch, { anything: 1 }), { ok: true, value: {} });
+  }
+});
