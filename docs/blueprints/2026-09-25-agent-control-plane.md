@@ -1,8 +1,9 @@
 # MSB-v3 Agent Control Plane Blueprint
 ### From observer to governed decision-and-execution system · 2026-09-25
 
-> **Status:** PROPOSED — nothing in this document is built. Wilson owns every
-> decision in §13; no phase starts until its gate in §12 is signed off.
+> **Status:** PROPOSED — nothing in this document is built. Decisions D-1…D-7
+> decided 2026-09-25 (see §13); no phase starts until its gate in §12 is
+> signed off.
 > **Source:** Wilson's direction of 2026-09-25 (the "convergence first, then the
 > control tower" plan), grounded here against the repository at `a8cd6d8`.
 > **Scope:** single-operator, local-first. One mission at a time until M1 (§11)
@@ -384,13 +385,13 @@ external worker. Phase 6 is the first that needs Hermes/FreeBuff integration.
 
 | ID | Decision | Options |
 |---|---|---|
-| D-1 | **Lane conflict.** The research lane's working rule is "do not expand MSB-v3 during this phase" (`ai-workspace/RESEARCH-STATUS.md`). This blueprint is an expansion. | (a) pause the research lane for the control-plane slice; (b) treat M1 as a research experiment under the lane's rules; (c) run both, with the control plane in a separate worktree |
-| D-2 | Planner provider | DSH harness (needs install + `available=True`), local model, Claude, or router-chosen per mission |
-| D-3 | **Hermes and FreeBuff role change.** The job board today forbids FreeBuff to commit or touch files outside `target_files`, and forbids Hermes to edit source. As builders, both write code. | keep the no-commit rule (workers write in worktrees; only the gate + Wilson merge) — recommended; or grant commit rights in worker branches |
-| D-4 | M1 project | a real, small, bounded project Wilson chooses |
-| D-5 | MEMORY panel | adopt the four layers in §10, or another split |
-| D-6 | Cockpit build plan (104 gates) | defer behind M1 (proposed), or interleave |
-| D-7 | Branch merge (§2) | Wilson reviews `main..feat/speech-stream-gate` and merges |
+| D-1 | **Lane conflict.** The research lane's working rule is "do not expand MSB-v3 during this phase" (`ai-workspace/RESEARCH-STATUS.md`). This blueprint is an expansion. | **Decided 2026-09-25: (c) run both, with the control plane in a separate worktree** — research lane stays alive; control-plane work happens in an isolated worktree so neither lane blocks the other |
+| D-2 | Planner provider | **Decided 2026-09-25: router-chosen per mission** — any provider that satisfies the contract (Claude, DSH if available, local Ornith); chosen per-task by capability/cost, not hard-wired |
+| D-3 | **Hermes and FreeBuff role change.** The job board today forbids FreeBuff to commit or touch files outside `target_files`, and forbids Hermes to edit source. As builders, both write code. | **Decided 2026-09-25: keep the no-commit rule (workers write in worktrees; only the gate + Wilson merge)** — H3 holds: no harness has merge authority |
+| D-4 | M1 project | **Decided 2026-09-25: bounded todo/board feature** — one real, small, bounded todo/board slice end-to-end through the full chain |
+| D-5 | MEMORY panel | **Decided 2026-09-25: four layers as in §10** — Runtime / Persistent / Evidence / Research, each labelled so no number mixes layers |
+| D-6 | Cockpit build plan (104 gates) | **Decided 2026-09-25: defer 104 gates behind M1** — finish the Mission spine first, resume the physical-gate matrix after M1 |
+| D-7 | Branch merge (§2) | **Decided 2026-09-25: merge to `main` now — converge before expanding** — Stage 0 exit: branch merges to `main` after the re-run, calibration baseline and production gate |
 
 ---
 
