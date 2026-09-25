@@ -67,7 +67,7 @@ module docstring). The boundary is the capability registry behind it
 ## Scale, measured 2026-09-25
 
 Python under `src/`: **404 files / 79,682 lines**. Python under `tests/`: **357
-files / 62,840 lines**. Markdown under `docs/`: **152 files / 34,649 lines**.
+files / 62,840 lines**. Markdown under `docs/`: **153 files / 35,405 lines**.
 `pytest --collect-only` collects **4,018 tests** (76 deselected by configuration).
 Test source is 79% the size of product source.
 
