@@ -175,6 +175,58 @@ def test_bridge_store_recall_verify(bridge_client):
     assert r3.json()["result"]["verification_state"] == "VERIFIED"
 
 
+def test_bridge_reverify_is_an_explicit_no_op(bridge_client):
+    """A repeated verify is a postcondition, not an illegal transition.
+
+    INV-05 keeps self-loops illegal at the fabric (P14-B pins that), so the
+    bridge answers "already in this state" rather than attempting one. Every
+    such retry used to come back HTTP 500 — 40 of them in one deployment log.
+    """
+    mid = _post(
+        bridge_client, {"tool": "memory_store", "args": {"content": "reverify me"}}
+    ).json()["result"]["memory_id"]
+
+    first = _post(bridge_client, {"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "VERIFIED", "reason": "first"}})
+    assert first.status_code == 200
+    assert "no_change" not in first.json()["result"]
+
+    again = _post(bridge_client, {"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "VERIFIED", "reason": "retry"}})
+    assert again.status_code == 200, again.text
+    assert again.json()["result"]["no_change"] is True
+    assert again.json()["result"]["verification_state"] == "VERIFIED"
+
+    # The retry is not a transition, so it records none: history holds only the
+    # first one. A no-op that wrote a row would put a self-loop the frozen
+    # matrix forbids into the audit trail.
+    from msb_v3.memory_fabric.store import MemoryFabricStore
+
+    store = MemoryFabricStore(db_path=settings.memory_fabric_db_path)
+    assert len(store.verification_history(mid)) == 1
+
+
+def test_bridge_reverify_does_not_resurrect_an_archived_memory(bridge_client):
+    """DEPRECATED stays terminal: the no-op path excludes archived rows."""
+    mid = _post(
+        bridge_client, {"tool": "memory_store", "args": {"content": "forget then reverify"}}
+    ).json()["result"]["memory_id"]
+    _post(bridge_client, {"tool": "memory_forget", "args": {"memory_id": mid}})
+
+    # Refused, not accepted as a no-op. The refusal currently surfaces as an
+    # unhandled ValueError (HTTP 500 in production — the bridge does not map the
+    # fabric's refusals the way the REST route maps them to 4xx). That mapping
+    # is a separate, unfixed defect, so accept either shape rather than pin the
+    # 500 that the fix would remove.
+    try:
+        refused = _post(
+            bridge_client,
+            {"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "DEPRECATED"}},
+        )
+    except ValueError as exc:
+        assert "archived" in str(exc)
+    else:
+        assert refused.status_code >= 400, refused.text
+
+
 def test_bridge_forget_removes_from_recall(bridge_client):
     mid = _post(bridge_client, {"tool": "memory_store", "args": {"content": "will forget"}}).json()["result"]["memory_id"]
     assert _post(bridge_client, {"tool": "memory_forget", "args": {"memory_id": mid}}).status_code == 200

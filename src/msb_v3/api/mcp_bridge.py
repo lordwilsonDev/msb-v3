@@ -282,7 +282,32 @@ def _mf_verify(args: dict[str, Any], actor: str, requested_by: str = "") -> dict
     # Resolution evidence for CONTRADICTED -> VERIFIED (INV-3).
     resolution = _safe_text(str(args.get("resolution") or ""))
 
-    item = _memory_fabric().verify_memory(
+    fabric = _memory_fabric()
+
+    # Re-verification is idempotent here, at the boundary — never in the state
+    # machine. INV-05 keeps self-loops illegal (frozen matrix, enforced by
+    # MemoryFabric.verify_memory and pinned by test_property_based P14-B), so a
+    # caller asking for the state a memory already holds is not requesting a
+    # transition: there is nothing to perform and nothing to record. Answer the
+    # postcondition — the item plus no_change=true — instead of attempting an
+    # illegal transition and returning HTTP 500. This is not INV-10 silent
+    # degradation: every authentication/authority check above already ran, the
+    # response says explicitly that nothing changed, and no memory reaches a
+    # state it was not already in. Retries that used to 500 (24 VERIFIED->VERIFIED
+    # and 16 CONTRADICTED->CONTRADICTED in one deployment log) now succeed as the
+    # no-ops they always were. An archived memory is excluded so the terminal
+    # DEPRECATED refusal keeps its own path.
+    current = fabric.store.get(memory_id)
+    if (
+        current is not None
+        and not current.archived
+        and current.verification_state == to_state
+    ):
+        result = current.as_dict()
+        result["no_change"] = True
+        return result
+
+    item = fabric.verify_memory(
         memory_id,
         to_state,
         by=effective_actor,            # authenticated actor (authoritative)

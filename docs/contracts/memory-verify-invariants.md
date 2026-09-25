@@ -211,3 +211,37 @@ A verification transition is GREEN only if:
 ```
 
 Failure of any invariant = RED.
+
+---
+
+## ADDENDUM — same-state re-verification at the bridge boundary (2026-09-24)
+
+No invariant above is changed by this addendum. It records how INV-05 and INV-10
+apply to a request for the state a memory already holds — the case that produced
+40 HTTP 500s through `/mcp` (24 `VERIFIED -> VERIFIED`, 16
+`CONTRADICTED -> CONTRADICTED`) in one deployment log.
+
+INV-05 governs *transitions*. A request for the state a memory already holds
+requests no transition, so `_mf_verify` answers the postcondition instead of
+attempting one:
+
+```
+POST /mcp/proxy  {tool: memory_verify, to_state: X}     memory already in X
+    ↓
+200  { ...item, "no_change": true }      state unchanged, no transition row
+```
+
+```
+✓ INV-01/INV-02/INV-03: authentication, audit identity and actor validity all
+                        run before this answer — it is not a bypass
+✓ INV-05: unchanged. MemoryFabric.verify_memory still rejects X → X, still
+          enforces the whole matrix (pinned by test_property_based P14-B)
+✓ INV-06/INV-08: no audit row is written for a non-transition, so the trail
+                 gains no self-loop the matrix forbids
+✓ INV-10: not engaged. Nothing is skipped silently — the response states
+          "no_change": true, and no memory reaches a state it was not in
+✓ DEPRECATED: excluded from this path, so the terminal refusal stands
+```
+
+Direct fabric callers (`MemoryFabric.verify_memory`) are deliberately NOT
+idempotent: the strict refusal is the fabric-layer half of INV-09.

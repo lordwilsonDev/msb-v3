@@ -116,13 +116,44 @@ def test_r2_forged_actor():
 
 
 # ---------------------------------------------------------------------------
-# R3 contradiction no resolution → expected failure
+# R3 contradiction no resolution → the retry must not be silently accepted
 # ---------------------------------------------------------------------------
 def test_r3_contradiction_no_resolution():
+    """The retry is a no-op, and the memory does not move.
+
+    This asserted ``status == 500`` until 2026-09-24. What it meant to pin was
+    "an unresolved contradiction must not be silently accepted" — but the retry
+    failed as an INV-05 *self-loop* (the resolution gate only governs
+    CONTRADICTED → VERIFIED), so the assertion also locked in a 500 for every
+    duplicate verify through /mcp. The bridge now answers the postcondition
+    explicitly (see ``_mf_verify``); the intent is asserted directly instead:
+    the state is unchanged and the caller is told nothing happened.
+    """
     mid = _make_memory("R3: contradiction")
     _call({"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "CONTRADICTED", "reason": "mark"}})
     status, body = _call({"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "CONTRADICTED", "reason": "retry"}})
-    assert status == 500, body
+    assert status == 200, body
+    assert body.get("no_change") is True
+    assert body.get("verification_state") == "CONTRADICTED"
+    # Not silently promoted: no resolution was supplied, so VERIFIED is still
+    # out of reach.
+    status2, body2 = _call({"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "VERIFIED", "reason": "no resolution"}})
+    assert status2 != 200, body2
+
+
+# ---------------------------------------------------------------------------
+# R3c re-verifying an already-VERIFIED memory is a no-op, not a 500
+# ---------------------------------------------------------------------------
+def test_r3c_reverify_verified_is_an_explicit_no_op():
+    mid = _make_memory("R3c: reverify verified")
+    first = _call({"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "VERIFIED", "reason": "first"}})
+    assert first[0] == 200, first[1]
+    assert "no_change" not in first[1]
+
+    again = _call({"tool": "memory_verify", "args": {"memory_id": mid, "to_state": "VERIFIED", "reason": "retry"}})
+    assert again[0] == 200, again[1]
+    assert again[1].get("no_change") is True
+    assert again[1].get("verification_state") == "VERIFIED"
 
 
 # ---------------------------------------------------------------------------
