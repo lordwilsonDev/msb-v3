@@ -5,6 +5,14 @@ predicted event's actual outcome is observed (execution completes,
 milestone hits, risk materializes), an Outcome record is paired to it.
 Together they form the calibration dataset that powers Phase 7.
 
+A record only pairs with a record from the *same* ``domain`` — the
+observation family it measures. "Days" is not a common unit across families:
+a project-lifecycle P50 is not evidence about one governed run's wall clock.
+Before domains existed, 110 run-scoped outcomes (109 of them 0.0000 after
+rounding) were paired with 110 project-scale predictions, and the report
+scored that as MAPE 282 against rows counted as perfect. An empty domain is
+never a match: an unlabelled record is not assumed compatible.
+
 Storage: JSONL file (``.plei/calibration.jsonl``) — append-only,
 deterministic, no database dependency. Each record carries a SHA-256
 hash of the previous record for integrity.
@@ -17,6 +25,23 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+# ── Observation families ───────────────────────────────────────────────────
+#
+# A record names the family of durations it measures. Prediction and outcome
+# must agree before they pair; the two families on record are:
+#
+#   PROJECT_DURATION — a whole project's lifecycle in days (Monte Carlo P50).
+#   RUN_DURATION     — one governed run's wall clock in days (seconds / 86400).
+#
+# The names are the wire values stored in the JSONL, so they are part of the
+# on-disk schema — renaming one invalidates existing pairs.
+PROJECT_DURATION = "project_duration"
+RUN_DURATION = "run_duration"
+
+# Label used only for display when a record carries no domain at all.
+UNKNOWN_DOMAIN = "unknown"
+
 
 # ── Data types ─────────────────────────────────────────────────────────────
 
@@ -38,6 +63,9 @@ class Prediction:
 
     # Failure prediction
     predicted_failure_probability: float  # 0–1
+
+    # Observation family — default is what every automatic writer produces
+    domain: str = PROJECT_DURATION
 
     # Milestone predictions
     milestone_predictions: dict[str, float] = field(default_factory=dict)
@@ -68,6 +96,13 @@ class Outcome:
 
     # Duration outcome
     actual_duration_days: float  # -1 if not yet known
+
+    # Observation family. Defaults to RUN_DURATION because the automatic writer
+    # of outcomes is the evidence loop, whose duration is the run's wall clock —
+    # it is never a project lifecycle. A human closing a project prediction must
+    # say so explicitly (``domain=PROJECT_DURATION``); leaving it unset records a
+    # run-scoped observation, which will not pair with a project prediction.
+    domain: str = RUN_DURATION
     actual_completion: bool = False  # did the project complete?
 
     # Failure outcome
@@ -92,6 +127,7 @@ class CalibrationPair:
     outcome: Outcome
 
     # Computed
+    domain: str = ""  # the family both records agreed on
     duration_error_days: float = 0.0  # actual - predicted_p50
     duration_mape: float = 0.0  # |actual - predicted_p50| / actual
     failure_brier: float = 0.0  # (predicted_failure_prob - 1_if_failed)^2
@@ -168,14 +204,24 @@ class CalibrationStore:
                     continue
         return results
 
-    def pairs(self) -> list[CalibrationPair]:
-        """All matched prediction/outcome pairs."""
+    def pairs(self, domain: str | None = None) -> list[CalibrationPair]:
+        """Matched prediction/outcome pairs, within one observation family.
+
+        Two records pair when they share a prediction_id *and* name the same
+        non-empty domain. ``domain`` narrows the result further, which callers
+        computing error metrics need: mixing families in one metric set averages
+        durations that are not comparable.
+        """
         preds = {p.prediction_id: p for p in self.predictions()}
         outs = [o for o in self.outcomes() if o.prediction_id in preds]
 
         pairs: list[CalibrationPair] = []
         for o in outs:
             p = preds[o.prediction_id]
+            if not _same_domain(p, o):
+                continue
+            if domain is not None and p.domain != domain:
+                continue
             pairs.append(_compute_pair(p, o))
         return pairs
 
@@ -187,6 +233,29 @@ class CalibrationStore:
 
     def pair_count(self) -> int:
         return len(self.pairs())
+
+    def domain_summary(self) -> dict[str, dict[str, int]]:
+        """Per-family record counts — the reason a pair count is what it is.
+
+        "0 pairs" on its own is indistinguishable from "empty store". This
+        shows the predictions and outcomes that exist and cannot pair, split by
+        the family each one claims.
+        """
+        summary: dict[str, dict[str, int]] = {}
+
+        def _row(family: str) -> dict[str, int]:
+            return summary.setdefault(
+                family or UNKNOWN_DOMAIN,
+                {"predictions": 0, "outcomes": 0, "pairs": 0},
+            )
+
+        for p in self.predictions():
+            _row(p.domain)["predictions"] += 1
+        for o in self.outcomes():
+            _row(o.domain)["outcomes"] += 1
+        for committed in self.pairs():
+            _row(committed.domain)["pairs"] += 1
+        return summary
 
     # ── Integrity ──────────────────────────────────────────────────────
 
@@ -266,6 +335,15 @@ class CalibrationStore:
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 
+def _same_domain(pred: Prediction, out: Outcome) -> bool:
+    """Whether these two records measure the same thing.
+
+    An empty domain matches nothing: a record that does not say what it
+    measures is not silently treated as compatible with one that does.
+    """
+    return bool(pred.domain) and pred.domain == out.domain
+
+
 def _compute_pair(pred: Prediction, out: Outcome) -> CalibrationPair:
     """Compute error metrics for a matched prediction/outcome pair."""
     # Duration error — MAPE on P50
@@ -291,6 +369,7 @@ def _compute_pair(pred: Prediction, out: Outcome) -> CalibrationPair:
     return CalibrationPair(
         prediction=pred,
         outcome=out,
+        domain=pred.domain,
         duration_error_days=dur_error,
         duration_mape=dur_mape,
         failure_brier=failure_brier,

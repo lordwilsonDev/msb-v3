@@ -27,6 +27,7 @@ from msb_v3.plei.calibration.scheduler import (
     schedule_as_dict,
 )
 from msb_v3.plei.calibration.store import (
+    PROJECT_DURATION,
     CalibrationStore,
     Outcome,
     Prediction,
@@ -78,13 +79,19 @@ def _make_outcome(
     actual_days: float = 12.0,
     completed: bool = True,
 ) -> Outcome:
-    """Create a test Outcome."""
+    """Create a test Outcome closing a project-lifecycle prediction.
+
+    The family is stated explicitly: an Outcome defaults to the run-scoped
+    family (what the evidence loop records), and a run outcome does not pair
+    with a project prediction.
+    """
     return Outcome(
         outcome_id=f"outcome:{prediction_id}",
         prediction_id=prediction_id,
         project=project,
         observed_at="2026-08-26T12:05:00Z",
         actual_duration_days=actual_days,
+        domain=PROJECT_DURATION,
         actual_completion=completed,
         failures_encountered=0,
         severity="none",

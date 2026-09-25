@@ -245,6 +245,7 @@ class TestCalibrationStore:
     def test_calibration_append_and_verify(self, tmp_path):
         """Store must accept records and maintain chain integrity."""
         from msb_v3.plei.calibration.store import (
+            PROJECT_DURATION,
             CalibrationStore,
             Outcome,
             Prediction,
@@ -278,6 +279,7 @@ class TestCalibrationStore:
             project="test",
             observed_at="2026-08-25T01:00:00Z",
             actual_duration_days=8.5,
+            domain=PROJECT_DURATION,  # an 8.5-day lifecycle vs a 10-day P50
             actual_completion=True,
             failures_encountered=0,
             severity="none",

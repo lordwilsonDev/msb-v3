@@ -12,6 +12,7 @@ from msb_v3.plei.harness.bridge import (
 from msb_v3.plei.harness.evidence_loop import (
     LoopResult,
     TwinDelta,
+    _auto_record_outcome,
     loop_result_as_dict,
     run_evidence_loop,
 )
@@ -487,3 +488,84 @@ class TestEvidenceLoop:
         assert d["twin_delta"]["gaps_closed"] == ["gap:test"]
         assert d["recommendation"] == "All done"
         assert d["ready_for_calibration"]
+
+
+# ── Evidence loop → calibration store ──────────────────────────────────────
+
+
+def _recorded_report(total_duration_s: float = 120.0) -> ExecutionReport:
+    return ExecutionReport(
+        plan_id="plan:cal.test",
+        ok=True,
+        total_steps=1,
+        completed_steps=1,
+        failed_steps=0,
+        blocked_steps=0,
+        review_steps=0,
+        total_duration_s=total_duration_s,
+    )
+
+
+def _prediction(prediction_id: str, domain: str):
+    from msb_v3.plei.calibration.store import Prediction
+
+    return Prediction(
+        prediction_id=prediction_id,
+        project="msb-v3",
+        forecast_at="2026-09-24T00:00:00Z",
+        predicted_p50_days=104.0,
+        predicted_p80_days=112.0,
+        predicted_p95_days=120.0,
+        predicted_mean_days=105.0,
+        predicted_stdev_days=9.9,
+        predicted_failure_probability=0.5,
+        domain=domain,
+    )
+
+
+class TestCalibrationOutcomeRecording:
+    """What the loop records must be what the loop measured.
+
+    The loop measures one run's wall clock. That is a run observation, so it
+    pairs with a run-scoped prediction and never with the project-lifecycle P50
+    that `_auto_record_prediction` writes. Recording it against a project
+    prediction is what put 110 ~0.0000-day outcomes beside ~104-day P50s and
+    scored them as "perfect" MAPE rows.
+    """
+
+    @staticmethod
+    def _isolated_store(monkeypatch, tmp_path):
+        from msb_v3.plei.calibration import store as calibration_store
+
+        store = calibration_store.CalibrationStore(tmp_path / "calibration.jsonl")
+        monkeypatch.setattr(
+            calibration_store, "CalibrationStore", lambda *a, **k: store
+        )
+        return store
+
+    def test_project_prediction_is_not_closed_by_a_run(self, monkeypatch, tmp_path):
+        from msb_v3.plei.calibration.store import PROJECT_DURATION
+
+        store = self._isolated_store(monkeypatch, tmp_path)
+        store.record_prediction(_prediction("pred:project", PROJECT_DURATION))
+
+        _auto_record_outcome(_recorded_report(), TwinDelta())
+
+        assert store.outcome_count() == 0
+        assert store.pairs() == []
+        assert store.domain_summary()[PROJECT_DURATION]["predictions"] == 1
+
+    def test_run_scoped_prediction_is_closed_by_a_run(self, monkeypatch, tmp_path):
+        from msb_v3.plei.calibration.store import RUN_DURATION
+
+        store = self._isolated_store(monkeypatch, tmp_path)
+        store.record_prediction(_prediction("pred:run", RUN_DURATION))
+
+        _auto_record_outcome(_recorded_report(total_duration_s=120.0), TwinDelta())
+
+        outcomes = store.outcomes()
+        assert len(outcomes) == 1
+        assert outcomes[0].domain == RUN_DURATION
+        # 120 s of wall clock, recorded in days — the run's own scale.
+        assert outcomes[0].actual_duration_days == 0.0014
+        assert len(store.pairs(domain=RUN_DURATION)) == 1

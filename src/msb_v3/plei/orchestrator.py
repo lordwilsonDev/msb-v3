@@ -246,10 +246,13 @@ def _calibration_section(
         compute_schedule,
         schedule_as_dict,
     )
-    from msb_v3.plei.calibration.store import CalibrationStore
+    from msb_v3.plei.calibration.store import PROJECT_DURATION, CalibrationStore
 
     store = CalibrationStore()
-    pairs = store.pairs()
+    # One observation family per metric set. Records from different families are
+    # not comparable even though both are stored in days, so the report scores
+    # the project-lifecycle family and reports the rest under "domains".
+    pairs = store.pairs(domain=PROJECT_DURATION)
     n_pairs = len(pairs)
 
     # Compute error metrics
@@ -265,6 +268,8 @@ def _calibration_section(
     adj: CalibrationAdjustment = compute_adjustments(metrics)
 
     return {
+        "domain": PROJECT_DURATION,
+        "domains": store.domain_summary(),
         "total_predictions": store.prediction_count(),
         "total_outcomes": store.outcome_count(),
         "total_pairs": n_pairs,

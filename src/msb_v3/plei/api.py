@@ -27,10 +27,13 @@ import asyncio
 import importlib
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+# The observation-family names are on-disk schema values, so they are imported
+# rather than re-typed here; a drifted copy would silently stop matching.
+from msb_v3.plei.calibration.store import PROJECT_DURATION
 from msb_v3.plei.lifecycle import classify_lifecycle, lifecycle_as_dict
 from msb_v3.plei.orchestrator import ingest_all, twin_summary
 
@@ -337,12 +340,26 @@ async def project_providers():
 
 
 @plei_router.get("/calibrate", summary="Calibration report — error metrics, reliability, schedule, feedback")
-async def project_calibrate():
+# `Annotated` rather than `Query(...)` *as* the default: the default must be a
+# real string, because this handler is also called in-process (tests, ops code),
+# where a Query sentinel would leak into the payload unserialized and make
+# pairs(domain=...) match nothing.
+async def project_calibrate(
+    domain: Annotated[
+        str,
+        Query(description="Observation family to score; pairs never cross families"),
+    ] = PROJECT_DURATION,
+):
     """Run the full Phase 7 calibration pipeline.
 
     Reads the calibration store (.plei/calibration.jsonl), computes
     error metrics (MAPE, Brier, ECE), builds the reliability diagram,
     checks the scheduler, and produces feedback adjustments.
+
+    Only pairs from a single ``domain`` are scored: a project-lifecycle P50 and
+    a governed run's wall clock are different measurements that happen to share
+    the unit "days". The ``domains`` block reports what exists per family, so a
+    pair count of 0 cannot be mistaken for an empty store.
     """
     from msb_v3.plei.calibration.error import (
         compute_error_metrics,
@@ -357,13 +374,15 @@ async def project_calibrate():
     from msb_v3.plei.calibration.store import CalibrationStore
 
     store = CalibrationStore()
-    pairs = store.pairs()
+    pairs = store.pairs(domain=domain)
     metrics = compute_error_metrics(pairs)
     reliability = build_reliability_diagram(pairs)
     schedule = compute_schedule(store)
     adj = compute_adjustments(metrics)
 
     return {
+        "domain": domain,
+        "domains": store.domain_summary(),
         "total_predictions": store.prediction_count(),
         "total_outcomes": store.outcome_count(),
         "total_pairs": len(pairs),
@@ -376,7 +395,12 @@ async def project_calibrate():
 
 
 @plei_router.get("/reliability", summary="Reliability diagram — per-bucket calibration accuracy")
-async def project_reliability():
+async def project_reliability(
+    domain: Annotated[
+        str,
+        Query(description="Observation family to score; pairs never cross families"),
+    ] = PROJECT_DURATION,
+):
     """5-bucket reliability diagram with drift detection."""
     from msb_v3.plei.calibration.reliability import (
         build_reliability_diagram,
@@ -385,7 +409,7 @@ async def project_reliability():
     from msb_v3.plei.calibration.store import CalibrationStore
 
     store = CalibrationStore()
-    diagram = build_reliability_diagram(store.pairs())
+    diagram = build_reliability_diagram(store.pairs(domain=domain))
     return reliability_as_dict(diagram)
 
 
@@ -396,11 +420,25 @@ async def record_outcome(
     failures_encountered: int = Query(default=0, description="How many failure events fired"),
     actual_stage: str = Query(default="", description="Current lifecycle stage"),
     note: str = Query(default="", description="Context note"),
+    domain: Annotated[
+        str,
+        Query(
+            description=(
+                "Observation family this outcome belongs to; empty = take the "
+                "referenced prediction's family, else project_duration"
+            )
+        ),
+    ] = "",
 ):
     """Record an observed outcome and pair it with a prediction.
 
     This closes the calibration loop — prediction → outcome → error.
     Automatically triggers re-calibration if threshold met.
+
+    The outcome is only paired with the prediction when both name the same
+    ``domain``; the resolved value is returned so a mislabelled observation is
+    visible at the point it is recorded rather than later as an unexplained
+    non-pairing.
     """
     import time
     import uuid
@@ -408,12 +446,18 @@ async def record_outcome(
     from msb_v3.plei.calibration.store import CalibrationStore, Outcome
 
     store = CalibrationStore()
+    target = next(
+        (p for p in store.predictions() if p.prediction_id == prediction_id),
+        None,
+    )
+    resolved_domain = domain or (target.domain if target is not None else PROJECT_DURATION)
     outcome = Outcome(
         outcome_id=f"outcome:{uuid.uuid4().hex[:12]}",
         prediction_id=prediction_id,
         project="msb-v3",
         observed_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         actual_duration_days=actual_duration_days,
+        domain=resolved_domain,
         actual_completion=True,
         failures_encountered=failures_encountered,
         severity="critical" if failures_encountered >= 3 else "major" if failures_encountered >= 1 else "none",
@@ -426,6 +470,8 @@ async def record_outcome(
         "recorded": True,
         "outcome_id": outcome.outcome_id,
         "prediction_id": prediction_id,
+        "domain": resolved_domain,
+        "prediction_found": target is not None,
     }
 
 

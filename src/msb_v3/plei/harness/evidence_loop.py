@@ -194,22 +194,33 @@ def _auto_record_outcome(
     report: ExecutionReport,
     delta: TwinDelta,
 ) -> None:
-    """Auto-record an Outcome in the calibration store after execution.
+    """Auto-record a run-scoped Outcome in the calibration store after execution.
 
-    Matches the most recent unmatched prediction and records actual results.
+    Matches the most recent unmatched prediction *in the run family* and records
+    actual results. The duration recorded here is this run's wall clock
+    (``total_duration_s``), which is a run observation, not a project lifecycle:
+    pairing it with a project-scale P50 is what once produced 110 pairs whose
+    outcomes were 0.0000 days against a 104-day prediction. Run-scoped records
+    therefore never pair with project predictions, and this function does not
+    claim the project prediction it used to.
     """
     import uuid
 
     try:
-        from msb_v3.plei.calibration.store import CalibrationStore, Outcome
+        from msb_v3.plei.calibration.store import (
+            RUN_DURATION,
+            CalibrationStore,
+            Outcome,
+        )
 
         store = CalibrationStore()
         predictions = [p for p in store.predictions()
-                       if p.calibration_status == "predicted"]
+                       if p.calibration_status == "predicted"
+                       and p.domain == RUN_DURATION]
         if not predictions:
-            return  # no unmatched prediction to pair with
+            return  # no unmatched prediction in this observation family
 
-        # Match the most recent prediction
+        # Match the most recent run-scoped prediction
         prediction = predictions[-1]
 
         actual_duration = report.total_duration_s / 86400  # seconds → days
@@ -221,6 +232,7 @@ def _auto_record_outcome(
             project="msb-v3",
             observed_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             actual_duration_days=round(actual_duration, 4),
+            domain=RUN_DURATION,
             actual_completion=report.ok,
             failures_encountered=failures,
             severity="critical" if failures >= 3 else "major" if failures >= 1 else "none",

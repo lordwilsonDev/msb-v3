@@ -25,6 +25,8 @@ from msb_v3.plei.calibration.scheduler import (
     schedule_as_dict,
 )
 from msb_v3.plei.calibration.store import (
+    PROJECT_DURATION,
+    RUN_DURATION,
     CalibrationPair,
     CalibrationStore,
     Outcome,
@@ -45,6 +47,7 @@ def _make_prediction(
     p80: float = 35.0,
     p95: float = 40.0,
     failure_prob: float = 0.15,
+    domain: str = PROJECT_DURATION,
 ) -> Prediction:
     return Prediction(
         prediction_id=pid,
@@ -56,6 +59,7 @@ def _make_prediction(
         predicted_mean_days=p50 * 1.05,
         predicted_stdev_days=5.0,
         predicted_failure_probability=failure_prob,
+        domain=domain,
         confidence_level="moderate",
         coefficient_of_variation=0.15,
         trial_count=1000,
@@ -64,11 +68,16 @@ def _make_prediction(
     )
 
 
+# `Outcome`'s own default is RUN_DURATION (what the evidence loop writes). This
+# helper defaults to the project family because the tests that use it model
+# completion of a project prediction; tests about the family guard say which
+# family they mean.
 def _make_outcome(
     oid: str = "out:test",
     pid: str = "pred:test",
     actual_dur: float = 28.0,
     failures: int = 0,
+    domain: str = PROJECT_DURATION,
 ) -> Outcome:
     return Outcome(
         outcome_id=oid,
@@ -76,6 +85,7 @@ def _make_outcome(
         project="test",
         observed_at=_now(),
         actual_duration_days=actual_dur,
+        domain=domain,
         actual_completion=True,
         failures_encountered=failures,
         severity="none",
@@ -153,6 +163,57 @@ class TestCalibrationStore:
         store.record_prediction(_make_prediction(pid="pred:2"))
         store.record_outcome(_make_outcome(pid="pred:1"))
         assert store.pair_count() == 1  # only pred:1 matched
+
+    def test_run_outcome_does_not_pair_with_project_prediction(self, tmp_path):
+        """A run's wall clock is not a project lifecycle.
+
+        The live store held 110 such pairs — outcomes of ~0.0000 days against
+        ~104-day predictions — and averaged them in as "perfect" MAPE rows.
+        """
+        store = CalibrationStore(tmp_path / "calibrate.jsonl")
+        store.record_prediction(_make_prediction(pid="pred:project"))
+        store.record_outcome(
+            _make_outcome(pid="pred:project", actual_dur=0.0024, domain=RUN_DURATION)
+        )
+
+        assert store.prediction_count() == 1
+        assert store.outcome_count() == 1
+        assert store.pairs() == []
+        assert store.pair_count() == 0
+
+    def test_unlabelled_outcome_never_pairs(self, tmp_path):
+        """A record that does not say what it measures is not assumed compatible."""
+        store = CalibrationStore(tmp_path / "calibrate.jsonl")
+        store.record_prediction(_make_prediction(pid="pred:x"))
+        store.record_outcome(_make_outcome(pid="pred:x", domain=""))
+
+        assert store.pairs() == []
+
+    def test_pairs_filter_by_domain(self, tmp_path):
+        """One metric set is one family; the filter is how callers ask for one."""
+        store = CalibrationStore(tmp_path / "calibrate.jsonl")
+        for pid, family in (("pred:p", PROJECT_DURATION), ("pred:r", RUN_DURATION)):
+            store.record_prediction(_make_prediction(pid=pid, domain=family))
+            store.record_outcome(
+                _make_outcome(pid=pid, actual_dur=28.0, domain=family)
+            )
+
+        assert len(store.pairs()) == 2  # each family pairs within itself
+        assert len(store.pairs(domain=PROJECT_DURATION)) == 1
+        assert len(store.pairs(domain=RUN_DURATION)) == 1
+        assert store.pairs(domain=RUN_DURATION)[0].domain == RUN_DURATION
+
+    def test_domain_summary_explains_a_zero_pair_count(self, tmp_path):
+        """0 pairs must not read the same as an empty store."""
+        store = CalibrationStore(tmp_path / "calibrate.jsonl")
+        store.record_prediction(_make_prediction(pid="pred:project"))
+        store.record_outcome(
+            _make_outcome(pid="pred:project", actual_dur=0.0024, domain=RUN_DURATION)
+        )
+
+        summary = store.domain_summary()
+        assert summary[PROJECT_DURATION] == {"predictions": 1, "outcomes": 0, "pairs": 0}
+        assert summary[RUN_DURATION] == {"predictions": 0, "outcomes": 1, "pairs": 0}
 
 
 # ── Error metrics tests ─────────────────────────────────────────────────────
