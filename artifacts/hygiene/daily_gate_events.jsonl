@@ -74,3 +74,4 @@
 {"ts": "2026-09-25T01:43:51Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
 {"ts": "2026-09-25T11:15:04Z", "event": "identity_shadow_probe", "probe_ok": true, "new_records": {"chat": 1, "mcp-bridge": 0}, "with_actor": {"chat": 1, "mcp-bridge": 0}, "declared": {"vault_write_granted": false, "source": ".env"}, "surface_state": {"chat": "on", "mcp-bridge": "off-declared"}, "runtime_records": 15, "criterion_1": "MET"}
 {"ts": "2026-09-25T11:25:11Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
+{"ts": "2026-09-25T11:25:11Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
