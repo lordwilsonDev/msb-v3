@@ -741,7 +741,7 @@ Local tests, isolated fixtures, documentation, and reversible code changes proce
 | Independent verifier | Runs from a second user/process or second host |
 | Operator/owner | Approves consequential actions and signs acceptance evidence |
 
-## 10. Definition of Done
+## 10. Done criteria (the bar this plan must clear — not a claim it has)
 
 The build is complete only when:
 
