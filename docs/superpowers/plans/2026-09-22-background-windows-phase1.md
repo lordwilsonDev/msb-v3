@@ -1953,7 +1953,7 @@ curl -s -H "Authorization: Bearer $MSB_OPERATOR_TOKEN" http://127.0.0.1:8799/ops
 
 Expected: five subsystems, each with a `state` in ok/warn/fail/unknown, and real detail (cron `job_count` > 0, a `wake` entry, `plei` predictions count). Stop the scratch server afterwards. `MSB_CRON_ENABLED=0` stops the scratch server's scheduler from firing jobs.
 
-- [x] **Step 4: Look at it in the cockpit** (partial; see the verification note below)
+- [x] **Step 4: Look at it in the cockpit** (complete; see the verification notes below)
 
 Point the desktop app at the scratch server (attach accepts a port; if the UI has no port field, start it with the env var the main process reads for the port. Check `MSB_PORT` in `desktop/src/main/index.js`) and open the Background tab. Confirm:
 - Overview shows five coloured tiles with summaries, and clicking a tile opens its view.
@@ -1968,6 +1968,23 @@ Take one screenshot of the Overview for the handoff.
 > cron WARN "2 jobs; failed 0; overdue 0; scheduler OFF" (expected: the scratch server's scheduler was off on purpose); governance OK "kill switch off; 0 pending approvals"; automation OK "dry-run; spent $0 of $10"; wake OK "0 pending; 9 replies"; plei OK "99 predictions; 99 pairs; chain ok".
 > Screenshot taken (not committed; the repo keeps no images in `docs/`).
 > **Not checked by eye:** clicking a tile, the Scheduled jobs / Governance / Activity / Automation & wake / PLEI views, polling stopping while minimised, and the 30 s back-off after the server stops. The poller's behaviour is covered by `desktop/test/poller.test.js` (7/7), not by watching the running app. Recheck the cron tile against `:8766` (scheduler on) after merge; it should be OK there.
+
+> **Verification note (2026-09-24) — the items above, checked.** Worktree code on a scratch server on `:8799` (live data dirs, `MSB_CRON_ENABLED=0`) with the real main process (`desktop/src/main/index.js`, unmodified) driven through its own renderer, not a mock: screenshots plus the rendered DOM text per view, written to `/tmp/bg-eyeball/` (`report3.json`, 12 PNGs). Each claim below is what the running app showed.
+> - **Tiles → views:** all five map as designed — cron → Scheduled jobs, governance → Governance, automation → Automation & wake, wake → Automation & wake, plei → PLEI. (The first attempt clicked only the first tile: `draw()` rebuilds the tile list, so the driver had to re-query the DOM between clicks. Driver bug, not app bug.)
+> - **Every view renders:** Overview 5 tiles; Activity 50 receipts; Scheduled jobs `alert-check` and `wake-agent` with `*/5 * * * *`; Governance kill switch + 3 budgets; Automation & wake with both JSON details; PLEI summary + calibration report (109 predictions/pairs, chain ok, MAPE 28500.6%, ECE 0.029, "OVERCONFIDENT").
+> - **"History" shows runs:** clicking it listed 17+ real runs with timestamp, `SUCCESS`, trigger `schedule` and duration (3.8–13.0 s), then "Hide history".
+> - **Governance has no approve/reject buttons:** 0 `<button>` elements matching Approve/Reject; kill switch and budgets are read-only.
+> - **Minimise pauses polling:** visible 10 s = 2 requests → settled baseline 3 → minimised 22 s = 3 (**+0**, `document.visibilityState: hidden`) → restored 12 s = 6 (**+3**). The "settled baseline" is sampled 3 s after the visible window so a request already in flight when the window hides cannot be counted as a hidden poll — the first attempt did not settle and reported a spurious +1.
+> - **Server down:** killing the listener (`lsof -ti tcp:8799 -sTCP:LISTEN`) showed `read failed (MSB_UNREACHABLE: connect ECONNREFUSED 127.0.0.1:8799) - last good data: 5s ago; retrying every 30s`, and **no** error line once the server was back. `-sTCP:LISTEN` matters: without it `lsof` also returns this app's own client socket and "stopping the server" kills the cockpit.
+> - **30 s back-off:** after the failed poll the next request arrived **35.4 s** later (5 s view interval + 30 s back-off), against 5.0/5.5/6.5 s while healthy. Request gaps over the run: `[5.5, 6.5, 24.2 (minimised), 5, 5, 35.4 (back-off)]`.
+> - **Attach state was DEGRADED, not READY**, and that is this harness, not the app: `Metrics.set_ready(True)` lives in `msb_v3/__main__.py`, so a scratch server started as `uvicorn --factory` never sets it and `/status` reports `ready: false`; the live runtime on `:8766` reports `true`. The cockpit correctly showed DEGRADED rather than claiming READY.
+>
+> **Two display defects were found by eye and fixed** (this is what the check was for):
+> 1. *Activity* printed `[object Object]` — receipt `intent` is a dict (`{domain, goals}`), not a string — and its timestamp column was empty because receipts carry `timestamps: {decision, execution, verification}` (any of them nullable), not a flat `ts`. Now: `PASS client-brief - research the vault 2026-09-22T22:47:40.196352+00:00`.
+> 2. *Governance* headed the list "Pending approvals (17)" while **0** were pending — `GET /governance/approvals` returns the whole queue (16 APPROVED, 1 REJECTED at the time), so the view contradicted the Overview tile's "0 pending approvals". Now: "Pending approvals (0) / None. / … 17 decided approval(s) in the queue are not listed here."
+>
+> Desktop suite re-run after the fix: **83/83 pass, `tsc --noEmit` clean**. Only `desktop/src/renderer/background.js` changed; the Python suite (Step 1) is untouched by a renderer-only change.
+> **Still open (not a phase-1 build item):** the branch is not merged, so `:8766` still runs the main checkout and has no `/ops/background` route — recheck the cron tile there (scheduler **on**, so it should read OK, not WARN) after merge.
 
 - [x] **Step 5: Final commit (only if Steps 1–4 required fixes)**
 

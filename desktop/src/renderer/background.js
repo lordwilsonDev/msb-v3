@@ -211,6 +211,25 @@
     return c;
   }
 
+  /** Receipt intents are structured (``{domain, goals}``). Show the goal text;
+   *  never print "[object Object]". */
+  function intentText(intent) {
+    if (!intent) return '(no intent)';
+    if (typeof intent === 'string') return intent.slice(0, 120);
+    const parts = [];
+    if (intent.domain) parts.push(String(intent.domain));
+    if (Array.isArray(intent.goals) && intent.goals.length) parts.push(intent.goals.map(String).join('; '));
+    return (parts.join(' - ') || '(no intent detail)').slice(0, 120);
+  }
+
+  /** Receipts carry ``timestamps: {decision, execution, verification}``, any of
+   *  them nullable; fall back to a flat timestamp key if one is present. */
+  function receiptTs(rec) {
+    const t = rec.timestamps && typeof rec.timestamps === 'object' ? rec.timestamps : {};
+    const first = t.execution || t.decision || t.verification || rec.ts || rec.timestamp || rec.created_at;
+    return first ? String(first) : '';
+  }
+
   function renderActivity() {
     const c = card('Activity - governed runs');
     c.appendChild(
@@ -228,8 +247,8 @@
       const verdict = (rec.execution_result && rec.execution_result.verdict) || rec.moie_verdict || '?';
       const li = el('li', {});
       li.appendChild(el('span', { class: 'badge kind', text: String(verdict) }));
-      li.appendChild(el('strong', { text: ` ${String(rec.intent || '(no intent)').slice(0, 120)} ` }));
-      li.appendChild(el('span', { class: 'detail', text: String(rec.ts || rec.timestamp || rec.created_at || '') }));
+      li.appendChild(el('strong', { text: ` ${intentText(rec.intent)} ` }));
+      li.appendChild(el('span', { class: 'detail', text: receiptTs(rec) }));
       list.appendChild(li);
     }
     c.appendChild(list);
@@ -303,12 +322,24 @@
       );
     }
     c.appendChild(bl);
-    c.appendChild(el('h2', { text: `Pending approvals (${bg.approvals.length})`, style: 'margin-top:12px' }));
+    // GET /governance/approvals returns the whole queue, decided rows included,
+    // so filter: this view is "pending approvals" (design doc), and the Overview
+    // tile reports the same count from /governance/status.
+    const pending = bg.approvals.filter((a) => String(a.status || '').toUpperCase() === 'PENDING');
+    c.appendChild(el('h2', { text: `Pending approvals (${pending.length})`, style: 'margin-top:12px' }));
     const al = el('ul', { class: 'list' });
-    for (const a of bg.approvals) al.appendChild(el('li', { text: `${a.kind || '?'}  ${a.id}  ${a.summary || a.reason || ''}` }));
-    if (!bg.approvals.length) al.appendChild(el('li', { class: 'empty', text: 'None.' }));
+    for (const a of pending) al.appendChild(el('li', { text: `${a.kind || '?'}  ${a.id}  ${a.title || a.summary || a.reason || ''}` }));
+    if (!pending.length) al.appendChild(el('li', { class: 'empty', text: 'None.' }));
     c.appendChild(al);
-    c.appendChild(el('div', { class: 'detail', text: 'Approve or reject from the main approvals panel; this view is watch-only.' }));
+    const decided = bg.approvals.length - pending.length;
+    c.appendChild(
+      el('div', {
+        class: 'detail',
+        text:
+          `Approve or reject from the main approvals panel; this view is watch-only.` +
+          (decided ? ` ${decided} decided approval(s) in the queue are not listed here.` : ''),
+      })
+    );
     return c;
   }
 
