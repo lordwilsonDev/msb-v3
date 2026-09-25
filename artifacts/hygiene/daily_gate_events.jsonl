@@ -69,3 +69,5 @@
 {"ts": "2026-09-23T11:23:56Z", "event": "evidence_push", "ok": true, "verdict": "PASS"}
 {"ts": "2026-09-24T11:15:05Z", "event": "identity_shadow_probe", "probe_ok": true, "new_records": {"chat": 1, "mcp-bridge": 0}, "with_actor": {"chat": 1, "mcp-bridge": 0}, "declared": {"vault_write_granted": false, "source": ".env"}, "surface_state": {"chat": "on", "mcp-bridge": "off-declared"}, "runtime_records": 13, "criterion_1": "MET"}
 {"ts": "2026-09-24T11:24:08Z", "event": "gate_run", "verdict": "BLOCKED", "unknowns": 1}
+{"ts": "2026-09-25T01:34:53Z", "event": "identity_shadow_probe", "probe_ok": true, "new_records": {"chat": 1, "mcp-bridge": 0}, "with_actor": {"chat": 1, "mcp-bridge": 0}, "declared": {"vault_write_granted": false, "source": ".env"}, "surface_state": {"chat": "on", "mcp-bridge": "off-declared"}, "runtime_records": 14, "criterion_1": "MET"}
+{"ts": "2026-09-25T01:43:51Z", "event": "gate_run", "verdict": "PASS", "unknowns": 0}
