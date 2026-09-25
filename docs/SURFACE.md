@@ -118,7 +118,7 @@ subpackage is unclassified (AC-3.1).
 
 | Package | Class | Justification (traced) |
 |---|---|---|
-| `msb_ledger` | FROZEN | Standalone hash-chain library, zero `msb_v3` imports (release doc P4; 30 guards in `tests/uac/test_ledger_extraction.py`). |
+| `msb_ledger` | FROZEN | Standalone hash-chain library, zero `msb_v3` imports (release doc P4; 38 guards in `tests/uac/test_ledger_extraction.py`). |
 | `personal_intelligence` | OPTIONAL | Retained-deferred per dormant-satellites disposition (2026-08-13): `skill_engine` + `event_bus` kept, six dead modules archived. |
 
 ## Frozen marker convention (FR-3.2)

@@ -29,16 +29,20 @@ import sys
 # modules the moment any uac module was imported.
 _LEDGER_MODULES = (
     "audit_chain",
+    "audit_v1_export",
+    "audit_v2",
     "axiom_library",
     "chain_anchor",
     "config",
     "merkle",
+    "migration",
     "models",
     "notary",
     "observer_log",
     "research_backend",
     "signing",
     "stage_0_knowledge_acquisition",
+    "storage_contract",
     "timestamping",
     "transcript_requirements_extractor",
 )

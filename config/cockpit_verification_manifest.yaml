@@ -1,0 +1,951 @@
+version: 1
+name: msb-cockpit-build-verification
+updated_at: 2026-09-24
+source: docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md
+status_values:
+  - confirmed_in_code
+  - partially_evidenced
+  - planned
+  - physical_test_required
+  - unknown
+  - blocked_external_dependency
+  - not_yet_proven
+rule: no gate may become confirmed_without_independent_evidence
+priority_values: [P0, P1, P2, P3]
+gates:
+  - id: 1
+    section: runtime_hardware
+    requirement: Mac mini M1 2020 is the sole production runtime and identifiers are Macmini9,1 / A2348.
+    priority: P0
+    status: unknown
+    enforcement: hardware manifest and deployment preflight
+    evidence: []
+    test: collect hardware identity on the production host
+    physical: true
+  - id: 2
+    section: runtime_hardware
+    requirement: Apple M1 SoC, 5 nm TSMC N5, 16 billion transistors.
+    priority: P2
+    status: unknown
+    enforcement: hardware evidence manifest
+    evidence: []
+    test: compare recorded system identity to approved hardware baseline
+    physical: true
+  - id: 3
+    section: runtime_hardware
+    requirement: 8-core CPU with 4 performance and 4 efficiency cores.
+    priority: P1
+    status: unknown
+    enforcement: runtime telemetry
+    evidence: []
+    test: capture CPU topology and thermal load
+    physical: true
+  - id: 4
+    section: runtime_hardware
+    requirement: 8-core Apple GPU and no eGPU dependency.
+    priority: P2
+    status: unknown
+    enforcement: runtime telemetry
+    evidence: []
+    test: capture GPU inventory and external display configuration
+    physical: true
+  - id: 5
+    section: runtime_hardware
+    requirement: 16-core Neural Engine with declared FP16 capability.
+    priority: P2
+    status: unknown
+    enforcement: runtime manifest
+    evidence: []
+    test: record hardware identity and model runtime mode
+    physical: true
+  - id: 6
+    section: runtime_hardware
+    requirement: Unified memory configuration and bandwidth are recorded as a hard deployment constraint.
+    priority: P0
+    status: unknown
+    enforcement: production manifest and admission policy
+    evidence: []
+    test: assert memory ceiling and record actual capacity
+    physical: true
+  - id: 7
+    section: runtime_hardware
+    requirement: 16 GB is production minimum; 8 GB uses explicit degraded mode.
+    priority: P0
+    status: planned
+    enforcement: resource admission controller
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: 8 GB simulation and physical 8 GB run
+    physical: true
+  - id: 8
+    section: runtime_hardware
+    requirement: Internal SSD is fixed, non-upgradeable, and treated as a finite storage domain.
+    priority: P0
+    status: partially_evidenced
+    enforcement: storage manifest, free-space monitor, archival policy
+    evidence: [src/msb_v3/core/config.py]
+    test: inventory storage and exercise low-space transitions
+    physical: true
+  - id: 9
+    section: runtime_hardware
+    requirement: Single-fan thermal behavior is measured during sustained load.
+    priority: P2
+    status: physical_test_required
+    enforcement: thermal telemetry
+    evidence: []
+    test: 30+ minute 4P+4E load with fan and temperature capture
+    physical: true
+  - id: 10
+    section: runtime_hardware
+    requirement: Power and thermal envelope are recorded for operational planning.
+    priority: P2
+    status: unknown
+    enforcement: hardware evidence manifest
+    evidence: []
+    test: measure idle and sustained load power
+    physical: true
+  - id: 11
+    section: runtime_hardware
+    requirement: I/O inventory and display limits are recorded.
+    priority: P2
+    status: unknown
+    enforcement: hardware manifest
+    evidence: []
+    test: inventory Thunderbolt, USB, Ethernet, display, and audio interfaces
+    physical: true
+  - id: 12
+    section: runtime_hardware
+    requirement: Wi-Fi 6 and Bluetooth 5.0 are recorded as deployment facts.
+    priority: P2
+    status: unknown
+    enforcement: hardware manifest
+    evidence: []
+    test: collect network and Bluetooth inventory
+    physical: true
+  - id: 13
+    section: runtime_hardware
+    requirement: Dimensions and weight are recorded.
+    priority: P3
+    status: unknown
+    enforcement: hardware manifest
+    evidence: []
+    test: verify against approved hardware record
+    physical: true
+  - id: 14
+    section: runtime_hardware
+    requirement: Non-upgradeability and shared-memory contention are hard constraints.
+    priority: P0
+    status: planned
+    enforcement: architecture contract, admission control, resource telemetry
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: resource-pressure and replacement-host scenarios
+    physical: true
+  - id: 15
+    section: purpose_scope
+    requirement: Original synchronous audit verification starvation was identified and removed from the request path.
+    priority: P0
+    status: partially_evidenced
+    enforcement: bounded executor and background verification boundary
+    evidence: [docs/audits/smi-017-forensic-review/scale_failure_analysis.md, docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: request-path starvation regression test
+    physical: false
+  - id: 16
+    section: purpose_scope
+    requirement: Causal graph covers contention, cache, authenticity, recovery, authority, and physical failure.
+    priority: P1
+    status: planned
+    enforcement: verification manifest and dependency graph
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: trace each failure class to gate, control, and evidence artifact
+    physical: false
+  - id: 17
+    section: purpose_scope
+    requirement: Critical guarantees are mechanically enforced rather than relying on developer discipline.
+    priority: P0
+    status: partially_evidenced
+    enforcement: storage triggers, signatures, isolated verifier, external anchor
+    evidence: [src/msb_ledger/audit_chain.py, src/msb_ledger/chain_anchor.py, src/msb_ledger/notary.py]
+    test: adversarial mutation suite
+    physical: false
+  - id: 18
+    section: purpose_scope
+    requirement: Apple page size, Docker behaviour, fixed storage, and unified memory are first-class constraints.
+    priority: P1
+    status: planned
+    enforcement: runtime manifest and Qdrant preflight
+    evidence: [src/msb_v3/infrastructure/qdrant_contract.py]
+    test: 16 kB-page Qdrant restart and integrity run
+    physical: true
+  - id: 19
+    section: append_only_storage
+    requirement: Application-level never-delete is only one layer of authority.
+    priority: P0
+    status: partially_evidenced
+    enforcement: external anchor and independent verifier
+    evidence: [src/msb_ledger/audit_chain.py, src/msb_ledger/chain_anchor.py, src/msb_ledger/notary.py]
+    test: whole-store rollback and replacement tests
+    physical: false
+  - id: 20
+    section: append_only_storage
+    requirement: Threat model includes file deletion, truncation, permission changes, directory replacement, rollback, mount substitution, and out-of-process writes.
+    priority: P0
+    status: planned
+    enforcement: adversarial manifest and recovery harness
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: execute every threat row in isolated storage
+    physical: false
+  - id: 21
+    section: append_only_storage
+    requirement: Authoritative audit store is append-only or cryptographically protected against deletion.
+    priority: P0
+    status: partially_evidenced
+    enforcement: SQLite append-only triggers plus external signed checkpoint
+    evidence: [src/msb_ledger/audit_chain.py, src/msb_ledger/chain_anchor.py]
+    test: update/delete/truncate/drop-trigger attacks
+    physical: false
+  - id: 22
+    section: append_only_storage
+    requirement: Physical deletion or truncation breaks independently verifiable chain continuity.
+    priority: P0
+    status: partially_evidenced
+    enforcement: predecessor hash, checkpoint, remote notarization
+    evidence: [src/msb_ledger/audit_chain.py, src/msb_ledger/notary.py]
+    test: delete and truncate followed by independent verify
+    physical: false
+  - id: 23
+    section: append_only_storage
+    requirement: Every record has monotonic sequence, canonical content hash, and predecessor hash.
+    priority: P0
+    status: partially_evidenced
+    enforcement: audit schema and SQLite transaction
+    evidence: [src/msb_ledger/audit_chain.py]
+    test: schema and concurrency tests
+    physical: false
+  - id: 24
+    section: append_only_storage
+    requirement: Verifier independent of producer code detects gap, reorder, and substitution.
+    priority: P0
+    status: partially_evidenced
+    enforcement: standalone verifier and golden vectors
+    evidence: [src/msb_ledger/audit_v2.py, tests/ledger/test_audit_v2.py, tests/fixtures/audit_golden_vectors.json, docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: run verifier from clean directory and alternate implementation
+    physical: false
+  - id: 25
+    section: append_only_storage
+    requirement: Live store is periodically checkpointed to an independently controlled trust anchor.
+    priority: P0
+    status: partially_evidenced
+    enforcement: launchd notarization schedule and remote sink
+    evidence: [src/msb_ledger/notary.py, scripts/notarize_chain_anchor.sh]
+    test: inspect schedule and perform remote-head verification
+    physical: false
+  - id: 26
+    section: append_only_storage
+    requirement: Checkpoint includes current head hash and sequence.
+    priority: P0
+    status: confirmed_in_code
+    enforcement: signed checkpoint schema
+    evidence: [src/msb_ledger/chain_anchor.py, src/msb_ledger/notary.py]
+    test: checkpoint schema assertion
+    physical: false
+  - id: 27
+    section: append_only_storage
+    requirement: Replacement of the live store is rejected unless external anchor validates.
+    priority: P0
+    status: partially_evidenced
+    enforcement: restore acceptance gate
+    evidence: [src/msb_ledger/chain_anchor.py]
+    test: restore older store and require external verification
+    physical: false
+  - id: 28
+    section: append_only_storage
+    requirement: Writer process has no delete or truncate capability for committed segments.
+    priority: P0
+    status: partially_evidenced
+    enforcement: file permissions, mount policy, SQLite triggers
+    evidence: [src/msb_ledger/audit_chain.py]
+    test: inspect process capabilities and run deletion attack
+    physical: true
+  - id: 29
+    section: append_only_storage
+    requirement: Rotation renames completed segments into an archive directory without rewriting history.
+    priority: P1
+    status: planned
+    enforcement: rotation manifest and external checkpoint
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: rotation and continuity test
+    physical: false
+  - id: 30
+    section: append_only_storage
+    requirement: Backups are append-only and carry independent integrity proofs.
+    priority: P0
+    status: partially_evidenced
+    enforcement: per-object remote notary objects and signatures
+    evidence: [src/msb_ledger/notary.py]
+    test: remote object deletion, overwrite, and rollback
+    physical: false
+  - id: 31
+    section: append_only_storage
+    requirement: Restore re-verifies entire chain against external anchor before acceptance.
+    priority: P0
+    status: planned
+    enforcement: quarantine restore path and independent verifier
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: restore and verify with mismatched and matching anchors
+    physical: false
+  - id: 32
+    section: append_only_storage
+    requirement: External trust-anchor medium is a first-class failure domain with scheduled rotation.
+    priority: P0
+    status: planned
+    enforcement: trust-anchor manifest, media rotation schedule, incident runbook
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: rotate media in isolated rehearsal
+    physical: true
+  - id: 33
+    section: sqlite_audit_store
+    requirement: SQLite is one representation of history, not the sole external authenticity authority.
+    priority: P0
+    status: partially_evidenced
+    enforcement: signed checkpoints and notarization
+    evidence: [src/msb_ledger/notary.py, src/msb_ledger/chain_anchor.py]
+    test: replace database with older valid database
+    physical: false
+  - id: 34
+    section: sqlite_audit_store
+    requirement: Power loss, WAL recovery, disk full, corruption, concurrent copies, migration, and SQLite upgrades are covered.
+    priority: P0
+    status: planned
+    enforcement: storage contract and adversarial harness
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: execute SQLite failure matrix
+    physical: true
+  - id: 35
+    section: sqlite_audit_store
+    requirement: SQLite page cache is constrained because memory is unified with Qdrant and model weights.
+    priority: P1
+    status: planned
+    enforcement: connection factory and resource budgets
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: measure RSS, swap, and page-cache behavior under load
+    physical: true
+  - id: 36
+    section: sqlite_audit_store
+    requirement: Aggressive cache sizing cannot silently induce swap and violate latency guarantees.
+    priority: P1
+    status: planned
+    enforcement: cache policy and degraded mode
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: cache-pressure regression test
+    physical: true
+  - id: 37
+    section: sqlite_audit_store
+    requirement: High-rate audit writes are rate-limited or off-loaded for fixed SSD endurance.
+    priority: P1
+    status: planned
+    enforcement: bounded write queue and audit budget
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: sustained write-rate and queue-depth test
+    physical: false
+  - id: 38
+    section: sqlite_audit_store
+    requirement: Power-loss testing covers actual Apple NVMe controller behavior.
+    priority: P2
+    status: physical_test_required
+    enforcement: controlled wall-power-loss harness
+    evidence: []
+    test: repeat abrupt-removal test on target Mac mini
+    physical: true
+  - id: 39
+    section: sqlite_audit_store
+    requirement: fsync, WAL, and durability settings are verified independently of cooling assumptions.
+    priority: P0
+    status: planned
+    enforcement: centralized connection factory and health probe
+    evidence: [src/msb_ledger/audit_chain.py]
+    test: assert runtime pragmas and subprocess recovery
+    physical: false
+  - id: 40
+    section: sqlite_audit_store
+    requirement: Storage contracts cover power loss, disk-full, corruption, and versioned migrations with pre/post heads.
+    priority: P0
+    status: planned
+    enforcement: storage state machine and migration ledger
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: storage and migration acceptance suite
+    physical: true
+  - id: 41
+    section: backup_recovery
+    requirement: A backup is untrusted until restored and verified.
+    priority: P0
+    status: planned
+    enforcement: quarantine restore and evidence gate
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: restore each backup class into isolation
+    physical: true
+  - id: 42
+    section: backup_recovery
+    requirement: Failed internal SSD recovery assumes machine replacement and external restore.
+    priority: P0
+    status: planned
+    enforcement: replacement-host runbook
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: replacement-host rehearsal
+    physical: true
+  - id: 43
+    section: backup_recovery
+    requirement: Restore procedures are exercised on a second Mac mini or equivalent Apple Silicon host.
+    priority: P0
+    status: blocked_external_dependency
+    enforcement: second-host restore gate
+    evidence: []
+    test: install, restore, verify, and run adversarial suite on second host
+    physical: true
+  - id: 44
+    section: resource_containment
+    requirement: State generation is stored in the append-only log; TTL is emergency fallback only.
+    priority: P1
+    status: planned
+    enforcement: event-store authority and cache lease
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: cache rebuild from log after expiration
+    physical: false
+  - id: 45
+    section: resource_containment
+    requirement: Executor saturation is treated as a first-order risk on 4P+4E and 16 GB unified memory.
+    priority: P1
+    status: planned
+    enforcement: admission controller and budgets
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: sustained concurrency and memory pressure
+    physical: true
+  - id: 46
+    section: resource_containment
+    requirement: Explicit concurrency limits, per-panel budgets, queue metrics, and admission control are implemented.
+    priority: P1
+    status: planned
+    enforcement: resource control service
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: budget and admission acceptance tests
+    physical: false
+  - id: 47
+    section: resource_containment
+    requirement: Self-probes and observability operate under hard resource budgets.
+    priority: P1
+    status: planned
+    enforcement: bounded probe scheduler
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: probe starvation test
+    physical: false
+  - id: 48
+    section: resource_containment
+    requirement: Cockpit is never the sole observer of the Cockpit.
+    priority: P0
+    status: planned
+    enforcement: independent verifier, launchd verifier, external checkpoint
+    evidence: [src/msb_ledger/notary.py]
+    test: stop Cockpit and verify externally
+    physical: false
+  - id: 49
+    section: test_isolation
+    requirement: Production paths, credentials, sockets, and mounts are inaccessible to tests.
+    priority: P0
+    status: planned
+    enforcement: isolated volumes/users/hosts and test secret boundaries
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: access-control test from test identity
+    physical: true
+  - id: 50
+    section: test_isolation
+    requirement: Single-machine isolation uses separate volume, second machine, or controlled boundary respecting Apple page size and Docker.
+    priority: P0
+    status: blocked_external_dependency
+    enforcement: deployment topology contract
+    evidence: []
+    test: prove test process cannot access production store
+    physical: true
+  - id: 51
+    section: replay_schema
+    requirement: Original replay, audit schema, and canonicalisation requirements remain in force.
+    priority: P0
+    status: partially_evidenced
+    enforcement: versioned schema and replay tests
+    evidence: [src/msb_v3/replay, src/msb_ledger/audit_chain.py]
+    test: replay historical fixtures
+    physical: false
+  - id: 52
+    section: replay_schema
+    requirement: Model identity records native Apple Silicon or Rosetta execution.
+    priority: P1
+    status: planned
+    enforcement: environment manifest and model identity schema
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: run native and translated model probes
+    physical: true
+  - id: 53
+    section: ui_operator
+    requirement: Original UI, operator, and emergency control requirements remain in force.
+    priority: P1
+    status: planned
+    enforcement: Cockpit API and control-plane contract
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: UI and control acceptance suite
+    physical: false
+  - id: 54
+    section: ui_operator
+    requirement: Localhost is insufficient for authorisation.
+    priority: P0
+    status: partially_evidenced
+    enforcement: operator authentication dependency
+    evidence: [src/msb_v3/api/auth.py, src/msb_v3/api/governance.py]
+    test: unauthorized localhost request
+    physical: false
+  - id: 55
+    section: ui_operator
+    requirement: Operator authority is separated from production, execution, and verification.
+    priority: P0
+    status: planned
+    enforcement: authority chain and independent verifier
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: role-boundary attack suite
+    physical: false
+  - id: 56
+    section: supervisor_dependencies
+    requirement: launchd is the native supervisor on macOS.
+    priority: P1
+    status: confirmed_in_code
+    enforcement: LaunchAgent templates
+    evidence: [scripts/com.blackswanlabz.msb-v3.auto-repair.plist, scripts/com.blackswanlabz.harness-evidence.plist]
+    test: launchctl registration test
+    physical: true
+  - id: 57
+    section: supervisor_dependencies
+    requirement: Crash-loop detection, backoff, health-gated restart, and safe mode are implemented in launchd or a thin wrapper.
+    priority: P1
+    status: planned
+    enforcement: supervisor wrapper and state store
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: forced crash and unhealthy response
+    physical: true
+  - id: 58
+    section: supervisor_dependencies
+    requirement: Qdrant/Docker on Apple Silicon accounts for 16 kB pages.
+    priority: P1
+    status: partially_evidenced
+    enforcement: Qdrant contract and image manifest
+    evidence: [src/msb_v3/infrastructure/qdrant_contract.py]
+    test: 16 kB-page container run
+    physical: true
+  - id: 59
+    section: supervisor_dependencies
+    requirement: jemalloc aborts from unsupported system page size are avoided.
+    priority: P1
+    status: planned
+    enforcement: image and allocator compatibility check
+    evidence: []
+    test: Qdrant restart and error-log scan
+    physical: true
+  - id: 60
+    section: supervisor_dependencies
+    requirement: Native arm64 or known-compatible images are preferred.
+    priority: P1
+    status: planned
+    enforcement: image digest allowlist
+    evidence: [docker-compose.yml, docker-compose.sovereign.yml]
+    test: inspect image architectures and digests
+    physical: false
+  - id: 61
+    section: supervisor_dependencies
+    requirement: Named Docker volumes are used instead of Qdrant bind mounts where required.
+    priority: P1
+    status: partially_evidenced
+    enforcement: compose storage contract
+    evidence: [docker-compose.yml, docker-compose.sovereign.yml]
+    test: inspect effective container mounts
+    physical: true
+  - id: 62
+    section: supervisor_dependencies
+    requirement: Independent vector-store integrity check runs after every restart before healthy status.
+    priority: P0
+    status: planned
+    enforcement: post-restart integrity gate
+    evidence: [src/msb_v3/infrastructure/qdrant_contract.py]
+    test: restart with zero-vector and missing-collection fixtures
+    physical: true
+  - id: 63
+    section: supervisor_dependencies
+    requirement: External watchdog can restart Docker or record operator action when daemon startup fails.
+    priority: P1
+    status: planned
+    enforcement: launchd watchdog with owned command
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: Docker daemon failure simulation
+    physical: true
+  - id: 64
+    section: supervisor_dependencies
+    requirement: Memory carries full provenance and retention metadata.
+    priority: P1
+    status: partially_evidenced
+    enforcement: memory record schema and audit link
+    evidence: [src/msb_v3/memory_fabric]
+    test: provenance round-trip and retention test
+    physical: false
+  - id: 65
+    section: supervisor_dependencies
+    requirement: Vector similarity is never truth authority.
+    priority: P0
+    status: partially_evidenced
+    enforcement: retrieval/evidence boundary and verifier
+    evidence: [src/msb_v3/api/rag.py, src/msb_ledger/audit_chain.py]
+    test: adversarial high-score contradiction test
+    physical: false
+  - id: 66
+    section: supervisor_dependencies
+    requirement: Unbounded memory growth is forbidden; retention, decay, and quarantine are mandatory.
+    priority: P1
+    status: partially_evidenced
+    enforcement: memory lifecycle state machine
+    evidence: [src/msb_v3/memory_fabric]
+    test: retention and quarantine acceptance tests
+    physical: false
+  - id: 67
+    section: storage_growth
+    requirement: Disk-full behavior is exactly NORMAL -> LOW_SPACE -> CRITICAL_SPACE -> AUDIT_WRITE_BLOCKED -> SAFE_MODE.
+    priority: P0
+    status: planned
+    enforcement: storage state machine
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: threshold transition and refusal tests
+    physical: false
+  - id: 68
+    section: storage_growth
+    requirement: Archival to external media or network is obligatory before internal capacity is critical.
+    priority: P0
+    status: planned
+    enforcement: archival scheduler and media manifest
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: low-space archival rehearsal
+    physical: true
+  - id: 69
+    section: storage_growth
+    requirement: Rotation and archival preserve chain continuity through checkpoints.
+    priority: P0
+    status: planned
+    enforcement: rotation manifest and signed checkpoint
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: rotate and verify archived range
+    physical: false
+  - id: 70
+    section: storage_growth
+    requirement: The single Mac mini is a complete physical failure domain.
+    priority: P0
+    status: planned
+    enforcement: replacement-host runbook and external anchor
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: replacement-host rehearsal
+    physical: true
+  - id: 71
+    section: storage_growth
+    requirement: SSD, logic-board, deletion, FileVault, and OS-brick failures map to replacement plus external restore.
+    priority: P0
+    status: planned
+    enforcement: recovery matrix
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: recovery tabletop and physical restore
+    physical: true
+  - id: 72
+    section: storage_growth
+    requirement: Thermal and power-supply failure are rare but have tested recovery paths.
+    priority: P2
+    status: physical_test_required
+    enforcement: hardware incident runbook
+    evidence: []
+    test: controlled thermal/power fault rehearsal
+    physical: true
+  - id: 73
+    section: storage_growth
+    requirement: Every audit checkpoint records exact runtime and dependency manifest.
+    priority: P0
+    status: planned
+    enforcement: environment manifest schema
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: manifest completeness assertion
+    physical: false
+  - id: 74
+    section: storage_growth
+    requirement: Historical evidence can reconstruct the runtime that produced it.
+    priority: P1
+    status: planned
+    enforcement: environment manifest and checkpoint linkage
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: replay checkpoint and compare manifest
+    physical: false
+  - id: 75
+    section: verification_independence
+    requirement: Original verification-independence and evidence-durability requirements remain in force.
+    priority: P0
+    status: partially_evidenced
+    enforcement: independent verifier, off-box notary, quarantine restore
+    evidence: [src/msb_ledger/notary.py, src/msb_ledger/merkle.py]
+    test: second-user and second-host verification
+    physical: true
+  - id: 76
+    section: verification_independence
+    requirement: Independent verifier runs on second machine or at least a second process with no production write access.
+    priority: P0
+    status: planned
+    enforcement: verifier deployment contract
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: read-only second identity verification
+    physical: true
+  - id: 77
+    section: privacy_retention
+    requirement: Original ten guarantees remain in force.
+    priority: P0
+    status: unknown
+    enforcement: requirement-to-gate traceability
+    evidence: [docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md]
+    test: enumerate and verify each original guarantee
+    physical: false
+  - id: 78
+    section: privacy_retention
+    requirement: Strongest practical 2036 guarantee is replacement-host restore plus independently verifiable external chain.
+    priority: P0
+    status: not_yet_proven
+    enforcement: replacement-host assurance package
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: final 2036 reconstruction rehearsal
+    physical: true
+  - id: 79
+    section: formal_invariants
+    requirement: Audit, runtime, memory, operational, and replay invariants remain in force.
+    priority: P0
+    status: planned
+    enforcement: invariant registry and test matrix
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: invariant-to-test traceability audit
+    physical: false
+  - id: 80
+    section: formal_invariants
+    requirement: Unified-memory pressure is monitored and swap above threshold forces degraded mode.
+    priority: P1
+    status: planned
+    enforcement: memory telemetry and admission controller
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: swap threshold acceptance test
+    physical: true
+  - id: 81
+    section: formal_invariants
+    requirement: Internal SSD free space is monitored with the same urgency as chain integrity.
+    priority: P0
+    status: planned
+    enforcement: storage state machine and alert path
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: low-space alert and safe-mode test
+    physical: false
+  - id: 82
+    section: formal_invariants
+    requirement: Qdrant restart is followed by independent vector integrity verification before healthy status.
+    priority: P0
+    status: planned
+    enforcement: Qdrant health gate
+    evidence: [src/msb_v3/infrastructure/qdrant_contract.py]
+    test: restart and integrity gate test
+    physical: true
+  - id: 83
+    section: adversarial_matrix
+    requirement: All original adversarial test rows remain in force.
+    priority: P0
+    status: planned
+    enforcement: machine-readable test manifest
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: row count and artifact audit
+    physical: false
+  - id: 84
+    section: adversarial_matrix
+    requirement: Sustained 4P+4E load over 30 minutes produces no critical-path thermal failure.
+    priority: P1
+    status: physical_test_required
+    enforcement: thermal/resource harness
+    evidence: []
+    test: target Mac mini load test
+    physical: true
+  - id: 85
+    section: adversarial_matrix
+    requirement: 8 GB configuration produces explicit degraded mode or admission control, never silent swap thrashing.
+    priority: P0
+    status: physical_test_required
+    enforcement: memory pressure controller
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: 8 GB host run
+    physical: true
+  - id: 86
+    section: adversarial_matrix
+    requirement: Internal SSD below 5 percent free transitions to AUDIT_WRITE_BLOCKED.
+    priority: P0
+    status: planned
+    enforcement: storage state machine
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: injected free-space threshold test
+    physical: false
+  - id: 87
+    section: adversarial_matrix
+    requirement: Qdrant restart on 16 kB-page host leaves non-zero vectors and passes integrity check.
+    priority: P0
+    status: physical_test_required
+    enforcement: Qdrant restart integrity gate
+    evidence: [src/msb_v3/infrastructure/qdrant_contract.py]
+    test: Apple Silicon Qdrant restart test
+    physical: true
+  - id: 88
+    section: adversarial_matrix
+    requirement: Wall-power removal yields continuous verified WAL recovery or an explicit break.
+    priority: P0
+    status: physical_test_required
+    enforcement: power-loss harness
+    evidence: []
+    test: controlled abrupt-removal test
+    physical: true
+  - id: 89
+    section: adversarial_matrix
+    requirement: macOS major upgrade records manifest change and preserves historical verification.
+    priority: P1
+    status: physical_test_required
+    enforcement: migration and environment manifest gate
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: upgrade rehearsal on isolated Apple Silicon host
+    physical: true
+  - id: 90
+    section: priority
+    requirement: P0 remains external trust anchor, canonical schema, independent verification, and test/production isolation.
+    priority: P0
+    status: planned
+    enforcement: P0 manifest ordering
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: reject implementation that promotes a P1 dependency ahead of P0
+    physical: false
+  - id: 91
+    section: priority
+    requirement: Restore onto a second Apple Silicon machine is P0.
+    priority: P0
+    status: planned
+    enforcement: replacement-host acceptance gate
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: second-host restore rehearsal
+    physical: true
+  - id: 92
+    section: non_goals
+    requirement: Original guidance about not building prematurely remains in force.
+    priority: P1
+    status: planned
+    enforcement: non-goal register and scope review
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: architecture review rejects out-of-scope complexity
+    physical: false
+  - id: 93
+    section: non_goals
+    requirement: No assumptions of upgradeable RAM, replaceable SSD, or multi-socket memory.
+    priority: P0
+    status: planned
+    enforcement: physical constraints contract
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: review deployment manifest for impossible assumptions
+    physical: true
+  - id: 94
+    section: recursive_controller
+    requirement: Authority separation is ACTION PRODUCER -> AUTHORITY -> EXECUTOR -> INDEPENDENT VERIFIER -> EVIDENCE -> AUDIT -> EXTERNAL CHECKPOINT.
+    priority: P0
+    status: planned
+    enforcement: component boundaries and dependency rules
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: static dependency review plus role-boundary tests
+    physical: false
+  - id: 95
+    section: recursive_controller
+    requirement: Observation is not treated as execution.
+    priority: P0
+    status: planned
+    enforcement: command bus and observer-only role
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: observation endpoint cannot invoke executor
+    physical: false
+  - id: 96
+    section: recursive_controller
+    requirement: Verification is not treated as execution.
+    priority: P0
+    status: planned
+    enforcement: verifier-only role and separate capability
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: verifier fixture cannot mutate production state
+    physical: false
+  - id: 97
+    section: recursive_controller
+    requirement: Internal consistency is not labelled external authenticity.
+    priority: P0
+    status: partially_evidenced
+    enforcement: external anchor verification and explicit verdicts
+    evidence: [src/msb_ledger/chain_anchor.py, src/msb_ledger/notary.py]
+    test: local-only result is marked insufficient
+    physical: false
+  - id: 98
+    section: recursive_controller
+    requirement: Cached truth expires when underlying state changes.
+    priority: P1
+    status: planned
+    enforcement: freshness metadata and invalidation events
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: mutate source and assert stale state cannot render as current
+    physical: false
+  - id: 99
+    section: recursive_controller
+    requirement: Tests with production access are actors in the threat model.
+    priority: P0
+    status: planned
+    enforcement: test isolation contract
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: test identity access-control test
+    physical: true
+  - id: 100
+    section: recursive_controller
+    requirement: Non-upgradeable memory and soldered SSD are hard physical constraints.
+    priority: P0
+    status: planned
+    enforcement: architecture constraints and resource policy
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: resource and replacement-host rehearsal
+    physical: true
+  - id: 101
+    section: recursive_controller
+    requirement: Ten-year property means detectable, bounded, recoverable, and independently verifiable guarantees on a replacement Apple Silicon host.
+    priority: P0
+    status: not_yet_proven
+    enforcement: final assurance package
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: final 2036 reconstruction rehearsal
+    physical: true
+  - id: 102
+    section: status_gate
+    requirement: Inversion pass plus storage-semantics contracts and M1 constraints form the deliverable product definition.
+    priority: P1
+    status: planned
+    enforcement: versioned specification and manifest
+    evidence: [docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md, docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: documentation traceability audit
+    physical: false
+  - id: 103
+    section: status_gate
+    requirement: Subsequent implementation is gated by P0-P3 priorities and the adversarial matrix.
+    priority: P0
+    status: partially_evidenced
+    enforcement: manifest priority field and CI gate
+    evidence: [config/cockpit_verification_manifest.yaml]
+    test: CI rejects unclassified gates
+    physical: false
+  - id: 104
+    section: status_gate
+    requirement: Strong integrity or ten-year recoverability claims are prohibited until mechanical controls, external checkpoints, M1 checks, and independent verification exist.
+    priority: P0
+    status: partially_evidenced
+    enforcement: claim-evidence policy and release gate
+    evidence: [docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md]
+    test: search release claims for unsupported integrity language
+    physical: false

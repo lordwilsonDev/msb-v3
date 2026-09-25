@@ -73,6 +73,7 @@ import argparse
 import hashlib
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -614,15 +615,31 @@ class ChainAnchor:
             return {"valid": False, "reason": "anchor signature invalid — anchor file tampered",
                     "anchored_tip": snapshot.get("tip_hash")}
         signer_note = "recovery-key" if reg.is_recovery(anchor_pub) else "current-key"
-        live = self._snapshot(chain)
+        try:
+            live = self._snapshot(chain)
+        except sqlite3.DatabaseError as exc:
+            return {
+                "valid": False,
+                "reason": "whole-DB replacement or unreadable audit store — " + str(exc),
+                "anchored_tip": snapshot.get("tip_hash"),
+                "anchored_seq": snapshot.get("seq"),
+            }
         if live["tip_hash"] != snapshot["tip_hash"] or live["seq"] != snapshot["seq"]:
             # Distinguish STALE from REPLACEMENT: if the anchored tip still
             # exists inside the live chain, the chain is a superset — records
             # were appended after the anchor (re-anchoring stopped). If the
             # anchored tip is ABSENT, the history itself was swapped.
-            anchored_tip_in_live = any(
-                r.record_hash == snapshot["tip_hash"] for r in chain.get_chain()
-            )
+            try:
+                anchored_tip_in_live = any(
+                    r.record_hash == snapshot["tip_hash"] for r in chain.get_chain()
+                )
+            except sqlite3.DatabaseError as exc:
+                return {
+                    "valid": False,
+                    "reason": "whole-DB replacement or unreadable audit store — " + str(exc),
+                    "anchored_tip": snapshot.get("tip_hash"),
+                    "anchored_seq": snapshot.get("seq"),
+                }
             if anchored_tip_in_live and live["seq"] > snapshot["seq"]:
                 stale_seconds = _chain_newer_than_anchor(chain, snapshot["anchored_at"])
                 return {
@@ -884,7 +901,28 @@ def _verify_daemon(db_path: str, *, notify: bool, auto_anchor: bool = False) -> 
     """
     import subprocess
 
-    chain = AuditChain(db_path)
+    try:
+        chain = AuditChain(db_path)
+    except sqlite3.DatabaseError as exc:
+        problem = "whole-DB replacement or unreadable audit store — " + str(exc)
+        state = {
+            "checked_at": _now_iso(),
+            "healthy": False,
+            "db": str(Path(db_path).resolve()),
+            "internal_valid": False,
+            "internal_reason": problem,
+            "anchored_valid": False,
+            "stale": False,
+            "stale_seconds": 0,
+            "reason": problem,
+            "record_count": 0,
+            "auto_reanchored": False,
+        }
+        state_dir = Path(os.getenv("MSB_ANCHOR_STATE_DIR", str(Path.home() / ".trinity" / "state")))
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "chain_anchor.json").write_text(json.dumps(state, indent=2))
+        print(f"ALERT chain_anchor: {problem}")
+        return 2
     anchor = ChainAnchor.from_env()
     internal = chain.verify_chain()
     anchored = anchor.verify(chain)
@@ -921,7 +959,10 @@ def _verify_daemon(db_path: str, *, notify: bool, auto_anchor: bool = False) -> 
               f"records={state['record_count']} anchor={anchored.get('anchored_at', '')}"
               + (" auto_reanchored=1" if auto_reanchored else ""))
         return 0
-    problem = state["reason"] or ("internal chain broken" if not internal.get("valid") else "unknown")
+    reason = state.get("reason")
+    problem = reason if isinstance(reason, str) and reason else (
+        "internal chain broken" if not internal.get("valid") else "unknown"
+    )
     print(f"ALERT chain_anchor: {problem}")
     if notify and sys.platform == "darwin":
         try:

@@ -1,0 +1,90 @@
+{
+  "schema": "msb.audit.v2-test",
+  "status": "implemented_pending_producer_integration",
+  "vectors": [
+    {
+      "id": "v2-minimal-success-001",
+      "description": "Minimal successful governed read with nested authority, execution, verification, and payload.",
+      "record_without_record_hash": {
+        "schema_version": "msb.audit.v2",
+        "record_type": "action.audit",
+        "seq": 1,
+        "recorded_at": "2026-09-24T12:00:00.000000+00:00",
+        "component": "test",
+        "actor": "operator:local",
+        "action": "read",
+        "authority": {
+          "decision_id": "approval-1",
+          "policy_version": "policy-1",
+          "scope": ["sandbox:/tmp"]
+        },
+        "execution": {
+          "executor_id": "executor-1",
+          "result": "success"
+        },
+        "verification": {
+          "verifier_id": "verifier-1",
+          "result": "verified",
+          "method": "local-check"
+        },
+        "payload": {
+          "count": 1,
+          "ok": true
+        },
+        "environment_ref": "env-1",
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected_canonical": "{\"action\":\"read\",\"actor\":\"operator:local\",\"authority\":{\"decision_id\":\"approval-1\",\"policy_version\":\"policy-1\",\"scope\":[\"sandbox:/tmp\"]},\"component\":\"test\",\"environment_ref\":\"env-1\",\"execution\":{\"executor_id\":\"executor-1\",\"result\":\"success\"},\"payload\":{\"count\":1,\"ok\":true},\"prev_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"record_type\":\"action.audit\",\"recorded_at\":\"2026-09-24T12:00:00.000000+00:00\",\"schema_version\":\"msb.audit.v2\",\"seq\":1,\"verification\":{\"method\":\"local-check\",\"result\":\"verified\",\"verifier_id\":\"verifier-1\"}}",
+      "expected_record_hash": "ace628389ebe05fafbbec1f4fca0cf333621e2a2c1b270101f18c338454d44c7",
+      "must_fail_mutations": [
+        "change_payload.count",
+        "change_authority.scope",
+        "change_recorded_at",
+        "change_prev_hash",
+        "reorder_or_rewrite_canonical_bytes"
+      ]
+    },
+    {
+      "id": "v2-unicode-and-escape-002",
+      "description": "UTF-8 and escaped string handling must be deterministic across implementations.",
+      "record_without_record_hash": {
+        "schema_version": "msb.audit.v2",
+        "record_type": "action.audit",
+        "seq": 2,
+        "recorded_at": "2026-09-24T12:00:01.000000+00:00",
+        "component": "test",
+        "actor": "system:test",
+        "action": "write",
+        "authority": {
+          "decision_id": "system-decision-1",
+          "policy_version": "policy-1",
+          "scope": ["sandbox:/tmp"]
+        },
+        "execution": {
+          "executor_id": "executor-1",
+          "result": "success"
+        },
+        "verification": {
+          "verifier_id": "verifier-1",
+          "result": "verified",
+          "method": "local-check"
+        },
+        "payload": {
+          "path": "/tmp/naïve-\"quoted\".txt",
+          "message": "café ☕",
+          "lines": [1, 2, 3]
+        },
+        "environment_ref": "env-1",
+        "prev_hash": "ace628389ebe05fafbbec1f4fca0cf333621e2a2c1b270101f18c338454d44c7"
+      },
+      "expected_canonical": "{\"action\":\"write\",\"actor\":\"system:test\",\"authority\":{\"decision_id\":\"system-decision-1\",\"policy_version\":\"policy-1\",\"scope\":[\"sandbox:/tmp\"]},\"component\":\"test\",\"environment_ref\":\"env-1\",\"execution\":{\"executor_id\":\"executor-1\",\"result\":\"success\"},\"payload\":{\"lines\":[1,2,3],\"message\":\"café ☕\",\"path\":\"/tmp/naïve-\\\"quoted\\\".txt\"},\"prev_hash\":\"ace628389ebe05fafbbec1f4fca0cf333621e2a2c1b270101f18c338454d44c7\",\"record_type\":\"action.audit\",\"recorded_at\":\"2026-09-24T12:00:01.000000+00:00\",\"schema_version\":\"msb.audit.v2\",\"seq\":2,\"verification\":{\"method\":\"local-check\",\"result\":\"verified\",\"verifier_id\":\"verifier-1\"}}",
+      "expected_record_hash": "d05875a7c4db6c67fb645836ba93652b09d7e3cef00c34c097edde44c223c7a7",
+      "must_fail_mutations": [
+        "normalize_unicode",
+        "unescape_quote",
+        "change_nested_array"
+      ]
+    }
+  ],
+  "implementation_note": "Hashes are verified by msb_ledger.audit_v2. The vectors do not yet prove that the SQLite producer writes v2 records."
+}

@@ -40,6 +40,7 @@ from msb_ledger.merkle import (
 from msb_ledger.merkle import (
     verify_inclusion as _verify_inclusion,
 )
+from msb_ledger.storage_contract import AuditWriteBlocked, StorageContract
 
 _RUNTIME_ROOT = Path(settings.db_path).parent / "uac"
 _AUDIT_DB = _RUNTIME_ROOT / "audit_chain.db"
@@ -69,9 +70,10 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _init_db(db_path: Path) -> None:
+def _init_db(db_path: Path, *, enable_wal: bool) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(db_path) as conn:
+    with sqlite3.connect(db_path, timeout=10.0) as conn:
+        StorageContract.configure_connection(conn, enable_wal=enable_wal)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_records (
@@ -291,7 +293,8 @@ class AuditChain:
         # Explicit escape hatch for automation that cannot carry the anchor
         # key yet (dev/test fixtures, legacy processes mid-migration).
         self._allow_keyless = allow_keyless
-        _init_db(self.db_path)
+        self._storage = StorageContract(self.db_path)
+        _init_db(self.db_path, enable_wal=self._storage.enabled)
 
     def _conn(self) -> sqlite3.Connection:
         # timeout=10.0: under a saturated shared box a concurrent writer can
@@ -301,6 +304,7 @@ class AuditChain:
         # 300/400 concurrent appends landing under load). A longer busy wait
         # keeps the documented "sqlite serializes writes" contract intact.
         conn = sqlite3.connect(self.db_path, timeout=10.0)
+        StorageContract.configure_connection(conn, enable_wal=self._storage.enabled)
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -351,30 +355,87 @@ class AuditChain:
                 "MSB_ALLOW_KEYLESS_APPENDS=1 to opt out explicitly (dev/test only)."
             )
 
-    def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord:
-        self._refuse_keyless_append()
-        _reject_non_finite(payload)
-        timestamp = _now_iso()
-        with self._conn() as conn:
-            # BEGIN IMMEDIATE acquires the write lock BEFORE the prev-hash
-            # read, so two threads cannot both read the same tail and fork
-            # the chain (the classic read-then-write race that silently
-            # corrupts a hash chain under concurrency — found by the phase-2
-            # chaos suite's concurrent-append test). The read+insert now run
-            # inside one write transaction.
-            conn.execute("BEGIN IMMEDIATE")
-            prev_hash = self._last_hash(conn)
-            record_hash = _compute_hash(prev_hash, component, event_type, payload, timestamp)
-            cur = conn.execute(
-                """
-                INSERT INTO audit_records(component, event_type, payload, timestamp, prev_hash, record_hash)
-                VALUES (?,?,?,?,?,?)
-                """,
-                (component, event_type, json.dumps(payload, ensure_ascii=False), timestamp, prev_hash, record_hash),
+    def _refuse_migration_append(self) -> None:
+        state = self._get_meta("migration_state", "V1_ACTIVE")
+        if state != "V1_ACTIVE":
+            raise RuntimeError(
+                f"v1 audit writes are blocked while migration_state={state}"
             )
-            seq = cur.lastrowid
-            if seq is None:
-                raise RuntimeError("audit insert did not return a rowid")
+
+    def begin_migration(self, migration_id: str) -> None:
+        """Mechanically stop new v1 appends before exporting a historical head."""
+        if not migration_id.strip():
+            raise ValueError("migration_id is required")
+        with self._conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO chain_meta(key, value) VALUES('migration_state', 'MIGRATING') "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+            )
+            conn.execute(
+                "INSERT INTO chain_meta(key, value) VALUES('migration_id', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (migration_id,),
+            )
+            conn.execute(
+                "INSERT INTO chain_meta(key, value) VALUES('migration_started_at', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (_now_iso(),),
+            )
+
+    def complete_migration(self) -> None:
+        self._set_meta("migration_state", "V2_ACTIVE")
+        self._set_meta("migration_completed_at", _now_iso())
+
+    def abort_migration(self) -> None:
+        self._set_meta("migration_state", "V1_ACTIVE")
+        self._set_meta("migration_aborted_at", _now_iso())
+
+    def block_migration(self, reason: str) -> None:
+        """Keep both v1 and v2 writes blocked after a partial migration."""
+        self._set_meta("migration_state", "MIGRATION_BLOCKED")
+        self._set_meta("migration_blocked_reason", reason)
+        self._set_meta("migration_blocked_at", _now_iso())
+
+    def storage_health(self) -> Dict[str, Any]:
+        return self._storage.health()
+
+    def append(self, component: str, event_type: str, payload: Dict[str, Any]) -> AuditRecord:
+        try:
+            # The admission preflight shares the write's failure boundary on
+            # purpose: a full or unwritable store makes ``_conn()`` itself
+            # raise, and that has to reach the caller as AuditWriteBlocked —
+            # not as a raw sqlite3.OperationalError escaping a preflight read.
+            self._refuse_keyless_append()
+            self._refuse_migration_append()
+            self._storage.assert_write_allowed()
+            _reject_non_finite(payload)
+            timestamp = _now_iso()
+            with self._conn() as conn:
+                # BEGIN IMMEDIATE acquires the write lock BEFORE the prev-hash
+                # read, so two threads cannot both read the same tail and fork
+                # the chain. The read+insert run inside one write transaction.
+                conn.execute("BEGIN IMMEDIATE")
+                prev_hash = self._last_hash(conn)
+                record_hash = _compute_hash(prev_hash, component, event_type, payload, timestamp)
+                cur = conn.execute(
+                    """
+                    INSERT INTO audit_records(component, event_type, payload, timestamp, prev_hash, record_hash)
+                    VALUES (?,?,?,?,?,?)
+                    """,
+                    (component, event_type, json.dumps(payload, ensure_ascii=False), timestamp, prev_hash, record_hash),
+                )
+                seq = cur.lastrowid
+                if seq is None:
+                    raise RuntimeError("audit insert did not return a rowid")
+        except (sqlite3.OperationalError, OSError) as exc:
+            message = str(exc).lower()
+            if any(token in message for token in ("full", "disk", "no space")):
+                self._storage.mark_blocked(str(exc))
+                raise AuditWriteBlocked(
+                    "audit write blocked after storage failure; refusing to report success"
+                ) from exc
+            raise
         return AuditRecord(
             seq=seq, component=component, event_type=event_type, payload=payload,
             timestamp=timestamp, prev_hash=prev_hash, record_hash=record_hash,
@@ -385,8 +446,15 @@ class AuditChain:
         both the stored hash and the next record's prev_hash. Returns the first
         break found, if any — an audit chain with a break is compromised from
         that point forward, not just at the broken record."""
-        with self._conn() as conn:
-            rows = conn.execute("SELECT * FROM audit_records ORDER BY seq ASC").fetchall()
+        try:
+            with self._conn() as conn:
+                rows = conn.execute("SELECT * FROM audit_records ORDER BY seq ASC").fetchall()
+        except sqlite3.DatabaseError as exc:
+            return {
+                "valid": False,
+                "record_count": 0,
+                "reason": f"audit store unreadable: {exc}",
+            }
         expected_prev = _GENESIS_HASH
         for row in rows:
             payload = json.loads(row["payload"])
