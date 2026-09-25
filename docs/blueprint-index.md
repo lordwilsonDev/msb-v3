@@ -11,10 +11,10 @@ alone does not say which. Ranges overlap across the documents in `docs/`, and
 the owners of the most-cited labels are not in this repository. Cite as
 `document §N` — e.g. `docs/project-map.md §2` — never a bare `§2`.
 
-- Numbered documents under `docs/`: **39**
+- Numbered documents under `docs/`: **46**
 - External or unfound documents cited by number: **11**, of which **5** could not be located at all
 - `§` citations in the tree: **719**
-  — anchored 210 · same-line 17 · file-default 66 · own-section 3 · single-candidate 0 · ambiguous 197 · ambiguous-label 220 · unresolved 6
+  — anchored 210 · same-line 17 · file-default 66 · own-section 3 · single-candidate 4 · ambiguous 197 · ambiguous-label 220 · unresolved 2
 - Of those, **213** resolve only to a document outside this repository
 
 Statuses — how each citation was resolved, in order of how much the citation
@@ -151,6 +151,13 @@ range:
 | `docs/QUICKSTART.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 76 |
 | `docs/audits/forensic-build-audit-2026-08-15.md` | 20 sections (20 top-level, 1–20) | 0 | 0 | 0 | 0 | 195 |
 | `docs/audits/forensic-grill-2026-09-02.md` | 37 sections (33 top-level, 1–33) | 24 | 0 | 0 | 0 | 197 |
+| `docs/audits/msb-cockpit-audit-schema-v1.md` | 16 sections (13 top-level, 1–13) | 0 | 0 | 0 | 0 | 164 |
+| `docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md` | 11 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 149 |
+| `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md` | 19 sections (19 top-level, 1–19) | 0 | 0 | 0 | 0 | 195 |
+| `docs/audits/msb-cockpit-execution-log-v1-2026-09-24.md` | 4 sections (4 top-level, 1–4) | 0 | 0 | 0 | 0 | 36 |
+| `docs/audits/msb-cockpit-execution-slice-2-plan-v1-2026-09-24.md` | 35 sections (12 top-level, 1–12) | 0 | 0 | 0 | 4 | 158 |
+| `docs/audits/msb-cockpit-extended-axiom-inversion-2026-09-24.md` | 16 sections (16 top-level, 1–16) | 0 | 0 | 0 | 0 | 174 |
+| `docs/audits/msb-cockpit-plan-adversarial-review-v1-2026-09-24.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 76 |
 | `docs/audits/smi-017-forensic-review/current_architecture.md` | 5 sections (5 top-level, 1–5) | 0 | 0 | 0 | 0 | 53 |
 | `docs/audits/smi-017-forensic-review/scale_failure_analysis.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 90 |
 | `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 135 |
@@ -197,8 +204,8 @@ cites, not every number in existence.
 Of the 51 distinct numbers this tree cites:
 
 - **23** are owned by more than one in-repo document
-- **17** by exactly one
-- **11** by none — those citations can only point outside the repo
+- **19** by exactly one
+- **9** by none — those citations can only point outside the repo
 
 ### Numbers no bare citation can resolve
 
@@ -207,51 +214,47 @@ summarised; the rest are listed with their owners.
 
 | § | In-repo owners | Owners |
 | --- | ---: | --- |
-| §1 | 39 | too many to list — see the registry |
-| §2 | 39 | too many to list — see the registry |
-| §3 | 39 | too many to list — see the registry |
-| §4 | 36 | too many to list — see the registry |
-| §5 | 34 | too many to list — see the registry |
-| §6 | 31 | too many to list — see the registry |
-| §7 | 25 | too many to list — see the registry |
-| §8 | 22 | too many to list — see the registry |
-| §9 | 17 | too many to list — see the registry |
-| §10 | 12 | too many to list — see the registry |
-| §11 | 9 | too many to list — see the registry |
-| §12 | 7 | too many to list — see the registry |
+| §1 | 46 | too many to list — see the registry |
+| §2 | 46 | too many to list — see the registry |
+| §3 | 46 | too many to list — see the registry |
+| §4 | 43 | too many to list — see the registry |
+| §5 | 40 | too many to list — see the registry |
+| §6 | 37 | too many to list — see the registry |
+| §7 | 30 | too many to list — see the registry |
+| §8 | 27 | too many to list — see the registry |
+| §9 | 22 | too many to list — see the registry |
+| §10 | 17 | too many to list — see the registry |
+| §11 | 14 | too many to list — see the registry |
+| §12 | 11 | too many to list — see the registry |
+| §13 | 7 | too many to list — see the registry |
 | §2.2 | 2 | `docs/blueprints/plans/2026-09-20-phone-contact-notify-channel.md`, `docs/deep-pass-2026-08-08.md` |
-| §13 | 4 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, `docs/project-map.md` |
-| §14 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| §15 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| §16 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| §17 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| §18 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| §19 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
+| §14 | 5 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, `docs/audits/msb-cockpit-extended-axiom-inversion-2026-09-24.md`, `docs/project-map.md` |
+| §15 | 5 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, `docs/audits/msb-cockpit-extended-axiom-inversion-2026-09-24.md`, `docs/project-map.md` |
+| §16 | 5 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, `docs/audits/msb-cockpit-extended-axiom-inversion-2026-09-24.md`, `docs/project-map.md` |
+| §17 | 4 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, `docs/project-map.md` |
+| §18 | 4 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, `docs/project-map.md` |
+| §19 | 4 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, `docs/project-map.md` |
 | §20 | 3 | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
 | §21 | 2 | `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
 | §22 | 2 | `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
 
 ### Numbers a bare citation resolves on its own
 
-Owned by exactly one in-repo document: §0.5, §0.6, §1.4, §3.2, §3.3, §3.4, §3.6, §23, §24, §25, §26, §27, §28, §29, §30, §31, §32.
+Owned by exactly one in-repo document: §0.5, §0.6, §1.4, §3.2, §3.3, §3.4, §3.6, §5.4, §7.3, §23, §24, §25, §26, §27, §28, §29, §30, §31, §32.
 
 Still not safe to write bare — an external document may own the same
 number, and five of them could not be checked. See `single-candidate` above.
 
 ## Citations that do not resolve from a checkout
 
-### Unresolved — 6 site(s)
+### Unresolved — 2 site(s)
 
 No document owning the number was found in the repo or the vault, so the citation points at nothing that can be read from here. Check the context before treating these as defects: `§` is also how this tree cites external standards, and most of these are RFC sections — `src/msb_ledger/timestamping.py:33` is `RFC 5652 §5.4`, and `:54` is `RFC 3161 §2.4.2`. Those are correct citations to documents that were never expected to be in this repository.
 
 | Where | § | Label | Resolved by | Resolves to |
 | --- | --- | --- | --- | --- |
 | `docs/audits/forensic-build-audit-2026-08-15.md:620` | §4.2.1 | `(bare)` | unresolved | — |
-| `docs/blueprints/plans/2026-08-16-msb-v3-completion-blueprint.md:145` | §5.4 | `(bare)` | unresolved | — |
-| `src/msb_ledger/timestamping.py:33` | §5.4 | `(bare)` | unresolved | — |
 | `src/msb_ledger/timestamping.py:54` | §2.4.2 | `(bare)` | unresolved | — |
-| `src/msb_ledger/timestamping.py:347` | §5.4 | `(bare)` | unresolved | — |
-| `tests/uac/test_timestamping.py:6` | §5.4 | `(bare)` | unresolved | — |
 
 ### Ambiguous — 197 site(s)
 
@@ -259,203 +262,203 @@ Bare `§N` where several in-repo documents own that number.
 
 | Where | § | Label | Resolved by | Resolves to |
 | --- | --- | --- | --- | --- |
-| `CHANGELOG.md:74` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `CHANGELOG.md:144` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `CHANGELOG.md:233` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `MANIFEST.md:146` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:141` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:255` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:257` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:261` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:262` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:263` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:266` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/audits/forensic-build-audit-2026-08-15.md:485` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `docs/audits/forensic-build-audit-2026-08-15.md:538` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `docs/audits/forensic-grill-2026-09-02.md:34` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/audits/forensic-grill-2026-09-02.md:35` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `docs/audits/forensic-grill-2026-09-02.md:1173` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `docs/audits/forensic-grill-2026-09-02.md:1181` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+6) |
-| `docs/audits/forensic-grill-2026-09-02.md:1182` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `docs/audits/forensic-grill-2026-09-02.md:1338` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+6) |
-| `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md:26` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/audits/smi-017-forensic-review/technical_debt.md:37` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/audits/smi-017-forensic-review/technical_debt.md:98` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/convergence-to-12/M1-core-loop.md:97` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:36` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:36` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:64` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:74` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:81` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:93` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-13-sovereign-node-build-plan.md:237` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:39` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:138` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:138` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:144` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:219` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:7` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:54` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:59` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:79` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/conversation-e2e-harness-v1.md:28` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/conversation-e2e-harness-v1.md:29` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+6) |
-| `docs/conversation-e2e-harness-v1.md:86` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-e2e-harness-v1.md:133` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-e2e-harness-v1.md:180` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/conversation-e2e-harness-v1.md:230` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/conversation-envelope-v1.md:43` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:58` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:83` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `docs/conversation-envelope-v1.md:116` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/conversation-envelope-v1.md:157` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:175` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:218` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:278` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:331` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/conversation-envelope-v1.md:332` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-envelope-v1.md:335` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/conversation-envelope-v1.md:336` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/conversation-envelope-v1.md:337` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:10` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:20` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:61` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/conversation-ledger-producer-v1.md:86` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/conversation-ledger-producer-v1.md:114` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:178` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:202` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/conversation-ledger-producer-v1.md:212` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/conversation-ledger-producer-v1.md:215` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/conversation-ledger-producer-v1.md:263` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:263` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/conversation-ledger-producer-v1.md:266` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/conversation-ledger-producer-v1.md:285` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/conversation-ledger-producer-v1.md:287` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/operations/secure-enclave-anchor.md:126` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/operations/vesta-security-review.md:5` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/operations/vesta-security-review.md:121` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/paseo-adapter-v1.md:51` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `docs/paseo-adapter-v1.md:106` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/paseo-adapter-v1.md:128` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `docs/project-map.md:8` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `docs/releases/v0.2.3-baseline.md:53` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/releases/v0.3.0-rc1-baseline.md:40` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/releases/v0.3.0-rc1-baseline.md:52` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/task-contract-v1.md:32` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/task-contract-v1.md:103` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/task-contract-v1.md:106` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `docs/task-contract-v1.md:108` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/task-contract-v1.md:109` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `docs/task-contract-v1.md:201` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/task-contract-v1.md:205` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/task-contract-v1.md:267` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/task-contract-v1.md:276` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/task-contract-v1.md:303` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `docs/task-contract-v1.md:311` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `docs/task-contract-v1.md:312` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/task-contract-v1.md:319` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/task-contract-v1.md:368` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `docs/task-contract-v1.md:376` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `docs/task-contract-v1.md:387` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `experiments/gov_corpus.py:6` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `experiments/gov_corpus.py:6` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/gov_corpus.py:42` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+1) |
-| `experiments/harness_baseline_comparison.py:8` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/harness_baseline_comparison.py:161` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/harness_baseline_comparison.py:217` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/harness_baseline_comparison.py:235` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/harness_cascading_failure.py:372` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `experiments/harness_governance_effectiveness.py:14` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/harness_performance.py:17` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+6) |
-| `experiments/harness_performance.py:24` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `experiments/harness_performance.py:26` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `experiments/harness_performance.py:150` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `experiments/harness_performance.py:174` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `experiments/harness_sovereignty.py:197` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
+| `CHANGELOG.md:74` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `CHANGELOG.md:144` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `CHANGELOG.md:233` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `MANIFEST.md:146` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:141` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:255` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:257` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:261` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:262` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:263` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:266` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:485` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `docs/audits/forensic-build-audit-2026-08-15.md:538` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `docs/audits/forensic-grill-2026-09-02.md:34` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/audits/forensic-grill-2026-09-02.md:35` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `docs/audits/forensic-grill-2026-09-02.md:1173` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `docs/audits/forensic-grill-2026-09-02.md:1181` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+11) |
+| `docs/audits/forensic-grill-2026-09-02.md:1182` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `docs/audits/forensic-grill-2026-09-02.md:1338` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+11) |
+| `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md:26` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/audits/smi-017-forensic-review/technical_debt.md:37` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/audits/smi-017-forensic-review/technical_debt.md:98` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/convergence-to-12/M1-core-loop.md:97` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:36` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:36` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:64` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:74` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:81` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md:93` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-13-sovereign-node-build-plan.md:237` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:39` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:138` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:138` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:144` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md:219` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:7` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:54` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:59` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md:79` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/conversation-e2e-harness-v1.md:28` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/conversation-e2e-harness-v1.md:29` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+11) |
+| `docs/conversation-e2e-harness-v1.md:86` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-e2e-harness-v1.md:133` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-e2e-harness-v1.md:180` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/conversation-e2e-harness-v1.md:230` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/conversation-envelope-v1.md:43` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:58` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:83` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `docs/conversation-envelope-v1.md:116` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/conversation-envelope-v1.md:157` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:175` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:218` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:278` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:331` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/conversation-envelope-v1.md:332` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-envelope-v1.md:335` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/conversation-envelope-v1.md:336` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/conversation-envelope-v1.md:337` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:10` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:20` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:61` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/conversation-ledger-producer-v1.md:86` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/conversation-ledger-producer-v1.md:114` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:178` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:202` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/conversation-ledger-producer-v1.md:212` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/conversation-ledger-producer-v1.md:215` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/conversation-ledger-producer-v1.md:263` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:263` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/conversation-ledger-producer-v1.md:266` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/conversation-ledger-producer-v1.md:285` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/conversation-ledger-producer-v1.md:287` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/operations/secure-enclave-anchor.md:126` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/operations/vesta-security-review.md:5` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/operations/vesta-security-review.md:121` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/paseo-adapter-v1.md:51` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `docs/paseo-adapter-v1.md:106` | §1 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/paseo-adapter-v1.md:128` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `docs/project-map.md:8` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `docs/releases/v0.2.3-baseline.md:53` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/releases/v0.3.0-rc1-baseline.md:40` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/releases/v0.3.0-rc1-baseline.md:52` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/task-contract-v1.md:32` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/task-contract-v1.md:103` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/task-contract-v1.md:106` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `docs/task-contract-v1.md:108` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/task-contract-v1.md:109` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `docs/task-contract-v1.md:201` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/task-contract-v1.md:205` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/task-contract-v1.md:267` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/task-contract-v1.md:276` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/task-contract-v1.md:303` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `docs/task-contract-v1.md:311` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `docs/task-contract-v1.md:312` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/task-contract-v1.md:319` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/task-contract-v1.md:368` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `docs/task-contract-v1.md:376` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `docs/task-contract-v1.md:387` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `experiments/gov_corpus.py:6` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `experiments/gov_corpus.py:6` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/gov_corpus.py:42` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+4) |
+| `experiments/harness_baseline_comparison.py:8` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/harness_baseline_comparison.py:161` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/harness_baseline_comparison.py:217` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/harness_baseline_comparison.py:235` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/harness_cascading_failure.py:372` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `experiments/harness_governance_effectiveness.py:14` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/harness_performance.py:17` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+11) |
+| `experiments/harness_performance.py:24` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `experiments/harness_performance.py:26` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `experiments/harness_performance.py:150` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `experiments/harness_performance.py:174` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `experiments/harness_sovereignty.py:197` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
 | `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:4` | §22 | `(bare)` | ambiguous | `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:7` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:17` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:38` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:86` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:90` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
+| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:7` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:17` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:38` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:86` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `experiments/reports/MSB-GOV-EVAL-001-SUMMARY.md:90` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
 | `experiments/reports/MSB-GOV-EVAL-001.md:4` | §22 | `(bare)` | ambiguous | `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:22` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:23` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:27` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:27` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:27` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:50` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:50` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:55` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+1) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:101` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:101` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:132` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+6) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:132` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:148` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+4) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:162` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:162` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:193` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:235` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:235` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:258` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `experiments/reports/MSB-GOV-EVAL-001.md:306` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `experiments/reports/MSB-GOV-EVAL-001.md:306` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `research/PLAN.md:27` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `research/PLAN.md:27` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+1) |
-| `research/PLAN.md:50` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `scripts/probe_conversation_e2e.py:7` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `scripts/probe_conversation_e2e.py:10` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `scripts/probe_conversation_e2e.py:152` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `scripts/probe_conversation_e2e.py:161` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `scripts/probe_conversation_e2e.py:182` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `scripts/probe_conversation_e2e.py:188` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `scripts/probe_conversation_e2e.py:197` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `scripts/probe_conversation_e2e.py:217` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `scripts/probe_conversation_e2e.py:482` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `src/msb_ledger/chain_anchor.py:4` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+1) |
-| `src/msb_v3/agent/safety.py:144` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/agent/safety.py:150` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+1) |
-| `src/msb_v3/agent/safety.py:230` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/agent/verify.py:128` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/agent/verify.py:149` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/api/agent.py:151` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/api/conversation.py:5` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `src/msb_v3/api/system.py:64` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/api/system.py:135` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `src/msb_v3/conversation/envelope.py:7` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `src/msb_v3/conversation/envelope.py:118` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `src/msb_v3/conversation/envelope.py:128` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `src/msb_v3/conversation/envelope.py:198` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `src/msb_v3/conversation/producer.py:5` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `src/msb_v3/conversation/producer.py:74` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
-| `src/msb_v3/conversation/producer.py:258` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `src/msb_v3/conversation/producer.py:286` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `src/msb_v3/conversation/producer.py:534` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `src/msb_v3/conversation/producer.py:563` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `src/msb_v3/governance/killswitch.py:4` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+1) |
-| `src/msb_v3/harnesses/base.py:31` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `src/msb_v3/meta/translation/__init__.py:4` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `src/msb_v3/moie/meta_critic.py:5` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+14) |
-| `src/msb_v3/vesta/approval_watchdog.py:4` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/blueprints/governance-hardening.md`, … (+9) |
-| `tests/agent/paseo/test_paseo_adapter.py:2` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `tests/contracts/test_layered_boundary.py:101` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `tests/gateway/test_gateway_routing.py:95` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `tests/gateway/test_gateway_routing.py:138` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `tests/gateway/test_route.py:114` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `tests/governance/test_bypass.py:161` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/project-map.md` |
-| `tests/test_conversation.py:3` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `tests/test_conversation.py:4` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `tests/test_conversation.py:63` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `tests/test_conversation.py:112` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+31) |
-| `tests/test_conversation.py:112` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `tests/test_conversation.py:146` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+28) |
-| `tests/test_conversation.py:207` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `tests/test_cross_producer_regress.py:6` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `tests/test_cross_producer_regress.py:15` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `tests/test_cross_producer_regress.py:130` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md`, … (+19) |
-| `tests/test_task_contract.py:90` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+36) |
-| `tests/test_task_contract.py:163` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/smi-017-forensic-review/scale_failure_analysis.md`, … (+22) |
-| `tests/test_task_contract.py:217` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+33) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:22` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:23` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:27` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:27` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:27` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:50` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:50` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:55` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+4) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:101` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:101` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:132` | §11 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+11) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:132` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:148` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+8) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:162` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:162` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:193` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:235` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:235` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:258` | §19 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:306` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `experiments/reports/MSB-GOV-EVAL-001.md:306` | §18 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `research/PLAN.md:27` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `research/PLAN.md:27` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+4) |
+| `research/PLAN.md:50` | §15 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `scripts/probe_conversation_e2e.py:7` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `scripts/probe_conversation_e2e.py:10` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `scripts/probe_conversation_e2e.py:152` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `scripts/probe_conversation_e2e.py:161` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `scripts/probe_conversation_e2e.py:182` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `scripts/probe_conversation_e2e.py:188` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `scripts/probe_conversation_e2e.py:197` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `scripts/probe_conversation_e2e.py:217` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `scripts/probe_conversation_e2e.py:482` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `src/msb_ledger/chain_anchor.py:4` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+4) |
+| `src/msb_v3/agent/safety.py:144` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `src/msb_v3/agent/safety.py:150` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+4) |
+| `src/msb_v3/agent/safety.py:230` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `src/msb_v3/agent/verify.py:128` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `src/msb_v3/agent/verify.py:149` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `src/msb_v3/api/agent.py:151` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `src/msb_v3/api/conversation.py:5` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `src/msb_v3/api/system.py:64` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `src/msb_v3/api/system.py:135` | §14 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+2) |
+| `src/msb_v3/conversation/envelope.py:7` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `src/msb_v3/conversation/envelope.py:118` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `src/msb_v3/conversation/envelope.py:128` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `src/msb_v3/conversation/envelope.py:198` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `src/msb_v3/conversation/producer.py:5` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `src/msb_v3/conversation/producer.py:74` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
+| `src/msb_v3/conversation/producer.py:258` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `src/msb_v3/conversation/producer.py:286` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `src/msb_v3/conversation/producer.py:534` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `src/msb_v3/conversation/producer.py:563` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `src/msb_v3/governance/killswitch.py:4` | §13 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+4) |
+| `src/msb_v3/harnesses/base.py:31` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `src/msb_v3/meta/translation/__init__.py:4` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `src/msb_v3/moie/meta_critic.py:5` | §9 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+19) |
+| `src/msb_v3/vesta/approval_watchdog.py:4` | §10 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+14) |
+| `tests/agent/paseo/test_paseo_adapter.py:2` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `tests/contracts/test_layered_boundary.py:101` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `tests/gateway/test_gateway_routing.py:95` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `tests/gateway/test_gateway_routing.py:138` | §3 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `tests/gateway/test_route.py:114` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `tests/governance/test_bypass.py:161` | §17 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md`, … (+1) |
+| `tests/test_conversation.py:3` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `tests/test_conversation.py:4` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `tests/test_conversation.py:63` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `tests/test_conversation.py:112` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+37) |
+| `tests/test_conversation.py:112` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `tests/test_conversation.py:146` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+34) |
+| `tests/test_conversation.py:207` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `tests/test_cross_producer_regress.py:6` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `tests/test_cross_producer_regress.py:15` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `tests/test_cross_producer_regress.py:130` | §8 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+24) |
+| `tests/test_task_contract.py:90` | §2 | `(bare)` | ambiguous | `docs/PRODUCTION-READINESS.md`, `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, … (+43) |
+| `tests/test_task_contract.py:163` | §7 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+27) |
+| `tests/test_task_contract.py:217` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+40) |
 
 ### Ambiguous label — 220 site(s)
 
