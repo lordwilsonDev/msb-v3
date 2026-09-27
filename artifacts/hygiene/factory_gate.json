@@ -3,14 +3,14 @@
     "project_id": "1dbe6844b045",
     "name": "msb-v3",
     "root": "/Users/lordwilson/projects/AI-Agents/msb-v3",
-    "discovered_at": "2026-09-26T23:58:32.403299+00:00"
+    "discovered_at": "2026-09-27T11:16:24.651590+00:00"
   },
   "BASELINE": {
     "project": {
       "project_id": "1dbe6844b045",
       "name": "msb-v3",
       "root": "/Users/lordwilson/projects/AI-Agents/msb-v3",
-      "discovered_at": "2026-09-26T23:58:32.403299+00:00"
+      "discovered_at": "2026-09-27T11:16:24.651590+00:00"
     },
     "tests": "n/a",
     "git": "n/a",
@@ -20,14 +20,14 @@
   "VERIFICATION": {
     "pytest": {
       "passed": true,
-      "summary": "3922 passed, 17 skipped, 76 deselected, 4 warnings in 410.24s (0:06:50)",
-      "duration_s": 413
+      "summary": "3922 passed, 17 skipped, 76 deselected, 1 warning in 467.54s (0:07:47)",
+      "duration_s": 471
     },
     "coverage": {
       "configured": true,
       "source": "src/msb_v3",
       "floor_pct": 65.0,
-      "pct": 85.0,
+      "pct": 84.0,
       "met": true
     },
     "live_auth": {
@@ -59,103 +59,103 @@
   "EVIDENCE_INDEX": {
     "claims_verified": 12,
     "artifacts": [
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h01_mcp_load_20260927T000528Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h02_restart_hygiene_20260927T000540Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h03_idempotency_20260927T000540Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h04_race_20260927T000540Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260927T000541Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h06_audit_tampering_20260927T000541Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h07_auto_healing_20260927T000541Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h08_chaos_20260927T000546Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r01_retrieval_router_20260927T000546Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r02_outcome_20260927T000554Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h09_dependency_subtraction_20260927T000556Z.json",
-      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h10_resource_chaos_20260927T000557Z.json"
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h01_mcp_load_20260927T112418Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h02_restart_hygiene_20260927T112437Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h03_idempotency_20260927T112437Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h04_race_20260927T112437Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260927T112437Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h06_audit_tampering_20260927T112437Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h07_auto_healing_20260927T112438Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h08_chaos_20260927T112444Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r01_retrieval_router_20260927T112444Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r02_outcome_20260927T112453Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h09_dependency_subtraction_20260927T112456Z.json",
+      "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h10_resource_chaos_20260927T112457Z.json"
     ],
-    "verified_at": "2026-09-27T00:05:57.581915+00:00",
+    "verified_at": "2026-09-27T11:24:57.124613+00:00",
     "member_results": [
       {
         "experiment": "h01_mcp_load",
         "skill": "performance-hygiene",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h01_mcp_load_20260927T000528Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h01_mcp_load_20260927T112418Z.json",
         "violations": []
       },
       {
         "experiment": "h02_restart_hygiene",
         "skill": "state-hygiene",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h02_restart_hygiene_20260927T000540Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h02_restart_hygiene_20260927T112437Z.json",
         "violations": []
       },
       {
         "experiment": "h03_idempotency",
         "skill": "api-hygiene",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h03_idempotency_20260927T000540Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h03_idempotency_20260927T112437Z.json",
         "violations": []
       },
       {
         "experiment": "h04_race",
         "skill": "concurrency-hygiene",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h04_race_20260927T000540Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h04_race_20260927T112437Z.json",
         "violations": []
       },
       {
         "experiment": "h05_contract_fuzzing",
         "skill": "fuzzing",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260927T000541Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h05_contract_fuzzing_20260927T112437Z.json",
         "violations": []
       },
       {
         "experiment": "h06_audit_tampering",
         "skill": "audit-hygiene",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h06_audit_tampering_20260927T000541Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h06_audit_tampering_20260927T112437Z.json",
         "violations": []
       },
       {
         "experiment": "h07_auto_healing",
         "skill": "self-healing",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h07_auto_healing_20260927T000541Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h07_auto_healing_20260927T112438Z.json",
         "violations": []
       },
       {
         "experiment": "h08_chaos",
         "skill": "chaos",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h08_chaos_20260927T000546Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h08_chaos_20260927T112444Z.json",
         "violations": []
       },
       {
         "experiment": "r01_retrieval_router",
         "skill": "unknown",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r01_retrieval_router_20260927T000546Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r01_retrieval_router_20260927T112444Z.json",
         "violations": []
       },
       {
         "experiment": "r02_outcome",
         "skill": "unknown",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r02_outcome_20260927T000554Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/r02_outcome_20260927T112453Z.json",
         "violations": []
       },
       {
         "experiment": "h09_dependency_subtraction",
         "skill": "dependency-hygiene",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h09_dependency_subtraction_20260927T000556Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h09_dependency_subtraction_20260927T112456Z.json",
         "violations": []
       },
       {
         "experiment": "h10_resource_chaos",
         "skill": "resource-exhaustion",
         "verdict": "pass",
-        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h10_resource_chaos_20260927T000557Z.json",
+        "artifact": "/Users/lordwilson/projects/AI-Agents/msb-v3/artifacts/hygiene/h10_resource_chaos_20260927T112457Z.json",
         "violations": []
       }
     ]
