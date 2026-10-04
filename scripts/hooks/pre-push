@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # pre-push — run the lint + policy + portability gates before any push lands.
 #
+# TRACKED SOURCE OF RECORD (scripts/hooks/pre-push). .git/hooks is not cloned
+# or pushed, so a fresh clone has no hook until scripts/setup.sh installs it
+# from here. Edit this file, re-run setup (or copy it over .git/hooks/pre-push
+# by hand) — never edit the installed copy alone.
+#
 # Git invokes this hook for every `git push` (including pushes to scratch
 # remotes). It runs two gates in order:
 #   1. lint (`make lint`: ruff + mypy + lock/claim checks + the MoIE policy
@@ -13,13 +18,34 @@
 #
 #   MSB_SKIP_PORTABILITY=1 git push ...    # explicit escape hatch
 #
-# Note: the gate tests the WORKING TREE (same as `make portability`), not
-# just the commits being pushed — unrelated local edits can block a push.
+# Note: the gate tests the WORKING TREE the push is made from (same as
+# `make portability`), not just the commits being pushed — unrelated local
+# edits can block a push. From a linked worktree, the gate runs in THAT
+# worktree (fixed 2026-10-04; it used to gate the main checkout instead).
 #
 # Exit 0 = gate green, push proceeds. Non-zero = push blocked.
 set -euo pipefail
 
-REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}" || exit 1
+# 2026-10-04 fixes (history: PZS 30_BUGS/pre-push-hook-gates-stale-worktree-claims-drift.md):
+#
+# 1. WORKTREE RESOLUTION. Git runs hooks with cwd at the root of the
+#    working tree the push is made from, so $PWD is the tree to gate —
+#    for the main checkout AND every linked worktree. The earlier
+#    "$(dirname BASH_SOURCE)/../.." resolved through the SHARED gitdir
+#    (msb-v3/.git), so every worktree push gated whichever checkout
+#    holds that gitdir (stale main) instead of the tree being pushed.
+#    MSB_REPO still wins for explicit targeting.
+# 2. GIT ENV HYGIENE. git seeds hooks with GIT_DIR/GIT_WORK_TREE/etc.
+#    pointing at the shared gitdir. Left set, they leak into gate
+#    subprocesses: temp-repo fixtures wrote their identity into the
+#    shared .git/config (the 2026-10-04 incident). Unset the family up
+#    front; git re-discovers the right repo from cwd, and
+#    run_staged_suite() keeps its own clearing as defense in depth.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+      GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR 2>/dev/null || true
+
+REPO="${MSB_REPO:-$(pwd -P)}"
+echo "[pre-push] gating tree: $REPO"
 
 # Not a git work tree? Nothing to gate. (Belt-and-braces: git only runs
 # hooks from a work tree, but a stale/foreign copy shouldn't hard-fail.)
