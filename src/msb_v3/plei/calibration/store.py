@@ -42,6 +42,11 @@ RUN_DURATION = "run_duration"
 # Label used only for display when a record carries no domain at all.
 UNKNOWN_DOMAIN = "unknown"
 
+# Default store location, resolved against the cwd at construction time.
+# Module-level so tests can redirect every no-arg CalibrationStore() (the
+# orchestrator, API and evidence loop all construct one) away from the
+# tracked repo file — see tests/conftest.py::_isolate_plei_calibration.
+DEFAULT_PATH: str | Path = ".plei/calibration.jsonl"
 
 # ── Data types ─────────────────────────────────────────────────────────────
 
@@ -148,8 +153,8 @@ class CalibrationStore:
     into CalibrationPairs for the error/reliability/feedback engines.
     """
 
-    def __init__(self, path: str | Path = ".plei/calibration.jsonl") -> None:
-        self.path = Path(path).resolve()
+    def __init__(self, path: str | Path | None = None) -> None:
+        self.path = Path(DEFAULT_PATH if path is None else path).resolve()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._prev_hash: str = ""
         self._read_chain()

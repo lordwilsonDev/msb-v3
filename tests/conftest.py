@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from msb_v3.core.config import settings
+from msb_v3.plei.calibration import store as plei_calibration_store
 from msb_v3.uac import audit_chain as ac
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -143,6 +144,19 @@ def _isolate_memory_fabric_db(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None
     for settings.db_path (see _isolate_governance_db above)."""
     monkeypatch.setattr(settings, "memory_fabric_db_path", str(tmp_path / "memory_fabric" / "memory.db"))
 
+
+@pytest.fixture(autouse=True)
+def _isolate_plei_calibration(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the default PLEI calibration store at a per-test scratch file.
+
+    Found 2026-09-22: twin_summary() auto-records a PREDICTION and the
+    evidence loop auto-records an OUTCOME, both via a no-arg
+    CalibrationStore() that resolves to <cwd>/.plei/calibration.jsonl — the
+    tracked repo file. Running tests/plei appended rows to it and left
+    `git status` dirty."""
+    monkeypatch.setattr(
+        plei_calibration_store, "DEFAULT_PATH", tmp_path / "plei" / "calibration.jsonl"
+    )
 
 def _run_scoped_stores() -> dict[str, str]:
     """The stores the run-scoped server was actually started with.
