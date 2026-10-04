@@ -10,7 +10,7 @@ msb-v3 server and injects three fault classes, one at a time:
   drop            connection dropped mid-exchange — client sees a
                   transport-level failure (empty reply / reset), the server
                   itself is never faulted
-  truncate 128B   response cut short — client sees an incomplete reply
+  truncate 1024B  response cut short — client sees an incomplete reply
                   (no false-200 on a truncated body)
 
 For every fault class the runner asserts two things:
@@ -68,7 +68,14 @@ SCENARIOS = [
      'expect': 'slow_success', 'min_ms': 400, 'probe_path': '/health'},
     {'name': 'connection_drop', 'fault': 'drop', 'ms': 0, 'truncate_bytes': 0,
      'expect': 'client_failure', 'min_ms': 0, 'probe_path': '/health'},
-    {'name': 'truncated_response', 'fault': 'truncate', 'ms': 0, 'truncate_bytes': 128,
+    # The cut must land in the BODY, past the whole header block. At 128 bytes it
+    # fell inside the headers once they grew (e.g. `vary: Origin, Accept-Encoding`):
+    # a header block cut mid-line makes urllib report a clean "200" with an empty
+    # body and no IncompleteRead, so the fault was invisible and the experiment
+    # failed on every run. 1024 clears any realistic header block and is still far
+    # below the 4 KB probe body; if headers ever outgrow it, the assertion below
+    # (degraded_ok requires IncompleteRead for this fault) fails loudly, not silently.
+    {'name': 'truncated_response', 'fault': 'truncate', 'ms': 0, 'truncate_bytes': 1024,
      'expect': 'client_failure', 'min_ms': 0,
      'probe_path': '/business/retrieve/{probe_id}'},
 ]
@@ -217,7 +224,7 @@ def main() -> int:
     proxies: list[subprocess.Popen] = []
     run_ts = int(time.time())
     # Large entity used ONLY for the truncate probe: /health is small enough
-    # that 128 bytes can pass it whole, which would make truncation invisible.
+    # that the whole response can pass the truncation point, which would make truncation invisible.
     big_probe_id = f'h08_big_probe_{run_ts}'
 
     # Stale-proxy cleanup: a SIGKILLed previous run can leave a proxy holding
@@ -246,7 +253,7 @@ def main() -> int:
 
         # Register the large probe entity (used ONLY by the truncate scenario)
         # before the fault loop so the truncate probe always has a big target:
-        # /health is small enough that 128 bytes can pass it whole, which would
+        # /health is small enough to pass the truncation point whole, which would
         # make truncation invisible.
         big_code, big_err = register_through(BASE_URL, big_probe_id, claim='X' * 4096)
         if big_code != 200:

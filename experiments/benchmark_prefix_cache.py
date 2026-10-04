@@ -52,7 +52,7 @@ def _ollama_version(base_url: str) -> str:
     try:
         with urllib.request.urlopen(f"{base_url}/api/version", timeout=5) as resp:
             return str(json.loads(resp.read().decode())["version"])
-    except Exception:
+    except Exception:  # noqa: BLE001 — any failure means the server version is unknown
         return "unknown"
 
 
@@ -69,7 +69,7 @@ def _hardware() -> Dict[str, Any]:
                 ["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=5
             ).stdout.strip()
             info["memory_bytes"] = int(out)
-        except Exception:
+        except Exception:  # noqa: BLE001 — best-effort hardware info; a missing value is simply not reported
             pass
     return info
 
