@@ -176,6 +176,12 @@ module = [
     "resemblyzer.*",
     "webrtcvad.*",
     "librosa.*",
+    # realtime voice adapters: optional SDKs and macOS-only bindings, imported
+    # lazily inside functions, absent on Linux CI (same failure class as mlx_lm).
+    "openai.*",
+    "google.*",
+    "AppKit.*",
+    "PyObjCTools.*",
 ]
 ignore_missing_imports = true
 

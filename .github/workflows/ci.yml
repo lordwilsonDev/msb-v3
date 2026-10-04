@@ -25,6 +25,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # The doc-record gate (tests/docs/test_doc_records.py) resolves cited
+          # commit SHAs and release tags, so the test job needs full history
+          # (a depth-1 checkout makes 9 of its tests fail on every run).
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6

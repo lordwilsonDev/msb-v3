@@ -147,7 +147,7 @@ def f6_audit_append_after_quarantine() -> dict:
     try:
         chain.append("exp", "protected.action", {"i": 3})
         appended = True
-    except Exception:
+    except Exception:  # noqa: BLE001 — any append failure is the measured outcome of the tamper probe
         appended = False
     # key property: the tamper must be DETECTABLE (quarantine path), and the
     # append itself must not silently heal the chain

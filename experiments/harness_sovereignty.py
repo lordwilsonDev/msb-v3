@@ -108,7 +108,7 @@ def probe_c1_inference() -> dict:
         text = resp.text
         ok = bool(text)
         return {"classification": "FULL" if ok else "UNAVAILABLE", "detail": f"reply_len={len(text)}"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {exc}"}
 
 
@@ -119,7 +119,7 @@ def probe_c2_memory() -> dict:
         n_collections = len(r.json().get("result", {}).get("collections", []))
         return {"classification": "FULL" if ok else "UNAVAILABLE",
                 "detail": f"qdrant_ok={ok} collections={n_collections}"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {exc}"}
 
 
@@ -130,7 +130,7 @@ def probe_c3_planning() -> dict:
         resp = client.generate("Plan one step to verify local availability. Reply with one word: ok")
         text = resp.text
         return {"classification": "FULL" if bool(text) else "UNAVAILABLE", "detail": f"reply_len={len(text)}"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {exc}"}
 
 
@@ -141,7 +141,7 @@ def probe_c4_task_execution(chain: AuditChain, sandbox: Path) -> dict:
         chain.append("sovereignty", "task_executed", {"path": "task.txt"})
         ok = (sandbox / "task.txt").read_bytes() == b"sovereign task artifact"
         return {"classification": "FULL" if ok else "UNAVAILABLE", "detail": f"write+audit_ok={ok}"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {exc}"}
 
 
@@ -150,7 +150,7 @@ def probe_c5_audit(chain: AuditChain) -> dict:
         chain.append("sovereignty", "audit_probe", {"phase_probe": True})
         valid = chain.verify_chain().get("valid", False)
         return {"classification": "FULL" if valid else "UNAVAILABLE", "detail": f"chain_valid={valid}"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {exc}"}
 
 
@@ -176,7 +176,7 @@ def probe_c7_local_storage() -> dict:
             conn.execute("INSERT INTO t VALUES ('k','v')")
             got = conn.execute("SELECT v FROM t WHERE k='k'").fetchone()[0]
         return {"classification": "FULL" if got == "v" else "UNAVAILABLE", "detail": "sqlite_roundtrip_ok"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {exc}"}
 
 
@@ -189,7 +189,7 @@ def probe_c8_external_search() -> dict:
     except ResearchBackendError as exc:
         # FAIL-LOUD design: raised, never silent-empty (uac/research_backend.py)
         return {"classification": "UNAVAILABLE", "detail": f"ResearchBackendError: {str(exc)[:120]}"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — capability probe: any failure is classified UNAVAILABLE with its type, never raised
         return {"classification": "UNAVAILABLE", "detail": f"{type(exc).__name__}: {str(exc)[:120]}"}
 
 
@@ -229,7 +229,7 @@ def run_phase(chain: AuditChain, sandbox: Path) -> dict:
                 r = fn(sandbox)
             else:
                 r = fn()
-        except Exception as exc:  # harness-level catch — never let one probe mask others
+        except Exception as exc:  # noqa: BLE001 — harness-level catch: one probe must never mask the others
             r = {"classification": "SYSTEM_ERROR", "detail": f"{type(exc).__name__}: {exc}"}
         results[name] = r
     return results

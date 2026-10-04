@@ -173,7 +173,7 @@ def run_mutation_trial(work: Path, faults: set, level: int, fault_label: str) ->
     try:
         result = svc.approve_and_execute(approval_id, "cascade-operator")
         outcome = str(result.get("status", "unknown"))
-    except Exception as exc:  # surfaced, never swallowed by the harness
+    except Exception as exc:  # noqa: BLE001 — surfaced, never swallowed by the harness: the exception type IS the recorded outcome
         outcome = f"EXCEPTION:{type(exc).__name__}"
     finally:
         restore_faults(restores)
@@ -196,12 +196,12 @@ def run_mutation_trial(work: Path, faults: set, level: int, fault_label: str) ->
     mutated_content_ok = mutation_occurred and target_path.read_bytes() == CONTENT.encode()
     try:
         chain_valid = bool(chain.verify_chain().get("valid"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — a chain that cannot be verified is recorded as invalid
         chain_valid = False
     litter = temp_litter(sandbox)
     try:
         task_state = tasks.get(task_id).get("state")
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable task state is the recorded outcome
         task_state = "unreadable"
 
     # ── Verdict (frozen fail-closed invariant) ────────────────────────────────
@@ -223,7 +223,7 @@ def run_mutation_trial(work: Path, faults: set, level: int, fault_label: str) ->
         sub = submit_write(rec["service"], rec["sandbox"])
         res = rec["service"].approve_and_execute(sub["approval_id"], "cascade-operator")
         recovery = {"attempted": True, "completed": res.get("status") == "completed"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — recovery failure of any kind is the recorded outcome
         recovery = {"attempted": True, "completed": False, "error": f"{type(exc).__name__}: {exc}"}
 
     return {
@@ -241,7 +241,7 @@ def _approval_state(svc_dict: dict, approval_id: str) -> str:
     try:
         rec = svc_dict["approvals"].get(approval_id)
         return str(rec.get("status", "unknown"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable approval record is the recorded outcome
         return "unreadable"
 
 

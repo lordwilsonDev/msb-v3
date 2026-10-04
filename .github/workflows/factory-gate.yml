@@ -30,6 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # tests/docs/test_doc_records.py resolves cited commit SHAs and release
+          # tags, so a depth-1 checkout fails 9 tests on every run.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:

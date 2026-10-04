@@ -314,6 +314,18 @@ def test_measure_rejects_a_name_it_does_not_know():
         dr.measure("frontend_files")
 
 
+def test_collection_counts_ignore_the_run_tier_switch(monkeypatch):
+    """CI runs `MSB_RUN_TIERS=1 pytest ...`, and the gate's measuring subprocess
+    inherits it. The documented counts describe the default configuration, so the
+    live "deselected" must not collapse to 0 just because the run opted into the
+    tiers (that made the counts test fail on every CI run)."""
+    monkeypatch.delenv("MSB_RUN_TIERS", raising=False)
+    default = dr.measure("deselected")
+    assert default > 0
+    monkeypatch.setenv("MSB_RUN_TIERS", "1")
+    assert dr.measure("deselected") == default
+
+
 def test_counts_match_live_measurement():
     """The scale block in `docs/what-msb-v3-is.md` is measured, not remembered."""
     result = dr.Result()

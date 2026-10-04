@@ -80,6 +80,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -391,11 +392,18 @@ def measure(name: str) -> int:
         # Rounded half-up, not banker's, so the documented number is stable.
         return int(measure("tests_lines") / measure("src_lines") * 100 + 0.5)
     if name in {"collected", "deselected"}:
+        # The documented counts describe the DEFAULT configuration ("77 deselected
+        # by configuration"). The tier switch is how a *run* opts into the
+        # integration/chaos/live tiers (CI sets MSB_RUN_TIERS=1 for its pytest
+        # step, and this process inherits it), so measure without it or the live
+        # "deselected" is 0 on CI and the claim can never match there.
+        env = {k: v for k, v in os.environ.items() if k != "MSB_RUN_TIERS"}
         proc = subprocess.run(
             [sys.executable, "-m", "pytest", "--collect-only", "-q"],
             cwd=ROOT,
             capture_output=True,
             text=True,
+            env=env,
         )
         parsed = parse_collection(proc.stdout)
         if parsed is None:

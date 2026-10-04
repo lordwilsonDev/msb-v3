@@ -154,7 +154,7 @@ def main() -> None:
             continue
         try:
             resp = handle_request(req)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — JSON-RPC boundary: any handler failure becomes a -32603 Internal error response
             resp = make_error(req.get("id"), -32603, f"Internal error: {e}")
         if resp is not None:
             write_message(resp)
