@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
-
-pytest.importorskip("psutil", reason="psutil not installed")
-
 
 from msb_v3.energy_matrix.models import EnergyBudget, SystemTelemetry
 from msb_v3.energy_matrix.scheduler import decide, should_run_task
+
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("psutil") is None,
+    reason="psutil not installed",
+)
 
 
 def _make_telemetry(cpu: float = 50.0, ram: float = 60.0, disk: float = 40.0, temp: float = 0.0) -> SystemTelemetry:

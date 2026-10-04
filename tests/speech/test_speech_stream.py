@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
 import msb_v3.speech.stream as stream_module
@@ -9,8 +11,8 @@ from msb_v3.speech.gate import GateAction, NotEnrolledError
 from msb_v3.speech.models import AudioBuffer, SpeakerIdentity, Transcript
 from msb_v3.speech.stream import StreamResult, VoiceStream, VoiceStreamConfig
 
-pytest.importorskip(
-    "webrtcvad",
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("webrtcvad") is None,
     reason="speech VAD is an EXPERIMENTAL extra: pip install -e '.[speech]'",
 )
 

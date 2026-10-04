@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import struct
 
 import pytest
@@ -9,8 +10,8 @@ import pytest
 from msb_v3.speech.models import AudioBuffer
 from msb_v3.speech.vad import VADConfig, VoiceDetector
 
-pytest.importorskip(
-    "webrtcvad",
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("webrtcvad") is None,
     reason="speech VAD is an EXPERIMENTAL extra: pip install -e '.[speech]'",
 )
 

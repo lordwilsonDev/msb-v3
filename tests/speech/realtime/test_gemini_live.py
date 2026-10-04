@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 from types import SimpleNamespace as NS
 
 import pytest
@@ -9,6 +10,18 @@ from msb_v3.speech.realtime.gemini_live import GeminiLiveProvider
 from msb_v3.speech.realtime.tools import default_tools
 
 KEY = "AIza-test-SECRET-GEMINI"
+
+
+def _has_genai() -> bool:
+    try:
+        return importlib.util.find_spec("google.genai") is not None
+    except ModuleNotFoundError:  # the `google` namespace package itself is absent
+        return False
+
+
+# These three exercise the provider's real `google.genai.types` calls. Skip at run
+# time (not collection time) so the collected-test count is identical everywhere.
+requires_genai = pytest.mark.skipif(not _has_genai(), reason="google-genai not installed (optional realtime SDK)")
 
 
 def _content(**kw):
@@ -57,6 +70,7 @@ def _provider(session=None, fail=False):
     return p, cm
 
 
+@requires_genai
 @pytest.mark.asyncio
 async def test_first_audio_of_turn_sends_activity_start():
     s = FakeSession()
@@ -71,6 +85,7 @@ async def test_first_audio_of_turn_sends_activity_start():
     assert blob.data == b"\x00\x00" * 160
 
 
+@requires_genai
 @pytest.mark.asyncio
 async def test_end_turn_sends_activity_end_and_next_turn_restarts():
     s = FakeSession()
@@ -83,6 +98,7 @@ async def test_end_turn_sends_activity_end_and_next_turn_restarts():
     assert kinds == ["activity_start", "audio", "activity_end", "activity_start", "audio"]
 
 
+@requires_genai
 @pytest.mark.asyncio
 async def test_tool_result_sent_as_function_response():
     s = FakeSession()

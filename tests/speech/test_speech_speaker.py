@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
-
-pytest.importorskip("resemblyzer", reason="resemblyzer not installed")
-
+import importlib.util
 
 import numpy as np
+import pytest
 
 from msb_v3.speech.models import AudioBuffer
 from msb_v3.speech.speaker import SpeakerVerifier
+
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("resemblyzer") is None,
+    reason="resemblyzer not installed",
+)
 
 
 def _make_audio(seed: int = 42, duration: float = 2.0) -> AudioBuffer:

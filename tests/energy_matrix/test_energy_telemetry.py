@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
-pytest.importorskip("psutil", reason="psutil not installed")
-
-
 from msb_v3.energy_matrix.telemetry import read_telemetry_fast, read_tlemetry
+
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("psutil") is None,
+    reason="psutil not installed",
+)
 
 
 def test_read_telemetry_returns_populated() -> None:
