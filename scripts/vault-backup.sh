@@ -78,6 +78,15 @@ rsync -a \
   --exclude='/node_modules/' \
   "$SRC/" "$DEST/"
 
+# Tracked files that live under an EXCLUDED directory (artifacts/core-loop/README.md and
+# 35 others) are part of the source of truth: tests/docs/test_doc_records.py asserts they
+# exist, so a snapshot without them can never pass its own restore check (it did not:
+# that was the single failure that kept every backup from 2026-09-20 on from verifying).
+# The exclude list drops the untracked bulk of those directories; copy back what git tracks.
+if git -C "$SRC" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git -C "$SRC" ls-files -z | rsync -a --from0 --files-from=- "$SRC/" "$DEST/"
+fi
+
 HEAD="$(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 {
   echo "# Code Backup — $LABEL · $CODE"
