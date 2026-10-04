@@ -114,10 +114,12 @@ the brake, not a bug). Charger/scanner internals: `CLAUDE.archive.md` → "Flywh
 
 Dual-push: `origin` and `sovereign_intelligence_core` both point to `https://github.com/lordwilsonDev/msb-v3.git`.
 
-**Pre-push hook:** `scripts/hooks/pre-push` runs `make portability` before any
-push and blocks on failure (bypass: `MSB_SKIP_PORTABILITY=1 git push`). It gates
-the working tree, so unrelated local edits can block a push. Hooks aren't
-versioned — install once per fresh clone with `make hooks-install`.
+**Pre-push hook:** source of record is the versioned `scripts/hooks/pre-push`
+(it runs `make lint` + `make portability` and blocks on failure; bypass:
+`MSB_SKIP_PORTABILITY=1 git push`). `.git/hooks` is NOT cloned, so install
+once per fresh clone — `make setup` does it automatically, or `make
+hooks-install` by hand. It gates the working tree the push is made from
+(including linked worktrees), so unrelated local edits can block a push.
 
 **Tag immutability ruleset** (`release-tag-immutability`, ruleset `20801997`):
 `refs/tags/v*` cannot be deleted or force-moved (binds everyone). Why there's no
