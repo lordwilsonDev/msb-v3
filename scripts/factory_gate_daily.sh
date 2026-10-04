@@ -174,7 +174,14 @@ if git -C "$REPO" status --porcelain -- artifacts/hygiene/ | grep -q .; then
     else
       PUSH_CMD=(env MSB_SKIP_PORTABILITY=1 perl -e 'alarm shift; exec @ARGV' 60 git -C "$REPO" push origin HEAD)
     fi
-    if "${PUSH_CMD[@]}" >/dev/null 2>&1; then
+    # `git push origin HEAD` publishes every unpushed ancestor too, including
+    # earlier BLOCKED evidence commits marked [do-not-push]. Hold the push
+    # (the PASS evidence stays committed locally) rather than publish them.
+    HELD=$(bash "$REPO/scripts/lib/held_commits.sh" "$REPO")
+    if [ "${HELD:-0}" != "0" ]; then
+      log "HOLD: ${HELD} unpushed commit(s) marked [do-not-push] precede this PASS evidence; committed locally, NOT pushed"
+      printf '{"ts": "%s", "event": "evidence_push", "ok": false, "reason": "held_do_not_push", "held": %s, "verdict": "%s"}\n' "$ts" "$HELD" "$VERDICT" >> "$EVENTS_LOG"
+    elif "${PUSH_CMD[@]}" >/dev/null 2>&1; then
       log "committed and pushed PASS evidence"
       printf '{"ts": "%s", "event": "evidence_push", "ok": true, "verdict": "%s"}\n' "$ts" "$VERDICT" >> "$EVENTS_LOG"
     else

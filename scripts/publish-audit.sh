@@ -98,6 +98,11 @@ fi
 git -C "$REPO" commit -s -m "audit: $(date '+%Y-%m-%d') — $SUMMARY" \
   || { log "FAIL: git commit"; exit 1; }
 log "committed audit report (signed + DCO)"
+HELD=$(bash "$REPO/scripts/lib/held_commits.sh" "$REPO")
+if [ "${HELD:-0}" != "0" ]; then
+  log "FAIL: not pushing - ${HELD} unpushed commit(s) marked [do-not-push] would be published with the report (the report is committed locally)"
+  exit 1
+fi
 if git -C "$REPO" push origin "$branch"; then
   log "pushed audit report to origin/$branch"
 else
