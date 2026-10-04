@@ -49,6 +49,7 @@ subpackage is unclassified (AC-3.1).
 | `api/openai_compat.py` | LOAD-BEARING | `/v1` OpenAI-compatible adapter — Open WebUI / OpenAI SDK path (README). |
 | `api/ops_background.py` | OPTIONAL | `/ops/background` — watch-only snapshot of background subsystems for the desktop cockpit's Background section (docs/superpowers/specs/2026-09-22-background-windows-design.md). Operator-gated, no write routes. |
 | `api/rag.py` | LOAD-BEARING | `/rag/search` semantic vault search — used by mcp_bridge `search_query`, cockpit find, flywheel engine. |
+| `api/rag_index_state.py` | LOAD-BEARING | SQLite manifest, snapshot lifecycle, and active-index pointer used by `api/rag.py` to reject stale or unverified retrieval. |
 | `api/redaction_middleware.py` | LOAD-BEARING | Response-body secret redaction — the *errors* channel of the H4 exposure test. Must be added **before** GZipMiddleware so it inspects plain text, not compressed bytes. |
 | `api/research.py` | OPTIONAL | Research-assistant endpoints; off canonical path. |
 | `api/safety.py` | LOAD-BEARING | Safety/guardrail surface; guardrails are wired into the tool loop (`guardrails/fold.py` used by the local clients). |

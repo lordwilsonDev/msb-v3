@@ -190,6 +190,9 @@ def test_delete_tenant_collection_passes_normalized_name(monkeypatch):
     calls: list[str] = []
 
     class FakeClient:
+        def collection_exists(self, collection_name: str):
+            return False
+
         def delete_collection(self, collection_name: str):
             calls.append(collection_name)
 
@@ -206,6 +209,9 @@ def test_delete_tenant_collection_swallows_failures(monkeypatch):
     finally-block guard (it would mask the real test/experiment result)."""
 
     class FakeClient:
+        def collection_exists(self, collection_name: str):
+            return True
+
         def delete_collection(self, collection_name: str):
             raise RuntimeError("qdrant hiccup")
 
@@ -221,6 +227,9 @@ def test_delete_tenant_collection_refuses_real_tenants(monkeypatch):
     called = False
 
     class FakeClient:
+        def collection_exists(self, collection_name: str):
+            return True
+
         def delete_collection(self, collection_name: str):
             nonlocal called
             called = True
@@ -239,6 +248,9 @@ def test_delete_tenant_collection_force_bypasses_guard(monkeypatch):
     calls: list[str] = []
 
     class FakeClient:
+        def collection_exists(self, collection_name: str):
+            return True
+
         def delete_collection(self, collection_name: str):
             calls.append(collection_name)
 

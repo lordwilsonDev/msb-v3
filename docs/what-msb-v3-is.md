@@ -64,11 +64,11 @@ module docstring). The boundary is the capability registry behind it
   build, not an extra term on the grant. Until 2026-09-22 the two files gave
   different answers; this line is the reconciled one.
 
-## Scale, measured 2026-09-25
+## Scale, measured 2026-10-03
 
-Python under `src/`: **404 files / 79,682 lines**. Python under `tests/`: **357
-files / 62,840 lines**. Markdown under `docs/`: **153 files / 35,405 lines**.
-`pytest --collect-only` collects **4,018 tests** (76 deselected by configuration).
+Python under `src/`: **405 files / 80,517 lines**. Python under `tests/`: **359
+files / 63,412 lines**. Markdown under `docs/`: **153 files / 35,413 lines**.
+`pytest --collect-only` collects **4,043 tests** (77 deselected by configuration).
 Test source is 79% the size of product source.
 
 ## Check it in two commands

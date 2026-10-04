@@ -28,7 +28,9 @@ def test_status_endpoint():
     body = r.json()
     assert body["service"] == "msb-v3"
     assert "ready" in body
-    assert body["model"] in {"deepseek-r1:1.5b", "qwen3:latest", "qwen3:8b", "ornith:9b", "ornith:9b-32k"}
+    from msb_v3.core.config import settings
+
+    assert body["model"] == settings.ollama_model
 
 
 def test_system_routes():

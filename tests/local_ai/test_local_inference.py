@@ -224,7 +224,8 @@ class TestBitNetStatus:
         models = r.json().get("models", [])
         model_names = [m["name"] for m in models]
         assert len(model_names) > 0, "No models in Ollama"
-        # The configured primary model must actually be pulled.
+        # The model selected for this test run must actually be pulled.
+        # Tests may override OLLAMA_MODEL to match a locally available model.
         from msb_v3.core.config import Settings
 
         expected = Settings().ollama_model

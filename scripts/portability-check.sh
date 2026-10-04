@@ -35,7 +35,7 @@ KEEP="${PORTABILITY_KEEP:-0}"
 unset MSB_DB_PATH 2>/dev/null || true
 
 EXCLUDES=(
-  --exclude .git/ --exclude .claude/ --exclude __pycache__/ --exclude .pytest_cache/
+  --exclude .git --exclude .claude/ --exclude __pycache__/ --exclude .pytest_cache/
   --exclude '*.pyc' --exclude .env --exclude logs/ --exclude '*.log'
   --exclude 'artifacts/artifacts-backup-*/'
   # Runtime data, not code: Qdrant's storage/ alone is 70M+ of mmap'd
@@ -155,9 +155,49 @@ echo "[portability] running the full suite from the copy (MSB_HOME=$DEST)..."
 # CHECKOUT instead of the staged copy — silently defeating the foreign-path
 # guarantee (found 2026-08-13: the seeded evidence ledger was bypassed, the
 # claims-review test skipped again in the copy's place).
-if ! (cd "$DEST" && MSB_HOME="$DEST" MSB_REPO="$DEST" bash scripts/test.sh); then
-  echo "[portability] FAIL: suite exited non-zero from the foreign path"
-  exit 1
+# Select an installed Ollama model for the test copy without changing
+# deployment defaults or persistent environment. Explicit override is useful
+# for alternate hosts; otherwise probe local Ollama and select a supported
+# model that this copy's compatibility tests recognize.
+PORTABLE_MODEL="${PORTABLE_OLLAMA_MODEL:-}"
+if [ -z "$PORTABLE_MODEL" ] && command -v curl >/dev/null 2>&1; then
+  MODEL_JSON=$(curl -sf -m 3 http://127.0.0.1:11434/api/tags 2>/dev/null || true)
+  for candidate in "${OLLAMA_MODEL:-}" ornith:9b qwen3:8b qwen3:latest qwen3:4b-instruct-32k; do
+    [ -n "$candidate" ] || continue
+    if printf '%s' "$MODEL_JSON" | grep -Fq "\"$candidate\""; then
+      PORTABLE_MODEL="$candidate"
+      break
+    fi
+  done
+fi
+run_staged_suite() (
+  # Git exports repository-local variables to pre-push hooks. Clear them
+  # before tests spawn git in temporary fixture repositories, or those
+  # commands target this checkout instead of their explicit cwd.
+  while IFS= read -r git_env_var; do
+    [ -n "$git_env_var" ] && unset "$git_env_var"
+  done < <(git -C "$REPO" rev-parse --local-env-vars)
+
+  cd "$DEST"
+  export MSB_HOME="$DEST" MSB_REPO="$DEST" MSB_PORTABLE_CHECKOUT=1
+  if [ -n "${1:-}" ]; then
+    export OLLAMA_MODEL="$1"
+  fi
+  bash scripts/test.sh
+)
+
+if [ -n "$PORTABLE_MODEL" ]; then
+  echo "[portability] test model: $PORTABLE_MODEL"
+  if ! run_staged_suite "$PORTABLE_MODEL"; then
+    echo "[portability] FAIL: suite exited non-zero from the foreign path"
+    exit 1
+  fi
+else
+  echo "[portability] no compatible local Ollama model found; model checks should skip"
+  if ! run_staged_suite ""; then
+    echo "[portability] FAIL: suite exited non-zero from the foreign path"
+    exit 1
+  fi
 fi
 echo
 echo "[portability] PASS: full suite green from a foreign checkout path"

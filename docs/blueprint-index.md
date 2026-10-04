@@ -13,8 +13,8 @@ the owners of the most-cited labels are not in this repository. Cite as
 
 - Numbered documents under `docs/`: **47**
 - External or unfound documents cited by number: **11**, of which **5** could not be located at all
-- `§` citations in the tree: **763**
-  — anchored 211 · same-line 17 · file-default 67 · own-section 3 · single-candidate 0 · ambiguous 228 · ambiguous-label 235 · unresolved 2
+- `§` citations in the tree: **770**
+  — anchored 211 · same-line 17 · file-default 67 · own-section 3 · single-candidate 0 · ambiguous 230 · ambiguous-label 240 · unresolved 2
 - Of those, **214** resolve only to a document outside this repository
 
 Statuses — how each citation was resolved, in order of how much the citation
@@ -102,7 +102,7 @@ whether a citation is something a reader can follow. Anything whose owner is
 | `task-contract-v1.md` | `docs/task-contract-v1.md` | repo | 12 sections (12 top-level, 1–12) | 7 | yes |
 | `task-contract-v1` | `docs/task-contract-v1.md` | repo | 12 sections (12 top-level, 1–12) | 0 | yes |
 | `task-contract` | `docs/task-contract-v1.md` | repo | 12 sections (12 top-level, 1–12) | 1 | yes |
-| *any ambiguous label* | **cannot be resolved** — see the two notes below | — | — | 235 | no |
+| *any ambiguous label* | **cannot be resolved** — see the two notes below | — | — | 240 | no |
 
 ### `blueprint` — a label, not a document
 
@@ -148,52 +148,52 @@ range:
 | Document | Numbering | Named | File default | Own section | Sole candidate | Contested |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | `docs/PRODUCTION-READINESS.md` | 3 sections (3 top-level, 1–3) | 0 | 0 | 0 | 0 | 20 |
-| `docs/QUICKSTART.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 88 |
-| `docs/audits/forensic-build-audit-2026-08-15.md` | 20 sections (20 top-level, 1–20) | 0 | 0 | 0 | 0 | 222 |
-| `docs/audits/forensic-grill-2026-09-02.md` | 37 sections (33 top-level, 1–33) | 24 | 0 | 0 | 0 | 224 |
-| `docs/audits/msb-cockpit-audit-schema-v1.md` | 16 sections (13 top-level, 1–13) | 0 | 0 | 0 | 0 | 191 |
-| `docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md` | 11 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 168 |
-| `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md` | 19 sections (19 top-level, 1–19) | 0 | 0 | 0 | 0 | 222 |
+| `docs/QUICKSTART.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 89 |
+| `docs/audits/forensic-build-audit-2026-08-15.md` | 20 sections (20 top-level, 1–20) | 0 | 0 | 0 | 0 | 224 |
+| `docs/audits/forensic-grill-2026-09-02.md` | 37 sections (33 top-level, 1–33) | 24 | 0 | 0 | 0 | 226 |
+| `docs/audits/msb-cockpit-audit-schema-v1.md` | 16 sections (13 top-level, 1–13) | 0 | 0 | 0 | 0 | 193 |
+| `docs/audits/msb-cockpit-build-plan-v1-2026-09-24.md` | 11 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 169 |
+| `docs/audits/msb-cockpit-build-verification-interrogation-2026-09-24.md` | 19 sections (19 top-level, 1–19) | 0 | 0 | 0 | 0 | 224 |
 | `docs/audits/msb-cockpit-execution-log-v1-2026-09-24.md` | 4 sections (4 top-level, 1–4) | 0 | 0 | 0 | 0 | 47 |
-| `docs/audits/msb-cockpit-execution-slice-2-plan-v1-2026-09-24.md` | 35 sections (12 top-level, 1–12) | 0 | 0 | 0 | 0 | 187 |
-| `docs/audits/msb-cockpit-extended-axiom-inversion-2026-09-24.md` | 16 sections (16 top-level, 1–16) | 0 | 0 | 0 | 0 | 201 |
-| `docs/audits/msb-cockpit-plan-adversarial-review-v1-2026-09-24.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 88 |
+| `docs/audits/msb-cockpit-execution-slice-2-plan-v1-2026-09-24.md` | 35 sections (12 top-level, 1–12) | 0 | 0 | 0 | 0 | 189 |
+| `docs/audits/msb-cockpit-extended-axiom-inversion-2026-09-24.md` | 16 sections (16 top-level, 1–16) | 0 | 0 | 0 | 0 | 203 |
+| `docs/audits/msb-cockpit-plan-adversarial-review-v1-2026-09-24.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 89 |
 | `docs/audits/smi-017-forensic-review/current_architecture.md` | 5 sections (5 top-level, 1–5) | 0 | 0 | 0 | 0 | 64 |
-| `docs/audits/smi-017-forensic-review/scale_failure_analysis.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 104 |
-| `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 151 |
-| `docs/blueprints/2026-08-11-adaptive-build-environment.md` | 9 sections (7 top-level, 0–6) | 2 | 1 | 3 | 0 | 88 |
-| `docs/blueprints/2026-09-09-production-hardening.md` | 14 sections (8 top-level, 1–8) | 8 | 3 | 0 | 0 | 142 |
-| `docs/blueprints/2026-09-25-agent-control-plane.md` | 18 sections (14 top-level, 1–14) | 0 | 0 | 0 | 0 | 200 |
-| `docs/blueprints/convergence-to-12/M1-core-loop.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 88 |
-| `docs/blueprints/convergence-to-12/blueprint.md` | 8 sections (8 top-level, 1–8) | 14 | 0 | 0 | 0 | 142 |
-| `docs/blueprints/convergence-to-12/live-loop-composition-plan.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 104 |
-| `docs/blueprints/governance-hardening.md` | 14 sections (14 top-level, 0–13) | 0 | 0 | 0 | 0 | 191 |
+| `docs/audits/smi-017-forensic-review/scale_failure_analysis.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 105 |
+| `docs/audits/smi-017-forensic-review/sovereign_agent_factory_phase2.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 152 |
+| `docs/blueprints/2026-08-11-adaptive-build-environment.md` | 9 sections (7 top-level, 0–6) | 2 | 1 | 3 | 0 | 89 |
+| `docs/blueprints/2026-09-09-production-hardening.md` | 14 sections (8 top-level, 1–8) | 8 | 3 | 0 | 0 | 143 |
+| `docs/blueprints/2026-09-25-agent-control-plane.md` | 18 sections (14 top-level, 1–14) | 0 | 0 | 0 | 0 | 202 |
+| `docs/blueprints/convergence-to-12/M1-core-loop.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 89 |
+| `docs/blueprints/convergence-to-12/blueprint.md` | 8 sections (8 top-level, 1–8) | 14 | 0 | 0 | 0 | 143 |
+| `docs/blueprints/convergence-to-12/live-loop-composition-plan.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 105 |
+| `docs/blueprints/governance-hardening.md` | 14 sections (14 top-level, 0–13) | 0 | 0 | 0 | 0 | 193 |
 | `docs/blueprints/plans/2026-08-13-dormant-satellites-disposition.md` | 5 sections (5 top-level, 1–5) | 0 | 0 | 0 | 0 | 64 |
-| `docs/blueprints/plans/2026-08-13-sovereign-node-build-plan.md` | 18 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 168 |
-| `docs/blueprints/plans/2026-08-13-vesta-msb-integration-spec.md` | 8 sections (8 top-level, 1–8) | 0 | 0 | 0 | 0 | 142 |
-| `docs/blueprints/plans/2026-08-13-vesta-node-full-build-plan.md` | 8 sections (8 top-level, 1–8) | 0 | 0 | 0 | 0 | 142 |
-| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md` | 8 sections (8 top-level, 1–8) | 0 | 0 | 0 | 0 | 142 |
-| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 88 |
-| `docs/blueprints/plans/2026-09-20-phone-contact-notify-channel.md` | 15 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 151 |
-| `docs/blueprints/plans/2026-09-23-audit-remediation-four-findings.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 151 |
+| `docs/blueprints/plans/2026-08-13-sovereign-node-build-plan.md` | 18 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 169 |
+| `docs/blueprints/plans/2026-08-13-vesta-msb-integration-spec.md` | 8 sections (8 top-level, 1–8) | 0 | 0 | 0 | 0 | 143 |
+| `docs/blueprints/plans/2026-08-13-vesta-node-full-build-plan.md` | 8 sections (8 top-level, 1–8) | 0 | 0 | 0 | 0 | 143 |
+| `docs/blueprints/plans/2026-08-14-close-out-msb-v3.md` | 8 sections (8 top-level, 1–8) | 0 | 0 | 0 | 0 | 143 |
+| `docs/blueprints/plans/2026-08-14-wireguard-preflight-adr.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 89 |
+| `docs/blueprints/plans/2026-09-20-phone-contact-notify-channel.md` | 15 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 152 |
+| `docs/blueprints/plans/2026-09-23-audit-remediation-four-findings.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 152 |
 | `docs/blueprints/plans/m1-governance-node-architecture.md` | 5 sections (5 top-level, 1–5) | 4 | 6 | 0 | 0 | 64 |
-| `docs/conversation-e2e-harness-v1.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 161 |
-| `docs/conversation-envelope-v1.md` | 12 sections (12 top-level, 1–12) | 0 | 0 | 0 | 0 | 183 |
-| `docs/conversation-ledger-producer-v1.md` | 12 sections (12 top-level, 1–12) | 0 | 0 | 0 | 0 | 183 |
-| `docs/deep-pass-2026-08-08.md` | 9 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 88 |
-| `docs/forensic-audit-2026-09-11.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 104 |
+| `docs/conversation-e2e-harness-v1.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 162 |
+| `docs/conversation-envelope-v1.md` | 12 sections (12 top-level, 1–12) | 0 | 0 | 0 | 0 | 185 |
+| `docs/conversation-ledger-producer-v1.md` | 12 sections (12 top-level, 1–12) | 0 | 0 | 0 | 0 | 185 |
+| `docs/deep-pass-2026-08-08.md` | 9 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 89 |
+| `docs/forensic-audit-2026-09-11.md` | 7 sections (7 top-level, 1–7) | 0 | 0 | 0 | 0 | 105 |
 | `docs/meta/routing-thesis-assessment.md` | 3 sections (3 top-level, 1–3) | 0 | 0 | 0 | 0 | 20 |
 | `docs/operations/disaster-recovery.md` | 4 sections (4 top-level, 1–4) | 0 | 0 | 0 | 0 | 47 |
 | `docs/operations/vesta-security-review.md` | 3 sections (3 top-level, 1–3) | 0 | 0 | 0 | 0 | 20 |
-| `docs/operations/yubikey-piv-anchor.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 151 |
-| `docs/paseo-adapter-v1.md` | 11 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 168 |
-| `docs/project-map.md` | 22 sections (22 top-level, 1–22) | 3 | 0 | 0 | 0 | 224 |
+| `docs/operations/yubikey-piv-anchor.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 152 |
+| `docs/paseo-adapter-v1.md` | 11 sections (11 top-level, 1–11) | 0 | 0 | 0 | 0 | 169 |
+| `docs/project-map.md` | 22 sections (22 top-level, 1–22) | 3 | 0 | 0 | 0 | 226 |
 | `docs/pull-signature-and-access.md` | 4 sections (4 top-level, 1–4) | 0 | 0 | 0 | 0 | 47 |
-| `docs/releases/NEXT.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 161 |
-| `docs/superpowers/specs/2026-09-05-production-gate.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 151 |
-| `docs/task-contract-v1.md` | 12 sections (12 top-level, 1–12) | 8 | 8 | 0 | 0 | 183 |
-| `docs/v3.2-plan.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 161 |
-| `docs/v3.3-plan.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 88 |
+| `docs/releases/NEXT.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 162 |
+| `docs/superpowers/specs/2026-09-05-production-gate.md` | 9 sections (9 top-level, 1–9) | 0 | 0 | 0 | 0 | 152 |
+| `docs/task-contract-v1.md` | 12 sections (12 top-level, 1–12) | 8 | 8 | 0 | 0 | 185 |
+| `docs/v3.2-plan.md` | 10 sections (10 top-level, 1–10) | 0 | 0 | 0 | 0 | 162 |
+| `docs/v3.3-plan.md` | 6 sections (6 top-level, 1–6) | 0 | 0 | 0 | 0 | 89 |
 
 ## Number collisions among documents in this repository
 
@@ -258,7 +258,7 @@ No document owning the number was found in the repo or the vault, so the citatio
 | `docs/audits/forensic-build-audit-2026-08-15.md:620` | §4.2.1 | `(bare)` | unresolved | — |
 | `src/msb_ledger/timestamping.py:54` | §2.4.2 | `(bare)` | unresolved | — |
 
-### Ambiguous — 228 site(s)
+### Ambiguous — 230 site(s)
 
 Bare `§N` where several in-repo documents own that number.
 
@@ -360,6 +360,8 @@ Bare `§N` where several in-repo documents own that number.
 | `docs/releases/v0.2.3-baseline.md:53` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+38) |
 | `docs/releases/v0.3.0-rc1-baseline.md:40` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+38) |
 | `docs/releases/v0.3.0-rc1-baseline.md:52` | §5 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+38) |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:5` | §6 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+35) |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:5` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+9) |
 | `docs/superpowers/plans/2026-09-25-mission-spine-phase1.md:5` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+41) |
 | `docs/superpowers/plans/2026-09-25-mission-spine-phase1.md:5` | §12 | `(bare)` | ambiguous | `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, `docs/audits/msb-cockpit-audit-schema-v1.md`, … (+9) |
 | `docs/superpowers/plans/2026-09-25-mission-spine-phase1.md:222` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+41) |
@@ -493,7 +495,7 @@ Bare `§N` where several in-repo documents own that number.
 | `tests/test_task_contract.py:217` | §4 | `(bare)` | ambiguous | `docs/QUICKSTART.md`, `docs/audits/forensic-build-audit-2026-08-15.md`, `docs/audits/forensic-grill-2026-09-02.md`, … (+41) |
 | `tests/uac/test_timestamping.py:6` | §5.4 | `(bare)` | ambiguous | `docs/audits/msb-cockpit-execution-slice-2-plan-v1-2026-09-24.md`, `docs/blueprints/2026-09-25-agent-control-plane.md` |
 
-### Ambiguous label — 235 site(s)
+### Ambiguous label — 240 site(s)
 
 The label (`blueprint`, `spec`) names no specific document, so the number cannot be resolved even in principle.
 
@@ -546,6 +548,11 @@ The label (`blueprint`, `spec`) names no specific document, so the number cannot
 | `docs/releases/HARDENING-AUDIT.md:325` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/releases/NEXT.md:74` | §24 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/releases/PRODUCTION-READINESS-ROADMAP.md:152` | §28 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:104` | §6 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:257` | §6 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:674` | §6 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:699` | §6 | `blueprint` | ambiguous-label | `?ambiguous` |
+| `docs/superpowers/plans/2026-09-25-mission-harness-phase2.md:741` | §12 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/superpowers/plans/2026-09-25-mission-spine-phase1.md:94` | §4 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/superpowers/plans/2026-09-25-mission-spine-phase1.md:262` | §9 | `blueprint` | ambiguous-label | `?ambiguous` |
 | `docs/superpowers/plans/2026-09-25-mission-spine-phase1.md:280` | §4 | `blueprint` | ambiguous-label | `?ambiguous` |
@@ -743,11 +750,11 @@ These resolve — to a document not in this repository. They are grouped by wher
 | --- | --- | --- | --- | --- |
 | `docs/SURFACE.md:29` | §4.2.3 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
 | `docs/SURFACE.md:44` | §4.2.2 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:74` | §4.2.1 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:95` | §4.2.2 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:97` | §4 | `(bare)` | file-default | `sovereign-architecture-v4` |
-| `docs/SURFACE.md:116` | §53 | `(bare)` | same-line | `steward-blueprint` |
-| `docs/SURFACE.md:116` | §54 | `(bare)` | same-line | `steward-blueprint` |
+| `docs/SURFACE.md:75` | §4.2.1 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
+| `docs/SURFACE.md:96` | §4.2.2 | `sovereign-architecture` | anchored | `sovereign-architecture-v4` |
+| `docs/SURFACE.md:98` | §4 | `(bare)` | file-default | `sovereign-architecture-v4` |
+| `docs/SURFACE.md:117` | §53 | `(bare)` | same-line | `steward-blueprint` |
+| `docs/SURFACE.md:117` | §54 | `(bare)` | same-line | `steward-blueprint` |
 | `docs/audits/forensic-build-audit-2026-08-15.md:406` | §31 | `unified-architecture` | anchored | `unified-architecture` |
 | `docs/audits/forensic-build-audit-2026-08-15.md:435` | §27 | `unified-architecture` | anchored | `unified-architecture` |
 | `docs/audits/forensic-build-audit-2026-08-15.md:441` | §27 | `unified-architecture` | anchored | `unified-architecture` |
