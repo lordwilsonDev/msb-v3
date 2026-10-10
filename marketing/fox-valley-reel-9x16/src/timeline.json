@@ -1,0 +1,345 @@
+{
+  "fps": 30,
+  "durationInFrames": 1052,
+  "scenes": [
+    {
+      "name": "intro",
+      "start": 0,
+      "length": 88
+    },
+    {
+      "name": "hook",
+      "start": 88,
+      "length": 125
+    },
+    {
+      "name": "flyer",
+      "start": 213,
+      "length": 190
+    },
+    {
+      "name": "pillars",
+      "start": 403,
+      "length": 154
+    },
+    {
+      "name": "marquee",
+      "start": 557,
+      "length": 110
+    },
+    {
+      "name": "cta",
+      "start": 667,
+      "length": 258
+    },
+    {
+      "name": "outro",
+      "start": 925,
+      "length": 127
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "v1",
+      "startFrame": 12,
+      "durationFrames": 56,
+      "file": "vo/v1.mp3",
+      "text": "Black Swan Labz.",
+      "words": [
+        {
+          "text": "Black",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "Swan",
+          "startMs": 300,
+          "endMs": 586
+        },
+        {
+          "text": "Labz",
+          "startMs": 599,
+          "endMs": 1068
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "startFrame": 102,
+      "durationFrames": 91,
+      "file": "vo/v2.mp3",
+      "text": "Your business forgets. Your second brain doesn't.",
+      "words": [
+        {
+          "text": "Your",
+          "startMs": 104,
+          "endMs": 195
+        },
+        {
+          "text": "business",
+          "startMs": 208,
+          "endMs": 521
+        },
+        {
+          "text": "forgets",
+          "startMs": 534,
+          "endMs": 1094
+        },
+        {
+          "text": "Your",
+          "startMs": 1523,
+          "endMs": 1615
+        },
+        {
+          "text": "second",
+          "startMs": 1628,
+          "endMs": 1966
+        },
+        {
+          "text": "brain",
+          "startMs": 1979,
+          "endMs": 2214
+        },
+        {
+          "text": "doesn't",
+          "startMs": 2227,
+          "endMs": 2630
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "startFrame": 227,
+      "durationFrames": 156,
+      "file": "vo/v3.mp3",
+      "text": "Your processes, your customers, your decisions. Searchable and instant.",
+      "words": [
+        {
+          "text": "Your",
+          "startMs": 104,
+          "endMs": 182
+        },
+        {
+          "text": "processes",
+          "startMs": 195,
+          "endMs": 977
+        },
+        {
+          "text": "your",
+          "startMs": 1185,
+          "endMs": 1289
+        },
+        {
+          "text": "customers",
+          "startMs": 1302,
+          "endMs": 2018
+        },
+        {
+          "text": "your",
+          "startMs": 2253,
+          "endMs": 2344
+        },
+        {
+          "text": "decisions",
+          "startMs": 2357,
+          "endMs": 3034
+        },
+        {
+          "text": "Searchable",
+          "startMs": 3477,
+          "endMs": 4023
+        },
+        {
+          "text": "and",
+          "startMs": 4167,
+          "endMs": 4271
+        },
+        {
+          "text": "instant",
+          "startMs": 4284,
+          "endMs": 4805
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "startFrame": 417,
+      "durationFrames": 120,
+      "file": "vo/v4.mp3",
+      "text": "Capture knowledge. Instant answers. Smarter decisions.",
+      "words": [
+        {
+          "text": "Capture",
+          "startMs": 104,
+          "endMs": 391
+        },
+        {
+          "text": "knowledge",
+          "startMs": 404,
+          "endMs": 924
+        },
+        {
+          "text": "Instant",
+          "startMs": 1354,
+          "endMs": 1654
+        },
+        {
+          "text": "answers",
+          "startMs": 1667,
+          "endMs": 2187
+        },
+        {
+          "text": "Smarter",
+          "startMs": 2617,
+          "endMs": 2891
+        },
+        {
+          "text": "decisions",
+          "startMs": 2904,
+          "endMs": 3607
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "startFrame": 571,
+      "durationFrames": 67,
+      "file": "vo/v5.mp3",
+      "text": "Built for Fox Valley businesses.",
+      "words": [
+        {
+          "text": "Built",
+          "startMs": 117,
+          "endMs": 273
+        },
+        {
+          "text": "for",
+          "startMs": 286,
+          "endMs": 430
+        },
+        {
+          "text": "Fox",
+          "startMs": 443,
+          "endMs": 859
+        },
+        {
+          "text": "Valley",
+          "startMs": 872,
+          "endMs": 1133
+        },
+        {
+          "text": "businesses",
+          "startMs": 1146,
+          "endMs": 1836
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "startFrame": 681,
+      "durationFrames": 153,
+      "file": "vo/v6.mp3",
+      "text": "New to AI? Book a free fifteen minute clarity call. No obligation.",
+      "words": [
+        {
+          "text": "New",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "to",
+          "startMs": 260,
+          "endMs": 365
+        },
+        {
+          "text": "AI",
+          "startMs": 378,
+          "endMs": 716
+        },
+        {
+          "text": "Book",
+          "startMs": 1146,
+          "endMs": 1367
+        },
+        {
+          "text": "a",
+          "startMs": 1380,
+          "endMs": 1432
+        },
+        {
+          "text": "free",
+          "startMs": 1445,
+          "endMs": 1849
+        },
+        {
+          "text": "fifteen",
+          "startMs": 1862,
+          "endMs": 2396
+        },
+        {
+          "text": "minute",
+          "startMs": 2409,
+          "endMs": 2643
+        },
+        {
+          "text": "clarity",
+          "startMs": 2656,
+          "endMs": 3034
+        },
+        {
+          "text": "call",
+          "startMs": 3047,
+          "endMs": 3411
+        },
+        {
+          "text": "No",
+          "startMs": 3841,
+          "endMs": 4023
+        },
+        {
+          "text": "obligation",
+          "startMs": 4036,
+          "endMs": 4687
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "startFrame": 846,
+      "durationFrames": 59,
+      "file": "vo/v7.mp3",
+      "text": "Blackswanlabz.com.",
+      "words": [
+        {
+          "text": "Blackswanlabz.com",
+          "startMs": 117,
+          "endMs": 1576
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "startFrame": 939,
+      "durationFrames": 93,
+      "file": "vo/v8.mp3",
+      "text": "Strategy. Automation. Results.",
+      "words": [
+        {
+          "text": "Strategy",
+          "startMs": 117,
+          "endMs": 677
+        },
+        {
+          "text": "Automation",
+          "startMs": 1107,
+          "endMs": 1706
+        },
+        {
+          "text": "Results",
+          "startMs": 2122,
+          "endMs": 2708
+        }
+      ]
+    }
+  ]
+}
