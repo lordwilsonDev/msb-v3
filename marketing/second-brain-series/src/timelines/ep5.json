@@ -1,0 +1,399 @@
+{
+  "id": "ep5",
+  "title": "Black Swan Labs is for the people.",
+  "funnelStage": "Partnership",
+  "fps": 30,
+  "durationInFrames": 724,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "A PARTNERSHIP",
+      "lines": [
+        "BLACK SWAN",
+        "LABS IS FOR",
+        "THE PEOPLE."
+      ],
+      "sub": "We understand it's hard to find people you can trust in your business.",
+      "vo": "Black Swan Labs is for the people. We understand it's hard to find people you can trust to come into your business and help you.",
+      "start": 0,
+      "length": 248
+    },
+    {
+      "type": "cards",
+      "dur": 130,
+      "kicker": "LET'S WORK TOGETHER",
+      "heading": "You know the business. We know the AI.",
+      "items": [
+        {
+          "t": "You know the business",
+          "b": "Your customers, your people, your decisions."
+        },
+        {
+          "t": "We know the AI",
+          "b": "We build the second brain that holds what you know."
+        },
+        {
+          "t": "Together",
+          "b": "Let's get together and make it happen."
+        }
+      ],
+      "vo": "We propose a partnership. You know the business. We know the AI. Let's get together and make it happen.",
+      "start": 248,
+      "length": 225
+    },
+    {
+      "type": "cta",
+      "dur": 150,
+      "headshot": true,
+      "headline": "No obligation.\nA 15-minute phone call.",
+      "body": "Let's talk about your business.",
+      "button": "BOOK THE 15-MINUTE CALL",
+      "url": "blackswanlabz.com",
+      "vo": "No obligation. A fifteen minute phone call. Let's talk about it.",
+      "start": 473,
+      "length": 161
+    },
+    {
+      "type": "logo",
+      "dur": 90,
+      "url": "BLACKSWANLABZ.COM",
+      "vo": "Let's make it happen.",
+      "start": 634,
+      "length": 90
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "ep5-0",
+      "startFrame": 14,
+      "durationFrames": 214,
+      "file": "vo/ep5-0.mp3",
+      "text": "Black Swan Labs is for the people. We understand it's hard to find people you can trust to come into your business and help you.",
+      "words": [
+        {
+          "text": "Black",
+          "startMs": 117,
+          "endMs": 313
+        },
+        {
+          "text": "Swan",
+          "startMs": 326,
+          "endMs": 664
+        },
+        {
+          "text": "Labs",
+          "startMs": 677,
+          "endMs": 1094
+        },
+        {
+          "text": "is",
+          "startMs": 1172,
+          "endMs": 1289
+        },
+        {
+          "text": "for",
+          "startMs": 1302,
+          "endMs": 1406
+        },
+        {
+          "text": "the",
+          "startMs": 1419,
+          "endMs": 1497
+        },
+        {
+          "text": "people",
+          "startMs": 1510,
+          "endMs": 1901
+        },
+        {
+          "text": "We",
+          "startMs": 2331,
+          "endMs": 2461
+        },
+        {
+          "text": "understand",
+          "startMs": 2474,
+          "endMs": 2995
+        },
+        {
+          "text": "it's",
+          "startMs": 3008,
+          "endMs": 3125
+        },
+        {
+          "text": "hard",
+          "startMs": 3138,
+          "endMs": 3477
+        },
+        {
+          "text": "to",
+          "startMs": 3490,
+          "endMs": 3542
+        },
+        {
+          "text": "find",
+          "startMs": 3555,
+          "endMs": 3919
+        },
+        {
+          "text": "people",
+          "startMs": 3932,
+          "endMs": 4219
+        },
+        {
+          "text": "you",
+          "startMs": 4232,
+          "endMs": 4349
+        },
+        {
+          "text": "can",
+          "startMs": 4362,
+          "endMs": 4466
+        },
+        {
+          "text": "trust",
+          "startMs": 4479,
+          "endMs": 4818
+        },
+        {
+          "text": "to",
+          "startMs": 4831,
+          "endMs": 4909
+        },
+        {
+          "text": "come",
+          "startMs": 4922,
+          "endMs": 5117
+        },
+        {
+          "text": "into",
+          "startMs": 5130,
+          "endMs": 5326
+        },
+        {
+          "text": "your",
+          "startMs": 5339,
+          "endMs": 5456
+        },
+        {
+          "text": "business",
+          "startMs": 5469,
+          "endMs": 5964
+        },
+        {
+          "text": "and",
+          "startMs": 6107,
+          "endMs": 6263
+        },
+        {
+          "text": "help",
+          "startMs": 6276,
+          "endMs": 6536
+        },
+        {
+          "text": "you",
+          "startMs": 6550,
+          "endMs": 6745
+        }
+      ]
+    },
+    {
+      "id": "ep5-1",
+      "startFrame": 262,
+      "durationFrames": 191,
+      "file": "vo/ep5-1.mp3",
+      "text": "We propose a partnership. You know the business. We know the AI. Let's get together and make it happen.",
+      "words": [
+        {
+          "text": "We",
+          "startMs": 104,
+          "endMs": 195
+        },
+        {
+          "text": "propose",
+          "startMs": 208,
+          "endMs": 625
+        },
+        {
+          "text": "a",
+          "startMs": 638,
+          "endMs": 690
+        },
+        {
+          "text": "partnership",
+          "startMs": 703,
+          "endMs": 1354
+        },
+        {
+          "text": "You",
+          "startMs": 1784,
+          "endMs": 1862
+        },
+        {
+          "text": "know",
+          "startMs": 1875,
+          "endMs": 1979
+        },
+        {
+          "text": "the",
+          "startMs": 1992,
+          "endMs": 2083
+        },
+        {
+          "text": "business",
+          "startMs": 2096,
+          "endMs": 2643
+        },
+        {
+          "text": "We",
+          "startMs": 3073,
+          "endMs": 3164
+        },
+        {
+          "text": "know",
+          "startMs": 3177,
+          "endMs": 3320
+        },
+        {
+          "text": "the",
+          "startMs": 3333,
+          "endMs": 3437
+        },
+        {
+          "text": "AI",
+          "startMs": 3451,
+          "endMs": 3841
+        },
+        {
+          "text": "Let's",
+          "startMs": 4271,
+          "endMs": 4401
+        },
+        {
+          "text": "get",
+          "startMs": 4414,
+          "endMs": 4557
+        },
+        {
+          "text": "together",
+          "startMs": 4570,
+          "endMs": 5078
+        },
+        {
+          "text": "and",
+          "startMs": 5208,
+          "endMs": 5299
+        },
+        {
+          "text": "make",
+          "startMs": 5312,
+          "endMs": 5508
+        },
+        {
+          "text": "it",
+          "startMs": 5521,
+          "endMs": 5586
+        },
+        {
+          "text": "happen",
+          "startMs": 5599,
+          "endMs": 5977
+        }
+      ]
+    },
+    {
+      "id": "ep5-2",
+      "startFrame": 487,
+      "durationFrames": 127,
+      "file": "vo/ep5-2.mp3",
+      "text": "No obligation. A fifteen minute phone call. Let's talk about it.",
+      "words": [
+        {
+          "text": "No",
+          "startMs": 104,
+          "endMs": 286
+        },
+        {
+          "text": "obligation",
+          "startMs": 300,
+          "endMs": 951
+        },
+        {
+          "text": "A",
+          "startMs": 1380,
+          "endMs": 1432
+        },
+        {
+          "text": "fifteen",
+          "startMs": 1445,
+          "endMs": 1849
+        },
+        {
+          "text": "minute",
+          "startMs": 1862,
+          "endMs": 2057
+        },
+        {
+          "text": "phone",
+          "startMs": 2070,
+          "endMs": 2305
+        },
+        {
+          "text": "call",
+          "startMs": 2318,
+          "endMs": 2643
+        },
+        {
+          "text": "Let's",
+          "startMs": 3073,
+          "endMs": 3203
+        },
+        {
+          "text": "talk",
+          "startMs": 3216,
+          "endMs": 3424
+        },
+        {
+          "text": "about",
+          "startMs": 3438,
+          "endMs": 3685
+        },
+        {
+          "text": "it",
+          "startMs": 3698,
+          "endMs": 3841
+        }
+      ]
+    },
+    {
+      "id": "ep5-3",
+      "startFrame": 648,
+      "durationFrames": 56,
+      "file": "vo/ep5-3.mp3",
+      "text": "Let's make it happen.",
+      "words": [
+        {
+          "text": "Let's",
+          "startMs": 104,
+          "endMs": 234
+        },
+        {
+          "text": "make",
+          "startMs": 247,
+          "endMs": 417
+        },
+        {
+          "text": "it",
+          "startMs": 430,
+          "endMs": 495
+        },
+        {
+          "text": "happen",
+          "startMs": 508,
+          "endMs": 859
+        }
+      ]
+    }
+  ]
+}

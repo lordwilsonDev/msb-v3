@@ -6,13 +6,47 @@
       "title": "Your business forgets.",
       "funnelStage": "Awareness",
       "scenes": [
-        {"type": "title", "dur": 100, "kicker": "THE SECOND BRAIN SERIES · EP 1 OF 4", "lines": ["YOUR BUSINESS", "FORGETS."], "sub": "What your team knows walks out the door every time someone leaves.", "vo": "Your business forgets. Every time someone leaves, what they knew leaves with them."},
-        {"type": "cards", "dur": 120, "kicker": "SOUND FAMILIAR?", "heading": "Where it goes", "items": [
-          {"t": "The same question, every week", "b": "Asked again, because the answer lived in one person's head."},
-          {"t": "The process nobody wrote down", "b": "It works until the one person who knows it is out sick."},
-          {"t": "The decision with no record", "b": "Why we chose that vendor, and who signed off."}],
-          "vo": "The same question every week. The process nobody wrote down. The decision nobody can explain."},
-        {"type": "cta", "dur": 100, "headline": "Part 2: what a second brain actually is.", "body": "Follow along. One episode a week.", "button": "FOLLOW FOR PART 2", "url": "blackswanlabz.com", "vo": "Next: what a second brain actually is. Follow along."}
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "THE SECOND BRAIN SERIES \u00b7 EP 1 OF 4",
+          "lines": [
+            "YOUR BUSINESS",
+            "FORGETS."
+          ],
+          "sub": "What your team knows walks out the door every time someone leaves.",
+          "vo": "Your business forgets. Every time someone leaves, what they knew leaves with them."
+        },
+        {
+          "type": "cards",
+          "dur": 120,
+          "kicker": "SOUND FAMILIAR?",
+          "heading": "Where it goes",
+          "items": [
+            {
+              "t": "The same question, every week",
+              "b": "Asked again, because the answer lived in one person's head."
+            },
+            {
+              "t": "The process nobody wrote down",
+              "b": "It works until the one person who knows it is out sick."
+            },
+            {
+              "t": "The decision with no record",
+              "b": "Why we chose that vendor, and who signed off."
+            }
+          ],
+          "vo": "The same question every week. The process nobody wrote down. The decision nobody can explain."
+        },
+        {
+          "type": "cta",
+          "dur": 100,
+          "headline": "Part 2: what a second brain actually is.",
+          "body": "Follow along. One episode a week.",
+          "button": "FOLLOW FOR PART 2",
+          "url": "blackswanlabz.com",
+          "vo": "Next: what a second brain actually is. Follow along."
+        }
       ]
     },
     {
@@ -20,14 +54,55 @@
       "title": "What a second brain is.",
       "funnelStage": "Education",
       "scenes": [
-        {"type": "title", "dur": 100, "kicker": "EP 2 OF 4", "lines": ["A SECOND BRAIN", "FOR YOUR COMPANY."], "sub": "It captures what you know, and gives it back when you need it.", "vo": "A second brain for your company captures what you know, and gives it back the moment you need it."},
-        {"type": "cards", "dur": 120, "kicker": "THREE THINGS IT DOES", "heading": "Capture. Find. Decide.", "items": [
-          {"t": "Capture knowledge", "b": "Nothing your team knows walks out the door."},
-          {"t": "Instant answers", "b": "Find any process, client detail, or decision in seconds."},
-          {"t": "Smarter decisions", "b": "Your whole business context, working for you 24/7."}],
-          "vo": "It captures knowledge. It gives instant answers. And it supports smarter decisions."},
-        {"type": "image", "dur": 150, "kicker": "NOT ANOTHER CHATBOT", "heading": "A living memory for your company.", "image": "flyer.png", "vo": "Not another chatbot. A living memory, searchable, and yours."},
-        {"type": "cta", "dur": 100, "headline": "Part 3: the proof.", "body": "What we have built, and what is still pending.", "button": "FOLLOW FOR PART 3", "url": "blackswanlabz.com", "vo": "Part three is the proof. What we've built, and what is still pending."}
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "EP 2 OF 4",
+          "lines": [
+            "A SECOND BRAIN",
+            "FOR YOUR COMPANY."
+          ],
+          "sub": "It captures what you know, and gives it back when you need it.",
+          "vo": "A second brain for your company captures what you know, and gives it back the moment you need it."
+        },
+        {
+          "type": "cards",
+          "dur": 120,
+          "kicker": "THREE THINGS IT DOES",
+          "heading": "Capture. Find. Decide.",
+          "items": [
+            {
+              "t": "Capture knowledge",
+              "b": "Nothing your team knows walks out the door."
+            },
+            {
+              "t": "Instant answers",
+              "b": "Find any process, client detail, or decision in seconds."
+            },
+            {
+              "t": "Smarter decisions",
+              "b": "Your whole business context, working for you 24/7."
+            }
+          ],
+          "vo": "It captures knowledge. It gives instant answers. And it supports smarter decisions."
+        },
+        {
+          "type": "image",
+          "dur": 150,
+          "kicker": "NOT ANOTHER CHATBOT",
+          "heading": "A living memory for your company.",
+          "image": "flyer.png",
+          "vo": "Not another chatbot. A living memory, searchable, and yours."
+        },
+        {
+          "type": "cta",
+          "dur": 100,
+          "headline": "Part 3: the proof.",
+          "body": "What we have built, and what is still pending.",
+          "button": "FOLLOW FOR PART 3",
+          "url": "blackswanlabz.com",
+          "vo": "Part three is the proof. What we've built, and what is still pending."
+        }
       ]
     },
     {
@@ -35,15 +110,64 @@
       "title": "The proof.",
       "funnelStage": "Proof",
       "scenes": [
-        {"type": "title", "dur": 100, "kicker": "EP 3 OF 4", "lines": ["WHAT WE'VE", "BUILT."], "sub": "Verified claims only. Anything pending is labelled pending.", "vo": "Here's the proof. Only verified claims, and anything pending is labelled as pending."},
-        {"type": "stat", "dur": 120, "value": 32.5, "decimals": 1, "suffix": "M", "label": "lines committed in one week, Dec 2025. About 5.1M are source code.", "vo": "Thirty two point five million lines committed in one week, December 2025. About five million are source code."},
-        {"type": "image", "dur": 130, "kicker": "PUBLISHED", "heading": "An AI project library across 35 categories.", "image": "pitchhut.jpg", "vo": "A published library of AI projects, across thirty five categories."},
-        {"type": "cards", "dur": 130, "kicker": "BUILT AND CHECKABLE", "heading": "Three results", "items": [
-          {"t": "MSB v3", "b": "3,942 tests collected at a pinned commit."},
-          {"t": "FCVE", "b": "Archived after two Lean patches sent upstream."},
-          {"t": "Adaptive Infrastructure", "b": "Reproduces its published numbers byte for byte."}],
-          "vo": "MSB v3 collects three thousand nine hundred forty two tests. FCVE was archived after two upstream patches. Adaptive Infrastructure reproduces its numbers byte for byte."},
-        {"type": "cta", "dur": 100, "headline": "Part 4: book the call.", "body": "The last episode is how to start.", "button": "FOLLOW FOR PART 4", "url": "blackswanlabz.com", "vo": "Part four is how to start."}
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "EP 3 OF 4",
+          "lines": [
+            "WHAT WE'VE",
+            "BUILT."
+          ],
+          "sub": "Verified claims only. Anything pending is labelled pending.",
+          "vo": "Here's the proof. Only verified claims, and anything pending is labelled as pending."
+        },
+        {
+          "type": "stat",
+          "dur": 120,
+          "value": 32.5,
+          "decimals": 1,
+          "suffix": "M",
+          "label": "lines committed in one week, Dec 2025. About 5.1M are source code.",
+          "vo": "Thirty two point five million lines committed in one week, December 2025. About five million are source code."
+        },
+        {
+          "type": "image",
+          "dur": 130,
+          "kicker": "PUBLISHED",
+          "heading": "An AI project library across 35 categories.",
+          "image": "pitchhut.jpg",
+          "vo": "A published library of AI projects, across thirty five categories."
+        },
+        {
+          "type": "cards",
+          "dur": 130,
+          "kicker": "BUILT AND CHECKABLE",
+          "heading": "Three results",
+          "items": [
+            {
+              "t": "MSB v3",
+              "b": "3,942 tests collected at a pinned commit."
+            },
+            {
+              "t": "FCVE",
+              "b": "Archived after two Lean patches sent upstream."
+            },
+            {
+              "t": "Adaptive Infrastructure",
+              "b": "Reproduces its published numbers byte for byte."
+            }
+          ],
+          "vo": "MSB v3 collects three thousand nine hundred forty two tests. FCVE was archived after two upstream patches. Adaptive Infrastructure reproduces its numbers byte for byte."
+        },
+        {
+          "type": "cta",
+          "dur": 100,
+          "headline": "Part 4: book the call.",
+          "body": "The last episode is how to start.",
+          "button": "FOLLOW FOR PART 4",
+          "url": "blackswanlabz.com",
+          "vo": "Part four is how to start."
+        }
       ]
     },
     {
@@ -51,14 +175,111 @@
       "title": "Book the call.",
       "funnelStage": "Conversion",
       "scenes": [
-        {"type": "title", "dur": 100, "kicker": "EP 4 OF 4", "lines": ["READY FOR", "A SECOND", "BRAIN?"], "sub": "Start with a free 15-minute call.", "vo": "Ready for a second brain for your business? Start with a free fifteen minute call."},
-        {"type": "cards", "dur": 130, "kicker": "HOW IT STARTS", "heading": "Free. Short. Straight.", "items": [
-          {"t": "15 minutes", "b": "No slide deck. No obligation."},
-          {"t": "Your business, mapped", "b": "We show you where a second brain fits."},
-          {"t": "Straight answers", "b": "We say where it fits, and where it doesn't."}],
-          "vo": "No slide deck, no obligation. We show you where a second brain fits, and where it doesn't."},
-        {"type": "cta", "dur": 150, "headshot": true, "headline": "Book your free 15-minute clarity call.", "body": "Blackswanlabz.com", "button": "BOOK YOUR FREE CALL", "url": "blackswanlabz.com", "vo": "Book your free call at blackswanlabz.com."},
-        {"type": "logo", "dur": 90, "url": "BLACKSWANLABZ.COM", "vo": "Strategy. Automation. Results."}
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "EP 4 OF 4",
+          "lines": [
+            "READY FOR",
+            "A SECOND",
+            "BRAIN?"
+          ],
+          "sub": "Start with a free 15-minute call.",
+          "vo": "Ready for a second brain for your business? Start with a free fifteen minute call."
+        },
+        {
+          "type": "cards",
+          "dur": 130,
+          "kicker": "HOW IT STARTS",
+          "heading": "Free. Short. Straight.",
+          "items": [
+            {
+              "t": "15 minutes",
+              "b": "No slide deck. No obligation."
+            },
+            {
+              "t": "Your business, mapped",
+              "b": "We show you where a second brain fits."
+            },
+            {
+              "t": "Straight answers",
+              "b": "We say where it fits, and where it doesn't."
+            }
+          ],
+          "vo": "No slide deck, no obligation. We show you where a second brain fits, and where it doesn't."
+        },
+        {
+          "type": "cta",
+          "dur": 150,
+          "headshot": true,
+          "headline": "Book your free 15-minute clarity call.",
+          "body": "Blackswanlabz.com",
+          "button": "BOOK YOUR FREE CALL",
+          "url": "blackswanlabz.com",
+          "vo": "Book your free call at blackswanlabz.com."
+        },
+        {
+          "type": "logo",
+          "dur": 90,
+          "url": "BLACKSWANLABZ.COM",
+          "vo": "Strategy. Automation. Results."
+        }
+      ]
+    },
+    {
+      "id": "ep5",
+      "title": "Black Swan Labs is for the people.",
+      "funnelStage": "Partnership",
+      "scenes": [
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "A PARTNERSHIP",
+          "lines": [
+            "BLACK SWAN",
+            "LABS IS FOR",
+            "THE PEOPLE."
+          ],
+          "sub": "We understand it's hard to find people you can trust in your business.",
+          "vo": "Black Swan Labs is for the people. We understand it's hard to find people you can trust to come into your business and help you."
+        },
+        {
+          "type": "cards",
+          "dur": 130,
+          "kicker": "LET'S WORK TOGETHER",
+          "heading": "You know the business. We know the AI.",
+          "items": [
+            {
+              "t": "You know the business",
+              "b": "Your customers, your people, your decisions."
+            },
+            {
+              "t": "We know the AI",
+              "b": "We build the second brain that holds what you know."
+            },
+            {
+              "t": "Together",
+              "b": "Let's get together and make it happen."
+            }
+          ],
+          "vo": "We propose a partnership. You know the business. We know the AI. Let's get together and make it happen."
+        },
+        {
+          "type": "cta",
+          "dur": 150,
+          "headshot": true,
+          "headline": "No obligation.\nA 15-minute phone call.",
+          "body": "Let's talk about your business.",
+          "button": "BOOK THE 15-MINUTE CALL",
+          "url": "blackswanlabz.com",
+          "vo": "No obligation. A fifteen minute phone call. Let's talk about it."
+        },
+        {
+          "type": "logo",
+          "dur": 90,
+          "url": "BLACKSWANLABZ.COM",
+          "vo": "Let's make it happen."
+        }
       ]
     }
   ]

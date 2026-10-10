@@ -211,7 +211,7 @@ const CtaScene: React.FC<{s: Scene}> = ({s}) => {
           <Img src={staticFile('headshot.png')} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', objectPosition: 'center 25%'}} />
         </div>
       )}
-      <div style={{...head, color: S.silverHot, fontSize: 84, fontWeight: 900, lineHeight: 1.05}}>{s.headline}</div>
+      <div style={{...head, color: S.silverHot, fontSize: 84, fontWeight: 900, lineHeight: 1.05, whiteSpace: 'pre-line'}}>{s.headline}</div>
       <div style={{...body, color: S.muted, fontSize: 36, marginTop: 28, lineHeight: 1.4}}>{s.body}</div>
       <div style={{...btn, marginTop: 56, background: S.silver, color: S.ink, fontSize: 42, fontWeight: 900, padding: '32px 64px', borderRadius: 999,
         letterSpacing: 1, transform: `scale(${pulse})`, boxShadow: '0 20px 60px rgba(217,222,229,0.3)', position: 'relative', overflow: 'hidden'}}>

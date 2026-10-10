@@ -5,8 +5,9 @@ import ep1 from './timelines/ep1.json';
 import ep2 from './timelines/ep2.json';
 import ep3 from './timelines/ep3.json';
 import ep4 from './timelines/ep4.json';
+import ep5 from './timelines/ep5.json';
 
-const EPISODES = [ep1, ep2, ep3, ep4] as unknown as EpisodeData[];
+const EPISODES = [ep1, ep2, ep3, ep4, ep5] as unknown as EpisodeData[];
 
 export const RemotionRoot: React.FC = () => (
   <>
