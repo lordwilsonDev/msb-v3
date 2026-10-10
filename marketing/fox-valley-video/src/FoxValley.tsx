@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AbsoluteFill,
+  Audio,
   Easing,
   Img,
   Sequence,
@@ -10,17 +11,22 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import timeline from './timeline.json';
 
 // ---------------------------------------------------------------------------
-// Format: Facebook feed, 4:5 vertical (1080x1350), 30 fps, ~28 s.
+// Format: Facebook feed, 4:5 vertical (1080x1350), 30 fps.
+// Scene starts/lengths and the voiceover come from timeline.json, which
+// scripts/make_vo.py writes, so the picture always follows the narration.
 // ---------------------------------------------------------------------------
 export const WIDTH = 1080;
 export const HEIGHT = 1350;
-export const FPS = 30;
+export const FPS = timeline.fps;
+export const DURATION = timeline.durationInFrames;
 
 const C = {
   bg: '#050608',
   gold: '#D4AF5A',
+  goldHot: '#FFE7A3',
   silver: '#E6EAF0',
   muted: '#9AA3AE',
   ink: '#0b0d12',
@@ -28,27 +34,11 @@ const C = {
 
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 
-type Scene = 'intro' | 'headline' | 'flyer' | 'pillars' | 'marquee' | 'cta' | 'outro';
-
-const ORDER: Scene[] = ['intro', 'headline', 'flyer', 'pillars', 'marquee', 'cta', 'outro'];
-
-const LENGTH: Record<Scene, number> = {
-  intro: 75,
-  headline: 120,
-  flyer: 210,
-  pillars: 135,
-  marquee: 105,
-  cta: 135,
-  outro: 75,
-};
-
-const START = {} as Record<Scene, number>;
-let cursor = 0;
-for (const s of ORDER) {
-  START[s] = cursor;
-  cursor += LENGTH[s];
-}
-export const DURATION = cursor;
+type SceneName = 'intro' | 'headline' | 'flyer' | 'pillars' | 'marquee' | 'cta' | 'outro';
+const SCENE_STARTS = Object.fromEntries(timeline.scenes.map((s) => [s.name, s])) as unknown as Record<
+  SceneName,
+  {start: number; length: number}
+>;
 
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
@@ -82,6 +72,208 @@ const Background: React.FC = () => {
         background: `radial-gradient(ellipse at ${50 + drift * 6}% ${30 + drift * 25}%, #1c1809 0%, ${C.bg} 55%, #000 100%)`,
       }}
     />
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Lighting
+// ---------------------------------------------------------------------------
+
+// A bright comet of light that travels around any rounded rectangle.
+// pathLength=100 lets the dash math work in percent of the perimeter.
+const OrbitRect: React.FC<{
+  w: number;
+  h: number;
+  r: number;
+  inset?: number;
+  speed: number; // percent of perimeter per frame
+  comet?: number; // comet length, percent
+  color?: string;
+  id: string;
+}> = ({w, h, r, inset = 0, speed, comet = 18, color = C.goldHot, id}) => {
+  const frame = useCurrentFrame();
+  const offset = -((frame * speed) % 100);
+  const x = inset;
+  const y = inset;
+  const rw = w - inset * 2;
+  const rh = h - inset * 2;
+  return (
+    <svg
+      width={w}
+      height={h}
+      style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none'}}
+    >
+      <defs>
+        <filter id={`${id}-glow`} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="9" />
+        </filter>
+      </defs>
+      {/* faint static rim so the shape reads even between passes */}
+      <rect x={x} y={y} width={rw} height={rh} rx={r} fill="none" stroke={C.gold} strokeOpacity={0.18} strokeWidth={2} />
+      {/* soft bloom */}
+      <rect
+        x={x}
+        y={y}
+        width={rw}
+        height={rh}
+        rx={r}
+        pathLength={100}
+        fill="none"
+        stroke={C.gold}
+        strokeWidth={12}
+        strokeLinecap="round"
+        strokeDasharray={`${comet} ${100 - comet}`}
+        strokeDashoffset={offset}
+        filter={`url(#${id}-glow)`}
+        opacity={0.9}
+      />
+      {/* hot core */}
+      <rect
+        x={x}
+        y={y}
+        width={rw}
+        height={rh}
+        rx={r}
+        pathLength={100}
+        fill="none"
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeDasharray={`${comet} ${100 - comet}`}
+        strokeDashoffset={offset}
+      />
+    </svg>
+  );
+};
+
+// Light sheen that sweeps across a surface every `period` frames.
+const Sheen: React.FC<{period: number; delay?: number; angle?: number; strength?: number}> = ({
+  period,
+  delay = 0,
+  angle = 105,
+  strength = 0.22,
+}) => {
+  const frame = useCurrentFrame();
+  const local = (((frame - delay) % period) + period) % period;
+  const p = interpolate(local, [0, period * 0.45], [0, 1], {
+    ...clamp,
+    easing: Easing.inOut(Easing.cubic),
+  });
+  const x = interpolate(p, [0, 1], [-120, 120]);
+  return (
+    <AbsoluteFill style={{overflow: 'hidden', pointerEvents: 'none', mixBlendMode: 'screen'}}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-20%',
+          transform: `translateX(${x}%)`,
+          background: `linear-gradient(${angle}deg, transparent 38%, rgba(255,231,163,${strength}) 50%, transparent 62%)`,
+          opacity: p > 0 && p < 1 ? 1 : 0,
+        }}
+      />
+    </AbsoluteFill>
+  );
+};
+
+// Full-frame light that runs around the outer border of the video, with a
+// slow edge-glow pulse inside it.
+const FrameLight: React.FC = () => {
+  const frame = useCurrentFrame();
+  const pulse = 0.55 + 0.45 * Math.sin((frame / FPS) * Math.PI * 2 * 0.5);
+  const inset = 14;
+  return (
+    <AbsoluteFill style={{pointerEvents: 'none'}}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          boxShadow: `inset 0 0 ${150 + 60 * pulse}px rgba(212,175,90,${0.10 + 0.10 * pulse})`,
+        }}
+      />
+      <OrbitRect w={WIDTH} h={HEIGHT} r={40} inset={inset} speed={0.42} comet={14} id="frame" />
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Captions: karaoke-style, the spoken word is gold
+// ---------------------------------------------------------------------------
+type Word = {text: string; startMs: number; endMs: number};
+type Caption = {words: {text: string; from: number; to: number}[]; from: number; to: number};
+
+const buildCaptions = (line: (typeof timeline.voiceover)[number]): Caption[] => {
+  const tokens = line.text.split(/\s+/);
+  const timed: {text: string; from: number; to: number}[] = tokens.map((text, i) => {
+    const w: Word | undefined = line.words[i];
+    const from = line.startFrame + Math.round(((w ? w.startMs : 0) / 1000) * FPS);
+    const to = line.startFrame + Math.round(((w ? w.endMs : 0) / 1000) * FPS);
+    return {text, from, to};
+  });
+  // Chunk on sentence/phrase punctuation and at most 5 words per card.
+  const chunks: Caption[] = [];
+  let cur: Caption | null = null;
+  timed.forEach((t) => {
+    if (!cur) cur = {words: [], from: t.from, to: t.to};
+    cur.words.push(t);
+    cur.to = t.to;
+    const breaks = /[.?!,]$/.test(t.text) || cur.words.length >= 5;
+    if (breaks) {
+      chunks.push(cur);
+      cur = null;
+    }
+  });
+  if (cur) chunks.push(cur);
+  return chunks;
+};
+
+const CAPTIONS = timeline.voiceover.flatMap((line) =>
+  buildCaptions(line as (typeof timeline.voiceover)[number]).map((c) => ({...c, file: line.file})),
+);
+
+const Captions: React.FC = () => {
+  const frame = useCurrentFrame();
+  const active = CAPTIONS.find((c) => frame >= c.from - 2 && frame < c.to + 8);
+  if (!active) return null;
+  const fadeIn = interpolate(frame, [active.from - 2, active.from + 4], [0, 1], clamp);
+  const fadeOut = interpolate(frame, [active.to + 2, active.to + 8], [1, 0], clamp);
+  return (
+    <AbsoluteFill style={{justifyContent: 'flex-end', alignItems: 'center', pointerEvents: 'none'}}>
+      <div
+        style={{
+          marginBottom: 70,
+          maxWidth: 940,
+          padding: '20px 36px',
+          borderRadius: 26,
+          background: 'rgba(5,6,8,0.72)',
+          border: '1.5px solid rgba(212,175,90,0.45)',
+          boxShadow: '0 16px 50px rgba(0,0,0,0.6)',
+          fontFamily: FONT,
+          fontSize: 46,
+          fontWeight: 800,
+          lineHeight: 1.25,
+          textAlign: 'center',
+          opacity: fadeIn * fadeOut,
+          transform: `translateY(${(1 - fadeIn) * 14}px)`,
+        }}
+      >
+        {active.words.map((w, i) => {
+          const on = frame >= w.from;
+          return (
+            <span
+              key={`${w.text}-${i}`}
+              style={{
+                color: on ? C.gold : C.silver,
+                textShadow: on ? '0 0 18px rgba(212,175,90,0.55)' : 'none',
+                marginRight: 12,
+                display: 'inline-block',
+              }}
+            >
+              {w.text}
+            </span>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
   );
 };
 
@@ -135,7 +327,7 @@ const Intro: React.FC = () => {
 // ---------------------------------------------------------------------------
 // 2. Headline: word-by-word rise
 // ---------------------------------------------------------------------------
-const Word: React.FC<{text: string; delay: number; gold?: boolean}> = ({text, delay, gold}) => {
+const Word_: React.FC<{text: string; delay: number; gold?: boolean}> = ({text, delay, gold}) => {
   const r = useRise(delay, 90);
   return (
     <span
@@ -162,46 +354,21 @@ const Headline: React.FC = () => {
   let i = 0;
   return (
     <AbsoluteFill style={{padding: '150px 90px', fontFamily: FONT}}>
-      <div
-        style={{
-          ...kicker,
-          color: C.gold,
-          fontSize: 30,
-          letterSpacing: 7,
-          fontWeight: 600,
-        }}
-      >
+      <div style={{...kicker, color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>
         AI CONSULTING &amp; STRATEGY
       </div>
-      <div
-        style={{
-          marginTop: 60,
-          fontSize: 124,
-          fontWeight: 900,
-          lineHeight: 1,
-          letterSpacing: -3,
-        }}
-      >
+      <div style={{marginTop: 60, fontSize: 124, fontWeight: 900, lineHeight: 1, letterSpacing: -3}}>
         {lines.map((line) => (
           <div key={line.words.join('-')} style={{whiteSpace: 'nowrap'}}>
             {line.words.map((w) => {
               const delay = 10 + i * 7;
               i++;
-              return <Word key={w + i} text={w} delay={delay} gold={line.gold} />;
+              return <Word_ key={`${w}-${i}`} text={w} delay={delay} gold={line.gold} />;
             })}
           </div>
         ))}
       </div>
-      <div
-        style={{
-          ...sub,
-          marginTop: 70,
-          fontSize: 40,
-          lineHeight: 1.4,
-          color: C.muted,
-          maxWidth: 820,
-        }}
-      >
+      <div style={{...sub, marginTop: 70, fontSize: 40, lineHeight: 1.4, color: C.muted, maxWidth: 820}}>
         An AI system that captures everything your business knows — and gives it back the moment you
         need it.
       </div>
@@ -213,11 +380,11 @@ const Headline: React.FC = () => {
 // 3. Flyer: scrolling viewport over the full flyer
 // ---------------------------------------------------------------------------
 const VIEW_W = 920;
-const VIEW_H = 840;
+const VIEW_H = 760;
 const VIEW_TOP = 400;
 const VIEW_LEFT = (WIDTH - VIEW_W) / 2;
 const FLYER_H = (VIEW_W * 1536) / 1024; // 1380
-const SCROLL = FLYER_H - VIEW_H; // 480
+const SCROLL = FLYER_H - VIEW_H; // 620
 
 const Flyer: React.FC = () => {
   const frame = useCurrentFrame();
@@ -226,7 +393,7 @@ const Flyer: React.FC = () => {
   const sub = useRise(14, 30);
   const frameIn = useRise(10, 80);
 
-  const progress = interpolate(frame, [24, 190], [0, 1], {
+  const progress = interpolate(frame, [24, 170], [0, 1], {
     ...clamp,
     easing: Easing.inOut(Easing.cubic),
   });
@@ -240,9 +407,7 @@ const Flyer: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
       <div style={{position: 'absolute', top: 100, left: 90, right: 90, ...head}}>
-        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>
-          NOT ANOTHER CHATBOT.
-        </div>
+        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>NOT ANOTHER CHATBOT.</div>
         <div style={{color: C.silver, fontSize: 52, fontWeight: 800, marginTop: 14, lineHeight: 1.12}}>
           A living memory for your company.
         </div>
@@ -258,19 +423,28 @@ const Flyer: React.FC = () => {
           left: VIEW_LEFT,
           width: VIEW_W,
           height: VIEW_H,
-          borderRadius: 34,
-          overflow: 'hidden',
-          border: `2px solid rgba(212,175,90,0.55)`,
-          boxShadow: '0 40px 140px rgba(212,175,90,0.18), 0 20px 60px rgba(0,0,0,0.6)',
-          background: C.ink,
           opacity: frameIn.opacity,
           transform: frameIn.transform,
         }}
       >
-        <Img
-          src={staticFile('flyer.png')}
-          style={{width: VIEW_W, height: FLYER_H, display: 'block', transform: `translateY(${y}px)`}}
-        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 34,
+            overflow: 'hidden',
+            border: `2px solid rgba(212,175,90,0.55)`,
+            boxShadow: '0 40px 140px rgba(212,175,90,0.18), 0 20px 60px rgba(0,0,0,0.6)',
+            background: C.ink,
+          }}
+        >
+          <Img
+            src={staticFile('flyer.png')}
+            style={{width: VIEW_W, height: FLYER_H, display: 'block', transform: `translateY(${y}px)`}}
+          />
+          <Sheen period={150} delay={40} strength={0.16} />
+        </div>
+        <OrbitRect w={VIEW_W} h={VIEW_H} r={34} inset={1} speed={0.9} comet={12} id="flyer" />
       </div>
 
       {/* Scroll track */}
@@ -294,6 +468,7 @@ const Flyer: React.FC = () => {
             height: thumbH,
             borderRadius: 3,
             background: C.gold,
+            boxShadow: '0 0 14px rgba(212,175,90,0.8)',
           }}
         />
       </div>
@@ -305,7 +480,7 @@ const Flyer: React.FC = () => {
 // 4. Pillars: cards that scroll up into place
 // ---------------------------------------------------------------------------
 const PILLARS = [
-  {n: '01', title: 'Capture knowledge', body: "Nothing your team knows walks out the door."},
+  {n: '01', title: 'Capture knowledge', body: 'Nothing your team knows walks out the door.'},
   {n: '02', title: 'Instant answers', body: 'Find any process, client detail, or decision in seconds.'},
   {n: '03', title: 'Smarter decisions', body: 'Your whole business context, working for you 24/7.'},
 ];
@@ -313,16 +488,16 @@ const PILLARS = [
 const Pillars: React.FC = () => {
   const head = useRise(0, 30);
   return (
-    <AbsoluteFill style={{fontFamily: FONT, padding: '130px 80px'}}>
+    <AbsoluteFill style={{fontFamily: FONT, padding: '120px 80px'}}>
       <div style={{...head}}>
         <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>WHAT CHANGES</div>
         <div style={{color: C.silver, fontSize: 80, fontWeight: 900, marginTop: 16, lineHeight: 1.05}}>
           Your business, remembered.
         </div>
       </div>
-      <div style={{marginTop: 70, display: 'flex', flexDirection: 'column', gap: 30}}>
+      <div style={{marginTop: 50, display: 'flex', flexDirection: 'column', gap: 26}}>
         {PILLARS.map((p, i) => (
-          <PillarCard key={p.n} {...p} delay={14 + i * 22} />
+          <PillarCard key={p.n} {...p} delay={14 + i * 36} />
         ))}
       </div>
     </AbsoluteFill>
@@ -335,18 +510,22 @@ const PillarCard: React.FC<{n: string; title: string; body: string; delay: numbe
   body,
   delay,
 }) => {
+  const frame = useCurrentFrame();
   const r = useRise(delay, 320);
+  const lit = interpolate(frame, [delay + 10, delay + 30, delay + 60], [0, 1, 0.35], clamp);
   return (
     <div
       style={{
         ...r,
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         gap: 36,
         padding: '36px 48px',
         borderRadius: 28,
         background: 'linear-gradient(135deg, rgba(212,175,90,0.10), rgba(255,255,255,0.02))',
-        border: '1.5px solid rgba(212,175,90,0.35)',
+        border: `1.5px solid rgba(212,175,90,${0.35 + 0.4 * lit})`,
+        boxShadow: `0 0 ${40 * lit}px rgba(212,175,90,${0.25 * lit})`,
       }}
     >
       <div style={{color: C.gold, fontSize: 96, fontWeight: 900, minWidth: 130}}>{n}</div>
@@ -372,8 +551,8 @@ const Marquee: React.FC = () => {
   const frame = useCurrentFrame();
   const head = useRise(0, 30);
   const tail = useRise(50, 30);
-  const row1 = interpolate(frame, [0, 105], [0, -1500], clamp);
-  const row2 = interpolate(frame, [0, 105], [-1500, 0], clamp);
+  const row1 = interpolate(frame, [0, 110], [0, -1500], clamp);
+  const row2 = interpolate(frame, [0, 110], [-1500, 0], clamp);
   const line = INDUSTRIES.join('   ◆   ') + '   ◆   ';
 
   const rowStyle: React.CSSProperties = {
@@ -387,18 +566,14 @@ const Marquee: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
       <div style={{position: 'absolute', top: 150, left: 80, right: 80, ...head}}>
-        <div style={{color: C.silver, fontSize: 92, fontWeight: 900, lineHeight: 1.02}}>
-          Built for local business.
-        </div>
+        <div style={{color: C.silver, fontSize: 92, fontWeight: 900, lineHeight: 1.02}}>Built for local business.</div>
         <div style={{color: C.gold, fontSize: 40, marginTop: 22, fontWeight: 600}}>
           Wisconsin's AI partner — built for Fox Valley business.
         </div>
       </div>
 
       <div style={{position: 'absolute', top: 560, left: 0, width: WIDTH, overflow: 'hidden'}}>
-        <div style={{...rowStyle, color: C.silver, transform: `translateX(${row1}px)`}}>
-          {line.repeat(2)}
-        </div>
+        <div style={{...rowStyle, color: C.silver, transform: `translateX(${row1}px)`}}>{line.repeat(2)}</div>
       </div>
       <div style={{position: 'absolute', top: 700, left: 0, width: WIDTH, overflow: 'hidden'}}>
         <div
@@ -416,7 +591,7 @@ const Marquee: React.FC = () => {
       <div
         style={{
           position: 'absolute',
-          bottom: 170,
+          bottom: 300,
           left: 80,
           right: 80,
           textAlign: 'center',
@@ -445,25 +620,67 @@ const CTA: React.FC = () => {
   const btn = useRise(66, 30);
   const url = useRise(88, 20);
   const pulse = 1 + 0.012 * Math.sin((frame / fps) * Math.PI * 2 * 1.2) * (frame > 90 ? 1 : 0);
+  const RING = 330;
 
   return (
     <AbsoluteFill style={{fontFamily: FONT, alignItems: 'center', paddingTop: 110}}>
       <div
         style={{
-          width: 330,
-          height: 330,
-          borderRadius: '50%',
-          padding: 7,
-          background: `linear-gradient(135deg, ${C.gold}, #7a5c1e)`,
+          position: 'relative',
+          width: RING,
+          height: RING,
           transform: `scale(${0.6 + 0.4 * photo})`,
           opacity: photo,
-          boxShadow: '0 30px 100px rgba(212,175,90,0.25)',
         }}
       >
-        <Img
-          src={staticFile('headshot.png')}
-          style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', objectPosition: 'center 25%'}}
-        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            padding: 7,
+            background: `linear-gradient(135deg, ${C.gold}, #7a5c1e)`,
+            boxShadow: '0 30px 100px rgba(212,175,90,0.25)',
+          }}
+        >
+          <Img
+            src={staticFile('headshot.png')}
+            style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', objectPosition: 'center 25%'}}
+          />
+        </div>
+        <svg width={RING} height={RING} style={{position: 'absolute', inset: 0, overflow: 'visible'}}>
+          <defs>
+            <filter id="ring-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="8" />
+            </filter>
+          </defs>
+          <circle
+            cx={RING / 2}
+            cy={RING / 2}
+            r={RING / 2 + 6}
+            pathLength={100}
+            fill="none"
+            stroke={C.gold}
+            strokeWidth={14}
+            strokeLinecap="round"
+            strokeDasharray="20 80"
+            strokeDashoffset={-((frame * 0.8) % 100)}
+            filter="url(#ring-glow)"
+            opacity={0.85}
+          />
+          <circle
+            cx={RING / 2}
+            cy={RING / 2}
+            r={RING / 2 + 6}
+            pathLength={100}
+            fill="none"
+            stroke={C.goldHot}
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeDasharray="20 80"
+            strokeDashoffset={-((frame * 0.8) % 100)}
+          />
+        </svg>
       </div>
 
       <div style={{...kicker, marginTop: 56, color: C.gold, fontSize: 34, letterSpacing: 7, fontWeight: 700}}>
@@ -481,7 +698,9 @@ const CTA: React.FC = () => {
           padding: '0 70px',
         }}
       >
-        Start with a FREE<br />15-minute clarity call.
+        Start with a FREE
+        <br />
+        15-minute clarity call.
       </div>
       <div
         style={{
@@ -499,6 +718,7 @@ const CTA: React.FC = () => {
       <div
         style={{
           ...btn,
+          position: 'relative',
           marginTop: 52,
           background: C.gold,
           color: C.ink,
@@ -507,11 +727,13 @@ const CTA: React.FC = () => {
           padding: '34px 70px',
           borderRadius: 999,
           letterSpacing: 1,
+          overflow: 'hidden',
           transform: `translateY(${(1 - Math.min(1, btn.opacity)) * 30}px) scale(${pulse})`,
-          boxShadow: '0 20px 60px rgba(212,175,90,0.35)',
+          boxShadow: '0 20px 60px rgba(212,175,90,0.35), 0 0 0 1px rgba(255,231,163,0.6)',
         }}
       >
         BOOK YOUR FREE 15-MIN CALL →
+        <Sheen period={120} delay={100} strength={0.5} angle={100} />
       </div>
       <div style={{...url, marginTop: 44, color: C.gold, fontSize: 36, letterSpacing: 5, fontWeight: 700}}>
         BLACKSWANLABZ.COM
@@ -530,6 +752,15 @@ const Outro: React.FC = () => {
   const url = useRise(14, 20);
   return (
     <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center', fontFamily: FONT}}>
+      <div
+        style={{
+          position: 'absolute',
+          width: 900,
+          height: 900,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, rgba(212,175,90,${0.28 * s}) 0%, transparent 60%)`,
+        }}
+      />
       <Img
         src={staticFile('logo.png')}
         style={{width: 640, opacity: s, transform: `scale(${0.94 + 0.06 * s})`, mixBlendMode: 'screen'}}
@@ -544,7 +775,7 @@ const Outro: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Composition
 // ---------------------------------------------------------------------------
-const SCENE_COMPONENTS: Record<Scene, React.FC> = {
+const SCENE_COMPONENTS: Record<SceneName, React.FC> = {
   intro: Intro,
   headline: Headline,
   flyer: Flyer,
@@ -558,16 +789,26 @@ export const FoxValley: React.FC = () => {
   return (
     <AbsoluteFill style={{backgroundColor: C.bg}}>
       <Background />
-      {ORDER.map((scene) => {
-        const Comp = SCENE_COMPONENTS[scene];
+      {(Object.keys(SCENE_COMPONENTS) as SceneName[]).map((name) => {
+        const Comp = SCENE_COMPONENTS[name];
+        const {start, length} = SCENE_STARTS[name];
         return (
-          <Sequence key={scene} from={START[scene]} durationInFrames={LENGTH[scene]}>
-            <SceneFade dur={LENGTH[scene]}>
+          <Sequence key={name} from={start} durationInFrames={length}>
+            <SceneFade dur={length}>
               <Comp />
             </SceneFade>
           </Sequence>
         );
       })}
+
+      {timeline.voiceover.map((line) => (
+        <Sequence key={line.id} from={line.startFrame} durationInFrames={line.durationFrames + 6}>
+          <Audio src={staticFile(line.file)} volume={1} />
+        </Sequence>
+      ))}
+
+      <FrameLight />
+      <Captions />
     </AbsoluteFill>
   );
 };

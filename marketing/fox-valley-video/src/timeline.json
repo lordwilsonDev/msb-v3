@@ -1,0 +1,405 @@
+{
+  "fps": 30,
+  "durationInFrames": 1143,
+  "scenes": [
+    {
+      "name": "intro",
+      "start": 0,
+      "length": 131
+    },
+    {
+      "name": "headline",
+      "start": 131,
+      "length": 103
+    },
+    {
+      "name": "flyer",
+      "start": 234,
+      "length": 180
+    },
+    {
+      "name": "pillars",
+      "start": 414,
+      "length": 154
+    },
+    {
+      "name": "marquee",
+      "start": 568,
+      "length": 125
+    },
+    {
+      "name": "cta",
+      "start": 693,
+      "length": 281
+    },
+    {
+      "name": "outro",
+      "start": 974,
+      "length": 169
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "v1",
+      "startFrame": 12,
+      "durationFrames": 99,
+      "file": "vo/v1.mp3",
+      "text": "Black Swan Labz. Wisconsin's AI partner.",
+      "words": [
+        {
+          "text": "Black",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "Swan",
+          "startMs": 300,
+          "endMs": 586
+        },
+        {
+          "text": "Labz",
+          "startMs": 599,
+          "endMs": 1068
+        },
+        {
+          "text": "Wisconsin's",
+          "startMs": 1510,
+          "endMs": 2109
+        },
+        {
+          "text": "AI",
+          "startMs": 2122,
+          "endMs": 2383
+        },
+        {
+          "text": "partner",
+          "startMs": 2396,
+          "endMs": 2904
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "startFrame": 145,
+      "durationFrames": 69,
+      "file": "vo/v2.mp3",
+      "text": "We build your business a second brain.",
+      "words": [
+        {
+          "text": "We",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "build",
+          "startMs": 260,
+          "endMs": 495
+        },
+        {
+          "text": "your",
+          "startMs": 508,
+          "endMs": 638
+        },
+        {
+          "text": "business",
+          "startMs": 651,
+          "endMs": 1107
+        },
+        {
+          "text": "a",
+          "startMs": 1172,
+          "endMs": 1224
+        },
+        {
+          "text": "second",
+          "startMs": 1237,
+          "endMs": 1615
+        },
+        {
+          "text": "brain",
+          "startMs": 1628,
+          "endMs": 1914
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "startFrame": 248,
+      "durationFrames": 103,
+      "file": "vo/v3.mp3",
+      "text": "Not another chatbot. A living memory for your company.",
+      "words": [
+        {
+          "text": "Not",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "another",
+          "startMs": 260,
+          "endMs": 521
+        },
+        {
+          "text": "chatbot",
+          "startMs": 534,
+          "endMs": 1120
+        },
+        {
+          "text": "A",
+          "startMs": 1550,
+          "endMs": 1589
+        },
+        {
+          "text": "living",
+          "startMs": 1602,
+          "endMs": 1914
+        },
+        {
+          "text": "memory",
+          "startMs": 1927,
+          "endMs": 2279
+        },
+        {
+          "text": "for",
+          "startMs": 2292,
+          "endMs": 2435
+        },
+        {
+          "text": "your",
+          "startMs": 2448,
+          "endMs": 2565
+        },
+        {
+          "text": "company",
+          "startMs": 2578,
+          "endMs": 3034
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "startFrame": 428,
+      "durationFrames": 120,
+      "file": "vo/v4.mp3",
+      "text": "Capture knowledge. Instant answers. Smarter decisions.",
+      "words": [
+        {
+          "text": "Capture",
+          "startMs": 104,
+          "endMs": 391
+        },
+        {
+          "text": "knowledge",
+          "startMs": 404,
+          "endMs": 924
+        },
+        {
+          "text": "Instant",
+          "startMs": 1354,
+          "endMs": 1654
+        },
+        {
+          "text": "answers",
+          "startMs": 1667,
+          "endMs": 2187
+        },
+        {
+          "text": "Smarter",
+          "startMs": 2617,
+          "endMs": 2891
+        },
+        {
+          "text": "decisions",
+          "startMs": 2904,
+          "endMs": 3607
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "startFrame": 582,
+      "durationFrames": 91,
+      "file": "vo/v7.mp3",
+      "text": "Built for local business across the Fox Valley.",
+      "words": [
+        {
+          "text": "Built",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "for",
+          "startMs": 300,
+          "endMs": 443
+        },
+        {
+          "text": "local",
+          "startMs": 456,
+          "endMs": 768
+        },
+        {
+          "text": "business",
+          "startMs": 781,
+          "endMs": 1250
+        },
+        {
+          "text": "across",
+          "startMs": 1328,
+          "endMs": 1745
+        },
+        {
+          "text": "the",
+          "startMs": 1758,
+          "endMs": 1849
+        },
+        {
+          "text": "Fox",
+          "startMs": 1862,
+          "endMs": 2240
+        },
+        {
+          "text": "Valley",
+          "startMs": 2253,
+          "endMs": 2630
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "startFrame": 707,
+      "durationFrames": 158,
+      "file": "vo/v8.mp3",
+      "text": "New to AI? Start with a free fifteen-minute clarity call. No obligation.",
+      "words": [
+        {
+          "text": "New",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "to",
+          "startMs": 260,
+          "endMs": 365
+        },
+        {
+          "text": "AI",
+          "startMs": 378,
+          "endMs": 716
+        },
+        {
+          "text": "Start",
+          "startMs": 1146,
+          "endMs": 1458
+        },
+        {
+          "text": "with",
+          "startMs": 1471,
+          "endMs": 1615
+        },
+        {
+          "text": "a",
+          "startMs": 1628,
+          "endMs": 1693
+        },
+        {
+          "text": "free",
+          "startMs": 1706,
+          "endMs": 2109
+        },
+        {
+          "text": "fifteen-minute",
+          "startMs": 2122,
+          "endMs": 2839
+        },
+        {
+          "text": "clarity",
+          "startMs": 2852,
+          "endMs": 3229
+        },
+        {
+          "text": "call",
+          "startMs": 3242,
+          "endMs": 3607
+        },
+        {
+          "text": "No",
+          "startMs": 4036,
+          "endMs": 4219
+        },
+        {
+          "text": "obligation",
+          "startMs": 4232,
+          "endMs": 4883
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "startFrame": 877,
+      "durationFrames": 77,
+      "file": "vo/v9.mp3",
+      "text": "Book yours at blackswanlabz.com.",
+      "words": [
+        {
+          "text": "Book",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "yours",
+          "startMs": 300,
+          "endMs": 521
+        },
+        {
+          "text": "at",
+          "startMs": 534,
+          "endMs": 625
+        },
+        {
+          "text": "blackswanlabz.com",
+          "startMs": 638,
+          "endMs": 2174
+        }
+      ]
+    },
+    {
+      "id": "v11",
+      "startFrame": 988,
+      "durationFrames": 135,
+      "file": "vo/v11.mp3",
+      "text": "Black Swan Labz. Strategy. Automation. Results.",
+      "words": [
+        {
+          "text": "Black",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "Swan",
+          "startMs": 300,
+          "endMs": 586
+        },
+        {
+          "text": "Labz",
+          "startMs": 599,
+          "endMs": 1068
+        },
+        {
+          "text": "Strategy",
+          "startMs": 1510,
+          "endMs": 2070
+        },
+        {
+          "text": "Automation",
+          "startMs": 2500,
+          "endMs": 3099
+        },
+        {
+          "text": "Results",
+          "startMs": 3516,
+          "endMs": 4102
+        }
+      ]
+    }
+  ]
+}
