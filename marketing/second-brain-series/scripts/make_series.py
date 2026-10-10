@@ -1,7 +1,7 @@
 """Generate voiceover and per-episode timelines from series.json.
 
 Writes public/vo/<ep>-<n>.mp3 and src/timelines/<ep>.json.
-Run from the project root:  CA_BUNDLE=... python3 scripts/make_series.py
+Run from the project root:  CA_BUNDLE=... python3 scripts/make_series.py [series.json]
 """
 import asyncio
 import json
@@ -42,7 +42,9 @@ async def synth(path: Path, text: str):
 
 
 async def main():
-    series = json.loads((ROOT / "series.json").read_text())
+    import sys
+    src = ROOT / (sys.argv[1] if len(sys.argv) > 1 else "series.json")
+    series = json.loads(src.read_text())
     (ROOT / "public" / "vo").mkdir(parents=True, exist_ok=True)
     (ROOT / "src" / "timelines").mkdir(parents=True, exist_ok=True)
     for ep in series["episodes"]:

@@ -1,0 +1,306 @@
+{
+  "id": "tc2",
+  "title": "How do you know it's right?",
+  "funnelStage": "Education",
+  "fps": 30,
+  "durationInFrames": 535,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "THE TRUST CHECK \u00b7 2 OF 4",
+      "lines": [
+        "HOW DO YOU",
+        "KNOW IT'S",
+        "RIGHT?"
+      ],
+      "sub": "Answers are cheap now. Checking them is the hard part.",
+      "vo": "Answers are cheap now. Checking them is the scarce part. How do you know an AI answer is right?",
+      "start": 0,
+      "length": 202
+    },
+    {
+      "type": "cards",
+      "dur": 120,
+      "kicker": "CHECK BEFORE YOU TRUST",
+      "heading": "Three checks",
+      "items": [
+        {
+          "t": "Sources you can open",
+          "b": "Every answer points to the document it came from."
+        },
+        {
+          "t": "A person who signs off",
+          "b": "Someone accountable for the decisions it supports."
+        },
+        {
+          "t": "A record of changes",
+          "b": "Who updated what, and when."
+        }
+      ],
+      "vo": "Ask for sources you can open. A named person who signs off. And a record of what changed.",
+      "start": 202,
+      "length": 205
+    },
+    {
+      "type": "cta",
+      "dur": 100,
+      "headline": "Part 3: who's accountable?",
+      "body": "The next question is the one that costs money.",
+      "button": "FOLLOW FOR PART 3",
+      "url": "blackswanlabz.com",
+      "vo": "Part three: who's accountable when it's wrong?",
+      "start": 407,
+      "length": 128
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "tc2-0",
+      "startFrame": 14,
+      "durationFrames": 168,
+      "file": "vo/tc2-0.mp3",
+      "text": "Answers are cheap now. Checking them is the scarce part. How do you know an AI answer is right?",
+      "words": [
+        {
+          "text": "Answers",
+          "startMs": 104,
+          "endMs": 443
+        },
+        {
+          "text": "are",
+          "startMs": 456,
+          "endMs": 534
+        },
+        {
+          "text": "cheap",
+          "startMs": 547,
+          "endMs": 807
+        },
+        {
+          "text": "now",
+          "startMs": 820,
+          "endMs": 1107
+        },
+        {
+          "text": "Checking",
+          "startMs": 1536,
+          "endMs": 1862
+        },
+        {
+          "text": "them",
+          "startMs": 1875,
+          "endMs": 2044
+        },
+        {
+          "text": "is",
+          "startMs": 2174,
+          "endMs": 2266
+        },
+        {
+          "text": "the",
+          "startMs": 2279,
+          "endMs": 2370
+        },
+        {
+          "text": "scarce",
+          "startMs": 2383,
+          "endMs": 2721
+        },
+        {
+          "text": "part",
+          "startMs": 2734,
+          "endMs": 3112
+        },
+        {
+          "text": "How",
+          "startMs": 3542,
+          "endMs": 3620
+        },
+        {
+          "text": "do",
+          "startMs": 3633,
+          "endMs": 3698
+        },
+        {
+          "text": "you",
+          "startMs": 3711,
+          "endMs": 3789
+        },
+        {
+          "text": "know",
+          "startMs": 3802,
+          "endMs": 3984
+        },
+        {
+          "text": "an",
+          "startMs": 3997,
+          "endMs": 4089
+        },
+        {
+          "text": "AI",
+          "startMs": 4102,
+          "endMs": 4440
+        },
+        {
+          "text": "answer",
+          "startMs": 4453,
+          "endMs": 4753
+        },
+        {
+          "text": "is",
+          "startMs": 4766,
+          "endMs": 4870
+        },
+        {
+          "text": "right",
+          "startMs": 4883,
+          "endMs": 5195
+        }
+      ]
+    },
+    {
+      "id": "tc2-1",
+      "startFrame": 216,
+      "durationFrames": 171,
+      "file": "vo/tc2-1.mp3",
+      "text": "Ask for sources you can open. A named person who signs off. And a record of what changed.",
+      "words": [
+        {
+          "text": "Ask",
+          "startMs": 104,
+          "endMs": 312
+        },
+        {
+          "text": "for",
+          "startMs": 326,
+          "endMs": 456
+        },
+        {
+          "text": "sources",
+          "startMs": 469,
+          "endMs": 872
+        },
+        {
+          "text": "you",
+          "startMs": 885,
+          "endMs": 964
+        },
+        {
+          "text": "can",
+          "startMs": 977,
+          "endMs": 1120
+        },
+        {
+          "text": "open",
+          "startMs": 1133,
+          "endMs": 1445
+        },
+        {
+          "text": "A",
+          "startMs": 1862,
+          "endMs": 1901
+        },
+        {
+          "text": "named",
+          "startMs": 1914,
+          "endMs": 2188
+        },
+        {
+          "text": "person",
+          "startMs": 2201,
+          "endMs": 2643
+        },
+        {
+          "text": "who",
+          "startMs": 2656,
+          "endMs": 2747
+        },
+        {
+          "text": "signs",
+          "startMs": 2760,
+          "endMs": 3125
+        },
+        {
+          "text": "off",
+          "startMs": 3138,
+          "endMs": 3503
+        },
+        {
+          "text": "And",
+          "startMs": 3932,
+          "endMs": 3997
+        },
+        {
+          "text": "a",
+          "startMs": 4010,
+          "endMs": 4062
+        },
+        {
+          "text": "record",
+          "startMs": 4076,
+          "endMs": 4453
+        },
+        {
+          "text": "of",
+          "startMs": 4466,
+          "endMs": 4544
+        },
+        {
+          "text": "what",
+          "startMs": 4557,
+          "endMs": 4701
+        },
+        {
+          "text": "changed",
+          "startMs": 4714,
+          "endMs": 5312
+        }
+      ]
+    },
+    {
+      "id": "tc2-2",
+      "startFrame": 421,
+      "durationFrames": 94,
+      "file": "vo/tc2-2.mp3",
+      "text": "Part three: who's accountable when it's wrong?",
+      "words": [
+        {
+          "text": "Part",
+          "startMs": 117,
+          "endMs": 339
+        },
+        {
+          "text": "three",
+          "startMs": 352,
+          "endMs": 742
+        },
+        {
+          "text": "who's",
+          "startMs": 1198,
+          "endMs": 1393
+        },
+        {
+          "text": "accountable",
+          "startMs": 1406,
+          "endMs": 1953
+        },
+        {
+          "text": "when",
+          "startMs": 2122,
+          "endMs": 2240
+        },
+        {
+          "text": "it's",
+          "startMs": 2253,
+          "endMs": 2383
+        },
+        {
+          "text": "wrong",
+          "startMs": 2396,
+          "endMs": 2760
+        }
+      ]
+    }
+  ]
+}

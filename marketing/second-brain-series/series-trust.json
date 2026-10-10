@@ -1,0 +1,205 @@
+{
+  "series": "The Trust Check",
+  "episodes": [
+    {
+      "id": "tc1",
+      "title": "Who can see your data?",
+      "funnelStage": "Awareness",
+      "scenes": [
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "THE TRUST CHECK \u00b7 1 OF 4",
+          "lines": [
+            "WHO CAN SEE",
+            "YOUR DATA?"
+          ],
+          "sub": "Before any AI touches your business, know who has access.",
+          "vo": "Before any AI touches your business, ask one question. Who can see your data?"
+        },
+        {
+          "type": "cards",
+          "dur": 120,
+          "kicker": "ASK EVERY VENDOR",
+          "heading": "Three questions",
+          "items": [
+            {
+              "t": "Where it's stored",
+              "b": "Local or cloud, and in which country."
+            },
+            {
+              "t": "Who has access",
+              "b": "Names and roles, not just the company name."
+            },
+            {
+              "t": "What it's used for",
+              "b": "Training, analytics, or only your answers?"
+            }
+          ],
+          "vo": "Where is it stored? Who has access? And is it used for anything other than your answers?"
+        },
+        {
+          "type": "cta",
+          "dur": 100,
+          "headline": "Part 2: how do you know it's right?",
+          "body": "One question a week.",
+          "button": "FOLLOW THE TRUST CHECK",
+          "url": "blackswanlabz.com",
+          "vo": "Part two: how do you know it's right?"
+        }
+      ]
+    },
+    {
+      "id": "tc2",
+      "title": "How do you know it's right?",
+      "funnelStage": "Education",
+      "scenes": [
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "THE TRUST CHECK \u00b7 2 OF 4",
+          "lines": [
+            "HOW DO YOU",
+            "KNOW IT'S",
+            "RIGHT?"
+          ],
+          "sub": "Answers are cheap now. Checking them is the hard part.",
+          "vo": "Answers are cheap now. Checking them is the scarce part. How do you know an AI answer is right?"
+        },
+        {
+          "type": "cards",
+          "dur": 120,
+          "kicker": "CHECK BEFORE YOU TRUST",
+          "heading": "Three checks",
+          "items": [
+            {
+              "t": "Sources you can open",
+              "b": "Every answer points to the document it came from."
+            },
+            {
+              "t": "A person who signs off",
+              "b": "Someone accountable for the decisions it supports."
+            },
+            {
+              "t": "A record of changes",
+              "b": "Who updated what, and when."
+            }
+          ],
+          "vo": "Ask for sources you can open. A named person who signs off. And a record of what changed."
+        },
+        {
+          "type": "cta",
+          "dur": 100,
+          "headline": "Part 3: who's accountable?",
+          "body": "The next question is the one that costs money.",
+          "button": "FOLLOW FOR PART 3",
+          "url": "blackswanlabz.com",
+          "vo": "Part three: who's accountable when it's wrong?"
+        }
+      ]
+    },
+    {
+      "id": "tc3",
+      "title": "Who is accountable?",
+      "funnelStage": "Proof",
+      "scenes": [
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "THE TRUST CHECK \u00b7 3 OF 4",
+          "lines": [
+            "WHO IS",
+            "ACCOUNTABLE?"
+          ],
+          "sub": "When an AI answer costs you money, someone has to own it.",
+          "vo": "When an AI answer costs you money, who owns it? Someone has to."
+        },
+        {
+          "type": "cards",
+          "dur": 120,
+          "kicker": "PUT IT IN WRITING",
+          "heading": "Before you pay",
+          "items": [
+            {
+              "t": "A named owner",
+              "b": "One person on each side who answers for the work."
+            },
+            {
+              "t": "A way out",
+              "b": "You can stop, export your data, and leave."
+            },
+            {
+              "t": "Written limits",
+              "b": "What it can't do, stated before you sign."
+            }
+          ],
+          "vo": "Name an owner on each side. Make sure you can leave with your data. And get the limits written down before you pay."
+        },
+        {
+          "type": "cta",
+          "dur": 100,
+          "headline": "Part 4: start with a call.",
+          "body": "The last episode is how to start, safely.",
+          "button": "FOLLOW FOR PART 4",
+          "url": "blackswanlabz.com",
+          "vo": "Part four: how to start, safely."
+        }
+      ]
+    },
+    {
+      "id": "tc4",
+      "title": "Start with a call.",
+      "funnelStage": "Conversion",
+      "scenes": [
+        {
+          "type": "title",
+          "dur": 100,
+          "kicker": "THE TRUST CHECK \u00b7 4 OF 4",
+          "lines": [
+            "START WITH",
+            "A CALL."
+          ],
+          "sub": "Fifteen minutes. No slide deck. No obligation.",
+          "vo": "Start with a call. Fifteen minutes. No slide deck, no obligation."
+        },
+        {
+          "type": "cards",
+          "dur": 130,
+          "kicker": "BRING THREE ANSWERS",
+          "heading": "Before the call",
+          "items": [
+            {
+              "t": "Your data",
+              "b": "Where it lives, and who touches it today."
+            },
+            {
+              "t": "Your costly decisions",
+              "b": "The calls that hurt most when they're wrong."
+            },
+            {
+              "t": "Your owner",
+              "b": "Who would be accountable once it's running."
+            }
+          ],
+          "vo": "Bring three things. Where your data lives. The decisions that cost the most when they're wrong. And who would own it."
+        },
+        {
+          "type": "cta",
+          "dur": 150,
+          "headshot": true,
+          "headline": "Book your free\n15-minute clarity call.",
+          "body": "Blackswanlabz.com",
+          "button": "BOOK YOUR FREE CALL",
+          "url": "blackswanlabz.com",
+          "vo": "Book your free fifteen minute call at blackswanlabz.com."
+        },
+        {
+          "type": "logo",
+          "dur": 90,
+          "url": "BLACKSWANLABZ.COM",
+          "vo": "Verify, then trust."
+        }
+      ]
+    }
+  ]
+}

@@ -6,22 +6,33 @@ import ep2 from './timelines/ep2.json';
 import ep3 from './timelines/ep3.json';
 import ep4 from './timelines/ep4.json';
 import ep5 from './timelines/ep5.json';
+import tc1 from './timelines/tc1.json';
+import tc2 from './timelines/tc2.json';
+import tc3 from './timelines/tc3.json';
+import tc4 from './timelines/tc4.json';
 
-const EPISODES = [ep1, ep2, ep3, ep4, ep5] as unknown as EpisodeData[];
+// Composition ids: Ep1..Ep5 for The Second Brain Series, Trust1..Trust4 for The Trust Check.
+const COMPOSITIONS: [string, unknown][] = [
+  ['Ep1', ep1], ['Ep2', ep2], ['Ep3', ep3], ['Ep4', ep4], ['Ep5', ep5],
+  ['Trust1', tc1], ['Trust2', tc2], ['Trust3', tc3], ['Trust4', tc4],
+];
 
 export const RemotionRoot: React.FC = () => (
   <>
-    {EPISODES.map((ep) => (
-      <Composition
-        key={ep.id}
-        id={`Ep${ep.id.replace('ep', '')}`}
-        component={Episode}
-        durationInFrames={ep.durationInFrames}
-        fps={30}
-        width={1080}
-        height={1920}
-        defaultProps={{data: ep}}
-      />
-    ))}
+    {COMPOSITIONS.map(([id, ep]) => {
+      const data = ep as EpisodeData;
+      return (
+        <Composition
+          key={id}
+          id={id}
+          component={Episode}
+          durationInFrames={data.durationInFrames}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{data}}
+        />
+      );
+    })}
   </>
 );

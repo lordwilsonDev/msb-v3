@@ -1,0 +1,318 @@
+{
+  "id": "tc4",
+  "title": "Start with a call.",
+  "funnelStage": "Conversion",
+  "fps": 30,
+  "durationInFrames": 666,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "THE TRUST CHECK \u00b7 4 OF 4",
+      "lines": [
+        "START WITH",
+        "A CALL."
+      ],
+      "sub": "Fifteen minutes. No slide deck. No obligation.",
+      "vo": "Start with a call. Fifteen minutes. No slide deck, no obligation.",
+      "start": 0,
+      "length": 182
+    },
+    {
+      "type": "cards",
+      "dur": 130,
+      "kicker": "BRING THREE ANSWERS",
+      "heading": "Before the call",
+      "items": [
+        {
+          "t": "Your data",
+          "b": "Where it lives, and who touches it today."
+        },
+        {
+          "t": "Your costly decisions",
+          "b": "The calls that hurt most when they're wrong."
+        },
+        {
+          "t": "Your owner",
+          "b": "Who would be accountable once it's running."
+        }
+      ],
+      "vo": "Bring three things. Where your data lives. The decisions that cost the most when they're wrong. And who would own it.",
+      "start": 182,
+      "length": 238
+    },
+    {
+      "type": "cta",
+      "dur": 150,
+      "headshot": true,
+      "headline": "Book your free\n15-minute clarity call.",
+      "body": "Blackswanlabz.com",
+      "button": "BOOK YOUR FREE CALL",
+      "url": "blackswanlabz.com",
+      "vo": "Book your free fifteen minute call at blackswanlabz.com.",
+      "start": 420,
+      "length": 154
+    },
+    {
+      "type": "logo",
+      "dur": 90,
+      "url": "BLACKSWANLABZ.COM",
+      "vo": "Verify, then trust.",
+      "start": 574,
+      "length": 92
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "tc4-0",
+      "startFrame": 14,
+      "durationFrames": 148,
+      "file": "vo/tc4-0.mp3",
+      "text": "Start with a call. Fifteen minutes. No slide deck, no obligation.",
+      "words": [
+        {
+          "text": "Start",
+          "startMs": 104,
+          "endMs": 326
+        },
+        {
+          "text": "with",
+          "startMs": 339,
+          "endMs": 456
+        },
+        {
+          "text": "a",
+          "startMs": 469,
+          "endMs": 508
+        },
+        {
+          "text": "call",
+          "startMs": 521,
+          "endMs": 859
+        },
+        {
+          "text": "Fifteen",
+          "startMs": 1328,
+          "endMs": 1654
+        },
+        {
+          "text": "minutes",
+          "startMs": 1667,
+          "endMs": 2122
+        },
+        {
+          "text": "No",
+          "startMs": 2552,
+          "endMs": 2721
+        },
+        {
+          "text": "slide",
+          "startMs": 2734,
+          "endMs": 3112
+        },
+        {
+          "text": "deck",
+          "startMs": 3125,
+          "endMs": 3464
+        },
+        {
+          "text": "no",
+          "startMs": 3737,
+          "endMs": 3906
+        },
+        {
+          "text": "obligation",
+          "startMs": 3919,
+          "endMs": 4557
+        }
+      ]
+    },
+    {
+      "id": "tc4-1",
+      "startFrame": 196,
+      "durationFrames": 204,
+      "file": "vo/tc4-1.mp3",
+      "text": "Bring three things. Where your data lives. The decisions that cost the most when they're wrong. And who would own it.",
+      "words": [
+        {
+          "text": "Bring",
+          "startMs": 104,
+          "endMs": 286
+        },
+        {
+          "text": "three",
+          "startMs": 300,
+          "endMs": 547
+        },
+        {
+          "text": "things",
+          "startMs": 560,
+          "endMs": 1120
+        },
+        {
+          "text": "Where",
+          "startMs": 1550,
+          "endMs": 1641
+        },
+        {
+          "text": "your",
+          "startMs": 1654,
+          "endMs": 1745
+        },
+        {
+          "text": "data",
+          "startMs": 1758,
+          "endMs": 2018
+        },
+        {
+          "text": "lives",
+          "startMs": 2031,
+          "endMs": 2552
+        },
+        {
+          "text": "The",
+          "startMs": 2995,
+          "endMs": 3047
+        },
+        {
+          "text": "decisions",
+          "startMs": 3060,
+          "endMs": 3568
+        },
+        {
+          "text": "that",
+          "startMs": 3581,
+          "endMs": 3724
+        },
+        {
+          "text": "cost",
+          "startMs": 3737,
+          "endMs": 4141
+        },
+        {
+          "text": "the",
+          "startMs": 4154,
+          "endMs": 4232
+        },
+        {
+          "text": "most",
+          "startMs": 4245,
+          "endMs": 4622
+        },
+        {
+          "text": "when",
+          "startMs": 4635,
+          "endMs": 4753
+        },
+        {
+          "text": "they're",
+          "startMs": 4766,
+          "endMs": 4948
+        },
+        {
+          "text": "wrong",
+          "startMs": 4961,
+          "endMs": 5313
+        },
+        {
+          "text": "And",
+          "startMs": 5742,
+          "endMs": 5807
+        },
+        {
+          "text": "who",
+          "startMs": 5820,
+          "endMs": 5911
+        },
+        {
+          "text": "would",
+          "startMs": 5924,
+          "endMs": 6055
+        },
+        {
+          "text": "own",
+          "startMs": 6068,
+          "endMs": 6237
+        },
+        {
+          "text": "it",
+          "startMs": 6250,
+          "endMs": 6406
+        }
+      ]
+    },
+    {
+      "id": "tc4-2",
+      "startFrame": 434,
+      "durationFrames": 120,
+      "file": "vo/tc4-2.mp3",
+      "text": "Book your free fifteen minute call at blackswanlabz.com.",
+      "words": [
+        {
+          "text": "Book",
+          "startMs": 104,
+          "endMs": 312
+        },
+        {
+          "text": "your",
+          "startMs": 326,
+          "endMs": 456
+        },
+        {
+          "text": "free",
+          "startMs": 469,
+          "endMs": 755
+        },
+        {
+          "text": "fifteen",
+          "startMs": 768,
+          "endMs": 1237
+        },
+        {
+          "text": "minute",
+          "startMs": 1250,
+          "endMs": 1484
+        },
+        {
+          "text": "call",
+          "startMs": 1497,
+          "endMs": 1875
+        },
+        {
+          "text": "at",
+          "startMs": 2018,
+          "endMs": 2109
+        },
+        {
+          "text": "blackswanlabz.com",
+          "startMs": 2122,
+          "endMs": 3620
+        }
+      ]
+    },
+    {
+      "id": "tc4-3",
+      "startFrame": 588,
+      "durationFrames": 58,
+      "file": "vo/tc4-3.mp3",
+      "text": "Verify, then trust.",
+      "words": [
+        {
+          "text": "Verify",
+          "startMs": 104,
+          "endMs": 638
+        },
+        {
+          "text": "then",
+          "startMs": 872,
+          "endMs": 1003
+        },
+        {
+          "text": "trust",
+          "startMs": 1016,
+          "endMs": 1562
+        }
+      ]
+    }
+  ]
+}

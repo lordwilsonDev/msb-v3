@@ -1,0 +1,280 @@
+{
+  "id": "tc1",
+  "title": "Who can see your data?",
+  "funnelStage": "Awareness",
+  "fps": 30,
+  "durationInFrames": 480,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "THE TRUST CHECK \u00b7 1 OF 4",
+      "lines": [
+        "WHO CAN SEE",
+        "YOUR DATA?"
+      ],
+      "sub": "Before any AI touches your business, know who has access.",
+      "vo": "Before any AI touches your business, ask one question. Who can see your data?",
+      "start": 0,
+      "length": 186
+    },
+    {
+      "type": "cards",
+      "dur": 120,
+      "kicker": "ASK EVERY VENDOR",
+      "heading": "Three questions",
+      "items": [
+        {
+          "t": "Where it's stored",
+          "b": "Local or cloud, and in which country."
+        },
+        {
+          "t": "Who has access",
+          "b": "Names and roles, not just the company name."
+        },
+        {
+          "t": "What it's used for",
+          "b": "Training, analytics, or only your answers?"
+        }
+      ],
+      "vo": "Where is it stored? Who has access? And is it used for anything other than your answers?",
+      "start": 186,
+      "length": 188
+    },
+    {
+      "type": "cta",
+      "dur": 100,
+      "headline": "Part 2: how do you know it's right?",
+      "body": "One question a week.",
+      "button": "FOLLOW THE TRUST CHECK",
+      "url": "blackswanlabz.com",
+      "vo": "Part two: how do you know it's right?",
+      "start": 374,
+      "length": 106
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "tc1-0",
+      "startFrame": 14,
+      "durationFrames": 152,
+      "file": "vo/tc1-0.mp3",
+      "text": "Before any AI touches your business, ask one question. Who can see your data?",
+      "words": [
+        {
+          "text": "Before",
+          "startMs": 117,
+          "endMs": 508
+        },
+        {
+          "text": "any",
+          "startMs": 521,
+          "endMs": 729
+        },
+        {
+          "text": "AI",
+          "startMs": 742,
+          "endMs": 1042
+        },
+        {
+          "text": "touches",
+          "startMs": 1055,
+          "endMs": 1445
+        },
+        {
+          "text": "your",
+          "startMs": 1458,
+          "endMs": 1576
+        },
+        {
+          "text": "business",
+          "startMs": 1589,
+          "endMs": 2109
+        },
+        {
+          "text": "ask",
+          "startMs": 2500,
+          "endMs": 2747
+        },
+        {
+          "text": "one",
+          "startMs": 2760,
+          "endMs": 2917
+        },
+        {
+          "text": "question",
+          "startMs": 2930,
+          "endMs": 3411
+        },
+        {
+          "text": "Who",
+          "startMs": 3854,
+          "endMs": 3919
+        },
+        {
+          "text": "can",
+          "startMs": 3932,
+          "endMs": 4049
+        },
+        {
+          "text": "see",
+          "startMs": 4062,
+          "endMs": 4206
+        },
+        {
+          "text": "your",
+          "startMs": 4219,
+          "endMs": 4336
+        },
+        {
+          "text": "data",
+          "startMs": 4349,
+          "endMs": 4674
+        }
+      ]
+    },
+    {
+      "id": "tc1-1",
+      "startFrame": 200,
+      "durationFrames": 154,
+      "file": "vo/tc1-1.mp3",
+      "text": "Where is it stored? Who has access? And is it used for anything other than your answers?",
+      "words": [
+        {
+          "text": "Where",
+          "startMs": 104,
+          "endMs": 195
+        },
+        {
+          "text": "is",
+          "startMs": 208,
+          "endMs": 286
+        },
+        {
+          "text": "it",
+          "startMs": 300,
+          "endMs": 378
+        },
+        {
+          "text": "stored",
+          "startMs": 391,
+          "endMs": 872
+        },
+        {
+          "text": "Who",
+          "startMs": 1328,
+          "endMs": 1380
+        },
+        {
+          "text": "has",
+          "startMs": 1393,
+          "endMs": 1497
+        },
+        {
+          "text": "access",
+          "startMs": 1510,
+          "endMs": 2083
+        },
+        {
+          "text": "And",
+          "startMs": 2513,
+          "endMs": 2604
+        },
+        {
+          "text": "is",
+          "startMs": 2617,
+          "endMs": 2721
+        },
+        {
+          "text": "it",
+          "startMs": 2734,
+          "endMs": 2826
+        },
+        {
+          "text": "used",
+          "startMs": 2839,
+          "endMs": 3151
+        },
+        {
+          "text": "for",
+          "startMs": 3164,
+          "endMs": 3346
+        },
+        {
+          "text": "anything",
+          "startMs": 3359,
+          "endMs": 3711
+        },
+        {
+          "text": "other",
+          "startMs": 3724,
+          "endMs": 3906
+        },
+        {
+          "text": "than",
+          "startMs": 3919,
+          "endMs": 4036
+        },
+        {
+          "text": "your",
+          "startMs": 4050,
+          "endMs": 4180
+        },
+        {
+          "text": "answers",
+          "startMs": 4193,
+          "endMs": 4753
+        }
+      ]
+    },
+    {
+      "id": "tc1-2",
+      "startFrame": 388,
+      "durationFrames": 72,
+      "file": "vo/tc1-2.mp3",
+      "text": "Part two: how do you know it's right?",
+      "words": [
+        {
+          "text": "Part",
+          "startMs": 117,
+          "endMs": 299
+        },
+        {
+          "text": "two",
+          "startMs": 312,
+          "endMs": 586
+        },
+        {
+          "text": "how",
+          "startMs": 1159,
+          "endMs": 1224
+        },
+        {
+          "text": "do",
+          "startMs": 1237,
+          "endMs": 1289
+        },
+        {
+          "text": "you",
+          "startMs": 1302,
+          "endMs": 1380
+        },
+        {
+          "text": "know",
+          "startMs": 1393,
+          "endMs": 1563
+        },
+        {
+          "text": "it's",
+          "startMs": 1576,
+          "endMs": 1706
+        },
+        {
+          "text": "right",
+          "startMs": 1719,
+          "endMs": 2005
+        }
+      ]
+    }
+  ]
+}

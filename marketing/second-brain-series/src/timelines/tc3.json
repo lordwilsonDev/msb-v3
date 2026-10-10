@@ -1,0 +1,295 @@
+{
+  "id": "tc3",
+  "title": "Who is accountable?",
+  "funnelStage": "Proof",
+  "fps": 30,
+  "durationInFrames": 502,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "THE TRUST CHECK \u00b7 3 OF 4",
+      "lines": [
+        "WHO IS",
+        "ACCOUNTABLE?"
+      ],
+      "sub": "When an AI answer costs you money, someone has to own it.",
+      "vo": "When an AI answer costs you money, who owns it? Someone has to.",
+      "start": 0,
+      "length": 164
+    },
+    {
+      "type": "cards",
+      "dur": 120,
+      "kicker": "PUT IT IN WRITING",
+      "heading": "Before you pay",
+      "items": [
+        {
+          "t": "A named owner",
+          "b": "One person on each side who answers for the work."
+        },
+        {
+          "t": "A way out",
+          "b": "You can stop, export your data, and leave."
+        },
+        {
+          "t": "Written limits",
+          "b": "What it can't do, stated before you sign."
+        }
+      ],
+      "vo": "Name an owner on each side. Make sure you can leave with your data. And get the limits written down before you pay.",
+      "start": 164,
+      "length": 223
+    },
+    {
+      "type": "cta",
+      "dur": 100,
+      "headline": "Part 4: start with a call.",
+      "body": "The last episode is how to start, safely.",
+      "button": "FOLLOW FOR PART 4",
+      "url": "blackswanlabz.com",
+      "vo": "Part four: how to start, safely.",
+      "start": 387,
+      "length": 115
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "tc3-0",
+      "startFrame": 14,
+      "durationFrames": 130,
+      "file": "vo/tc3-0.mp3",
+      "text": "When an AI answer costs you money, who owns it? Someone has to.",
+      "words": [
+        {
+          "text": "When",
+          "startMs": 104,
+          "endMs": 208
+        },
+        {
+          "text": "an",
+          "startMs": 221,
+          "endMs": 339
+        },
+        {
+          "text": "AI",
+          "startMs": 352,
+          "endMs": 768
+        },
+        {
+          "text": "answer",
+          "startMs": 781,
+          "endMs": 1133
+        },
+        {
+          "text": "costs",
+          "startMs": 1146,
+          "endMs": 1510
+        },
+        {
+          "text": "you",
+          "startMs": 1523,
+          "endMs": 1602
+        },
+        {
+          "text": "money",
+          "startMs": 1615,
+          "endMs": 1940
+        },
+        {
+          "text": "who",
+          "startMs": 2253,
+          "endMs": 2409
+        },
+        {
+          "text": "owns",
+          "startMs": 2422,
+          "endMs": 2643
+        },
+        {
+          "text": "it",
+          "startMs": 2656,
+          "endMs": 2826
+        },
+        {
+          "text": "Someone",
+          "startMs": 3255,
+          "endMs": 3490
+        },
+        {
+          "text": "has",
+          "startMs": 3503,
+          "endMs": 3750
+        },
+        {
+          "text": "to",
+          "startMs": 3763,
+          "endMs": 3958
+        }
+      ]
+    },
+    {
+      "id": "tc3-1",
+      "startFrame": 178,
+      "durationFrames": 189,
+      "file": "vo/tc3-1.mp3",
+      "text": "Name an owner on each side. Make sure you can leave with your data. And get the limits written down before you pay.",
+      "words": [
+        {
+          "text": "Name",
+          "startMs": 104,
+          "endMs": 286
+        },
+        {
+          "text": "an",
+          "startMs": 300,
+          "endMs": 391
+        },
+        {
+          "text": "owner",
+          "startMs": 404,
+          "endMs": 690
+        },
+        {
+          "text": "on",
+          "startMs": 703,
+          "endMs": 820
+        },
+        {
+          "text": "each",
+          "startMs": 833,
+          "endMs": 1016
+        },
+        {
+          "text": "side",
+          "startMs": 1029,
+          "endMs": 1471
+        },
+        {
+          "text": "Make",
+          "startMs": 1901,
+          "endMs": 2031
+        },
+        {
+          "text": "sure",
+          "startMs": 2044,
+          "endMs": 2227
+        },
+        {
+          "text": "you",
+          "startMs": 2240,
+          "endMs": 2331
+        },
+        {
+          "text": "can",
+          "startMs": 2344,
+          "endMs": 2500
+        },
+        {
+          "text": "leave",
+          "startMs": 2513,
+          "endMs": 2682
+        },
+        {
+          "text": "with",
+          "startMs": 2695,
+          "endMs": 2813
+        },
+        {
+          "text": "your",
+          "startMs": 2826,
+          "endMs": 2917
+        },
+        {
+          "text": "data",
+          "startMs": 2930,
+          "endMs": 3294
+        },
+        {
+          "text": "And",
+          "startMs": 3724,
+          "endMs": 3802
+        },
+        {
+          "text": "get",
+          "startMs": 3815,
+          "endMs": 3971
+        },
+        {
+          "text": "the",
+          "startMs": 3984,
+          "endMs": 4089
+        },
+        {
+          "text": "limits",
+          "startMs": 4102,
+          "endMs": 4466
+        },
+        {
+          "text": "written",
+          "startMs": 4479,
+          "endMs": 4753
+        },
+        {
+          "text": "down",
+          "startMs": 4766,
+          "endMs": 5065
+        },
+        {
+          "text": "before",
+          "startMs": 5078,
+          "endMs": 5404
+        },
+        {
+          "text": "you",
+          "startMs": 5417,
+          "endMs": 5508
+        },
+        {
+          "text": "pay",
+          "startMs": 5521,
+          "endMs": 5898
+        }
+      ]
+    },
+    {
+      "id": "tc3-2",
+      "startFrame": 401,
+      "durationFrames": 81,
+      "file": "vo/tc3-2.mp3",
+      "text": "Part four: how to start, safely.",
+      "words": [
+        {
+          "text": "Part",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "four",
+          "startMs": 300,
+          "endMs": 612
+        },
+        {
+          "text": "how",
+          "startMs": 1068,
+          "endMs": 1133
+        },
+        {
+          "text": "to",
+          "startMs": 1146,
+          "endMs": 1224
+        },
+        {
+          "text": "start",
+          "startMs": 1237,
+          "endMs": 1628
+        },
+        {
+          "text": "safely",
+          "startMs": 1823,
+          "endMs": 2331
+        }
+      ]
+    }
+  ]
+}
