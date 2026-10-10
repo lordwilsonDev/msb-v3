@@ -1,0 +1,369 @@
+{
+  "id": "ep2",
+  "title": "What a second brain is.",
+  "funnelStage": "Education",
+  "fps": 30,
+  "durationInFrames": 722,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "EP 2 OF 4",
+      "lines": [
+        "A SECOND BRAIN",
+        "FOR YOUR COMPANY."
+      ],
+      "sub": "It captures what you know, and gives it back when you need it.",
+      "vo": "A second brain for your company captures what you know, and gives it back the moment you need it.",
+      "start": 0,
+      "length": 189
+    },
+    {
+      "type": "cards",
+      "dur": 120,
+      "kicker": "THREE THINGS IT DOES",
+      "heading": "Capture. Find. Decide.",
+      "items": [
+        {
+          "t": "Capture knowledge",
+          "b": "Nothing your team knows walks out the door."
+        },
+        {
+          "t": "Instant answers",
+          "b": "Find any process, client detail, or decision in seconds."
+        },
+        {
+          "t": "Smarter decisions",
+          "b": "Your whole business context, working for you 24/7."
+        }
+      ],
+      "vo": "It captures knowledge. It gives instant answers. And it supports smarter decisions.",
+      "start": 189,
+      "length": 202
+    },
+    {
+      "type": "image",
+      "dur": 150,
+      "kicker": "NOT ANOTHER CHATBOT",
+      "heading": "A living memory for your company.",
+      "image": "flyer.png",
+      "vo": "Not another chatbot. A living memory, searchable, and yours.",
+      "start": 391,
+      "length": 165
+    },
+    {
+      "type": "cta",
+      "dur": 100,
+      "headline": "Part 3: the proof.",
+      "body": "What we have built, and what is still pending.",
+      "button": "FOLLOW FOR PART 3",
+      "url": "blackswanlabz.com",
+      "vo": "Part three is the proof. What we've built, and what is still pending.",
+      "start": 556,
+      "length": 166
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "ep2-0",
+      "startFrame": 14,
+      "durationFrames": 155,
+      "file": "vo/ep2-0.mp3",
+      "text": "A second brain for your company captures what you know, and gives it back the moment you need it.",
+      "words": [
+        {
+          "text": "A",
+          "startMs": 104,
+          "endMs": 143
+        },
+        {
+          "text": "second",
+          "startMs": 156,
+          "endMs": 534
+        },
+        {
+          "text": "brain",
+          "startMs": 547,
+          "endMs": 820
+        },
+        {
+          "text": "for",
+          "startMs": 833,
+          "endMs": 951
+        },
+        {
+          "text": "your",
+          "startMs": 964,
+          "endMs": 1081
+        },
+        {
+          "text": "company",
+          "startMs": 1094,
+          "endMs": 1484
+        },
+        {
+          "text": "captures",
+          "startMs": 1497,
+          "endMs": 2018
+        },
+        {
+          "text": "what",
+          "startMs": 2031,
+          "endMs": 2174
+        },
+        {
+          "text": "you",
+          "startMs": 2188,
+          "endMs": 2279
+        },
+        {
+          "text": "know",
+          "startMs": 2292,
+          "endMs": 2630
+        },
+        {
+          "text": "and",
+          "startMs": 2943,
+          "endMs": 3047
+        },
+        {
+          "text": "gives",
+          "startMs": 3060,
+          "endMs": 3294
+        },
+        {
+          "text": "it",
+          "startMs": 3307,
+          "endMs": 3411
+        },
+        {
+          "text": "back",
+          "startMs": 3424,
+          "endMs": 3711
+        },
+        {
+          "text": "the",
+          "startMs": 3724,
+          "endMs": 3815
+        },
+        {
+          "text": "moment",
+          "startMs": 3828,
+          "endMs": 4206
+        },
+        {
+          "text": "you",
+          "startMs": 4219,
+          "endMs": 4323
+        },
+        {
+          "text": "need",
+          "startMs": 4336,
+          "endMs": 4583
+        },
+        {
+          "text": "it",
+          "startMs": 4596,
+          "endMs": 4779
+        }
+      ]
+    },
+    {
+      "id": "ep2-1",
+      "startFrame": 203,
+      "durationFrames": 168,
+      "file": "vo/ep2-1.mp3",
+      "text": "It captures knowledge. It gives instant answers. And it supports smarter decisions.",
+      "words": [
+        {
+          "text": "It",
+          "startMs": 117,
+          "endMs": 208
+        },
+        {
+          "text": "captures",
+          "startMs": 221,
+          "endMs": 651
+        },
+        {
+          "text": "knowledge",
+          "startMs": 664,
+          "endMs": 1198
+        },
+        {
+          "text": "It",
+          "startMs": 1628,
+          "endMs": 1732
+        },
+        {
+          "text": "gives",
+          "startMs": 1745,
+          "endMs": 2005
+        },
+        {
+          "text": "instant",
+          "startMs": 2070,
+          "endMs": 2448
+        },
+        {
+          "text": "answers",
+          "startMs": 2461,
+          "endMs": 3008
+        },
+        {
+          "text": "And",
+          "startMs": 3438,
+          "endMs": 3529
+        },
+        {
+          "text": "it",
+          "startMs": 3542,
+          "endMs": 3620
+        },
+        {
+          "text": "supports",
+          "startMs": 3633,
+          "endMs": 4193
+        },
+        {
+          "text": "smarter",
+          "startMs": 4206,
+          "endMs": 4531
+        },
+        {
+          "text": "decisions",
+          "startMs": 4544,
+          "endMs": 5208
+        }
+      ]
+    },
+    {
+      "id": "ep2-2",
+      "startFrame": 405,
+      "durationFrames": 131,
+      "file": "vo/ep2-2.mp3",
+      "text": "Not another chatbot. A living memory, searchable, and yours.",
+      "words": [
+        {
+          "text": "Not",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "another",
+          "startMs": 260,
+          "endMs": 521
+        },
+        {
+          "text": "chatbot",
+          "startMs": 534,
+          "endMs": 1120
+        },
+        {
+          "text": "A",
+          "startMs": 1550,
+          "endMs": 1589
+        },
+        {
+          "text": "living",
+          "startMs": 1602,
+          "endMs": 1888
+        },
+        {
+          "text": "memory",
+          "startMs": 1901,
+          "endMs": 2331
+        },
+        {
+          "text": "searchable",
+          "startMs": 2565,
+          "endMs": 3099
+        },
+        {
+          "text": "and",
+          "startMs": 3398,
+          "endMs": 3464
+        },
+        {
+          "text": "yours",
+          "startMs": 3477,
+          "endMs": 3984
+        }
+      ]
+    },
+    {
+      "id": "ep2-3",
+      "startFrame": 570,
+      "durationFrames": 132,
+      "file": "vo/ep2-3.mp3",
+      "text": "Part three is the proof. What we've built, and what is still pending.",
+      "words": [
+        {
+          "text": "Part",
+          "startMs": 117,
+          "endMs": 326
+        },
+        {
+          "text": "three",
+          "startMs": 339,
+          "endMs": 807
+        },
+        {
+          "text": "is",
+          "startMs": 885,
+          "endMs": 1003
+        },
+        {
+          "text": "the",
+          "startMs": 1016,
+          "endMs": 1094
+        },
+        {
+          "text": "proof",
+          "startMs": 1107,
+          "endMs": 1589
+        },
+        {
+          "text": "What",
+          "startMs": 2018,
+          "endMs": 2135
+        },
+        {
+          "text": "we've",
+          "startMs": 2148,
+          "endMs": 2357
+        },
+        {
+          "text": "built",
+          "startMs": 2370,
+          "endMs": 2734
+        },
+        {
+          "text": "and",
+          "startMs": 3008,
+          "endMs": 3112
+        },
+        {
+          "text": "what",
+          "startMs": 3125,
+          "endMs": 3255
+        },
+        {
+          "text": "is",
+          "startMs": 3268,
+          "endMs": 3359
+        },
+        {
+          "text": "still",
+          "startMs": 3372,
+          "endMs": 3607
+        },
+        {
+          "text": "pending",
+          "startMs": 3620,
+          "endMs": 4010
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,479 @@
+{
+  "id": "ep3",
+  "title": "The proof.",
+  "funnelStage": "Proof",
+  "fps": 30,
+  "durationInFrames": 1166,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "EP 3 OF 4",
+      "lines": [
+        "WHAT WE'VE",
+        "BUILT."
+      ],
+      "sub": "Verified claims only. Anything pending is labelled pending.",
+      "vo": "Here's the proof. Only verified claims, and anything pending is labelled as pending.",
+      "start": 0,
+      "length": 202
+    },
+    {
+      "type": "stat",
+      "dur": 120,
+      "value": 32.5,
+      "decimals": 1,
+      "suffix": "M",
+      "label": "lines committed in one week, Dec 2025. About 5.1M are source code.",
+      "vo": "Thirty two point five million lines committed in one week, December 2025. About five million are source code.",
+      "start": 202,
+      "length": 269
+    },
+    {
+      "type": "image",
+      "dur": 130,
+      "kicker": "PUBLISHED",
+      "heading": "An AI project library across 35 categories.",
+      "image": "pitchhut.jpg",
+      "vo": "A published library of AI projects, across thirty five categories.",
+      "start": 471,
+      "length": 184
+    },
+    {
+      "type": "cards",
+      "dur": 130,
+      "kicker": "BUILT AND CHECKABLE",
+      "heading": "Three results",
+      "items": [
+        {
+          "t": "MSB v3",
+          "b": "3,942 tests collected at a pinned commit."
+        },
+        {
+          "t": "FCVE",
+          "b": "Archived after two Lean patches sent upstream."
+        },
+        {
+          "t": "Adaptive Infrastructure",
+          "b": "Reproduces its published numbers byte for byte."
+        }
+      ],
+      "vo": "MSB v3 collects three thousand nine hundred forty two tests. FCVE was archived after two upstream patches. Adaptive Infrastructure reproduces its numbers byte for byte.",
+      "start": 655,
+      "length": 411
+    },
+    {
+      "type": "cta",
+      "dur": 100,
+      "headline": "Part 4: book the call.",
+      "body": "The last episode is how to start.",
+      "button": "FOLLOW FOR PART 4",
+      "url": "blackswanlabz.com",
+      "vo": "Part four is how to start.",
+      "start": 1066,
+      "length": 100
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "ep3-0",
+      "startFrame": 14,
+      "durationFrames": 168,
+      "file": "vo/ep3-0.mp3",
+      "text": "Here's the proof. Only verified claims, and anything pending is labelled as pending.",
+      "words": [
+        {
+          "text": "Here's",
+          "startMs": 130,
+          "endMs": 286
+        },
+        {
+          "text": "the",
+          "startMs": 300,
+          "endMs": 391
+        },
+        {
+          "text": "proof",
+          "startMs": 404,
+          "endMs": 820
+        },
+        {
+          "text": "Only",
+          "startMs": 1250,
+          "endMs": 1484
+        },
+        {
+          "text": "verified",
+          "startMs": 1497,
+          "endMs": 2083
+        },
+        {
+          "text": "claims",
+          "startMs": 2096,
+          "endMs": 2682
+        },
+        {
+          "text": "and",
+          "startMs": 2891,
+          "endMs": 3047
+        },
+        {
+          "text": "anything",
+          "startMs": 3125,
+          "endMs": 3568
+        },
+        {
+          "text": "pending",
+          "startMs": 3581,
+          "endMs": 4063
+        },
+        {
+          "text": "is",
+          "startMs": 4076,
+          "endMs": 4206
+        },
+        {
+          "text": "labelled",
+          "startMs": 4219,
+          "endMs": 4635
+        },
+        {
+          "text": "as",
+          "startMs": 4648,
+          "endMs": 4753
+        },
+        {
+          "text": "pending",
+          "startMs": 4766,
+          "endMs": 5208
+        }
+      ]
+    },
+    {
+      "id": "ep3-1",
+      "startFrame": 216,
+      "durationFrames": 235,
+      "file": "vo/ep3-1.mp3",
+      "text": "Thirty two point five million lines committed in one week, December 2025. About five million are source code.",
+      "words": [
+        {
+          "text": "Thirty",
+          "startMs": 169,
+          "endMs": 417
+        },
+        {
+          "text": "two",
+          "startMs": 430,
+          "endMs": 664
+        },
+        {
+          "text": "point",
+          "startMs": 677,
+          "endMs": 1016
+        },
+        {
+          "text": "five",
+          "startMs": 1029,
+          "endMs": 1432
+        },
+        {
+          "text": "million",
+          "startMs": 1445,
+          "endMs": 1888
+        },
+        {
+          "text": "lines",
+          "startMs": 1901,
+          "endMs": 2240
+        },
+        {
+          "text": "committed",
+          "startMs": 2253,
+          "endMs": 2695
+        },
+        {
+          "text": "in",
+          "startMs": 2708,
+          "endMs": 2865
+        },
+        {
+          "text": "one",
+          "startMs": 2878,
+          "endMs": 3151
+        },
+        {
+          "text": "week",
+          "startMs": 3164,
+          "endMs": 3555
+        },
+        {
+          "text": "December 2025",
+          "startMs": 3828,
+          "endMs": 5221
+        },
+        {
+          "text": "About",
+          "startMs": 5651,
+          "endMs": 5924
+        },
+        {
+          "text": "five",
+          "startMs": 5938,
+          "endMs": 6289
+        },
+        {
+          "text": "million",
+          "startMs": 6302,
+          "endMs": 6680
+        },
+        {
+          "text": "are",
+          "startMs": 6693,
+          "endMs": 6784
+        },
+        {
+          "text": "source",
+          "startMs": 6797,
+          "endMs": 7096
+        },
+        {
+          "text": "code",
+          "startMs": 7109,
+          "endMs": 7448
+        }
+      ]
+    },
+    {
+      "id": "ep3-2",
+      "startFrame": 485,
+      "durationFrames": 150,
+      "file": "vo/ep3-2.mp3",
+      "text": "A published library of AI projects, across thirty five categories.",
+      "words": [
+        {
+          "text": "A",
+          "startMs": 104,
+          "endMs": 169
+        },
+        {
+          "text": "published",
+          "startMs": 182,
+          "endMs": 586
+        },
+        {
+          "text": "library",
+          "startMs": 599,
+          "endMs": 1146
+        },
+        {
+          "text": "of",
+          "startMs": 1159,
+          "endMs": 1276
+        },
+        {
+          "text": "AI",
+          "startMs": 1354,
+          "endMs": 1654
+        },
+        {
+          "text": "projects",
+          "startMs": 1667,
+          "endMs": 2435
+        },
+        {
+          "text": "across",
+          "startMs": 2630,
+          "endMs": 3099
+        },
+        {
+          "text": "thirty",
+          "startMs": 3112,
+          "endMs": 3477
+        },
+        {
+          "text": "five",
+          "startMs": 3490,
+          "endMs": 3815
+        },
+        {
+          "text": "categories",
+          "startMs": 3828,
+          "endMs": 4609
+        }
+      ]
+    },
+    {
+      "id": "ep3-3",
+      "startFrame": 669,
+      "durationFrames": 377,
+      "file": "vo/ep3-3.mp3",
+      "text": "MSB v3 collects three thousand nine hundred forty two tests. FCVE was archived after two upstream patches. Adaptive Infrastructure reproduces its numbers byte for byte.",
+      "words": [
+        {
+          "text": "MSB",
+          "startMs": 104,
+          "endMs": 638
+        },
+        {
+          "text": "v3",
+          "startMs": 651,
+          "endMs": 1289
+        },
+        {
+          "text": "collects",
+          "startMs": 1302,
+          "endMs": 1771
+        },
+        {
+          "text": "three",
+          "startMs": 1784,
+          "endMs": 2135
+        },
+        {
+          "text": "thousand",
+          "startMs": 2148,
+          "endMs": 2721
+        },
+        {
+          "text": "nine",
+          "startMs": 2812,
+          "endMs": 3073
+        },
+        {
+          "text": "hundred",
+          "startMs": 3086,
+          "endMs": 3398
+        },
+        {
+          "text": "forty",
+          "startMs": 3411,
+          "endMs": 3724
+        },
+        {
+          "text": "two",
+          "startMs": 3737,
+          "endMs": 3958
+        },
+        {
+          "text": "tests",
+          "startMs": 3971,
+          "endMs": 4583
+        },
+        {
+          "text": "FCVE",
+          "startMs": 5013,
+          "endMs": 5586
+        },
+        {
+          "text": "was",
+          "startMs": 5599,
+          "endMs": 5768
+        },
+        {
+          "text": "archived",
+          "startMs": 5781,
+          "endMs": 6406
+        },
+        {
+          "text": "after",
+          "startMs": 6419,
+          "endMs": 6680
+        },
+        {
+          "text": "two",
+          "startMs": 6693,
+          "endMs": 6979
+        },
+        {
+          "text": "upstream",
+          "startMs": 6992,
+          "endMs": 7370
+        },
+        {
+          "text": "patches",
+          "startMs": 7383,
+          "endMs": 7982
+        },
+        {
+          "text": "Adaptive",
+          "startMs": 8411,
+          "endMs": 8932
+        },
+        {
+          "text": "Infrastructure",
+          "startMs": 8945,
+          "endMs": 9635
+        },
+        {
+          "text": "reproduces",
+          "startMs": 9648,
+          "endMs": 10417
+        },
+        {
+          "text": "its",
+          "startMs": 10547,
+          "endMs": 10690
+        },
+        {
+          "text": "numbers",
+          "startMs": 10703,
+          "endMs": 11146
+        },
+        {
+          "text": "byte",
+          "startMs": 11159,
+          "endMs": 11471
+        },
+        {
+          "text": "for",
+          "startMs": 11589,
+          "endMs": 11758
+        },
+        {
+          "text": "byte",
+          "startMs": 11771,
+          "endMs": 12174
+        }
+      ]
+    },
+    {
+      "id": "ep3-4",
+      "startFrame": 1080,
+      "durationFrames": 56,
+      "file": "vo/ep3-4.mp3",
+      "text": "Part four is how to start.",
+      "words": [
+        {
+          "text": "Part",
+          "startMs": 117,
+          "endMs": 273
+        },
+        {
+          "text": "four",
+          "startMs": 286,
+          "endMs": 508
+        },
+        {
+          "text": "is",
+          "startMs": 521,
+          "endMs": 599
+        },
+        {
+          "text": "how",
+          "startMs": 612,
+          "endMs": 703
+        },
+        {
+          "text": "to",
+          "startMs": 716,
+          "endMs": 781
+        },
+        {
+          "text": "start",
+          "startMs": 794,
+          "endMs": 1224
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "id": "ep1",
+  "title": "Your business forgets.",
+  "funnelStage": "Awareness",
+  "fps": 30,
+  "durationInFrames": 562,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "THE SECOND BRAIN SERIES \u00b7 EP 1 OF 4",
+      "lines": [
+        "YOUR BUSINESS",
+        "FORGETS."
+      ],
+      "sub": "What your team knows walks out the door every time someone leaves.",
+      "vo": "Your business forgets. Every time someone leaves, what they knew leaves with them.",
+      "start": 0,
+      "length": 181
+    },
+    {
+      "type": "cards",
+      "dur": 120,
+      "kicker": "SOUND FAMILIAR?",
+      "heading": "Where it goes",
+      "items": [
+        {
+          "t": "The same question, every week",
+          "b": "Asked again, because the answer lived in one person's head."
+        },
+        {
+          "t": "The process nobody wrote down",
+          "b": "It works until the one person who knows it is out sick."
+        },
+        {
+          "t": "The decision with no record",
+          "b": "Why we chose that vendor, and who signed off."
+        }
+      ],
+      "vo": "The same question every week. The process nobody wrote down. The decision nobody can explain.",
+      "start": 181,
+      "length": 228
+    },
+    {
+      "type": "cta",
+      "dur": 100,
+      "headline": "Part 2: what a second brain actually is.",
+      "body": "Follow along. One episode a week.",
+      "button": "FOLLOW FOR PART 2",
+      "url": "blackswanlabz.com",
+      "vo": "Next: what a second brain actually is. Follow along.",
+      "start": 409,
+      "length": 153
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "ep1-0",
+      "startFrame": 14,
+      "durationFrames": 147,
+      "file": "vo/ep1-0.mp3",
+      "text": "Your business forgets. Every time someone leaves, what they knew leaves with them.",
+      "words": [
+        {
+          "text": "Your",
+          "startMs": 104,
+          "endMs": 195
+        },
+        {
+          "text": "business",
+          "startMs": 208,
+          "endMs": 521
+        },
+        {
+          "text": "forgets",
+          "startMs": 534,
+          "endMs": 1094
+        },
+        {
+          "text": "Every",
+          "startMs": 1523,
+          "endMs": 1758
+        },
+        {
+          "text": "time",
+          "startMs": 1771,
+          "endMs": 2057
+        },
+        {
+          "text": "someone",
+          "startMs": 2070,
+          "endMs": 2461
+        },
+        {
+          "text": "leaves",
+          "startMs": 2474,
+          "endMs": 2995
+        },
+        {
+          "text": "what",
+          "startMs": 3229,
+          "endMs": 3372
+        },
+        {
+          "text": "they",
+          "startMs": 3385,
+          "endMs": 3490
+        },
+        {
+          "text": "knew",
+          "startMs": 3503,
+          "endMs": 3737
+        },
+        {
+          "text": "leaves",
+          "startMs": 3750,
+          "endMs": 4089
+        },
+        {
+          "text": "with",
+          "startMs": 4102,
+          "endMs": 4258
+        },
+        {
+          "text": "them",
+          "startMs": 4271,
+          "endMs": 4492
+        }
+      ]
+    },
+    {
+      "id": "ep1-1",
+      "startFrame": 195,
+      "durationFrames": 194,
+      "file": "vo/ep1-1.mp3",
+      "text": "The same question every week. The process nobody wrote down. The decision nobody can explain.",
+      "words": [
+        {
+          "text": "The",
+          "startMs": 117,
+          "endMs": 169
+        },
+        {
+          "text": "same",
+          "startMs": 182,
+          "endMs": 443
+        },
+        {
+          "text": "question",
+          "startMs": 456,
+          "endMs": 977
+        },
+        {
+          "text": "every",
+          "startMs": 1146,
+          "endMs": 1354
+        },
+        {
+          "text": "week",
+          "startMs": 1367,
+          "endMs": 1758
+        },
+        {
+          "text": "The",
+          "startMs": 2201,
+          "endMs": 2253
+        },
+        {
+          "text": "process",
+          "startMs": 2266,
+          "endMs": 2800
+        },
+        {
+          "text": "nobody",
+          "startMs": 2812,
+          "endMs": 3229
+        },
+        {
+          "text": "wrote",
+          "startMs": 3242,
+          "endMs": 3477
+        },
+        {
+          "text": "down",
+          "startMs": 3490,
+          "endMs": 3841
+        },
+        {
+          "text": "The",
+          "startMs": 4284,
+          "endMs": 4336
+        },
+        {
+          "text": "decision",
+          "startMs": 4349,
+          "endMs": 4870
+        },
+        {
+          "text": "nobody",
+          "startMs": 4883,
+          "endMs": 5299
+        },
+        {
+          "text": "can",
+          "startMs": 5312,
+          "endMs": 5482
+        },
+        {
+          "text": "explain",
+          "startMs": 5495,
+          "endMs": 6068
+        }
+      ]
+    },
+    {
+      "id": "ep1-2",
+      "startFrame": 423,
+      "durationFrames": 119,
+      "file": "vo/ep1-2.mp3",
+      "text": "Next: what a second brain actually is. Follow along.",
+      "words": [
+        {
+          "text": "Next",
+          "startMs": 104,
+          "endMs": 508
+        },
+        {
+          "text": "what",
+          "startMs": 820,
+          "endMs": 924
+        },
+        {
+          "text": "a",
+          "startMs": 938,
+          "endMs": 977
+        },
+        {
+          "text": "second",
+          "startMs": 990,
+          "endMs": 1341
+        },
+        {
+          "text": "brain",
+          "startMs": 1354,
+          "endMs": 1589
+        },
+        {
+          "text": "actually",
+          "startMs": 1602,
+          "endMs": 2044
+        },
+        {
+          "text": "is",
+          "startMs": 2057,
+          "endMs": 2422
+        },
+        {
+          "text": "Follow",
+          "startMs": 2917,
+          "endMs": 3164
+        },
+        {
+          "text": "along",
+          "startMs": 3177,
+          "endMs": 3581
+        }
+      ]
+    }
+  ]
+}

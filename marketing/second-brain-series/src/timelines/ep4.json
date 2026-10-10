@@ -1,0 +1,309 @@
+{
+  "id": "ep4",
+  "title": "Book the call.",
+  "funnelStage": "Conversion",
+  "fps": 30,
+  "durationInFrames": 669,
+  "scenes": [
+    {
+      "type": "title",
+      "dur": 100,
+      "kicker": "EP 4 OF 4",
+      "lines": [
+        "READY FOR",
+        "A SECOND",
+        "BRAIN?"
+      ],
+      "sub": "Start with a free 15-minute call.",
+      "vo": "Ready for a second brain for your business? Start with a free fifteen minute call.",
+      "start": 0,
+      "length": 179
+    },
+    {
+      "type": "cards",
+      "dur": 130,
+      "kicker": "HOW IT STARTS",
+      "heading": "Free. Short. Straight.",
+      "items": [
+        {
+          "t": "15 minutes",
+          "b": "No slide deck. No obligation."
+        },
+        {
+          "t": "Your business, mapped",
+          "b": "We show you where a second brain fits."
+        },
+        {
+          "t": "Straight answers",
+          "b": "We say where it fits, and where it doesn't."
+        }
+      ],
+      "vo": "No slide deck, no obligation. We show you where a second brain fits, and where it doesn't.",
+      "start": 179,
+      "length": 213
+    },
+    {
+      "type": "cta",
+      "dur": 150,
+      "headshot": true,
+      "headline": "Book your free 15-minute clarity call.",
+      "body": "Blackswanlabz.com",
+      "button": "BOOK YOUR FREE CALL",
+      "url": "blackswanlabz.com",
+      "vo": "Book your free call at blackswanlabz.com.",
+      "start": 392,
+      "length": 150
+    },
+    {
+      "type": "logo",
+      "dur": 90,
+      "url": "BLACKSWANLABZ.COM",
+      "vo": "Strategy. Automation. Results.",
+      "start": 542,
+      "length": 127
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "ep4-0",
+      "startFrame": 14,
+      "durationFrames": 145,
+      "file": "vo/ep4-0.mp3",
+      "text": "Ready for a second brain for your business? Start with a free fifteen minute call.",
+      "words": [
+        {
+          "text": "Ready",
+          "startMs": 104,
+          "endMs": 299
+        },
+        {
+          "text": "for",
+          "startMs": 312,
+          "endMs": 456
+        },
+        {
+          "text": "a",
+          "startMs": 469,
+          "endMs": 521
+        },
+        {
+          "text": "second",
+          "startMs": 534,
+          "endMs": 912
+        },
+        {
+          "text": "brain",
+          "startMs": 924,
+          "endMs": 1172
+        },
+        {
+          "text": "for",
+          "startMs": 1185,
+          "endMs": 1315
+        },
+        {
+          "text": "your",
+          "startMs": 1328,
+          "endMs": 1432
+        },
+        {
+          "text": "business",
+          "startMs": 1445,
+          "endMs": 1979
+        },
+        {
+          "text": "Start",
+          "startMs": 2409,
+          "endMs": 2695
+        },
+        {
+          "text": "with",
+          "startMs": 2708,
+          "endMs": 2852
+        },
+        {
+          "text": "a",
+          "startMs": 2865,
+          "endMs": 2917
+        },
+        {
+          "text": "free",
+          "startMs": 2930,
+          "endMs": 3333
+        },
+        {
+          "text": "fifteen",
+          "startMs": 3346,
+          "endMs": 3841
+        },
+        {
+          "text": "minute",
+          "startMs": 3854,
+          "endMs": 4089
+        },
+        {
+          "text": "call",
+          "startMs": 4102,
+          "endMs": 4440
+        }
+      ]
+    },
+    {
+      "id": "ep4-1",
+      "startFrame": 193,
+      "durationFrames": 179,
+      "file": "vo/ep4-1.mp3",
+      "text": "No slide deck, no obligation. We show you where a second brain fits, and where it doesn't.",
+      "words": [
+        {
+          "text": "No",
+          "startMs": 104,
+          "endMs": 273
+        },
+        {
+          "text": "slide",
+          "startMs": 286,
+          "endMs": 664
+        },
+        {
+          "text": "deck",
+          "startMs": 677,
+          "endMs": 1016
+        },
+        {
+          "text": "no",
+          "startMs": 1289,
+          "endMs": 1458
+        },
+        {
+          "text": "obligation",
+          "startMs": 1471,
+          "endMs": 2109
+        },
+        {
+          "text": "We",
+          "startMs": 2552,
+          "endMs": 2656
+        },
+        {
+          "text": "show",
+          "startMs": 2669,
+          "endMs": 2917
+        },
+        {
+          "text": "you",
+          "startMs": 2930,
+          "endMs": 3060
+        },
+        {
+          "text": "where",
+          "startMs": 3073,
+          "endMs": 3242
+        },
+        {
+          "text": "a",
+          "startMs": 3255,
+          "endMs": 3307
+        },
+        {
+          "text": "second",
+          "startMs": 3320,
+          "endMs": 3711
+        },
+        {
+          "text": "brain",
+          "startMs": 3724,
+          "endMs": 3958
+        },
+        {
+          "text": "fits",
+          "startMs": 3971,
+          "endMs": 4544
+        },
+        {
+          "text": "and",
+          "startMs": 4805,
+          "endMs": 4896
+        },
+        {
+          "text": "where",
+          "startMs": 4909,
+          "endMs": 5065
+        },
+        {
+          "text": "it",
+          "startMs": 5078,
+          "endMs": 5182
+        },
+        {
+          "text": "doesn't",
+          "startMs": 5195,
+          "endMs": 5599
+        }
+      ]
+    },
+    {
+      "id": "ep4-2",
+      "startFrame": 406,
+      "durationFrames": 92,
+      "file": "vo/ep4-2.mp3",
+      "text": "Book your free call at blackswanlabz.com.",
+      "words": [
+        {
+          "text": "Book",
+          "startMs": 117,
+          "endMs": 260
+        },
+        {
+          "text": "your",
+          "startMs": 273,
+          "endMs": 404
+        },
+        {
+          "text": "free",
+          "startMs": 417,
+          "endMs": 638
+        },
+        {
+          "text": "call",
+          "startMs": 651,
+          "endMs": 1029
+        },
+        {
+          "text": "at",
+          "startMs": 1107,
+          "endMs": 1198
+        },
+        {
+          "text": "blackswanlabz.com",
+          "startMs": 1211,
+          "endMs": 2682
+        }
+      ]
+    },
+    {
+      "id": "ep4-3",
+      "startFrame": 556,
+      "durationFrames": 93,
+      "file": "vo/ep4-3.mp3",
+      "text": "Strategy. Automation. Results.",
+      "words": [
+        {
+          "text": "Strategy",
+          "startMs": 117,
+          "endMs": 677
+        },
+        {
+          "text": "Automation",
+          "startMs": 1107,
+          "endMs": 1706
+        },
+        {
+          "text": "Results",
+          "startMs": 2122,
+          "endMs": 2708
+        }
+      ]
+    }
+  ]
+}
