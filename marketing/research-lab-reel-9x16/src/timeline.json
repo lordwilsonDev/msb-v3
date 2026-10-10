@@ -1,0 +1,557 @@
+{
+  "fps": 30,
+  "durationInFrames": 1570,
+  "scenes": [
+    {
+      "name": "intro",
+      "start": 0,
+      "length": 96
+    },
+    {
+      "name": "hook",
+      "start": 96,
+      "length": 152
+    },
+    {
+      "name": "cornerstone",
+      "start": 248,
+      "length": 280
+    },
+    {
+      "name": "categories",
+      "start": 528,
+      "length": 150
+    },
+    {
+      "name": "timeline",
+      "start": 678,
+      "length": 150
+    },
+    {
+      "name": "built",
+      "start": 828,
+      "length": 225
+    },
+    {
+      "name": "status",
+      "start": 1053,
+      "length": 150
+    },
+    {
+      "name": "cta",
+      "start": 1203,
+      "length": 240
+    },
+    {
+      "name": "outro",
+      "start": 1443,
+      "length": 127
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "v1",
+      "startFrame": 12,
+      "durationFrames": 64,
+      "file": "vo/v1.mp3",
+      "text": "Black Swan Labz Research Lab.",
+      "words": [
+        {
+          "text": "Black",
+          "startMs": 117,
+          "endMs": 313
+        },
+        {
+          "text": "Swan",
+          "startMs": 326,
+          "endMs": 638
+        },
+        {
+          "text": "Labz",
+          "startMs": 651,
+          "endMs": 964
+        },
+        {
+          "text": "Research",
+          "startMs": 977,
+          "endMs": 1406
+        },
+        {
+          "text": "Lab",
+          "startMs": 1419,
+          "endMs": 1758
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "startFrame": 110,
+      "durationFrames": 118,
+      "file": "vo/v2.mp3",
+      "text": "Intelligence is becoming abundant. Verification isn't.",
+      "words": [
+        {
+          "text": "Intelligence",
+          "startMs": 104,
+          "endMs": 833
+        },
+        {
+          "text": "is",
+          "startMs": 977,
+          "endMs": 1068
+        },
+        {
+          "text": "becoming",
+          "startMs": 1081,
+          "endMs": 1484
+        },
+        {
+          "text": "abundant",
+          "startMs": 1497,
+          "endMs": 2044
+        },
+        {
+          "text": "Verification",
+          "startMs": 2474,
+          "endMs": 3190
+        },
+        {
+          "text": "isn't",
+          "startMs": 3203,
+          "endMs": 3542
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "startFrame": 262,
+      "durationFrames": 166,
+      "file": "vo/v3.mp3",
+      "text": "One week in December 2025: thirty two point five million lines committed.",
+      "words": [
+        {
+          "text": "One",
+          "startMs": 117,
+          "endMs": 365
+        },
+        {
+          "text": "week",
+          "startMs": 378,
+          "endMs": 690
+        },
+        {
+          "text": "in",
+          "startMs": 768,
+          "endMs": 885
+        },
+        {
+          "text": "December 2025",
+          "startMs": 898,
+          "endMs": 2370
+        },
+        {
+          "text": "thirty",
+          "startMs": 2669,
+          "endMs": 2943
+        },
+        {
+          "text": "two",
+          "startMs": 2956,
+          "endMs": 3177
+        },
+        {
+          "text": "point",
+          "startMs": 3190,
+          "endMs": 3516
+        },
+        {
+          "text": "five",
+          "startMs": 3529,
+          "endMs": 3971
+        },
+        {
+          "text": "million",
+          "startMs": 3984,
+          "endMs": 4401
+        },
+        {
+          "text": "lines",
+          "startMs": 4414,
+          "endMs": 4714
+        },
+        {
+          "text": "committed",
+          "startMs": 4727,
+          "endMs": 5169
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "startFrame": 440,
+      "durationFrames": 68,
+      "file": "vo/v4.mp3",
+      "text": "About five million are source code.",
+      "words": [
+        {
+          "text": "About",
+          "startMs": 104,
+          "endMs": 378
+        },
+        {
+          "text": "five",
+          "startMs": 391,
+          "endMs": 742
+        },
+        {
+          "text": "million",
+          "startMs": 755,
+          "endMs": 1133
+        },
+        {
+          "text": "are",
+          "startMs": 1146,
+          "endMs": 1237
+        },
+        {
+          "text": "source",
+          "startMs": 1250,
+          "endMs": 1550
+        },
+        {
+          "text": "code",
+          "startMs": 1562,
+          "endMs": 1901
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "startFrame": 542,
+      "durationFrames": 109,
+      "file": "vo/v5.mp3",
+      "text": "Thirty five categories, from orchestration to safety.",
+      "words": [
+        {
+          "text": "Thirty",
+          "startMs": 169,
+          "endMs": 391
+        },
+        {
+          "text": "five",
+          "startMs": 404,
+          "endMs": 716
+        },
+        {
+          "text": "categories",
+          "startMs": 729,
+          "endMs": 1497
+        },
+        {
+          "text": "from",
+          "startMs": 1732,
+          "endMs": 1901
+        },
+        {
+          "text": "orchestration",
+          "startMs": 1914,
+          "endMs": 2604
+        },
+        {
+          "text": "to",
+          "startMs": 2617,
+          "endMs": 2695
+        },
+        {
+          "text": "safety",
+          "startMs": 2708,
+          "endMs": 3229
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "startFrame": 692,
+      "durationFrames": 96,
+      "file": "vo/v6.mp3",
+      "text": "The folders came first. The industry followed.",
+      "words": [
+        {
+          "text": "The",
+          "startMs": 117,
+          "endMs": 169
+        },
+        {
+          "text": "folders",
+          "startMs": 182,
+          "endMs": 586
+        },
+        {
+          "text": "came",
+          "startMs": 599,
+          "endMs": 820
+        },
+        {
+          "text": "first",
+          "startMs": 833,
+          "endMs": 1393
+        },
+        {
+          "text": "The",
+          "startMs": 1836,
+          "endMs": 1914
+        },
+        {
+          "text": "industry",
+          "startMs": 1927,
+          "endMs": 2344
+        },
+        {
+          "text": "followed",
+          "startMs": 2357,
+          "endMs": 2839
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "startFrame": 842,
+      "durationFrames": 191,
+      "file": "vo/v7.mp3",
+      "text": "What's built is checkable. Three thousand nine hundred forty two tests collected, at a pinned commit.",
+      "words": [
+        {
+          "text": "What's",
+          "startMs": 104,
+          "endMs": 273
+        },
+        {
+          "text": "built",
+          "startMs": 286,
+          "endMs": 599
+        },
+        {
+          "text": "is",
+          "startMs": 664,
+          "endMs": 768
+        },
+        {
+          "text": "checkable",
+          "startMs": 781,
+          "endMs": 1354
+        },
+        {
+          "text": "Three",
+          "startMs": 1836,
+          "endMs": 2031
+        },
+        {
+          "text": "thousand",
+          "startMs": 2044,
+          "endMs": 2565
+        },
+        {
+          "text": "nine",
+          "startMs": 2578,
+          "endMs": 2812
+        },
+        {
+          "text": "hundred",
+          "startMs": 2826,
+          "endMs": 3112
+        },
+        {
+          "text": "forty",
+          "startMs": 3125,
+          "endMs": 3490
+        },
+        {
+          "text": "two",
+          "startMs": 3503,
+          "endMs": 3789
+        },
+        {
+          "text": "tests",
+          "startMs": 3802,
+          "endMs": 4219
+        },
+        {
+          "text": "collected",
+          "startMs": 4232,
+          "endMs": 4766
+        },
+        {
+          "text": "at",
+          "startMs": 5091,
+          "endMs": 5169
+        },
+        {
+          "text": "a",
+          "startMs": 5182,
+          "endMs": 5234
+        },
+        {
+          "text": "pinned",
+          "startMs": 5247,
+          "endMs": 5534
+        },
+        {
+          "text": "commit",
+          "startMs": 5547,
+          "endMs": 5977
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "startFrame": 1067,
+      "durationFrames": 102,
+      "file": "vo/v8.mp3",
+      "text": "Not everything is built. Check the receipts on GitHub.",
+      "words": [
+        {
+          "text": "Not",
+          "startMs": 104,
+          "endMs": 273
+        },
+        {
+          "text": "everything",
+          "startMs": 286,
+          "endMs": 664
+        },
+        {
+          "text": "is",
+          "startMs": 677,
+          "endMs": 807
+        },
+        {
+          "text": "built",
+          "startMs": 820,
+          "endMs": 1224
+        },
+        {
+          "text": "Check",
+          "startMs": 1654,
+          "endMs": 1836
+        },
+        {
+          "text": "the",
+          "startMs": 1849,
+          "endMs": 1927
+        },
+        {
+          "text": "receipts",
+          "startMs": 1940,
+          "endMs": 2396
+        },
+        {
+          "text": "on",
+          "startMs": 2409,
+          "endMs": 2539
+        },
+        {
+          "text": "GitHub",
+          "startMs": 2552,
+          "endMs": 3008
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "startFrame": 1217,
+      "durationFrames": 114,
+      "file": "vo/v9.mp3",
+      "text": "New to AI? Book a free fifteen minute clarity call.",
+      "words": [
+        {
+          "text": "New",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "to",
+          "startMs": 260,
+          "endMs": 365
+        },
+        {
+          "text": "AI",
+          "startMs": 378,
+          "endMs": 716
+        },
+        {
+          "text": "Book",
+          "startMs": 1146,
+          "endMs": 1367
+        },
+        {
+          "text": "a",
+          "startMs": 1380,
+          "endMs": 1432
+        },
+        {
+          "text": "free",
+          "startMs": 1445,
+          "endMs": 1849
+        },
+        {
+          "text": "fifteen",
+          "startMs": 1862,
+          "endMs": 2396
+        },
+        {
+          "text": "minute",
+          "startMs": 2409,
+          "endMs": 2643
+        },
+        {
+          "text": "clarity",
+          "startMs": 2656,
+          "endMs": 3034
+        },
+        {
+          "text": "call",
+          "startMs": 3047,
+          "endMs": 3411
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "startFrame": 1343,
+      "durationFrames": 59,
+      "file": "vo/v10.mp3",
+      "text": "Blackswanlabz.com.",
+      "words": [
+        {
+          "text": "Blackswanlabz.com",
+          "startMs": 117,
+          "endMs": 1576
+        }
+      ]
+    },
+    {
+      "id": "v11",
+      "startFrame": 1457,
+      "durationFrames": 93,
+      "file": "vo/v11.mp3",
+      "text": "Strategy. Automation. Results.",
+      "words": [
+        {
+          "text": "Strategy",
+          "startMs": 117,
+          "endMs": 677
+        },
+        {
+          "text": "Automation",
+          "startMs": 1107,
+          "endMs": 1706
+        },
+        {
+          "text": "Results",
+          "startMs": 2122,
+          "endMs": 2708
+        }
+      ]
+    }
+  ]
+}

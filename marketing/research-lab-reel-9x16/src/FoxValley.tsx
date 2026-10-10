@@ -34,7 +34,7 @@ const C = {
 
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 
-type SceneName = 'intro' | 'hook' | 'creds' | 'stats' | 'cta' | 'outro';
+type SceneName = 'intro' | 'hook' | 'cornerstone' | 'categories' | 'timeline' | 'built' | 'status' | 'cta' | 'outro';
 const SCENE_STARTS = Object.fromEntries(timeline.scenes.map((s) => [s.name, s])) as unknown as Record<
   SceneName,
   {start: number; length: number}
@@ -347,8 +347,8 @@ const Hook: React.FC = () => {
   const kicker = useRise(0, 20);
   const sub = useRise(70, 40);
   const lines: {words: string[]; gold?: boolean}[] = [
-    {words: ['PROOF,']},
-    {words: ['NOT PROMISES.'], gold: true},
+    {words: ['INTELLIGENCE', 'IS']},
+    {words: ['ABUNDANT.'], gold: true},
   ];
   let i = 0;
   return (
@@ -356,7 +356,7 @@ const Hook: React.FC = () => {
       <div style={{...kicker, color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>
         AI CONSULTING &amp; STRATEGY
       </div>
-      <div style={{marginTop: 50, fontSize: 100, fontWeight: 900, lineHeight: 1.02, letterSpacing: -2}}>
+      <div style={{marginTop: 50, fontSize: 96, fontWeight: 900, lineHeight: 1.02, letterSpacing: -2}}>
         {lines.map((line) => (
           <div key={line.words.join('-')} style={{whiteSpace: 'nowrap'}}>
             {line.words.map((w) => {
@@ -368,108 +368,16 @@ const Hook: React.FC = () => {
         ))}
       </div>
       <div style={{...sub, marginTop: 70, fontSize: 44, lineHeight: 1.4, color: C.muted, maxWidth: 860}}>
-        Trained in AI. Building in public. Here's what's behind Black Swan Labz.
+        Verification isn't. This lab is what one builder made of that idea.
       </div>
     </AbsoluteFill>
   );
 };
 
 // ---------------------------------------------------------------------------
-// 3. Credentials: certificate names as a scrolling list (no IDs)
+// Shared: a stat with a count-up
 // ---------------------------------------------------------------------------
-const CREDS = [
-  {org: 'ANTHROPIC', items: [
-    {name: 'Claude Academy: AI Fluency — Framework & Foundations', id: '1f519d58f5830d11b01004f75d8b0cf8'},
-    {name: 'Claude Academy: AI Fluency for Educators', id: '3cfe8644c91f7c45e183b531ba89e24e'},
-    {name: 'AI Fluency for Small Businesses'},
-    {name: 'Claude 101', id: 'b93jetbu8x86'},
-  ]},
-  {org: 'OPENAI', items: [
-    {name: 'Applied AI Foundations', id: 'x9y4t1txt6'},
-    {name: 'Agents and Workflows', id: 'o7k2nywu68'},
-    {name: 'AI Foundations', id: '6jfsibsk19'},
-  ]},
-];
-
-const Creds: React.FC = () => {
-  const head = useRise(0, 30);
-  let k = 0;
-  return (
-    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px'}}>
-      <div style={{...head}}>
-        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>CREDENTIALS</div>
-        <div style={{color: C.silver, fontSize: 92, fontWeight: 900, marginTop: 16, lineHeight: 1.04}}>
-          Trained, not guessing.
-        </div>
-      </div>
-      <div style={{marginTop: 50}}>
-        {CREDS.map((group) => (
-          <div key={group.org} style={{marginBottom: 48}}>
-            <div style={{color: C.gold, fontSize: 28, letterSpacing: 6, fontWeight: 700, marginBottom: 22}}>
-              {group.org}
-            </div>
-            {group.items.map((item: {name: string; id?: string}) => {
-              const delay = 18 + k * 12;
-              k++;
-              return <CredRow key={item.name} text={item.name} id={item.id} delay={delay} />;
-            })}
-          </div>
-        ))}
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-const CredRow: React.FC<{text: string; id?: string; delay: number}> = ({text, id, delay}) => {
-  const frame = useCurrentFrame();
-  const r = useRise(delay, 120);
-  const bar = interpolate(frame, [delay, delay + 24], [0, 1], clamp);
-  return (
-    <div style={{...r, display: 'flex', alignItems: 'center', gap: 28, marginBottom: 22}}>
-      <div style={{width: 8, height: 80, borderRadius: 4, background: C.gold, transform: `scaleY(${bar})`, boxShadow: `0 0 ${20 * bar}px rgba(212,175,90,0.6)`}} />
-      <div>
-        <div style={{color: C.silver, fontSize: 40, fontWeight: 800, lineHeight: 1.2}}>{text}</div>
-        {id && (
-          <div style={{color: C.muted, fontSize: 24, marginTop: 6, fontFamily: 'Menlo, Consolas, monospace', letterSpacing: 0.5}}>
-            Credential ID {id}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// 4. Stats: counters plus the Pitchhut page scrolling past
-// ---------------------------------------------------------------------------
-const COUNTERS = [
-  {to: 32.5, decimals: 1, suffix: 'M', label: 'Lines committed in one week'},
-  {to: 35, label: 'AI project categories'},
-  {to: 274, label: 'Referral views from GitHub & Hacker News'},
-  {to: 64, label: 'Showcase page views'},
-];
-
-const Stats: React.FC = () => {
-  const head = useRise(0, 30);
-  return (
-    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px 0'}}>
-      <div style={{...head}}>
-        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>THE PROOF</div>
-        <div style={{color: C.silver, fontSize: 84, fontWeight: 900, marginTop: 14, lineHeight: 1.05}}>
-          Real projects. Real attention.
-        </div>
-      </div>
-      <div style={{marginTop: 56, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24}}>
-        {COUNTERS.map((c, i) => (
-          <CounterCard key={c.label} to={c.to} decimals={c.decimals} suffix={c.suffix} label={c.label} delay={20 + i * 12} />
-        ))}
-      </div>
-      <PhoneScroll />
-    </AbsoluteFill>
-  );
-};
-
-const CounterCard: React.FC<{
+const StatCard: React.FC<{
   to: number;
   decimals?: number;
   suffix?: string;
@@ -478,56 +386,302 @@ const CounterCard: React.FC<{
 }> = ({to, decimals = 0, suffix = '', label, delay}) => {
   const frame = useCurrentFrame();
   const r = useRise(delay, 40);
-  const raw = interpolate(frame, [delay, delay + 50], [0, to], {...clamp, easing: Easing.out(Easing.cubic)});
+  const raw = interpolate(frame, [delay, delay + 60], [0, to], {...clamp, easing: Easing.out(Easing.cubic)});
   const shown = decimals ? raw.toFixed(decimals) : Math.round(raw).toString();
   return (
     <div
       style={{
         ...r,
-        padding: '26px 30px',
-        borderRadius: 26,
+        padding: '30px 40px',
+        borderRadius: 28,
         background: 'linear-gradient(135deg, rgba(212,175,90,0.10), rgba(255,255,255,0.02))',
         border: '1.5px solid rgba(212,175,90,0.35)',
       }}
     >
-      <div style={{color: C.gold, fontSize: 84, fontWeight: 900, lineHeight: 1}}>{shown + suffix}</div>
-      <div style={{color: C.muted, fontSize: 26, marginTop: 10, lineHeight: 1.3}}>{label}</div>
+      <div style={{color: C.gold, fontSize: 150, fontWeight: 900, lineHeight: 1}}>{shown + suffix}</div>
+      <div style={{color: C.muted, fontSize: 32, marginTop: 14, lineHeight: 1.3}}>{label}</div>
     </div>
   );
 };
 
-const PHONE_W = 600;
-const PHONE_H = 500;
-const PHONE_IMG_H = (PHONE_W * 2340) / 1080; // 1300
-const PhoneScroll: React.FC = () => {
-  const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const progress = interpolate(frame, [110, 260], [0, 1], {...clamp, easing: Easing.inOut(Easing.cubic)});
-  const y = -(PHONE_IMG_H - PHONE_H) * progress;
-  const thumbH = (PHONE_H * PHONE_H) / PHONE_IMG_H;
-  const thumbTop = (PHONE_H - thumbH) * progress;
-  const frameIn = useRise(90, 80);
-  const barIn = spring({frame: frame - 100, fps, config: {damping: 200}});
+// ---------------------------------------------------------------------------
+// 3. Cornerstone: verified line counts (C-001, C-002)
+// ---------------------------------------------------------------------------
+const Cornerstone: React.FC = () => {
+  const head = useRise(0, 30);
+  const note = useRise(110, 30);
   return (
-    <div style={{position: 'absolute', top: 965, left: (WIDTH - PHONE_W) / 2, width: PHONE_W, height: PHONE_H, opacity: frameIn.opacity, transform: frameIn.transform}}>
+    <AbsoluteFill style={{fontFamily: FONT, padding: '220px 80px'}}>
+      <div style={{...head}}>
+        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>THE CORNERSTONE</div>
+        <div style={{color: C.silver, fontSize: 84, fontWeight: 900, marginTop: 14, lineHeight: 1.05}}>
+          One week. December 2025.
+        </div>
+      </div>
+      <div style={{marginTop: 70, display: 'flex', flexDirection: 'column', gap: 30}}>
+        <StatCard to={32.5} decimals={1} suffix="M" label="Lines committed in the week of 14 Dec 2025" delay={20} />
+        <StatCard to={5.1} decimals={1} suffix="M" label="Of those are source code, outside vendored and build folders" delay={60} />
+      </div>
+      <div style={{...note, marginTop: 60, color: C.muted, fontSize: 32, lineHeight: 1.4}}>
+        Lines committed is not lines written. The lab publishes the breakdown and the check behind each figure.
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 4. Categories: the 35 folders, scrolling
+// ---------------------------------------------------------------------------
+const CATEGORIES = [
+  'Core operating systems', 'Autonomous intelligence', 'Orchestration & coordination', 'Memory & knowledge',
+  'Graph & network', 'Decision & reasoning', 'Optimization', 'Learning & adaptation', 'Swarm & collective',
+  'Ecosystem evolution', 'Sovereignty & security', 'Vy platform', 'NanoApex', 'Singularity & transcendence',
+  'Love & meaning', 'Communication protocols', 'Compute fabric', 'Intelligence amplification',
+  'Fractal scaling', 'State & environment', 'Semantic translation', 'Task & resource management',
+  'Integration & harmonization', 'Code language', 'Pattern & creative', 'Evolution & improvement',
+  'Safety & recovery', 'Testing & synthesis', 'Workflow blueprint', 'Mini-mind', 'Monitoring & metrics',
+  'Gateways & APIs', 'Specialized engines', 'Documentation automation', 'Other projects',
+];
+const ROW_H = 64;
+const LIST_VIEW_H = 1000;
+
+const Categories: React.FC = () => {
+  const frame = useCurrentFrame();
+  const head = useRise(0, 30);
+  const progress = interpolate(frame, [20, 130], [0, 1], {...clamp, easing: Easing.inOut(Easing.cubic)});
+  const range = CATEGORIES.length * ROW_H - LIST_VIEW_H;
+  return (
+    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px 0'}}>
+      <div style={{...head}}>
+        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>35 CATEGORIES</div>
+        <div style={{color: C.silver, fontSize: 84, fontWeight: 900, marginTop: 14, lineHeight: 1.05}}>
+          From orchestration to safety.
+        </div>
+      </div>
       <div
         style={{
           position: 'absolute',
-          inset: 0,
-          borderRadius: 34,
+          top: 520,
+          left: 80,
+          right: 80,
+          height: LIST_VIEW_H,
           overflow: 'hidden',
-          border: '2px solid rgba(212,175,90,0.55)',
-          boxShadow: '0 40px 120px rgba(212,175,90,0.18), 0 20px 60px rgba(0,0,0,0.6)',
-          background: C.ink,
+          WebkitMaskImage: 'linear-gradient(transparent, #000 12%, #000 88%, transparent)',
+          maskImage: 'linear-gradient(transparent, #000 12%, #000 88%, transparent)',
         }}
       >
-        <Img src={staticFile('proof.jpg')} style={{width: PHONE_W, height: PHONE_IMG_H, display: 'block', transform: `translateY(${y}px)`}} />
-        <Sheen period={160} delay={60} strength={0.14} />
+        <div style={{transform: `translateY(${-range * progress}px)`}}>
+          {CATEGORIES.map((name, i) => (
+            <div
+              key={name}
+              style={{
+                height: ROW_H,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 30,
+                borderBottom: '1px solid rgba(212,175,90,0.18)',
+              }}
+            >
+              <span style={{color: C.gold, fontSize: 30, fontWeight: 700, width: 60}}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span style={{color: C.silver, fontSize: 40, fontWeight: 700}}>{name}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <OrbitRect w={PHONE_W} h={PHONE_H} r={34} inset={1} speed={0.9} comet={12} id="proof" />
-      <div style={{position: 'absolute', top: 0, left: PHONE_W + 22, width: 6, height: PHONE_H, borderRadius: 3, background: 'rgba(255,255,255,0.08)', opacity: barIn}}>
-        <div style={{position: 'absolute', top: thumbTop, width: 6, height: thumbH, borderRadius: 3, background: C.gold, boxShadow: '0 0 14px rgba(212,175,90,0.8)'}} />
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 5. Timeline: dates from CLAIMS.md (C-007 to C-012)
+// ---------------------------------------------------------------------------
+const TIMELINE = [
+  {date: '17 Feb 2026', what: 'Small local models', who: 'Cohere Labs, Tiny Aya launch', folder: '30 · mini-mind'},
+  {date: '3 Apr 2026', what: 'Agent orchestration', who: 'Microsoft Agent Framework 1.0 GA', folder: '03 · orchestration'},
+  {date: '23 Apr 2026', what: 'Agent memory', who: 'Anthropic, Memory for Claude Managed Agents beta', folder: '04 · memory'},
+  {date: '23 Jul 2026', what: 'AI safety law', who: 'AI Kill Switch Act (H.R. 9917) introduced', folder: '27 · safety'},
+  {date: '28 Jul 2026', what: 'Protocols', who: 'Model Context Protocol specification release', folder: '16 · protocols'},
+];
+
+const Timeline: React.FC = () => {
+  const head = useRise(0, 30);
+  return (
+    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px'}}>
+      <div style={{...head}}>
+        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>PREDICTION TIMELINE</div>
+        <div style={{color: C.silver, fontSize: 80, fontWeight: 900, marginTop: 14, lineHeight: 1.05}}>
+          The folders came first.
+        </div>
+        <div style={{color: C.muted, fontSize: 32, marginTop: 16, lineHeight: 1.35}}>
+          Each category was in the package by 18 Dec 2025. The industry moved after.
+        </div>
       </div>
+      <div style={{position: 'relative', marginTop: 70, paddingLeft: 60}}>
+        <div style={{position: 'absolute', left: 9, top: 10, bottom: 10, width: 2, background: 'rgba(212,175,90,0.35)'}} />
+        {TIMELINE.map((t, i) => (
+          <TimelineRow key={t.date} {...t} delay={18 + i * 26} />
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+const TimelineRow: React.FC<{date: string; what: string; who: string; folder: string; delay: number}> = ({
+  date,
+  what,
+  who,
+  folder,
+  delay,
+}) => {
+  const frame = useCurrentFrame();
+  const r = useRise(delay, 90);
+  const dot = interpolate(frame, [delay, delay + 20], [0, 1], clamp);
+  return (
+    <div style={{...r, position: 'relative', marginBottom: 46}}>
+      <div
+        style={{
+          position: 'absolute',
+          left: -60,
+          top: 8,
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          background: C.gold,
+          transform: `scale(${dot})`,
+          boxShadow: `0 0 ${24 * dot}px rgba(212,175,90,0.8)`,
+        }}
+      />
+      <div style={{color: C.gold, fontSize: 28, fontWeight: 700, letterSpacing: 2}}>{date}</div>
+      <div style={{color: C.silver, fontSize: 46, fontWeight: 800, marginTop: 6}}>{what}</div>
+      <div style={{color: C.muted, fontSize: 30, marginTop: 6, lineHeight: 1.35}}>{who}</div>
+      <div style={{color: C.gold, fontSize: 24, marginTop: 8, letterSpacing: 2, opacity: 0.8}}>
+        PACKAGE FOLDER {folder.toUpperCase()}
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Pill used for status tags
+// ---------------------------------------------------------------------------
+const Tag: React.FC<{text: string; tone: 'gold' | 'amber'}> = ({text, tone}) => {
+  const col = tone === 'gold' ? C.gold : '#D98B3A';
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '8px 18px',
+        borderRadius: 999,
+        border: `1.5px solid ${col}`,
+        color: col,
+        fontSize: 22,
+        fontWeight: 800,
+        letterSpacing: 3,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </span>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 6. Built: each row cites a verified claim (C-005, C-030, C-033)
+// ---------------------------------------------------------------------------
+const BUILT = [
+  {name: 'MSB v3', line: 'A governed, local-first agent runtime. 3,942 tests collected at a pinned commit.', tag: 'BUILT'},
+  {name: 'FCVE', line: 'Formal claim-verification engine. Two Lean patches sent upstream: one merged, one open.', tag: 'ARCHIVED'},
+  {name: 'Adaptive Infrastructure', line: 'Reproduces its published numbers byte for byte. The repository is private.', tag: 'RUN'},
+];
+
+const Built: React.FC = () => {
+  const head = useRise(0, 30);
+  return (
+    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px'}}>
+      <div style={{...head}}>
+        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>WHAT IS BUILT</div>
+        <div style={{color: C.silver, fontSize: 84, fontWeight: 900, marginTop: 14, lineHeight: 1.05}}>
+          Checkable, row by row.
+        </div>
+      </div>
+      <div style={{marginTop: 70, display: 'flex', flexDirection: 'column', gap: 30}}>
+        {BUILT.map((b, i) => (
+          <BuiltCard key={b.name} {...b} delay={20 + i * 24} />
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+const BuiltCard: React.FC<{name: string; line: string; tag: string; delay: number}> = ({name, line, tag, delay}) => {
+  const r = useRise(delay, 200);
+  return (
+    <div
+      style={{
+        ...r,
+        padding: '40px 46px',
+        borderRadius: 28,
+        background: 'linear-gradient(135deg, rgba(212,175,90,0.10), rgba(255,255,255,0.02))',
+        border: '1.5px solid rgba(212,175,90,0.35)',
+      }}
+    >
+      <Tag text={tag} tone="gold" />
+      <div style={{color: C.silver, fontSize: 58, fontWeight: 900, marginTop: 20}}>{name}</div>
+      <div style={{color: C.muted, fontSize: 32, marginTop: 10, lineHeight: 1.4}}>{line}</div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 7. Status: what is not built or not run, quoted from the repo's own banners
+// ---------------------------------------------------------------------------
+const NOT_YET = [
+  {name: 'Hermes12 benchmark', tag: 'NOT RUN', note: 'Whether it beats compute-matched baselines is untested.'},
+  {name: 'CVT-1', tag: 'PRE-REGISTERED', note: 'Designed and pre-registered. Nothing on it is a result.'},
+  {name: 'Mixture of Inversion Experts', tag: 'NOT RUN', note: 'The benchmark harness is validated on synthetic data only.'},
+  {name: 'BlackSwanLabz OS', tag: 'NOT BUILT', note: 'A plan. Nothing has been tested.'},
+];
+
+const Status: React.FC = () => {
+  const head = useRise(0, 30);
+  const foot = useRise(110, 30);
+  return (
+    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px'}}>
+      <div style={{...head}}>
+        <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>WHAT IS NOT YET</div>
+        <div style={{color: C.silver, fontSize: 84, fontWeight: 900, marginTop: 14, lineHeight: 1.05}}>
+          Read the banners.
+        </div>
+      </div>
+      <div style={{marginTop: 60, display: 'flex', flexDirection: 'column', gap: 26}}>
+        {NOT_YET.map((n, i) => (
+          <StatusRow key={n.name} {...n} delay={20 + i * 22} />
+        ))}
+      </div>
+      <div style={{...foot, marginTop: 56, color: C.gold, fontSize: 36, fontWeight: 700, lineHeight: 1.35}}>
+        Check the receipts on GitHub: github.com/lordwilsonDev/blackswanlabz-research-lab
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+const StatusRow: React.FC<{name: string; tag: string; note: string; delay: number}> = ({name, tag, note, delay}) => {
+  const r = useRise(delay, 150);
+  return (
+    <div
+      style={{
+        ...r,
+        padding: '30px 40px',
+        borderRadius: 24,
+        border: '1.5px solid rgba(217,139,58,0.45)',
+        background: 'rgba(217,139,58,0.05)',
+      }}
+    >
+      <Tag text={tag} tone="amber" />
+      <div style={{color: C.silver, fontSize: 44, fontWeight: 800, marginTop: 14}}>{name}</div>
+      <div style={{color: C.muted, fontSize: 30, marginTop: 8, lineHeight: 1.35}}>{note}</div>
     </div>
   );
 };
@@ -703,8 +857,11 @@ const Outro: React.FC = () => {
 const SCENE_COMPONENTS: Record<SceneName, React.FC> = {
   intro: Intro,
   hook: Hook,
-  creds: Creds,
-  stats: Stats,
+  cornerstone: Cornerstone,
+  categories: Categories,
+  timeline: Timeline,
+  built: Built,
+  status: Status,
   cta: CTA,
   outro: Outro,
 };

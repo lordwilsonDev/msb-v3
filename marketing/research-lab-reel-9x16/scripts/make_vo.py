@@ -35,23 +35,33 @@ FPS = 30
 # anchor None = start 12 frames after the previous line in the same scene.
 SCENES = [
     ("intro", 75, [
-        ("v1", 12, "Black Swan Labz. Proof, not promises."),
+        ("v1", 12, "Black Swan Labz Research Lab."),
     ]),
-    ("hook", 60, []),
-    ("creds", 150, [
-        ("v2", 14, "Trained through Anthropic's Claude Academy and OpenAI's applied AI courses."),
+    ("hook", 100, [
+        ("v2", 14, "Intelligence is becoming abundant. Verification isn't."),
     ]),
-    ("stats", 240, [
-        ("v3", 14, "Thirty two point five million lines committed in one week."),
-        ("v4", None, "Our open AI project library spans thirty five categories."),
-        ("v5", None, "Real traffic is finding it. Two hundred seventy four referral views from GitHub and Hacker News."),
+    ("cornerstone", 150, [
+        ("v3", 14, "One week in December 2025: thirty two point five million lines committed."),
+        ("v4", None, "About five million are source code."),
+    ]),
+    ("categories", 150, [
+        ("v5", 14, "Thirty five categories, from orchestration to safety."),
+    ]),
+    ("timeline", 150, [
+        ("v6", 14, "The folders came first. The industry followed."),
+    ]),
+    ("built", 150, [
+        ("v7", 14, "What's built is checkable. Three thousand nine hundred forty two tests collected, at a pinned commit."),
+    ]),
+    ("status", 150, [
+        ("v8", 14, "Not everything is built. Check the receipts on GitHub."),
     ]),
     ("cta", 240, [
-        ("v6", 14, "New to AI? Book a free fifteen minute clarity call. No obligation."),
-        ("v7", None, "Blackswanlabz.com."),
+        ("v9", 14, "New to AI? Book a free fifteen minute clarity call."),
+        ("v10", None, "Blackswanlabz.com."),
     ]),
     ("outro", 120, [
-        ("v8", 14, "Strategy. Automation. Results."),
+        ("v11", 14, "Strategy. Automation. Results."),
     ]),
 ]
 TAIL = 20  # frames of breathing room after the last line in a scene
