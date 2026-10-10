@@ -1,0 +1,20 @@
+{
+  "name": "fox-valley-video",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts FoxValley out/fox-valley-4x5.mp4",
+    "render:square": "remotion render src/index.ts FoxValleySquare out/fox-valley-1x1.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.534",
+    "remotion": "4.0.534",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "typescript": "5.6.3"
+  }
+}
