@@ -379,15 +379,15 @@ const Hook: React.FC = () => {
 // ---------------------------------------------------------------------------
 const CREDS = [
   {org: 'ANTHROPIC', items: [
-    'Claude Academy: AI Fluency — Framework & Foundations',
-    'Claude Academy: AI Fluency for Educators',
-    'AI Fluency for Small Businesses',
-    'Claude 101',
+    {name: 'Claude Academy: AI Fluency — Framework & Foundations', id: '1f519d58f5830d11b01004f75d8b0cf8'},
+    {name: 'Claude Academy: AI Fluency for Educators', id: '3cfe8644c91f7c45e183b531ba89e24e'},
+    {name: 'AI Fluency for Small Businesses'},
+    {name: 'Claude 101', id: 'b93jetbu8x86'},
   ]},
   {org: 'OPENAI', items: [
-    'Applied AI Foundations',
-    'Agents and Workflows',
-    'AI Foundations',
+    {name: 'Applied AI Foundations', id: 'x9y4t1txt6'},
+    {name: 'Agents and Workflows', id: 'o7k2nywu68'},
+    {name: 'AI Foundations', id: '6jfsibsk19'},
   ]},
 ];
 
@@ -395,23 +395,23 @@ const Creds: React.FC = () => {
   const head = useRise(0, 30);
   let k = 0;
   return (
-    <AbsoluteFill style={{fontFamily: FONT, padding: '240px 80px'}}>
+    <AbsoluteFill style={{fontFamily: FONT, padding: '200px 80px'}}>
       <div style={{...head}}>
         <div style={{color: C.gold, fontSize: 30, letterSpacing: 7, fontWeight: 600}}>CREDENTIALS</div>
         <div style={{color: C.silver, fontSize: 92, fontWeight: 900, marginTop: 16, lineHeight: 1.04}}>
           Trained, not guessing.
         </div>
       </div>
-      <div style={{marginTop: 80}}>
+      <div style={{marginTop: 50}}>
         {CREDS.map((group) => (
           <div key={group.org} style={{marginBottom: 48}}>
             <div style={{color: C.gold, fontSize: 28, letterSpacing: 6, fontWeight: 700, marginBottom: 22}}>
               {group.org}
             </div>
-            {group.items.map((item) => {
+            {group.items.map((item: {name: string; id?: string}) => {
               const delay = 18 + k * 12;
               k++;
-              return <CredRow key={item} text={item} delay={delay} />;
+              return <CredRow key={item.name} text={item.name} id={item.id} delay={delay} />;
             })}
           </div>
         ))}
@@ -420,14 +420,21 @@ const Creds: React.FC = () => {
   );
 };
 
-const CredRow: React.FC<{text: string; delay: number}> = ({text, delay}) => {
+const CredRow: React.FC<{text: string; id?: string; delay: number}> = ({text, id, delay}) => {
   const frame = useCurrentFrame();
   const r = useRise(delay, 120);
   const bar = interpolate(frame, [delay, delay + 24], [0, 1], clamp);
   return (
-    <div style={{...r, display: 'flex', alignItems: 'center', gap: 28, marginBottom: 26}}>
-      <div style={{width: 8, height: 64, borderRadius: 4, background: C.gold, transform: `scaleY(${bar})`, boxShadow: `0 0 ${20 * bar}px rgba(212,175,90,0.6)`}} />
-      <div style={{color: C.silver, fontSize: 44, fontWeight: 800, lineHeight: 1.2}}>{text}</div>
+    <div style={{...r, display: 'flex', alignItems: 'center', gap: 28, marginBottom: 22}}>
+      <div style={{width: 8, height: 80, borderRadius: 4, background: C.gold, transform: `scaleY(${bar})`, boxShadow: `0 0 ${20 * bar}px rgba(212,175,90,0.6)`}} />
+      <div>
+        <div style={{color: C.silver, fontSize: 40, fontWeight: 800, lineHeight: 1.2}}>{text}</div>
+        {id && (
+          <div style={{color: C.muted, fontSize: 24, marginTop: 6, fontFamily: 'Menlo, Consolas, monospace', letterSpacing: 0.5}}>
+            Credential ID {id}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -436,9 +443,9 @@ const CredRow: React.FC<{text: string; delay: number}> = ({text, delay}) => {
 // 4. Stats: counters plus the Pitchhut page scrolling past
 // ---------------------------------------------------------------------------
 const COUNTERS = [
+  {to: 32.5, decimals: 1, suffix: 'M', label: 'Lines of code added in one week'},
   {to: 35, label: 'AI project categories'},
   {to: 274, label: 'Referral views from GitHub & Hacker News'},
-  {to: 34, label: 'Pitch clicks'},
   {to: 64, label: 'Showcase page views'},
 ];
 
@@ -454,7 +461,7 @@ const Stats: React.FC = () => {
       </div>
       <div style={{marginTop: 56, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24}}>
         {COUNTERS.map((c, i) => (
-          <CounterCard key={c.label} to={c.to} label={c.label} delay={20 + i * 12} />
+          <CounterCard key={c.label} to={c.to} decimals={c.decimals} suffix={c.suffix} label={c.label} delay={20 + i * 12} />
         ))}
       </div>
       <PhoneScroll />
@@ -462,12 +469,17 @@ const Stats: React.FC = () => {
   );
 };
 
-const CounterCard: React.FC<{to: number; label: string; delay: number}> = ({to, label, delay}) => {
+const CounterCard: React.FC<{
+  to: number;
+  decimals?: number;
+  suffix?: string;
+  label: string;
+  delay: number;
+}> = ({to, decimals = 0, suffix = '', label, delay}) => {
   const frame = useCurrentFrame();
   const r = useRise(delay, 40);
-  const v = Math.round(
-    interpolate(frame, [delay, delay + 50], [0, to], {...clamp, easing: Easing.out(Easing.cubic)}),
-  );
+  const raw = interpolate(frame, [delay, delay + 50], [0, to], {...clamp, easing: Easing.out(Easing.cubic)});
+  const shown = decimals ? raw.toFixed(decimals) : Math.round(raw).toString();
   return (
     <div
       style={{
@@ -478,14 +490,14 @@ const CounterCard: React.FC<{to: number; label: string; delay: number}> = ({to, 
         border: '1.5px solid rgba(212,175,90,0.35)',
       }}
     >
-      <div style={{color: C.gold, fontSize: 84, fontWeight: 900, lineHeight: 1}}>{v}</div>
+      <div style={{color: C.gold, fontSize: 84, fontWeight: 900, lineHeight: 1}}>{shown + suffix}</div>
       <div style={{color: C.muted, fontSize: 26, marginTop: 10, lineHeight: 1.3}}>{label}</div>
     </div>
   );
 };
 
 const PHONE_W = 600;
-const PHONE_H = 530;
+const PHONE_H = 500;
 const PHONE_IMG_H = (PHONE_W * 2340) / 1080; // 1300
 const PhoneScroll: React.FC = () => {
   const frame = useCurrentFrame();
@@ -497,7 +509,7 @@ const PhoneScroll: React.FC = () => {
   const frameIn = useRise(90, 80);
   const barIn = spring({frame: frame - 100, fps, config: {damping: 200}});
   return (
-    <div style={{position: 'absolute', top: 935, left: (WIDTH - PHONE_W) / 2, width: PHONE_W, height: PHONE_H, opacity: frameIn.opacity, transform: frameIn.transform}}>
+    <div style={{position: 'absolute', top: 965, left: (WIDTH - PHONE_W) / 2, width: PHONE_W, height: PHONE_H, opacity: frameIn.opacity, transform: frameIn.transform}}>
       <div
         style={{
           position: 'absolute',

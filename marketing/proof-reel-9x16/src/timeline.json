@@ -1,6 +1,6 @@
 {
   "fps": 30,
-  "durationInFrames": 1126,
+  "durationInFrames": 1274,
   "scenes": [
     {
       "name": "intro",
@@ -20,16 +20,16 @@
     {
       "name": "stats",
       "start": 373,
-      "length": 368
+      "length": 516
     },
     {
       "name": "cta",
-      "start": 741,
+      "start": 889,
       "length": 258
     },
     {
       "name": "outro",
-      "start": 999,
+      "start": 1147,
       "length": 127
     }
   ],
@@ -135,8 +135,77 @@
     {
       "id": "v3",
       "startFrame": 387,
-      "durationFrames": 139,
+      "durationFrames": 136,
       "file": "vo/v3.mp3",
+      "text": "Thirty two point five million lines of code, added in one week.",
+      "words": [
+        {
+          "text": "Thirty",
+          "startMs": 156,
+          "endMs": 378
+        },
+        {
+          "text": "two",
+          "startMs": 391,
+          "endMs": 612
+        },
+        {
+          "text": "point",
+          "startMs": 625,
+          "endMs": 938
+        },
+        {
+          "text": "five",
+          "startMs": 951,
+          "endMs": 1354
+        },
+        {
+          "text": "million",
+          "startMs": 1367,
+          "endMs": 1836
+        },
+        {
+          "text": "lines",
+          "startMs": 1849,
+          "endMs": 2161
+        },
+        {
+          "text": "of",
+          "startMs": 2174,
+          "endMs": 2266
+        },
+        {
+          "text": "code",
+          "startMs": 2279,
+          "endMs": 2721
+        },
+        {
+          "text": "added",
+          "startMs": 3099,
+          "endMs": 3333
+        },
+        {
+          "text": "in",
+          "startMs": 3346,
+          "endMs": 3477
+        },
+        {
+          "text": "one",
+          "startMs": 3490,
+          "endMs": 3724
+        },
+        {
+          "text": "week",
+          "startMs": 3737,
+          "endMs": 4141
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "startFrame": 535,
+      "durationFrames": 139,
+      "file": "vo/v4.mp3",
       "text": "Our open AI project library spans thirty five categories.",
       "words": [
         {
@@ -187,10 +256,10 @@
       ]
     },
     {
-      "id": "v4",
-      "startFrame": 538,
+      "id": "v5",
+      "startFrame": 686,
       "durationFrames": 183,
-      "file": "vo/v4.mp3",
+      "file": "vo/v5.mp3",
       "text": "Real traffic is finding it. Two hundred seventy four referral views from GitHub and Hacker News.",
       "words": [
         {
@@ -276,10 +345,10 @@
       ]
     },
     {
-      "id": "v5",
-      "startFrame": 755,
+      "id": "v6",
+      "startFrame": 903,
       "durationFrames": 153,
-      "file": "vo/v5.mp3",
+      "file": "vo/v6.mp3",
       "text": "New to AI? Book a free fifteen minute clarity call. No obligation.",
       "words": [
         {
@@ -345,10 +414,10 @@
       ]
     },
     {
-      "id": "v6",
-      "startFrame": 920,
+      "id": "v7",
+      "startFrame": 1068,
       "durationFrames": 59,
-      "file": "vo/v6.mp3",
+      "file": "vo/v7.mp3",
       "text": "Blackswanlabz.com.",
       "words": [
         {
@@ -359,10 +428,10 @@
       ]
     },
     {
-      "id": "v7",
-      "startFrame": 1013,
+      "id": "v8",
+      "startFrame": 1161,
       "durationFrames": 93,
-      "file": "vo/v7.mp3",
+      "file": "vo/v8.mp3",
       "text": "Strategy. Automation. Results.",
       "words": [
         {

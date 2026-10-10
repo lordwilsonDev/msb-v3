@@ -42,15 +42,16 @@ SCENES = [
         ("v2", 14, "Trained through Anthropic's Claude Academy and OpenAI's applied AI courses."),
     ]),
     ("stats", 240, [
-        ("v3", 14, "Our open AI project library spans thirty five categories."),
-        ("v4", None, "Real traffic is finding it. Two hundred seventy four referral views from GitHub and Hacker News."),
+        ("v3", 14, "Thirty two point five million lines of code, added in one week."),
+        ("v4", None, "Our open AI project library spans thirty five categories."),
+        ("v5", None, "Real traffic is finding it. Two hundred seventy four referral views from GitHub and Hacker News."),
     ]),
     ("cta", 240, [
-        ("v5", 14, "New to AI? Book a free fifteen minute clarity call. No obligation."),
-        ("v6", None, "Blackswanlabz.com."),
+        ("v6", 14, "New to AI? Book a free fifteen minute clarity call. No obligation."),
+        ("v7", None, "Blackswanlabz.com."),
     ]),
     ("outro", 120, [
-        ("v7", 14, "Strategy. Automation. Results."),
+        ("v8", 14, "Strategy. Automation. Results."),
     ]),
 ]
 TAIL = 20  # frames of breathing room after the last line in a scene
