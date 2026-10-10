@@ -1,0 +1,386 @@
+{
+  "fps": 30,
+  "durationInFrames": 1126,
+  "scenes": [
+    {
+      "name": "intro",
+      "start": 0,
+      "length": 129
+    },
+    {
+      "name": "hook",
+      "start": 129,
+      "length": 60
+    },
+    {
+      "name": "creds",
+      "start": 189,
+      "length": 184
+    },
+    {
+      "name": "stats",
+      "start": 373,
+      "length": 368
+    },
+    {
+      "name": "cta",
+      "start": 741,
+      "length": 258
+    },
+    {
+      "name": "outro",
+      "start": 999,
+      "length": 127
+    }
+  ],
+  "voiceover": [
+    {
+      "id": "v1",
+      "startFrame": 12,
+      "durationFrames": 97,
+      "file": "vo/v1.mp3",
+      "text": "Black Swan Labz. Proof, not promises.",
+      "words": [
+        {
+          "text": "Black",
+          "startMs": 117,
+          "endMs": 286
+        },
+        {
+          "text": "Swan",
+          "startMs": 300,
+          "endMs": 586
+        },
+        {
+          "text": "Labz",
+          "startMs": 599,
+          "endMs": 1068
+        },
+        {
+          "text": "Proof",
+          "startMs": 1510,
+          "endMs": 1862
+        },
+        {
+          "text": "not",
+          "startMs": 2031,
+          "endMs": 2214
+        },
+        {
+          "text": "promises",
+          "startMs": 2227,
+          "endMs": 2865
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "startFrame": 203,
+      "durationFrames": 150,
+      "file": "vo/v2.mp3",
+      "text": "Trained through Anthropic's Claude Academy and OpenAI's applied AI courses.",
+      "words": [
+        {
+          "text": "Trained",
+          "startMs": 104,
+          "endMs": 404
+        },
+        {
+          "text": "through",
+          "startMs": 417,
+          "endMs": 586
+        },
+        {
+          "text": "Anthropic's",
+          "startMs": 599,
+          "endMs": 1237
+        },
+        {
+          "text": "Claude",
+          "startMs": 1250,
+          "endMs": 1497
+        },
+        {
+          "text": "Academy",
+          "startMs": 1510,
+          "endMs": 2096
+        },
+        {
+          "text": "and",
+          "startMs": 2383,
+          "endMs": 2539
+        },
+        {
+          "text": "OpenAI's",
+          "startMs": 2552,
+          "endMs": 3294
+        },
+        {
+          "text": "applied",
+          "startMs": 3307,
+          "endMs": 3711
+        },
+        {
+          "text": "AI",
+          "startMs": 3724,
+          "endMs": 3997
+        },
+        {
+          "text": "courses",
+          "startMs": 4010,
+          "endMs": 4622
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "startFrame": 387,
+      "durationFrames": 139,
+      "file": "vo/v3.mp3",
+      "text": "Our open AI project library spans thirty five categories.",
+      "words": [
+        {
+          "text": "Our",
+          "startMs": 104,
+          "endMs": 273
+        },
+        {
+          "text": "open",
+          "startMs": 286,
+          "endMs": 573
+        },
+        {
+          "text": "AI",
+          "startMs": 651,
+          "endMs": 964
+        },
+        {
+          "text": "project",
+          "startMs": 977,
+          "endMs": 1536
+        },
+        {
+          "text": "library",
+          "startMs": 1550,
+          "endMs": 2083
+        },
+        {
+          "text": "spans",
+          "startMs": 2096,
+          "endMs": 2656
+        },
+        {
+          "text": "thirty",
+          "startMs": 2747,
+          "endMs": 3112
+        },
+        {
+          "text": "five",
+          "startMs": 3125,
+          "endMs": 3438
+        },
+        {
+          "text": "categories",
+          "startMs": 3451,
+          "endMs": 4245
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "startFrame": 538,
+      "durationFrames": 183,
+      "file": "vo/v4.mp3",
+      "text": "Real traffic is finding it. Two hundred seventy four referral views from GitHub and Hacker News.",
+      "words": [
+        {
+          "text": "Real",
+          "startMs": 104,
+          "endMs": 260
+        },
+        {
+          "text": "traffic",
+          "startMs": 273,
+          "endMs": 729
+        },
+        {
+          "text": "is",
+          "startMs": 742,
+          "endMs": 846
+        },
+        {
+          "text": "finding",
+          "startMs": 859,
+          "endMs": 1276
+        },
+        {
+          "text": "it",
+          "startMs": 1289,
+          "endMs": 1471
+        },
+        {
+          "text": "Two",
+          "startMs": 1914,
+          "endMs": 2057
+        },
+        {
+          "text": "hundred",
+          "startMs": 2070,
+          "endMs": 2344
+        },
+        {
+          "text": "seventy",
+          "startMs": 2357,
+          "endMs": 2721
+        },
+        {
+          "text": "four",
+          "startMs": 2734,
+          "endMs": 3060
+        },
+        {
+          "text": "referral",
+          "startMs": 3073,
+          "endMs": 3503
+        },
+        {
+          "text": "views",
+          "startMs": 3516,
+          "endMs": 3906
+        },
+        {
+          "text": "from",
+          "startMs": 3919,
+          "endMs": 4154
+        },
+        {
+          "text": "GitHub",
+          "startMs": 4167,
+          "endMs": 4687
+        },
+        {
+          "text": "and",
+          "startMs": 4883,
+          "endMs": 4948
+        },
+        {
+          "text": "Hacker",
+          "startMs": 4961,
+          "endMs": 5286
+        },
+        {
+          "text": "News",
+          "startMs": 5300,
+          "endMs": 5716
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "startFrame": 755,
+      "durationFrames": 153,
+      "file": "vo/v5.mp3",
+      "text": "New to AI? Book a free fifteen minute clarity call. No obligation.",
+      "words": [
+        {
+          "text": "New",
+          "startMs": 104,
+          "endMs": 247
+        },
+        {
+          "text": "to",
+          "startMs": 260,
+          "endMs": 365
+        },
+        {
+          "text": "AI",
+          "startMs": 378,
+          "endMs": 716
+        },
+        {
+          "text": "Book",
+          "startMs": 1146,
+          "endMs": 1367
+        },
+        {
+          "text": "a",
+          "startMs": 1380,
+          "endMs": 1432
+        },
+        {
+          "text": "free",
+          "startMs": 1445,
+          "endMs": 1849
+        },
+        {
+          "text": "fifteen",
+          "startMs": 1862,
+          "endMs": 2396
+        },
+        {
+          "text": "minute",
+          "startMs": 2409,
+          "endMs": 2643
+        },
+        {
+          "text": "clarity",
+          "startMs": 2656,
+          "endMs": 3034
+        },
+        {
+          "text": "call",
+          "startMs": 3047,
+          "endMs": 3411
+        },
+        {
+          "text": "No",
+          "startMs": 3841,
+          "endMs": 4023
+        },
+        {
+          "text": "obligation",
+          "startMs": 4036,
+          "endMs": 4687
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "startFrame": 920,
+      "durationFrames": 59,
+      "file": "vo/v6.mp3",
+      "text": "Blackswanlabz.com.",
+      "words": [
+        {
+          "text": "Blackswanlabz.com",
+          "startMs": 117,
+          "endMs": 1576
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "startFrame": 1013,
+      "durationFrames": 93,
+      "file": "vo/v7.mp3",
+      "text": "Strategy. Automation. Results.",
+      "words": [
+        {
+          "text": "Strategy",
+          "startMs": 117,
+          "endMs": 677
+        },
+        {
+          "text": "Automation",
+          "startMs": 1107,
+          "endMs": 1706
+        },
+        {
+          "text": "Results",
+          "startMs": 2122,
+          "endMs": 2708
+        }
+      ]
+    }
+  ]
+}
