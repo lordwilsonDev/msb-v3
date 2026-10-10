@@ -1,9 +1,9 @@
 {
   "id": "ep5",
-  "title": "Black Swan Labs is for the people.",
+  "title": "Black Swan Labz is for the people.",
   "funnelStage": "Partnership",
   "fps": 30,
-  "durationInFrames": 724,
+  "durationInFrames": 725,
   "scenes": [
     {
       "type": "title",
@@ -11,13 +11,13 @@
       "kicker": "A PARTNERSHIP",
       "lines": [
         "BLACK SWAN",
-        "LABS IS FOR",
+        "LABZ IS FOR",
         "THE PEOPLE."
       ],
       "sub": "We understand it's hard to find people you can trust in your business.",
-      "vo": "Black Swan Labs is for the people. We understand it's hard to find people you can trust to come into your business and help you.",
+      "vo": "Black Swan Labz is for the people. We understand it's hard to find people you can trust to come into your business and help you.",
       "start": 0,
-      "length": 248
+      "length": 249
     },
     {
       "type": "cards",
@@ -39,7 +39,7 @@
         }
       ],
       "vo": "We propose a partnership. You know the business. We know the AI. Let's get together and make it happen.",
-      "start": 248,
+      "start": 249,
       "length": 225
     },
     {
@@ -51,7 +51,7 @@
       "button": "BOOK THE 15-MINUTE CALL",
       "url": "blackswanlabz.com",
       "vo": "No obligation. A fifteen minute phone call. Let's talk about it.",
-      "start": 473,
+      "start": 474,
       "length": 161
     },
     {
@@ -59,7 +59,7 @@
       "dur": 90,
       "url": "BLACKSWANLABZ.COM",
       "vo": "Let's make it happen.",
-      "start": 634,
+      "start": 635,
       "length": 90
     }
   ],
@@ -67,9 +67,9 @@
     {
       "id": "ep5-0",
       "startFrame": 14,
-      "durationFrames": 214,
+      "durationFrames": 215,
       "file": "vo/ep5-0.mp3",
-      "text": "Black Swan Labs is for the people. We understand it's hard to find people you can trust to come into your business and help you.",
+      "text": "Black Swan Labz is for the people. We understand it's hard to find people you can trust to come into your business and help you.",
       "words": [
         {
           "text": "Black",
@@ -82,125 +82,125 @@
           "endMs": 664
         },
         {
-          "text": "Labs",
+          "text": "Labz",
           "startMs": 677,
-          "endMs": 1094
+          "endMs": 1107
         },
         {
           "text": "is",
-          "startMs": 1172,
-          "endMs": 1289
+          "startMs": 1185,
+          "endMs": 1302
         },
         {
           "text": "for",
-          "startMs": 1302,
-          "endMs": 1406
+          "startMs": 1315,
+          "endMs": 1419
         },
         {
           "text": "the",
-          "startMs": 1419,
-          "endMs": 1497
+          "startMs": 1432,
+          "endMs": 1510
         },
         {
           "text": "people",
-          "startMs": 1510,
-          "endMs": 1901
+          "startMs": 1523,
+          "endMs": 1914
         },
         {
           "text": "We",
-          "startMs": 2331,
-          "endMs": 2461
+          "startMs": 2344,
+          "endMs": 2474
         },
         {
           "text": "understand",
-          "startMs": 2474,
-          "endMs": 2995
+          "startMs": 2487,
+          "endMs": 3008
         },
         {
           "text": "it's",
-          "startMs": 3008,
-          "endMs": 3125
+          "startMs": 3021,
+          "endMs": 3138
         },
         {
           "text": "hard",
-          "startMs": 3138,
-          "endMs": 3477
+          "startMs": 3151,
+          "endMs": 3490
         },
         {
           "text": "to",
-          "startMs": 3490,
-          "endMs": 3542
+          "startMs": 3503,
+          "endMs": 3555
         },
         {
           "text": "find",
-          "startMs": 3555,
-          "endMs": 3919
+          "startMs": 3568,
+          "endMs": 3932
         },
         {
           "text": "people",
-          "startMs": 3932,
-          "endMs": 4219
+          "startMs": 3945,
+          "endMs": 4232
         },
         {
           "text": "you",
-          "startMs": 4232,
-          "endMs": 4349
+          "startMs": 4245,
+          "endMs": 4362
         },
         {
           "text": "can",
-          "startMs": 4362,
-          "endMs": 4466
+          "startMs": 4375,
+          "endMs": 4479
         },
         {
           "text": "trust",
-          "startMs": 4479,
-          "endMs": 4818
+          "startMs": 4492,
+          "endMs": 4831
         },
         {
           "text": "to",
-          "startMs": 4831,
-          "endMs": 4909
+          "startMs": 4844,
+          "endMs": 4922
         },
         {
           "text": "come",
-          "startMs": 4922,
-          "endMs": 5117
+          "startMs": 4935,
+          "endMs": 5130
         },
         {
           "text": "into",
-          "startMs": 5130,
-          "endMs": 5326
+          "startMs": 5143,
+          "endMs": 5339
         },
         {
           "text": "your",
-          "startMs": 5339,
-          "endMs": 5456
+          "startMs": 5352,
+          "endMs": 5469
         },
         {
           "text": "business",
-          "startMs": 5469,
-          "endMs": 5964
+          "startMs": 5482,
+          "endMs": 5977
         },
         {
           "text": "and",
-          "startMs": 6107,
-          "endMs": 6263
+          "startMs": 6120,
+          "endMs": 6276
         },
         {
           "text": "help",
-          "startMs": 6276,
-          "endMs": 6536
+          "startMs": 6289,
+          "endMs": 6549
         },
         {
           "text": "you",
-          "startMs": 6550,
-          "endMs": 6745
+          "startMs": 6562,
+          "endMs": 6758
         }
       ]
     },
     {
       "id": "ep5-1",
-      "startFrame": 262,
+      "startFrame": 263,
       "durationFrames": 191,
       "file": "vo/ep5-1.mp3",
       "text": "We propose a partnership. You know the business. We know the AI. Let's get together and make it happen.",
@@ -304,7 +304,7 @@
     },
     {
       "id": "ep5-2",
-      "startFrame": 487,
+      "startFrame": 488,
       "durationFrames": 127,
       "file": "vo/ep5-2.mp3",
       "text": "No obligation. A fifteen minute phone call. Let's talk about it.",
@@ -368,7 +368,7 @@
     },
     {
       "id": "ep5-3",
-      "startFrame": 648,
+      "startFrame": 649,
       "durationFrames": 56,
       "file": "vo/ep5-3.mp3",
       "text": "Let's make it happen.",
