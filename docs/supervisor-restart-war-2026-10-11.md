@@ -83,7 +83,7 @@ that caused the war.
 | `scripts/test-ops.sh` | **64 passed, 0 failed**, exit 0 (48 at `origin/main`, of which 1 was failing) — measured on a clean tree, i.e. **before** any pytest run in that checkout; running pytest first creates 8 v0 DBs and the H9 step then reports 63/1, correctly (see Diagnosed 3) |
 | `pytest tests/docs/` | **69 passed** (was 69 *errors* without `PYTHONPATH` pinned: a worktree imports `msb_v3` from the editable install at the main checkout, so conftest and package came from different trees) |
 | Mutation test | new assertions **fail** against the pre-fix scripts from `git HEAD` / `origin/main` — the pre-fix gate's recorded call is `tmux new-session -d -s msb-v3 … bash scripts/run.sh`; the pre-fix `stamp-schemas.py --check` fails the absent-dir assertion with rc=1, and the pre-fix FAIL path writes no verdict |
-| Factory pytest failures | reproduced exactly (`5 failed, 4010 passed, 17 skipped, 77 deselected`) and all 5 **pass at a clean `origin/main` worktree** |
+| Factory pytest failures | reproduced (`5 failed, 4010 passed, 17 skipped, 77 deselected`); **4 pass, 1 skips** at a clean `origin/main` worktree — the fifth is host hook drift, not tree state |
 
 ## Flaw register
 
@@ -184,12 +184,30 @@ that caused the war.
 
 ### Diagnosed — root cause reached, no code change made
 
-1. **The in-factory `5 failed, 4010 passed` is working-tree state, not a
-   regression.** Reproduced exactly by running the factory's own command
+1. **The in-factory `5 failed, 4010 passed` is tree/host state, not a code
+   regression.** Reproduced by running the factory's own command
    (`python -m pytest tests/ -q`) in the real checkout: `5 failed, 4010 passed,
-   17 skipped, 77 deselected` — identical to the in-factory summary. All five
-   **pass at a clean `origin/main` worktree** (`4 passed, 1 skipped`), so no
-   commit is broken. The failures are docs/host gates that measure the *live
+   17 skipped, 77 deselected`. The two headline numbers match the in-factory
+   figure exactly, which is what identifies the two runs as the same selection.
+   **Provenance caveat, stated so nobody over-reads this:** the *factory's own*
+   copy of that figure is **no longer re-readable** — `daily_gate_events.jsonl`
+   holds exactly **one** 2026-10-11 event (the identity-shadow probe) and **no
+   `gate_run` record at all** (suppressed by the crash bug above),
+   `~/Library/Logs/msb-factory-gate.log` contains **no `pytest` line**, and the
+   raw stdout artifact `/tmp/factory_gate_daily_run.log` is **0 bytes**. The
+   quotation of the factory's summary is therefore carried from earlier in the
+   session; my reproduction is the evidence that survives.
+
+   **Correction (redress):** I wrote that **all five pass** at a clean
+   `origin/main` worktree. Measured: **4 passed, 1 skipped**. The fifth,
+   `moie/test_moie_cli.py::test_installed_hook_matches_versioned`, cannot be
+   shown to pass anywhere — it **fails** on the main checkout (the installed
+   `.git/hooks/pre-push` is stale against `scripts/hooks/pre-push`) and **skips**
+   wherever no hook is installed. So it is **not** working-tree state like the
+   other four: it is a genuine, still-open **host/deploy drift** defect, and the
+   fix is `make hooks-install`, which I have deliberately not run because it
+   changes the host environment. The other four are tree-state and pass
+   cleanly. The failures are docs/host gates that measure the *live
    working tree*:
 
    | test | cause |
