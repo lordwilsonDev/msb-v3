@@ -768,6 +768,36 @@ sleep 2
   || bad "still running after kill: got $(sd_ask "$SD_A")"
 
 # ---------------------------------------------------------------------------
+section "H9 schema check: absent data dir is not drift, a v0 DB is"
+# Regression cover for origin/main's permanently red ops suite. `data/` is
+# gitignored, so a fresh clone has none; the check exited 1 on the missing dir
+# and ops-audit's H9 step reported that as "unstamped SQLite DB" when there
+# were no DBs at all. Absent and empty now mean the same thing (0 DBs), while
+# a real unstamped DB still fails.
+SSC="$ROOT/scripts/stamp-schemas.py"
+
+rc=0
+"${MSB_PYTHON:-python3}" "$SSC" --check --data-dir "$TMP/ss-absent" >"$TMP/ss1.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] && grep -q "0 DB(s)" "$TMP/ss1.out" \
+  && ok "absent data dir -> rc=0, 0 DB(s) (was rc=1, misreported as drift)" \
+  || bad "absent data dir rc=$rc out=$(tr '\n' ' ' < "$TMP/ss1.out")"
+
+mkdir -p "$TMP/ss-empty"
+rc=0
+"${MSB_PYTHON:-python3}" "$SSC" --check --data-dir "$TMP/ss-empty" >"$TMP/ss2.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] \
+  && ok "empty data dir -> rc=0 (same verdict as absent, as it must be)" \
+  || bad "empty data dir rc=$rc out=$(tr '\n' ' ' < "$TMP/ss2.out")"
+
+mkdir -p "$TMP/ss-drift"
+"${MSB_PYTHON:-python3}" -c "import sqlite3,sys; sqlite3.connect(sys.argv[1]).close()" "$TMP/ss-drift/old.db"
+rc=0
+"${MSB_PYTHON:-python3}" "$SSC" --check --data-dir "$TMP/ss-drift" >"$TMP/ss3.out" 2>&1 || rc=$?
+[ "$rc" != 0 ] && grep -q "unstamped" "$TMP/ss3.out" \
+  && ok "a genuinely unstamped DB still fails rc=$rc (the signal is intact)" \
+  || bad "real drift not caught: rc=$rc out=$(tr '\n' ' ' < "$TMP/ss3.out")"
+
+# ---------------------------------------------------------------------------
 echo
 echo "=== result: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1

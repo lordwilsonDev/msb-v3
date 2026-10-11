@@ -59,9 +59,15 @@ that caused the war.
    the job loaded). The readiness probe is now **two samples 1s apart**.
    `BASE_URL` and `LOG` gained `MSB_BASE_URL` / `MSB_GATE_LOG` overrides so this
    path is testable without touching the live service or the real log.
-3. **`scripts/test-ops.sh`** — 7 new assertions: the lock (standby, failover,
-   stale-lock clearing, release on exit) and the gate's start path (healthy →
-   starts nothing; down + loaded → kickstart, no tmux; down + unloaded → tmux).
+3. **`scripts/test-ops.sh`** — 16 new assertions (48 items before → 64 now, 0
+   failing): the lock (standby, failover, stale-lock clearing, release on exit),
+   the gate's start path (healthy → starts nothing; down + loaded → kickstart, no
+   tmux; down + unloaded → tmux), the supervisor detector (relative invocation,
+   per-checkout cwd filter), and the H9 schema check (absent dir = 0 DBs, empty
+   dir = same verdict, a v0 DB still fails).
+4. **`scripts/stamp-schemas.py`** — `--check` no longer fails on an absent `data/`
+   (see the register below): absent and empty now agree, the stamping path still
+   errors on a missing dir, and genuine v0 drift still fails.
 
 ## Verification
 
@@ -74,8 +80,10 @@ that caused the war.
 | **Retrieval end-to-end** | returned `99_Meta/research-digest-2026-10-11.md` (today's note) |
 | Restart via `launchctl kickstart` | PID 1209 → 90756, health 200 in ~1s, **zero** counter increase |
 | Live rival test | a real second supervisor logged `standing by for the lock`, never started a child, never touched the listener |
-| `scripts/test-ops.sh` | **55 passed, 0 failed**, exit 0 |
-| Mutation test | new assertions **fail** against the pre-fix scripts from `git HEAD` — the pre-fix gate's recorded call is `tmux new-session -d -s msb-v3 … bash scripts/run.sh` |
+| `scripts/test-ops.sh` | **64 passed, 0 failed**, exit 0 (48 at `origin/main`, of which 1 was failing) — measured on a clean tree, i.e. **before** any pytest run in that checkout; running pytest first creates 8 v0 DBs and the H9 step then reports 63/1, correctly (see Diagnosed 3) |
+| `pytest tests/docs/` | **69 passed** (was 69 *errors* without `PYTHONPATH` pinned: a worktree imports `msb_v3` from the editable install at the main checkout, so conftest and package came from different trees) |
+| Mutation test | new assertions **fail** against the pre-fix scripts from `git HEAD` / `origin/main` — the pre-fix gate's recorded call is `tmux new-session -d -s msb-v3 … bash scripts/run.sh`; the pre-fix `stamp-schemas.py --check` fails the absent-dir assertion with rc=1, and the pre-fix FAIL path writes no verdict |
+| Factory pytest failures | reproduced exactly (`5 failed, 4010 passed, 17 skipped, 77 deselected`) and all 5 **pass at a clean `origin/main` worktree** |
 
 ## Flaw register
 
@@ -148,6 +156,108 @@ that caused the war.
   never compare equal. Both sides now use `pwd -P`. This is the class of bug
   that makes a liveness check quietly useless rather than loudly broken, and it
   was caught only because the new test asserted the positive case.
+- **`stamp-schemas.py --check` failed every fresh checkout, and ops-audit
+  reported it as schema drift.** `data/` is gitignored, so a fresh clone or
+  worktree has none. The script returned **1** whenever the data dir was
+  missing, and `ops-audit.sh`'s H9 step turned *any* non-zero into `FAIL:
+  unstamped SQLite DB (run scripts/stamp-schemas.py)` — a cause it never
+  verified, pointing the operator at a script that cannot fix an absent
+  directory. Measured on a clean `origin/main` worktree: no `data/` →
+  `[stamp-schemas] data dir not found: .../data` → rc 1 → the ops-audit success
+  path fails (`47 passed, 1 failed`). An **empty** dir took the opposite
+  verdict (`OK: 0 DB(s)`, rc 0), which is the tell: absent and empty mean the
+  same thing — no databases to stamp — and only one of them was accepted.
+  `--check` now treats the absent dir as vacuously fine, while the *stamping*
+  path still errors on a missing dir and a genuinely v0 DB still fails. With
+  the fix the suite is `64 passed, 0 failed`; with the fix reverted the new
+  absent-dir assertion fails on `rc=1` (mutation-checked), so it is not vacuous.
+  This is the real reason the ops suite was red on `origin/main` (old item 10,
+  now closed) and it also buried the drift signal the gate exists to carry.
+
+  **Correction (redress):** the previous version of this register said
+  *"whatever fixes it is among the 11 held commits"*. **That was wrong.**
+  Nothing in the held commits touches it — `scripts/stamp-schemas.py` is
+  **byte-identical** between `origin/main` and local `main` (empty `git diff`),
+  and the held commits change no DB-creation code. The same code was green on
+  local `main` only because that checkout has a long-lived `data/` whose DBs
+  were stamped at some earlier point: **disk state, not code.**
+
+### Diagnosed — root cause reached, no code change made
+
+1. **The in-factory `5 failed, 4010 passed` is working-tree state, not a
+   regression.** Reproduced exactly by running the factory's own command
+   (`python -m pytest tests/ -q`) in the real checkout: `5 failed, 4010 passed,
+   17 skipped, 77 deselected` — identical to the in-factory summary. All five
+   **pass at a clean `origin/main` worktree** (`4 passed, 1 skipped`), so no
+   commit is broken. The failures are docs/host gates that measure the *live
+   working tree*:
+
+   | test | cause |
+   |---|---|
+   | `docs/test_blueprint_index.py::test_index_matches_tree` | `docs/blueprint-index.md` (modified WIP) drifted from the tree |
+   | `docs/test_doc_records.py::test_gate_is_green` | 8 stale count claims in `docs/what-msb-v3-is.md` |
+   | `docs/test_doc_records.py::test_counts_match_live_measurement` | the same 8 mismatches |
+   | `docs/test_surface_map.py::test_surface_map_covers_every_subpackage` | untracked WIP subpackage `msb_v3/question_engineer` undocumented in `docs/SURFACE.md` |
+   | `moie/test_moie_cli.py::test_installed_hook_matches_versioned` | `.git/hooks/pre-push` stale vs `scripts/hooks/pre-push` (host state; skips on a fresh clone) |
+
+   **Why the two runs disagree at all** (this is the part the old item got
+   backwards): the marker set is *identical* — **77 deselected in both**. The
+   difference is the **tree**, not the invocation. The pre-push gate runs in a
+   staged copy **with no `.git`**, where `tests/docs/test_doc_records.py` skips
+   **9 tests** (of 32 skips) and `moie/test_moie_cli.py` skips 1; the factory
+   runs in the real checkout, where they execute. So the gate that blocks a push
+   is structurally **blind** to the doc-drift tests the daily gate fails on —
+   the two can never agree.
+
+   **Not fixed, deliberately:** the honest repair is a policy choice — either the
+   daily gate stops judging uncommitted working-tree state, or the WIP tree gets
+   its claims regenerated. Both change what the gate means, and the second one
+   touches 47 files of somebody else's in-progress work.
+2. **The slow `/rag/index/status` is cost, not a lock — and it is not cached.**
+   Measured in-process: `_tree_manifest` **0.28s** warm / 0.82s cold (the walk
+   reads **4,263 files / 23.6 MB** — *not* the 12,169 files / 179 MB I first
+   recorded, which was an unexcluded `rglob` that swept `Claude-Conversations`;
+   corrected here), `_verify_snapshot_collection` **1.02s** for 10,894 points in
+   43 scroll pages, full endpoint **0.89s** warm. Over HTTP: **5.74s** now,
+   and 6.5 / 12.8 / 28.3 / 8.2s when first measured — variance that tracks page
+   cache and Qdrant latency, not server load. Chunk-level hashing is only
+   **0.03s** of it, so "optimise the hashing" was never the answer.
+
+   **Two hypotheses falsified by measurement:** (a) that a *busy* app made the
+   status call slow — `/health` answered in **0.006-0.3s** even under concurrent
+   search; (b) that a synchronous CPU-bound handler **starved the event loop** —
+   during a **5.74s** status call, six consecutive `/health` requests returned in
+   **0.00-0.03s**, so FastAPI is running the handler in its threadpool. No cache
+   was added: a cached `VERIFIED_CURRENT` would re-introduce exactly the
+   stale-looks-current failure this layer was hardened against, and the real fix
+   is client-side, which is already in (`vault-check.py`: 60s bound + one retry,
+   and `BLOCKED` no longer means "the client gave up").
+
+3. **Running the test suite creates v0 databases that the H9 gate then flags.**
+   A second, independent mechanism behind the same red ops suite. Measured on a
+   clean branch checkout: `data/` absent → running ***one* test file**
+   (`pytest tests/docs/test_doc_records.py`) creates **8 databases under
+   `CWD/data/`, all at schema v0**; `--collect-only` creates none, and a bare
+   `import msb_v3` creates none. So it is the test *body*, not import, and it
+   lands in the working tree rather than `tmp_path`.
+
+   The enabler is in `src/msb_v3/core/config.py`: several DB defaults are
+   **relative** — `"data/node/node.db"`, `"data/node/audit_chain.db"`,
+   `"data/vectors/vectors.db"`, `"data/memory_fabric/memory.db"`,
+   `"data/evidence/decision_spine.db"`, `"data/codegraph/graph.db"` — and a
+   relative path resolves against **the process CWD**, bypassing the repo
+   anchor. `tests/conftest.py` only redirects the paths it explicitly patches
+   (autouse fixtures pointing each at `tmp_path`); anything constructed before
+   those run, or any default it does not cover, spills into the checkout's
+   `data/`.
+
+   **Consequence:** run the tests, then run the ops suite, and `ops-audit`'s
+   success path fails — *correctly*, because the DBs really are unstamped. This
+   is why the gate can be red on a developer machine with no code change at all,
+   and it is the second face of "`test-ops.sh` is red". **Not fixed:** anchoring
+   these defaults is a change to path semantics across `settings`, which is a
+   wider blast radius than this incident — and deployments may be relying on
+   CWD-relative resolution. Recorded so the next person does not re-derive it.
 
 ### Open
 
@@ -161,14 +271,7 @@ that caused the war.
    returns. Deliberate: running the child in the background would break
    `reclaim-port.sh`'s documented foreground-child assumption. Consequence:
    failover is correct but not instantaneous.
-3. **The in-factory pytest invocation fails tests that a plain run passes.**
-   The 2026-10-11 run recorded `5 failed, 4010 passed` in-factory while the same
-   day's pre-push portability gate ran a clean `3939 passed, 0 failed` from a
-   foreign checkout. Different counts imply a different marker set or
-   invocation, and those 5 failures are the actual reason the gate reads FAILED.
-   Not diagnosed. The earlier handoff note (`12_MSB/msb-v3-freebuff-handoff-2026-09-16.md`)
-   records the same class of discrepancy at 3 failures.
-4. **Identity-shadow criterion 1 reported "MET" from 32 stale records.** Now
+3. **Identity-shadow criterion 1 reported "MET" from 32 stale records.** Now
    root-caused as a **symptom of this incident**: the 2026-10-11 06:15 probe died
    with `POST http://127.0.0.1:8766/mcp/proxy failed: [Errno 61] Connection
    refused` — it landed in a down-window of the 14.3s restart cycle, so no
@@ -177,39 +280,27 @@ that caused the war.
    cannot distinguish "no evidence this run" from "the evidence is stale", and
    reports MET either way. The war is fixed, so the probe should record again on
    the next 06:15 run — **not yet confirmed**.
-5. **The audit-chain anchor still reads STALE.** Not investigated.
-6. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
+4. **The audit-chain anchor still reads STALE.** Not investigated.
+5. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
    **11 of its commits marked `[do-not-push]`** (BLOCKED gate evidence,
    2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**
    `[do-not-push]` guard — the guard that exists in the PZS repo
    (`scripts/lib/held_commits.sh`) is not present here. A naive `git push` would
    publish deliberately-held evidence. The fix was therefore pushed on a branch
    based on `origin/main`, not on `main`.
-7. **The pre-push hook gates the working tree, not the commits**, and this
+6. **The pre-push hook gates the working tree, not the commits**, and this
     working tree carries 48 unrelated modified files — so any push from this
     checkout is entangled with edits that have nothing to do with it.
-8. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
+7. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
     a claimed "Markdown under `docs/`: N files / M lines" in
     `docs/what-msb-v3-is.md` against the live tree, so adding *any* record changes
     those numbers and blocks a push until the claim is updated. Updating the claim
     is part of adding a record — not a bypass, and not a reason to reach for
     `MSB_SKIP_PORTABILITY=1`.
-9. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
+8. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
     set of numbers (155 files / 37,218 lines, dated 2026-09-26) that already
-    disagrees with the live tree, so the lint gate fails on `main` independently
-    of this change.
-10. **`scripts/test-ops.sh` is red on `origin/main`, green on local `main`.**
-    Run on a clean `origin/main` worktree (none of this session's changes
-    present): `47 passed, 1 failed` — `ops-audit: success path wrong: rc=1`,
-    expecting rc=0. The identical run on local `main` is green, so whatever
-    fixes it is among the 11 held commits. The pushed branch therefore inherits
-    that single failure (measured: 60 passed / 1 failed — its 13 new assertions
-    all pass, 47 + 13 = 60). Worth knowing: the ops suite is **not** part of the
-    pre-push gate (that runs lint + the pytest portability suite), so a red ops
-    suite does not block a push and stays invisible.
-
-11. **The status endpoint is slow on every call (6-28s, measured).**
-    `/rag/index/status` re-checks the committed manifest against the source
-    tree each time, so it cannot be made fast by retrying. This is the
-    underlying cause of the false `exit 2` above; the client-side bound only
-    treats the symptom. Unfixed — it needs caching or a cheap fast-path.
+    disagrees with the live tree. The live tree now measures **158 files /
+    39,070 lines**, so *both* the committed claim (153 / 35,405) and the dirty
+    edit (155 / 37,218) are stale — the dirty edit had already been overtaken.
+    `doc_records` therefore fails on `main` independently of this change, and
+    regenerating the claim is somebody's WIP decision, not mine.

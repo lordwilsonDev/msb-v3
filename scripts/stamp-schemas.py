@@ -41,6 +41,19 @@ def main() -> int:
 
     data_dir = Path(args.data_dir).resolve() if args.data_dir else _data_dir()
     if not data_dir.is_dir():
+        # An ABSENT data dir and an EMPTY one mean the same thing — no databases
+        # to stamp — and only the empty one was accepted (`list_versions` on an
+        # empty dir is a vacuous pass). `data/` is gitignored, so a fresh clone
+        # never has one: `--check` therefore exited 1 on every fresh checkout,
+        # ops-audit's H9 step reported it as "unstamped SQLite DB" when there
+        # were no DBs at all, and the ops suite was permanently red while the
+        # real drift signal it exists for stayed buried behind that noise.
+        # `--check` now passes vacuously; the stamping path still errors, since
+        # "stamp the databases" against a directory that isn't there is a
+        # genuine misconfiguration rather than a vacuous pass.
+        if args.check:
+            print(f"[stamp-schemas] OK: no data dir at {data_dir} — 0 DB(s)")
+            return 0
         print(f"[stamp-schemas] data dir not found: {data_dir}", file=sys.stderr)
         return 1
 
