@@ -699,6 +699,75 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+section "supervisor-detect: sees relative invocations, filters by cwd"
+# start.sh used `pgrep -f 'msb-v3/scripts/run.sh'` — absolute-path only — so a
+# supervisor started as `bash scripts/run.sh` read as "not running". The shared
+# detector must see it AND must not be fooled by an unrelated checkout running
+# an identical command line.
+for d in "$TMP/sd/repo-a" "$TMP/sd/repo-b"; do
+  mkdir -p "$d/scripts/lib" "$d/data"
+  cp "$ROOT/scripts/run.sh" "$d/scripts/run.sh"
+  cp "$ROOT/scripts/lib/reclaim-port.sh" "$d/scripts/lib/"
+  cp "$ROOT/scripts/lib/supervisor-detect.sh" "$d/scripts/lib/"
+  : > "$d/.env"
+done
+printf '#!/bin/bash\nsleep 1\n' > "$TMP/sd/fakepy"; chmod +x "$TMP/sd/fakepy"
+
+sd_ask() { # $1 = checkout to ask about; prints running|not-running
+  REPO="$1" bash -c "
+    set -uo pipefail
+    . '$ROOT/scripts/lib/supervisor-detect.sh'
+    supervisor_running && echo running || echo not-running
+  "
+}
+
+sd_spawn() { # $1 = checkout, $2 = port, $3 = lock; starts a RELATIVE run.sh there
+  (
+    cd "$1" || exit 1
+    env MSB_REPO="$1" MSB_CONTAINER=1 MSB_PYTHON="$TMP/sd/fakepy" \
+        MSB_PORT="$2" MSB_SUPERVISOR_LOCK="$3" \
+        /bin/bash scripts/run.sh > "$1/../$( basename "$1" ).log" 2>&1 &
+    echo $! > "$1/../$( basename "$1" ).pid"
+  )
+}
+
+SD_A="$TMP/sd/repo-a"
+SD_B="$TMP/sd/repo-b"
+
+# case 1: nothing (of ours) running -> not-running, and no crash under set -u
+[ "$(sd_ask "$SD_A")" = "not-running" ] \
+  && ok "no supervisor for this checkout: reports not-running" \
+  || bad "empty case: got $(sd_ask "$SD_A")"
+
+# case 2: repo-a started via a RELATIVE path -> detected (the old needle missed it)
+sd_spawn "$SD_A" 19735 "$TMP/sd/lock-a"
+sleep 3
+A_PID="$(cat "$TMP/sd/repo-a.pid" 2>/dev/null || echo "")"
+[ "$(sd_ask "$SD_A")" = "running" ] \
+  && ok "relative 'bash scripts/run.sh' of repo-a detected (old check missed this)" \
+  || bad "relative invocation undetected: got $(sd_ask "$SD_A") log=$(tr '\n' ' ' < "$TMP/sd/repo-a.log" 2>/dev/null)"
+
+# case 3: an unrelated checkout running the same command line must not leak in.
+sd_spawn "$SD_B" 19736 "$TMP/sd/lock-b"
+sleep 3
+B_PID="$(cat "$TMP/sd/repo-b.pid" 2>/dev/null || echo "")"
+[ "$(sd_ask "$SD_B")" = "running" ] \
+  && ok "repo-b's own supervisor detected for repo-b" \
+  || bad "repo-b undetected: got $(sd_ask "$SD_B")"
+kill -9 "$B_PID" 2>/dev/null || true
+sleep 2
+# repo-a must still be seen after repo-b exits: proves the cwd filter is
+# per-checkout, not merely "some run.sh exists somewhere".
+[ "$(sd_ask "$SD_A")" = "running" ] \
+  && ok "repo-a still detected after repo-b exits (cwd filter is per-checkout)" \
+  || bad "repo-a lost detection: got $(sd_ask "$SD_A")"
+kill -9 "$A_PID" 2>/dev/null || true
+sleep 2
+[ "$(sd_ask "$SD_A")" = "not-running" ] \
+  && ok "after exit: reports not-running again" \
+  || bad "still running after kill: got $(sd_ask "$SD_A")"
+
+# ---------------------------------------------------------------------------
 echo
 echo "=== result: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1

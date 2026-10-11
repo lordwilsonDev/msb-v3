@@ -38,6 +38,13 @@ AGENT_LABEL="com.lordwilson.msb-v3"
 TEMPLATE_PLIST="$REPO/scripts/launchd/$AGENT_LABEL.plist"
 AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
 
+# Supervisor liveness: matches relative AND absolute run.sh invocations and
+# verifies the process's cwd is THIS checkout. The old inline
+# `pgrep -f 'msb-v3/scripts/run.sh'` only saw the absolute invocations this
+# script makes, so a hand-started `bash scripts/run.sh` read as "not running".
+# shellcheck source=lib/supervisor-detect.sh
+. "$REPO/scripts/lib/supervisor-detect.sh"
+
 mkdir -p "$REPO/.artifacts" "$REPO/logs"
 
 # Does the installed plist point at a DIFFERENT checkout than $REPO?
@@ -157,12 +164,12 @@ case "$cmd" in
       # The port can drop while the app is still flushing, and an immediate
       # restart then hits the bind race.
       for ((i = 0; i < 20; i++)); do
-        if ! pgrep -f 'msb-v3/scripts/run.sh' >/dev/null 2>&1 && ! healthy; then
+        if ! supervisor_running && ! healthy; then
           break
         fi
         sleep 0.5
       done
-      if pgrep -f 'msb-v3/scripts/run.sh' >/dev/null 2>&1 || healthy; then
+      if supervisor_running || healthy; then
         log "WARNING: msb-v3 still alive after bootout -- not stopped cleanly" >&2
         exit 1
       fi

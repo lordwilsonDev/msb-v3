@@ -101,6 +101,34 @@ that caused the war.
   `test-ops.sh` case, mutation-checked against the gate at `HEAD`.
 - The script's header documented exit code `0` for BLOCKED-with-no-fail, which
   the code never did (it exits 1 on any non-PASS verdict). Header corrected.
+- **`start.sh`'s supervisor check was absolute-path only.** It used
+  `pgrep -f 'msb-v3/scripts/run.sh'`, which matches only the invocations
+  `start.sh` itself makes, so a supervisor started as `bash scripts/run.sh` from
+  the repo root read as **not running** — the same blind spot that lets a second
+  supervisor start. Replaced with `scripts/lib/supervisor-detect.sh`: a relative
+  needle plus a cwd check, unit-tested in the ops suite. Mutation-checked — the
+  old check answers "not-running" over a live supervisor.
+
+  **Correction (redress) for an earlier version of this list:** I originally
+  wrote that `hygiene/h02_restart_runner.py`'s `pgrep -f 'scripts/run.sh'` could
+  be satisfied by another directory's copy and that its comment's claim was
+  false. That was **wrong** — `h02` pairs the relative needle with an
+  `lsof ... -d cwd` check and `Path(...).resolve()`, which does prevent an
+  unrelated checkout from satisfying the guard. `h02` was correct; only
+  `start.sh` had the defect. The new shared detector follows `h02`'s approach.
+- **The gate's raw-output file was named like JSON but is not JSON.**
+  `run_factory` interleaves `[run_factory] ...` progress lines with its JSON
+  body, so `json.load('/tmp/factory_gate_daily_run.json')` fails, yet the error
+  path sent operators there as if it were the artifact. Renamed to
+  `/tmp/factory_gate_daily_run.log` (overridable via `MSB_GATE_STDOUT`) and the
+  message now names both the raw output and the real artifact,
+  `artifacts/hygiene/factory_gate.json`.
+- **Lesson recorded, not just fixed:** the first version of the detector
+  silently returned "not running" because bash's `pwd` is *logical* — it returns
+  `/tmp/...` while `lsof` reports the physical `/private/tmp/...`, so the two can
+  never compare equal. Both sides now use `pwd -P`. This is the class of bug
+  that makes a liveness check quietly useless rather than loudly broken, and it
+  was caught only because the new test asserted the positive case.
 
 ### Open
 
@@ -114,24 +142,14 @@ that caused the war.
    returns. Deliberate: running the child in the background would break
    `reclaim-port.sh`'s documented foreground-child assumption. Consequence:
    failover is correct but not instantaneous.
-3. **Supervisor detection is path-shaped.** `start.sh` matches
-   `pgrep -f 'msb-v3/scripts/run.sh'`, so a *relative* `bash scripts/run.sh`
-   invocation is invisible to its liveness checks; `hygiene/h02_restart_runner.py`
-   matches `'scripts/run.sh'`, which its own comment claims cannot be satisfied by
-   another directory's copy but in fact can. Reduced to a diagnostic problem by
-   the lock, not yet fixed.
-4. **The in-factory pytest invocation fails tests that a plain run passes.**
+3. **The in-factory pytest invocation fails tests that a plain run passes.**
    The 2026-10-11 run recorded `5 failed, 4010 passed` in-factory while the same
    day's pre-push portability gate ran a clean `3939 passed, 0 failed` from a
    foreign checkout. Different counts imply a different marker set or
    invocation, and those 5 failures are the actual reason the gate reads FAILED.
    Not diagnosed. The earlier handoff note (`12_MSB/msb-v3-freebuff-handoff-2026-09-16.md`)
    records the same class of discrepancy at 3 failures.
-5. **`/tmp/factory_gate_daily_run.json` is not valid JSON** — it interleaves
-   `[run_factory] ...` progress lines with the JSON body, and nothing rotates or
-   parses it, yet the script's error path points operators at it as an artifact.
-   `json.load` on it fails (observed).
-6. **Identity-shadow criterion 1 reported "MET" from 32 stale records.** Now
+4. **Identity-shadow criterion 1 reported "MET" from 32 stale records.** Now
    root-caused as a **symptom of this incident**: the 2026-10-11 06:15 probe died
    with `POST http://127.0.0.1:8766/mcp/proxy failed: [Errno 61] Connection
    refused` — it landed in a down-window of the 14.3s restart cycle, so no
@@ -140,28 +158,37 @@ that caused the war.
    cannot distinguish "no evidence this run" from "the evidence is stale", and
    reports MET either way. The war is fixed, so the probe should record again on
    the next 06:15 run — **not yet confirmed**.
-7. **The audit-chain anchor still reads STALE.** Not investigated.
-8. **One unexplained transient:** a single `vault-check.py --fresh` returned
+5. **The audit-chain anchor still reads STALE.** Not investigated.
+6. **One unexplained transient:** a single `vault-check.py --fresh` returned
    exit 2 ("service unreachable") while `/health` answered 200 immediately
    before and after, with no restart recorded. Six subsequent runs all exited 0.
    Not reproduced, not diagnosed — recorded rather than dismissed.
-9. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` by 15
-   commits, **11 of them marked `[do-not-push]`** (BLOCKED gate evidence,
+7. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
+   **11 of its commits marked `[do-not-push]`** (BLOCKED gate evidence,
    2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**
    `[do-not-push]` guard — the guard that exists in the PZS repo
    (`scripts/lib/held_commits.sh`) is not present here. A naive `git push` would
    publish deliberately-held evidence. The fix was therefore pushed on a branch
    based on `origin/main`, not on `main`.
-10. **The pre-push hook gates the working tree, not the commits**, and this
+8. **The pre-push hook gates the working tree, not the commits**, and this
     working tree carries 48 unrelated modified files — so any push from this
     checkout is entangled with edits that have nothing to do with it.
-11. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
+9. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
     a claimed "Markdown under `docs/`: N files / M lines" in
     `docs/what-msb-v3-is.md` against the live tree, so adding *any* record changes
     those numbers and blocks a push until the claim is updated. Updating the claim
     is part of adding a record — not a bypass, and not a reason to reach for
     `MSB_SKIP_PORTABILITY=1`.
-12. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
+10. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
     set of numbers (155 files / 37,218 lines, dated 2026-09-26) that already
     disagrees with the live tree, so the lint gate fails on `main` independently
     of this change.
+11. **`scripts/test-ops.sh` is red on `origin/main`, green on local `main`.**
+    Run on a clean `origin/main` worktree (none of this session's changes
+    present): `47 passed, 1 failed` — `ops-audit: success path wrong: rc=1`,
+    expecting rc=0. The identical run on local `main` is green, so whatever
+    fixes it is among the 11 held commits. The pushed branch therefore inherits
+    that single failure (measured: 60 passed / 1 failed — its 13 new assertions
+    all pass, 47 + 13 = 60). Worth knowing: the ops suite is **not** part of the
+    pre-push gate (that runs lint + the pytest portability suite), so a red ops
+    suite does not block a push and stays invisible.

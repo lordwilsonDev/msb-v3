@@ -35,6 +35,11 @@ PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 # must be able to drive it against a stub service and a scratch log instead of
 # the live :8766 and the real log file.
 LOG="${MSB_GATE_LOG:-$HOME/Library/Logs/msb-factory-gate.log}"
+# The factory's raw stdout. Named .log, not .json: run_factory interleaves
+# `[run_factory] ...` progress lines with its JSON body, so json.load on this
+# file fails. The machine-readable artifact is
+# artifacts/hygiene/factory_gate.json (written by the factory, pure JSON).
+FACTORY_STDOUT="${MSB_GATE_STDOUT:-/tmp/factory_gate_daily_run.log}"
 BASE_URL="${MSB_BASE_URL:-http://127.0.0.1:8766}"
 SESSION="msb-v3"
 EVENTS_LOG="$REPO/artifacts/hygiene/daily_gate_events.jsonl"
@@ -165,7 +170,7 @@ log "running factory gate..."
 # and it skipped the FAIL-evidence commit below, so a failing gate left no
 # committed trace at all and reported a misleading "crashed" notification.
 # The crash branch is now "exited non-zero AND wrote no readable verdict".
-MSB_REPO="$REPO" "$PY" "$FACTORY" > /tmp/factory_gate_daily_run.json 2>>"$LOG"
+MSB_REPO="$REPO" "$PY" "$FACTORY" > "$FACTORY_STDOUT" 2>>"$LOG"
 rc=$?
 
 VERDICT=$(REPO="$REPO" python3 -c '
@@ -189,7 +194,8 @@ except Exception:
 # Distinguish a real crash from a FAIL verdict. VERDICT is already extracted
 # above; only an unreadable verdict plus a non-zero exit is a crash.
 if [ "$VERDICT" = "UNKNOWN" ] && [ "$rc" -ne 0 ]; then
-  log "ERROR: factory exited $rc and wrote no readable verdict — treating as a crash; see /tmp/factory_gate_daily_run.json"
+  log "ERROR: factory exited $rc and wrote no readable verdict — treating as a crash"
+  log "       raw stdout: $FACTORY_STDOUT | artifact: $REPO/artifacts/hygiene/factory_gate.json"
   send_notification "Factory gate crashed (exit $rc, no verdict written) — see log" "CRASH"
   exit 1
 fi
