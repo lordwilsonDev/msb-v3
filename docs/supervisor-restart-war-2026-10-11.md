@@ -68,6 +68,12 @@ that caused the war.
 4. **`scripts/stamp-schemas.py`** — `--check` no longer fails on an absent `data/`
    (see the register below): absent and empty now agree, the stamping path still
    errors on a missing dir, and genuine v0 drift still fails.
+5. **`scripts/notarize_chain_anchor.sh`** — single-instance lock (item 4 of the
+   register): two launchd notary jobs sharing one schedule could notarize
+   concurrently; the seq race plus seq-only remote dedupe re-pushed one name
+   twice and Drive turned that into same-name siblings, which the verifier read
+   as one entry pasted onto itself. With the lock, racing runners skip loudly
+   and the off-box notary cannot be double-pushed from this host.
 
 ## Verification
 
@@ -353,9 +359,42 @@ that caused the war.
    (deleting one of a same-name pair on Drive is ambiguous, and `rclone copyto`
    cannot refresh only one half). Whether to reconcile the remote, tolerate
    counted duplicates, or move the sink to an object-lock/WORM backend is a
-   retention and integrity policy choice, and the write-path question (what
-   pushed twice — a retried `copyto` creating a sibling rather than replacing?)
-   is still open.
+   retention and integrity policy choice.
+
+   **The write-path question is now answered — it was this incident's own
+   twin schedule, not a retried `copyto`.** Fingerprint chain, all measured:
+
+   1. **Two launchd jobs share one schedule.** Both
+      `com.blackswanlabz.msb-v3.notary` and `com.lordwilson.msb-chain-notary`
+      are loaded, both run the *same* `notarize_chain_anchor.sh`, both at
+      **Hour=7 Minute=10** daily (both plists born the same second,
+      2026-09-11 17:48:47 — installed together, and never de-duplicated).
+   2. **Double-notarize predates even those plists**: local pairs of entries
+      with the same tip, ts microseconds apart, appear on **31 of 46 days,**
+      from 2026-08-29 — an earlier double-run mechanism; the twins made it
+      guaranteed.
+   3. **The remote sibling is a BACKFILL artefact, not a direct double-push of
+      one entry.** The two racing jobs both compute `seq = len(local)+1`, so a
+      single seq can acquire two signed entries (measured: seq 101 exists
+      under two names, `.451918` and `.806307`). The next day's backfill —
+      which dedupes the remote **BY SEQ ONLY** (`set(range(1, seq)) -
+      remote_seqs`) — re-pushes local entry 102 (ts `.806307`) into name
+      `000102-…806307…`; two racing backfills did that twice within 0.8s
+      (receive-times 07:10:40.843 and 07:10:41.649 on 2026-10-11), and Drive
+      keeps same-name siblings. Every sibling's receive-date is a *later date*
+      than its notarize-date — the backfill signature — which was invisible
+      until this was measured directly.
+
+   **The root-cause choke point is fixed on this branch: a single-instance
+   lock in `notarize_chain_anchor.sh`** (mkdir-atomic, `MSB_NOTARY_LOCK`
+   overridable; a held lock makes a second runner *skip* with a diagnostic
+   naming both schedules, rather than double-push). Three regression tests in
+   `tests/ops/test_notarize_lock.py` — free-acquire-and-release, second-runner
+   skip without touching the held lock, stale lock doesn't wedge — pass; with
+   the block excised the mutant compiles and 2 of 3 fail (mutation-checked).
+   Two residual owner choices remain: which of the two notary jobs to retire,
+   and whether to make the byte-level write path whole (`copyto` overwrite
+   recognition) — neither is a code defect.
 5. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
    **11 of its commits marked `[do-not-push]`** (BLOCKED gate evidence,
    2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**
