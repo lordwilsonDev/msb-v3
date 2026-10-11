@@ -294,10 +294,29 @@ that caused the war.
    with `POST http://127.0.0.1:8766/mcp/proxy failed: [Errno 61] Connection
    refused` — it landed in a down-window of the 14.3s restart cycle, so no
    runtime record was written while the criterion kept reporting MET off older
-   records. That is a measurement-integrity flaw in its own right: the criterion
-   cannot distinguish "no evidence this run" from "the evidence is stale", and
-   reports MET either way. The war is fixed, so the probe should record again on
-   the next 06:15 run — **not yet confirmed**.
+   records.
+
+   **The underlying mechanism is now proven with controls, not inferred.**
+   `k22_status` reads the whole corpus with **no age window** — the criterion
+   judges all-time evidence. Isolated reproduction against a tmp store:
+   runtime rows entirely **60 days old** (both surfaces, actors, ALLOWs) plus
+   one actor-less record from today → **MET**. Two controls make it conclusive:
+   fresh-and-acted → MET, and **fresh-but-actorless → NOT MET** — so the MET
+   verdict can only come from the stale rows. Pinned as a documenting regression
+   pair in `tests/governance/test_identity_shadow_status.py` (26 pass in that
+   file; the pin exists so any future freshness window fails loudly and the
+   policy change becomes deliberate rather than accidental).
+
+   **Live corpus today is genuinely fresh, but thinly so:** 2,902 records,
+   ages 0.1–21.6 days, median 18.4; **86 records ≤ 48 h but only 2 of them
+   runtime-origin**. So today's MET is honest, and the flaw is not misreporting
+   *now* — it is the missing freshness semantics that made the down-window
+   invisible and would let it stay invisible.
+
+   **Deliberately not fixed — BLOCKED_APPROVAL:** changing criterion 1's verdict
+   semantics (a freshness window, dated verdicts, or alerting on zero new
+   records) is a governance-policy decision redefining what MET means for K22
+   exit, not a bug fix. The evidence is in; the owner call is not mine.
 4. **The audit-chain anchor was never STALE — root-caused as misreported remote duplicates.**
    The register entry above was **wrong**: the anchor verifies **VALID**
    (tip `9124b8fe…`, 237,928 records, signing chain intact). The exit 2 that

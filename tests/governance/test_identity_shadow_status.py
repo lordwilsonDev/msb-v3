@@ -356,3 +356,47 @@ def test_cli_emits_json_and_flips_nothing(tmp_path):
     assert "origins" in payload
     # read-only: the command created nothing next to the corpus
     assert sorted(p.name for p in tmp_path.iterdir()) == before
+
+
+def _stale_only_corpus(tmp_path) -> Path:
+    """A runtime corpus that is entirely 60 days old, plus one record from
+    today that carries NO actor (proving MET, if it appears, must come from
+    the stale rows and not from mere recency)."""
+    now = _rec("chat", actor="probe.actor")
+    stale = dict(now, ts=now["ts"] - 60 * 86400)
+    path = tmp_path / "stale.jsonl"
+    path.write_text(
+        "\n".join(
+            json.dumps(r, default=float)
+            for r in (
+                dict(stale, surface="chat"),
+                dict(stale, surface="mcp-bridge"),
+                _rec("chat", actor=None),
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_criterion1_current_behavior_on_stale_corpus_recorded(tmp_path):
+    """DOCUMENTING, not endorsing: a corpus whose runtime rows are SIXTY DAYS
+    OLD still judges criterion 1 MET, because the scan has no age window —
+    proven live at /tmp on 2026-10-11 with controls (fresh+actor -> MET;
+    fresh-no-actor -> NOT MET). Until an owner decides on a freshness policy
+    (fresh window / dated verdicts / alerting on zero-new-records), this test
+    pins the CURRENT semantics so any change is deliberate and visible: if
+    someone adds a freshness window, this test fails and the owner decision
+    is being executed."""
+    status = k22_status(load_corpus(_stale_only_corpus(tmp_path)))
+    c1 = next(c for c in status["criteria"] if c["id"] == 1)
+    assert c1["status"] == STATUS_MET, c1["detail"]
+
+
+def test_criterion2_judgement_is_not_reached_through_stale_either(tmp_path):
+    """Companion pin: criterion 2 is JUDGEMENT REQUIRED on the same stale
+    corpus — the stale data flows into all criteria, not just criterion 1."""
+    status = k22_status(load_corpus(_stale_only_corpus(tmp_path)))
+    c2 = next(c for c in status["criteria"] if c["id"] == 2)
+    assert c2["status"] == STATUS_JUDGEMENT, c2["detail"]
