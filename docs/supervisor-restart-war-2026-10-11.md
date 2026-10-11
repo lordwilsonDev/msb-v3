@@ -1,0 +1,138 @@
+# Supervisor restart war on :8766 — 2026-10-11
+
+**Status:** fixed and verified live. Open flaws are listed at the bottom; this
+document is the record required by the workspace constitution's redress rule.
+
+## What was observed
+
+Vault retrieval was not stale — it was **withheld**. Every vault-first
+check returned zero results while the on-disk vault held 11,352 `.md` files.
+
+| Probe | Before the fix |
+|---|---|
+| `vault-check.py --fresh` | exit **1** — `LEGACY_UNVERIFIED`, currentness `unavailable ("no source manifest")` |
+| `vault-check.py "<query>"` | **zero results**, exit 1 |
+| raw `POST /rag/search` | **HTTP 409** `legacy_unverified` — *"no verified source snapshot; legacy retrieval is withheld"* |
+| `/health` sampled over 200s | alternating `200`/`000` — the service was up ~50% of the time |
+
+"Nothing found" and "retrieval is broken" look identical from the outside, which
+is why this read as a stale index rather than an outage.
+
+## Root cause
+
+Two supervisor loops were running `scripts/run.sh` against the same single-process
+server on port 8766:
+
+- **launchd** `com.lordwilson.msb-v3` (`KeepAlive`), PID 1209, since Oct 8 05:11
+- **tmux** session `msb-v3`, PID 17818, since Oct 10 06:15:07 — created by
+  `factory_gate_daily.sh` when the daily gate found the server down
+
+Both loops call `reclaim_stale_port()` (`scripts/lib/reclaim-port.sh`), which kills
+any port-holder whose command line looks like `msb_v3`, on the documented
+assumption that it is an **unsupervised orphan**. With two live supervisors that
+assumption is false: each killed the *other's* live child.
+
+Evidence: **7,226 `reclaiming` / 7,268 `restarting in 2s`** lines in
+`logs/gateway.out.log`; app log `[msb-v3] stopped` (`__main__.py:91`, SIGTERM)
+then `process exited 1`. 7,268 restarts ÷ 29.0h = a **14.3s** cycle, which
+independently pins the onset to the tmux session's creation time.
+
+## Why it went unnoticed
+
+The gate's readiness check was a **single** `curl -s -m 2 /health`. A service
+cycling every 14s answers any single probe ~50% of the time, so the gate
+reported *"server already up"* — a false positive that masked a half-down
+service. On days the probe missed, the gate started the rival tmux supervisor
+that caused the war.
+
+## Fix applied
+
+1. **`scripts/run.sh`** — single-instance supervisor lock (`data/supervisor.lock`,
+   git-ignored). `mkdir` is the atomic primitive (macOS ships no `flock(1)`); the
+   pid file inside distinguishes a live owner from a SIGKILL leftover. A second
+   supervisor **waits** instead of starting a child, so it never calls
+   `reclaim_stale_port()` and never kills anything. The lock's precondition
+   removal is what makes the orphan assumption true again.
+2. **`scripts/factory_gate_daily.sh`** — when the server is down it now
+   `launchctl kickstart -k`s the existing launchd supervisor instead of spawning a
+   rival under tmux (tmux remains only as the fallback when launchd does not have
+   the job loaded). The readiness probe is now **two samples 1s apart**.
+   `BASE_URL` and `LOG` gained `MSB_BASE_URL` / `MSB_GATE_LOG` overrides so this
+   path is testable without touching the live service or the real log.
+3. **`scripts/test-ops.sh`** — 7 new assertions: the lock (standby, failover,
+   stale-lock clearing, release on exit) and the gate's start path (healthy →
+   starts nothing; down + loaded → kickstart, no tmux; down + unloaded → tmux).
+
+## Verification
+
+| Check | Result |
+|---|---|
+| Restart war ended | counter frozen at 7,313 across the whole session |
+| `vault-check.py --fresh` | exit **0** — `VERIFIED_CURRENT`, snapshot `6543d59c…` |
+| Point integrity | `expected_points == points_count == 10894` |
+| **Coverage, independent** | on-disk indexable files = **4,262**; snapshot `source_count` = **4,262** — exact match |
+| **Retrieval end-to-end** | returned `99_Meta/research-digest-2026-10-11.md` (today's note) |
+| Restart via `launchctl kickstart` | PID 1209 → 90756, health 200 in ~1s, **zero** counter increase |
+| Live rival test | a real second supervisor logged `standing by for the lock`, never started a child, never touched the listener |
+| `scripts/test-ops.sh` | **55 passed, 0 failed**, exit 0 |
+| Mutation test | new assertions **fail** against the pre-fix scripts from `git HEAD` — the pre-fix gate's recorded call is `tmux new-session -d -s msb-v3 … bash scripts/run.sh` |
+
+## Flaw register
+
+### Fixed
+
+- Mutual-kill restart war (lock + gate kickstart).
+- Single-sample readiness probe that masked a cycling service (now 2 samples).
+- `vault-check.py --reindex` advertised `/tmp/vault-reindex5.log`, which **nothing
+  ever wrote**, and returned 0 on dispatch regardless of whether the tmux session
+  started. Now the command tees to that log and a failed dispatch exits 2.
+  (`vault-check.py` lives in `~/bin`, i.e. **not** in this repo — fixed in place,
+  not committed here.)
+
+### Open
+
+1. **`scripts/start.sh`'s standby path is unverified against the live service.**
+   It now blocks on the lock instead of reclaiming the port. Both branches were
+   reasoned through (bootstrap-succeeds; healthy port still served), but testing
+   it means stopping production, so it has **not** been exercised end-to-end.
+   This is the least-verified interaction in the change.
+2. **TERM defers lock release** until the loop's foreground child (`python -m
+   msb_v3`) exits, because bash runs traps only after a foreground command
+   returns. Deliberate: running the child in the background would break
+   `reclaim-port.sh`'s documented foreground-child assumption. Consequence:
+   failover is correct but not instantaneous.
+3. **Supervisor detection is path-shaped.** `start.sh` matches
+   `pgrep -f 'msb-v3/scripts/run.sh'`, so a *relative* `bash scripts/run.sh`
+   invocation is invisible to its liveness checks; `hygiene/h02_restart_runner.py`
+   matches `'scripts/run.sh'`, which its own comment claims cannot be satisfied by
+   another directory's copy but in fact can. Reduced to a diagnostic problem by
+   the lock, not yet fixed.
+4. **The gate itself crashed (exit 1) on 2026-10-10 and 2026-10-11** —
+   uninvestigated; the run artifact is overwritten each day.
+5. **Identity-shadow criterion 1 was reported from 32 stale records**, and the
+   audit-chain anchor read **STALE**. Both pre-date this incident and are
+   untouched.
+6. **One unexplained transient:** a single `vault-check.py --fresh` returned
+   exit 2 ("service unreachable") while `/health` answered 200 immediately
+   before and after, with no restart recorded. Six subsequent runs all exited 0.
+   Not reproduced, not diagnosed — recorded rather than dismissed.
+7. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` by 15
+   commits, **11 of them marked `[do-not-push]`** (BLOCKED gate evidence,
+   2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**
+   `[do-not-push]` guard — the guard that exists in the PZS repo
+   (`scripts/lib/held_commits.sh`) is not present here. A naive `git push` would
+   publish deliberately-held evidence. The fix was therefore pushed on a branch
+   based on `origin/main`, not on `main`.
+8. **The pre-push hook gates the working tree, not the commits**, and this
+   working tree carries 47 unrelated modified files — so any push from this
+   checkout is entangled with edits that have nothing to do with it.
+9. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
+   a claimed "Markdown under `docs/`: N files / M lines" in
+   `docs/what-msb-v3-is.md` against the live tree, so adding *any* record changes
+   those numbers and blocks a push until the claim is updated. Updating the claim
+   is part of adding a record — not a bypass, and not a reason to use
+   `MSB_SKIP_PORTABILITY=1`.
+10. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
+    set of numbers (155 files / 37,218 lines, dated 2026-09-26) that already
+    disagrees with the live tree, so the lint gate fails on `main` independently
+    of this change.

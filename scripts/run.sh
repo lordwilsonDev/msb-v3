@@ -75,6 +75,52 @@ else
   log "source license valid"
 fi
 
+# --- single-instance supervisor lock -----------------------------------------
+# Only one supervisor may own MSB_PORT. Two of them is not a degraded state,
+# it is a livelock: both loops call reclaim_stale_port(), which kills any
+# port-holder whose command line looks like msb_v3 on the documented
+# assumption that it is an *unsupervised* orphan -- so with two live
+# supervisors each one kills the other's child, forever. Measured 2026-10-11:
+# the launchd supervisor plus one the daily gate had spawned under tmux gave a
+# 14.3s mutual-kill cycle -- 7268 restarts in 29h, the service up ~50% of the
+# time. The lock removes the precondition, so reclaim_stale_port() only ever
+# sees a real orphan again.
+#
+# mkdir is the atomic primitive (macOS ships no flock(1)); the pid file inside
+# tells a live owner from a lock left behind by SIGKILL. A second supervisor
+# waits rather than exiting, which makes it a true standby: when the owner
+# dies its EXIT trap releases the lock and the waiting supervisor proceeds.
+LOCK_DIR="${MSB_SUPERVISOR_LOCK:-$REPO/data/supervisor.lock}"
+mkdir -p "$(dirname "$LOCK_DIR")"
+
+acquire_supervisor_lock() {
+  local owner
+  local announced=0
+  while :; do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      echo $$ > "$LOCK_DIR/pid"
+      trap 'rm -rf "$LOCK_DIR"' EXIT
+      trap 'exit 143' TERM
+      trap 'exit 130' INT
+      return 0
+    fi
+    owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
+      if [ "$announced" = 0 ]; then
+        log "another supervisor is live (pid $owner) -- standing by for the lock"
+        announced=1
+      fi
+      sleep 5
+      continue
+    fi
+    log "clearing stale supervisor lock (owner ${owner:-unknown} is not running)"
+    rm -rf "$LOCK_DIR"
+  done
+}
+
+acquire_supervisor_lock
+log "supervisor lock held (pid $$)"
+
 log "starting msb-v3 host=$MSB_HOST port=$MSB_PORT model=$OLLAMA_MODEL"
 
 # shellcheck source=lib/reclaim-port.sh

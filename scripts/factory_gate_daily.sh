@@ -26,8 +26,12 @@ REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
 cd "$REPO" || exit 1
 FACTORY="${FACTORY_RUNNER:-$HOME/.hermes/skills/engineering/engineering-hygiene-factory/scripts/run_factory.py}"
 PY="${MSB_PYTHON:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
-LOG="$HOME/Library/Logs/msb-factory-gate.log"
-BASE_URL="http://127.0.0.1:8766"
+# Overridable like MSB_REPO / MSB_PYTHON / FACTORY_RUNNER above: the start path
+# is the part that decides whether a second supervisor gets spawned, so a test
+# must be able to drive it against a stub service and a scratch log instead of
+# the live :8766 and the real log file.
+LOG="${MSB_GATE_LOG:-$HOME/Library/Logs/msb-factory-gate.log}"
+BASE_URL="${MSB_BASE_URL:-http://127.0.0.1:8766}"
 SESSION="msb-v3"
 EVENTS_LOG="$REPO/artifacts/hygiene/daily_gate_events.jsonl"
 
@@ -50,24 +54,52 @@ send_notification() {
   fi
 }
 
-# 1. Ensure the server is up (idempotent; start under tmux if not listening).
-if curl -s -m 2 "$BASE_URL/health" >/dev/null 2>&1; then
-  log "server already up"
+# 1. Ensure the server is up.
+#
+# Two probes, not one. A restart-cycling service answers a single 2s curl
+# whenever the probe happens to land in an up-phase, so "already up" off one
+# sample reports healthy for a service that is half-down -- exactly what
+# happened through the 2026-10-10/11 incident, when the gate logged "server
+# already up" while the service was restarting every ~14s.
+server_up() {
+  curl -s -m 2 "$BASE_URL/health" >/dev/null 2>&1 || return 1
+  sleep 1
+  curl -s -m 2 "$BASE_URL/health" >/dev/null 2>&1
+}
+
+MSB_LABEL="com.lordwilson.msb-v3"
+
+if server_up; then
+  log "server already up (2/2 probes)"
 else
-  log "server down — starting under tmux ($SESSION)"
-  if tmux has-session -t "$SESSION" 2>/dev/null; then
-    tmux kill-session -t "$SESSION" 2>/dev/null || true
+  # Prefer the launchd supervisor: kickstart restarts that one process, which
+  # is the service's real owner. Spawning a *second* supervisor under tmux
+  # (what this script did before 2026-10-11) is what created the restart war --
+  # two loops both call reclaim_stale_port(), which kills any port-holder that
+  # looks like msb_v3 as if it were an unsupervised orphan, so each killed the
+  # other's live child every ~14s for 29h (7268 restarts). Never start a rival
+  # supervisor while launchd has the job loaded.
+  if launchctl print "gui/$(id -u)/$MSB_LABEL" >/dev/null 2>&1; then
+    log "server down -- kickstarting launchd supervisor ($MSB_LABEL)"
+    launchctl kickstart -k "gui/$(id -u)/$MSB_LABEL" 2>>"$LOG" \
+      || log "WARN: launchctl kickstart returned non-zero"
+  else
+    log "server down and $MSB_LABEL not loaded -- starting under tmux ($SESSION)"
+    log "WARN: that supervisor is not launchd-managed; ensure no second one is running"
+    if tmux has-session -t "$SESSION" 2>/dev/null; then
+      tmux kill-session -t "$SESSION" 2>/dev/null || true
+    fi
+    tmux new-session -d -s "$SESSION" "cd $REPO && bash scripts/run.sh"
   fi
-  tmux new-session -d -s "$SESSION" "cd $REPO && bash scripts/run.sh"
   for _ in $(seq 1 30); do
-    if curl -s -m 2 "$BASE_URL/health" >/dev/null 2>&1; then
+    if server_up; then
       log "server up after start"
       break
     fi
     sleep 2
   done
-  if ! curl -s -m 2 "$BASE_URL/health" >/dev/null 2>&1; then
-    log "ERROR: server failed to come up — gate not run; alerting"
+  if ! server_up; then
+    log "ERROR: server failed to come up -- gate not run; alerting"
     send_notification "msb-v3 server did not start; factory gate NOT run" "SERVER_FAIL"
     exit 2
   fi

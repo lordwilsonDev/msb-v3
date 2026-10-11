@@ -511,6 +511,161 @@ env MSB_REPLICATION_TARGET="nobody@127.0.0.1:/tmp/rep-nowhere" MSB_REPLICATION_L
   || bad "unreachable replicate rc=$rc log=$(cat "$TMP/rep3.log" 2>/dev/null)"
 
 # ---------------------------------------------------------------------------
+section "supervisor lock: one supervisor only, standby takes over, stale lock cleared"
+# Regression cover for the 2026-10-11 restart war: two supervisors ran at once
+# and each reclaim-killed the other's child every ~14s for 29h (7268 restarts).
+# Runs a scratch copy of the real run.sh so the live service on :8766 is never
+# touched -- MSB_PORT points at a port nothing listens on, so reclaim is a
+# no-op, and MSB_CONTAINER=1 skips the license gate.
+LK="$TMP/lock/repo"
+mkdir -p "$LK/scripts/lib" "$LK/data"
+cp "$ROOT/scripts/run.sh" "$LK/scripts/run.sh"
+cp "$ROOT/scripts/lib/reclaim-port.sh" "$LK/scripts/lib/"
+: > "$LK/.env"
+# Child exits on its own, so the loop cycles and a TERM lands on the shell's own
+# sleep rather than on a long foreground child (bash runs a trap only after the
+# foreground command returns).
+printf '#!/bin/bash\nsleep 1\n' > "$TMP/lock/fakepy"
+chmod +x "$TMP/lock/fakepy"
+SUPLOCK="$TMP/lock/sup.lock"
+
+lk_start() { # $1 = log file; echoes the supervisor pid
+  env MSB_REPO="$LK" MSB_CONTAINER=1 MSB_PYTHON="$TMP/lock/fakepy" \
+      MSB_PORT=19733 MSB_SUPERVISOR_LOCK="$SUPLOCK" \
+      /bin/bash "$LK/scripts/run.sh" > "$1" 2>&1 &
+  echo $!
+}
+
+A_PID="$(lk_start "$TMP/lock/a.log")"
+sleep 3
+B_PID="$(lk_start "$TMP/lock/b.log")"
+sleep 3
+
+# case 1: first supervisor owns the lock; the second stands by and never starts
+# a child. Pre-fix behaviour was for both to run and fight.
+LOCK_OWNER="$(cat "$SUPLOCK/pid" 2>/dev/null || echo "")"
+if [ "$LOCK_OWNER" = "$A_PID" ] && grep -q "standing by for the lock" "$TMP/lock/b.log" \
+  && ! grep -q "starting msb-v3" "$TMP/lock/b.log"; then
+  ok "second supervisor stands by, starts no child (owner=$LOCK_OWNER)"
+else
+  bad "standby: owner=$LOCK_OWNER want=$A_PID b.log=$(tr '\n' ' ' < "$TMP/lock/b.log")"
+fi
+
+# case 2: the owner exits -> the standby takes the lock (real failover, not a
+# deadlock).
+kill -TERM "$A_PID" 2>/dev/null || true
+took=""
+for _ in $(seq 1 15); do
+  sleep 1
+  grep -q "supervisor lock held" "$TMP/lock/b.log" && { took="$B_PID"; break; }
+done
+if [ -n "$took" ] && [ "$(cat "$SUPLOCK/pid" 2>/dev/null || echo "")" = "$B_PID" ]; then
+  ok "standby took over after the owner exited"
+else
+  bad "failover: b.log=$(tr '\n' ' ' < "$TMP/lock/b.log")"
+fi
+
+# case 3: a lock left behind by SIGKILL (no EXIT trap can run) must not block a
+# fresh supervisor forever.
+kill -9 "$B_PID" 2>/dev/null || true
+sleep 1
+DEAD_PID=999999
+while kill -0 "$DEAD_PID" 2>/dev/null; do DEAD_PID=$((DEAD_PID + 1)); done
+mkdir -p "$SUPLOCK"
+echo "$DEAD_PID" > "$SUPLOCK/pid"
+C_PID="$(lk_start "$TMP/lock/c.log")"
+sleep 3
+if grep -q "clearing stale supervisor lock" "$TMP/lock/c.log" \
+  && grep -q "supervisor lock held" "$TMP/lock/c.log"; then
+  ok "stale lock (dead owner $DEAD_PID) cleared and re-acquired"
+else
+  bad "stale lock: c.log=$(tr '\n' ' ' < "$TMP/lock/c.log")"
+fi
+
+# case 4: the lock does not outlive a supervisor that exits.
+kill -TERM "$C_PID" 2>/dev/null || true
+released=""
+for _ in $(seq 1 15); do
+  sleep 1
+  [ ! -d "$SUPLOCK" ] && { released=1; break; }
+done
+[ -n "$released" ] && ok "lock released on supervisor exit" \
+  || bad "lock still present at $SUPLOCK after exit"
+
+kill -9 "$A_PID" "$B_PID" "$C_PID" 2>/dev/null || true
+
+# ---------------------------------------------------------------------------
+section "factory gate: kickstarts the launchd supervisor, never a rival tmux one"
+# The start path is where the war originated: the gate spawned a second
+# supervisor under tmux whenever its health probe missed. Stubs drive it so the
+# real service, the real launchd job, the real log and OS notifications are all
+# untouched; MSB_BASE_URL / MSB_GATE_LOG are the script's own overrides.
+GT="$TMP/gate"
+mkdir -p "$GT/bin" "$GT/repo/artifacts/hygiene"
+GATE_CALLS="$GT/calls.log"
+GATE_CURL_COUNT="$GT/curl.count"
+
+cat > "$GT/bin/launchctl" <<'STUB'
+#!/bin/bash
+echo "launchctl $*" >> "${GATE_CALLS:-/dev/null}"
+if [ "${1:-}" = print ]; then
+  # launchctl's own contract: exit 0 means the job IS loaded.
+  [ "${GATE_LAUNCHD_LOADED:-0}" = 1 ] && exit 0
+  exit 1
+fi
+exit 0
+STUB
+printf '#!/bin/bash\necho "tmux $*" >> "${GATE_CALLS:-/dev/null}"\nexit 0\n' > "$GT/bin/tmux"
+printf '#!/bin/bash\necho "osascript" >> "${GATE_CALLS:-/dev/null}"\nexit 0\n' > "$GT/bin/osascript"
+# 'up' = healthy throughout; 'recover' = the two probes before the decision
+# fail, then it answers -- models a service the gate just brought back.
+cat > "$GT/bin/curl" <<'STUB'
+#!/bin/bash
+n=$(cat "$GATE_CURL_COUNT" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$GATE_CURL_COUNT"
+[ "${GATE_HEALTH:-down}" = up ] && exit 0
+[ "$n" -gt 2 ] && exit 0
+exit 1
+STUB
+printf '#!/bin/bash\nexit 1\n' > "$GT/fakepy"   # self-test stub: fails fast
+chmod +x "$GT/bin/launchctl" "$GT/bin/tmux" "$GT/bin/osascript" "$GT/bin/curl" "$GT/fakepy"
+
+run_gate() { # $1 = scenario, $2 = health (up|recover), $3 = launchd job loaded (0|1)
+  : > "$GATE_CALLS"; : > "$GATE_CURL_COUNT"
+  env PATH="$GT/bin:$PATH" MSB_REPO="$GT/repo" MSB_PYTHON="$GT/fakepy" \
+      FACTORY_RUNNER="$GT/factory.py" MSB_BASE_URL="http://127.0.0.1:1" \
+      MSB_GATE_LOG="$GT/gate-$1.log" GATE_CALLS="$GATE_CALLS" \
+      GATE_CURL_COUNT="$GATE_CURL_COUNT" GATE_HEALTH="$2" GATE_LAUNCHD_LOADED="$3" \
+      /bin/bash "$ROOT/scripts/factory_gate_daily.sh" >/dev/null 2>&1 || true
+}
+
+# case 1: healthy -> the gate must not start or kickstart anything.
+run_gate up up 0
+if grep -q "server already up (2/2 probes)" "$GT/gate-up.log" \
+  && ! grep -q "launchctl" "$GATE_CALLS" && ! grep -q "tmux" "$GATE_CALLS"; then
+  ok "server healthy: gate started nothing (no launchctl, no tmux)"
+else
+  bad "healthy path: calls=$(tr '\n' ' ' < "$GATE_CALLS")"
+fi
+
+# case 2: down, launchd owns the job -> kickstart it, spawn nothing.
+run_gate loaded recover 1
+if grep -q "launchctl kickstart" "$GATE_CALLS" && ! grep -q "tmux" "$GATE_CALLS"; then
+  ok "server down + launchd loaded: kickstarted, no rival tmux supervisor"
+else
+  bad "loaded path: calls=$(tr '\n' ' ' < "$GATE_CALLS")"
+fi
+
+# case 3: down and launchd does NOT own the job -> tmux is the only option left.
+run_gate unloaded recover 0
+if grep -q "tmux new-session" "$GATE_CALLS" && ! grep -q "kickstart" "$GATE_CALLS"; then
+  ok "server down + launchd unloaded: falls back to tmux (no kickstart)"
+else
+  bad "unloaded path: calls=$(tr '\n' ' ' < "$GATE_CALLS")"
+fi
+
+# ---------------------------------------------------------------------------
 echo
 echo "=== result: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1
