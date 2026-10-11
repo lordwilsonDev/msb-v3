@@ -16,8 +16,12 @@
 #   run manually:  bash scripts/factory_gate_daily.sh
 #   log:           $HOME/Library/Logs/msb-factory-gate.log
 #
-# Exit codes: 0 = gate PASS or BLOCKED-with-no-fail (server started/up, gate ran)
-#             1 = gate FAILED (alert sent) | 2 = could not start the server
+# Exit codes (as actually implemented, corrected 2026-10-11 — the old header
+# claimed 0 for BLOCKED-with-no-fail, which the code never did):
+#   0 = gate PASS
+#   1 = gate not PASS (FAILED or BLOCKED; alert sent) | self-test failure |
+#       factory crashed (non-zero exit with no readable verdict)
+#   2 = could not start the server
 set -uo pipefail
 
 REPO="${MSB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 1
@@ -152,13 +156,17 @@ rm -f "$IDENTITY_ALERT"
 
 # 4. Run the factory gate.
 log "running factory gate..."
+# run_factory's documented contract (its own header, line 32): exit **0** when
+# the gate is PASS or BLOCKED-with-no-fail, and **exit 1 on any FAIL**. Exit 1
+# is therefore a VERDICT, not a crash. Until 2026-10-11 this script treated any
+# non-zero exit as a crash and returned *before* reading the verdict, which did
+# two things silently: it skipped the gate_run line in daily_gate_events.jsonl
+# (the record stopped dead on the first FAILED day — last entry 2026-10-09),
+# and it skipped the FAIL-evidence commit below, so a failing gate left no
+# committed trace at all and reported a misleading "crashed" notification.
+# The crash branch is now "exited non-zero AND wrote no readable verdict".
 MSB_REPO="$REPO" "$PY" "$FACTORY" > /tmp/factory_gate_daily_run.json 2>>"$LOG"
 rc=$?
-if [ "$rc" -ne 0 ]; then
-  log "ERROR: factory crashed (exit $rc) — see /tmp/factory_gate_daily_run.json"
-  send_notification "Factory gate crashed — see log" "CRASH"
-  exit 1
-fi
 
 VERDICT=$(REPO="$REPO" python3 -c '
 import json, os
@@ -177,6 +185,17 @@ try:
 except Exception:
     print(-1)
 ' 2>/dev/null)
+
+# Distinguish a real crash from a FAIL verdict. VERDICT is already extracted
+# above; only an unreadable verdict plus a non-zero exit is a crash.
+if [ "$VERDICT" = "UNKNOWN" ] && [ "$rc" -ne 0 ]; then
+  log "ERROR: factory exited $rc and wrote no readable verdict — treating as a crash; see /tmp/factory_gate_daily_run.json"
+  send_notification "Factory gate crashed (exit $rc, no verdict written) — see log" "CRASH"
+  exit 1
+fi
+if [ "$rc" -ne 0 ]; then
+  log "factory exited $rc (= FAIL per run_factory's documented contract)"
+fi
 
 log "gate verdict=$VERDICT unknowns=$UNKNOWNS"
 

@@ -629,14 +629,31 @@ echo "$n" > "$GATE_CURL_COUNT"
 exit 1
 STUB
 printf '#!/bin/bash\nexit 1\n' > "$GT/fakepy"   # self-test stub: fails fast
-chmod +x "$GT/bin/launchctl" "$GT/bin/tmux" "$GT/bin/osascript" "$GT/bin/curl" "$GT/fakepy"
+# Emulates run_factory's documented contract: exit 0 for --self-test, then
+# write the gate artifact and exit 1 to signal a FAIL verdict (not a crash).
+cat > "$GT/fakepy_verdict" <<'STUB'
+#!/bin/bash
+case "$*" in
+  *--self-test*) exit 0 ;;
+esac
+mkdir -p "$GATE_REPO/artifacts/hygiene"
+cat > "$GATE_REPO/artifacts/hygiene/factory_gate.json" <<'JSON'
+{"RELEASE_VERDICT": {"release_verdict": "FAILED", "unresolved_unknowns": ["stub: pytest suite did not pass"]}}
+JSON
+exit 1
+STUB
+chmod +x "$GT/bin/launchctl" "$GT/bin/tmux" "$GT/bin/osascript" "$GT/bin/curl" \
+  "$GT/fakepy" "$GT/fakepy_verdict"
 
 run_gate() { # $1 = scenario, $2 = health (up|recover), $3 = launchd job loaded (0|1)
+  #        $4 = python stub (default: one that fails the zero-spend self-test)
+  local py="${4:-$GT/fakepy}"
   : > "$GATE_CALLS"; : > "$GATE_CURL_COUNT"
-  env PATH="$GT/bin:$PATH" MSB_REPO="$GT/repo" MSB_PYTHON="$GT/fakepy" \
+  env PATH="$GT/bin:$PATH" MSB_REPO="$GT/repo" MSB_PYTHON="$py" \
       FACTORY_RUNNER="$GT/factory.py" MSB_BASE_URL="http://127.0.0.1:1" \
       MSB_GATE_LOG="$GT/gate-$1.log" GATE_CALLS="$GATE_CALLS" \
       GATE_CURL_COUNT="$GATE_CURL_COUNT" GATE_HEALTH="$2" GATE_LAUNCHD_LOADED="$3" \
+      GATE_REPO="$GT/repo" \
       /bin/bash "$ROOT/scripts/factory_gate_daily.sh" >/dev/null 2>&1 || true
 }
 
@@ -663,6 +680,22 @@ if grep -q "tmux new-session" "$GATE_CALLS" && ! grep -q "kickstart" "$GATE_CALL
   ok "server down + launchd unloaded: falls back to tmux (no kickstart)"
 else
   bad "unloaded path: calls=$(tr '\n' ' ' < "$GATE_CALLS")"
+fi
+
+# case 4: the factory exits 1, which per its own contract means FAIL -- a
+# verdict, not a crash. Treating it as a crash (the behaviour until
+# 2026-10-11) skipped both the verdict line and the daily_gate_events entry, so
+# the daily record stopped dead on the first failing day.
+GEVENTS="$GT/repo/artifacts/hygiene/daily_gate_events.jsonl"
+rm -f "$GT/repo/artifacts/hygiene/factory_gate.json" "$GEVENTS"
+run_gate failed up 1 "$GT/fakepy_verdict"
+if grep -q "gate verdict=FAILED" "$GT/gate-failed.log" \
+  && ! grep -q "crashed" "$GT/gate-failed.log" \
+  && grep -q '"event": "gate_run"' "$GEVENTS" \
+  && grep -q '"verdict": "FAILED"' "$GEVENTS"; then
+  ok "factory exit 1 (= FAIL) recorded as a verdict, not a crash"
+else
+  bad "FAIL-verdict path: log=$(tr '\n' ' ' < "$GT/gate-failed.log") events=$(cat "$GEVENTS" 2>/dev/null)"
 fi
 
 # ---------------------------------------------------------------------------

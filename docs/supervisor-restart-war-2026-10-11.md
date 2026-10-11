@@ -88,6 +88,19 @@ that caused the war.
   started. Now the command tees to that log and a failed dispatch exits 2.
   (`vault-check.py` lives in `~/bin`, i.e. **not** in this repo — fixed in place,
   not committed here.)
+- **The gate reported every FAIL as a crash.** `run_factory`'s documented
+  contract (its own header, line 32) is *exit 0 when the gate is PASS or
+  BLOCKED-with-no-fail; exit 1 on any FAIL* — so exit 1 was a **verdict**, but
+  `factory_gate_daily.sh` treated any non-zero exit as a crash and returned
+  **before** reading the verdict. Two silent consequences: the `gate_run` line
+  in `daily_gate_events.jsonl` was never written (the record stops dead at
+  2026-10-09, 52 entries) and the FAIL-evidence commit below it was never
+  reached, so a failing gate left no committed trace and sent a misleading
+  "Factory gate crashed" notification. The script now only calls it a crash when
+  the exit is non-zero **and** no verdict was written. Covered by a new
+  `test-ops.sh` case, mutation-checked against the gate at `HEAD`.
+- The script's header documented exit code `0` for BLOCKED-with-no-fail, which
+  the code never did (it exits 1 on any non-PASS verdict). Header corrected.
 
 ### Open
 
@@ -107,32 +120,48 @@ that caused the war.
    matches `'scripts/run.sh'`, which its own comment claims cannot be satisfied by
    another directory's copy but in fact can. Reduced to a diagnostic problem by
    the lock, not yet fixed.
-4. **The gate itself crashed (exit 1) on 2026-10-10 and 2026-10-11** —
-   uninvestigated; the run artifact is overwritten each day.
-5. **Identity-shadow criterion 1 was reported from 32 stale records**, and the
-   audit-chain anchor read **STALE**. Both pre-date this incident and are
-   untouched.
-6. **One unexplained transient:** a single `vault-check.py --fresh` returned
+4. **The in-factory pytest invocation fails tests that a plain run passes.**
+   The 2026-10-11 run recorded `5 failed, 4010 passed` in-factory while the same
+   day's pre-push portability gate ran a clean `3939 passed, 0 failed` from a
+   foreign checkout. Different counts imply a different marker set or
+   invocation, and those 5 failures are the actual reason the gate reads FAILED.
+   Not diagnosed. The earlier handoff note (`12_MSB/msb-v3-freebuff-handoff-2026-09-16.md`)
+   records the same class of discrepancy at 3 failures.
+5. **`/tmp/factory_gate_daily_run.json` is not valid JSON** — it interleaves
+   `[run_factory] ...` progress lines with the JSON body, and nothing rotates or
+   parses it, yet the script's error path points operators at it as an artifact.
+   `json.load` on it fails (observed).
+6. **Identity-shadow criterion 1 reported "MET" from 32 stale records.** Now
+   root-caused as a **symptom of this incident**: the 2026-10-11 06:15 probe died
+   with `POST http://127.0.0.1:8766/mcp/proxy failed: [Errno 61] Connection
+   refused` — it landed in a down-window of the 14.3s restart cycle, so no
+   runtime record was written while the criterion kept reporting MET off older
+   records. That is a measurement-integrity flaw in its own right: the criterion
+   cannot distinguish "no evidence this run" from "the evidence is stale", and
+   reports MET either way. The war is fixed, so the probe should record again on
+   the next 06:15 run — **not yet confirmed**.
+7. **The audit-chain anchor still reads STALE.** Not investigated.
+8. **One unexplained transient:** a single `vault-check.py --fresh` returned
    exit 2 ("service unreachable") while `/health` answered 200 immediately
    before and after, with no restart recorded. Six subsequent runs all exited 0.
    Not reproduced, not diagnosed — recorded rather than dismissed.
-7. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` by 15
+9. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` by 15
    commits, **11 of them marked `[do-not-push]`** (BLOCKED gate evidence,
    2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**
    `[do-not-push]` guard — the guard that exists in the PZS repo
    (`scripts/lib/held_commits.sh`) is not present here. A naive `git push` would
    publish deliberately-held evidence. The fix was therefore pushed on a branch
    based on `origin/main`, not on `main`.
-8. **The pre-push hook gates the working tree, not the commits**, and this
-   working tree carries 47 unrelated modified files — so any push from this
-   checkout is entangled with edits that have nothing to do with it.
-9. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
-   a claimed "Markdown under `docs/`: N files / M lines" in
-   `docs/what-msb-v3-is.md` against the live tree, so adding *any* record changes
-   those numbers and blocks a push until the claim is updated. Updating the claim
-   is part of adding a record — not a bypass, and not a reason to use
-   `MSB_SKIP_PORTABILITY=1`.
-10. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
+10. **The pre-push hook gates the working tree, not the commits**, and this
+    working tree carries 48 unrelated modified files — so any push from this
+    checkout is entangled with edits that have nothing to do with it.
+11. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
+    a claimed "Markdown under `docs/`: N files / M lines" in
+    `docs/what-msb-v3-is.md` against the live tree, so adding *any* record changes
+    those numbers and blocks a push until the claim is updated. Updating the claim
+    is part of adding a record — not a bypass, and not a reason to reach for
+    `MSB_SKIP_PORTABILITY=1`.
+12. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
     set of numbers (155 files / 37,218 lines, dated 2026-09-26) that already
     disagrees with the live tree, so the lint gate fails on `main` independently
     of this change.
