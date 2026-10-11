@@ -298,7 +298,45 @@ that caused the war.
    cannot distinguish "no evidence this run" from "the evidence is stale", and
    reports MET either way. The war is fixed, so the probe should record again on
    the next 06:15 run — **not yet confirmed**.
-4. **The audit-chain anchor still reads STALE.** Not investigated.
+4. **The audit-chain anchor was never STALE — root-caused as misreported remote duplicates.**
+   The register entry above was **wrong**: the anchor verifies **VALID**
+   (tip `9124b8fe…`, 237,928 records, signing chain intact). The exit 2 that
+   made the daily `chain-anchor-verify` job red comes from a **different,
+   later check in the same script**: the remote notary verdict
+   `REMOTE_INVALID`.
+
+   Root cause, measured live read-only against `gdrive:msb-v3/chain-anchor-notary`:
+   the remote listing holds **125 entries for 119 unique names** — Google Drive
+   permits same-name siblings. Each duplicated name reads back as the two
+   objects **concatenated** (1484 = 2 × 742 bytes, halves byte-identical, each
+   half equal to its local `.jsonl` line), so `json.loads` fails and the
+   verifier stamped the intact content **"not JSON"** — language that reads as
+   tampering. **All 5 named failures are in the duplicated set**, plus a **6th**
+   name the report never showed, because the display slice `invalid[:5]`
+   silently capped the list and made it look complete. The affected entries are
+   2026-09-26 → 10-03 plus 10-10, and every one is byte-identical to its local
+   line — so this is redundancy with a label problem, not corruption.
+
+   Fixed in `msb_ledger/notary.py` (single module, re-exported as the
+   `msb_v3.uac` compatibility namespace): the JSON-decode failure path now
+   counts back-to-back JSON documents and reports
+   `name resolves to N objects on the remote (duplicate push — content intact,
+   name ambiguous)` when N > 1, reserving `not JSON` for a genuinely
+   unparseable payload; the report now carries `invalid_count` and the detail
+   line says `and N more` past the display window. Three new regressions in
+   `tests/uac/test_notary.py` (duplicated-object labelling, genuine non-JSON
+   still labelled, the true count past the cap) — **2 of 3 fail against the
+   exact pre-fix code** (mutation-checked, mutant compiles), the third pins the
+   non-swallowing invariant. `tests/uac/` overall: **199 passed**.
+
+   **Not fixed — needs an owner decision:** the duplicates exist on the remote.
+   The verifier now names them honestly; it does not delete or overwrite them
+   (deleting one of a same-name pair on Drive is ambiguous, and `rclone copyto`
+   cannot refresh only one half). Whether to reconcile the remote, tolerate
+   counted duplicates, or move the sink to an object-lock/WORM backend is a
+   retention and integrity policy choice, and the write-path question (what
+   pushed twice — a retried `copyto` creating a sibling rather than replacing?)
+   is still open.
 5. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
    **11 of its commits marked `[do-not-push]`** (BLOCKED gate evidence,
    2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**

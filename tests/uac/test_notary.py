@@ -293,3 +293,92 @@ def test_rclone_sink_notarize_verify_end_to_end(fake_rclone, chain, anchor, tmp_
     assert report["verdict"] == "HEALTHY"
     assert report["head"]["timestamp_valid"] is True
     assert report["timestamp"]["source"] == "receive_time"
+
+
+class _SameNameSiblingSink(LocalDirSink):
+    """Simulates Google Drive's same-name siblings: several objects may share one
+    name, and ``rclone cat`` on such a path returns them CONCATENATED.
+
+    Measured live on 2026-10-11 — six remote names were duplicated and each read
+    back as two byte-identical copies (1484 = 2 x 742). A plain directory cannot
+    hold two same-named files, so the ambiguity is reproduced at the read
+    boundary, which is exactly where the verifier meets it.
+    """
+
+    def __init__(self, root: Path, duplicates: set[str], copies: int = 2) -> None:
+        super().__init__(root)
+        self.duplicates = set(duplicates)
+        self.copies = copies
+
+    def read(self, name: str):
+        data = super().read(name)
+        if data is None or name not in self.duplicates:
+            return data
+        return data * self.copies
+
+
+def _service(chain, anchor, tmp_path: Path, sink, name: str = "notary.jsonl"):
+    return NotaryService(
+        chain=chain,
+        anchor=anchor,
+        local_log=tmp_path / name,
+        remote=sink,
+    )
+
+
+def test_verify_names_duplicated_remote_objects_instead_of_calling_them_corrupt(
+    chain, anchor, tmp_path: Path
+):
+    """A remote name resolving to several objects is an AMBIGUOUS remote, not
+    corruption: the content is intact copies. It was reported as "not JSON",
+    which reads as tampering and sends the operator after a fault that did not
+    happen — the live notary alert ran that way from 2026-09-26."""
+    remote_dir = tmp_path / "remote"
+    sink = _SameNameSiblingSink(remote_dir, duplicates=set())
+    service = _service(chain, anchor, tmp_path, sink)
+    service.notarize()
+    service.notarize()
+    names = sorted(p.name for p in remote_dir.iterdir())
+    assert len(names) == 2
+    sink.duplicates = {names[1]}
+
+    report = service.verify()
+    assert report["verdict"] == "REMOTE_INVALID"
+    assert report["invalid_count"] == 1
+    assert "resolves to 2 objects" in report["detail"]
+    assert "not JSON" not in report["detail"]
+
+
+def test_verify_still_reports_genuine_non_json_as_not_json(service_factory, tmp_path: Path):
+    """The new label must not swallow the real fault: a payload that simply is
+    not JSON still says so."""
+    remote_dir = tmp_path / "remote"
+    service = service_factory(remote_dir=remote_dir)
+    service.notarize()
+    name = next(p.name for p in remote_dir.iterdir())
+    (remote_dir / name).write_text("this is not json at all")
+
+    report = service.verify()
+    assert report["verdict"] == "REMOTE_INVALID"
+    assert f"{name}: not JSON" in report["detail"]
+
+
+def test_verify_reports_the_true_invalid_count_past_the_display_cap(
+    chain, anchor, tmp_path: Path
+):
+    """The live 2026-10-11 alert named exactly five failures while SIX names were
+    duplicated: the display slice hid one and made the set look complete."""
+    remote_dir = tmp_path / "remote"
+    sink = _SameNameSiblingSink(remote_dir, duplicates=set())
+    service = _service(chain, anchor, tmp_path, sink)
+    for _ in range(7):
+        service.notarize()
+    names = sorted(p.name for p in remote_dir.iterdir())
+    assert len(names) == 7
+    sink.duplicates = set(names[1:])  # 6 of the 7
+
+    report = service.verify()
+    assert report["verdict"] == "REMOTE_INVALID"
+    assert report["invalid_count"] == 6
+    assert "and 1 more" in report["detail"]
+    assert "invalid_count=6" in report["detail"]

@@ -84,6 +84,40 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _count_json_documents(data: bytes) -> int:
+    """How many complete JSON documents does ``data`` hold, back to back?
+
+    ``1`` is ordinary single-entry content and ``0`` means the bytes do not
+    parse as JSON at all. A count **greater than 1** is the signature of one
+    remote NAME resolving to SEVERAL objects: Google Drive permits same-name
+    siblings, and reading such a path returns the objects concatenated.
+
+    Measured 2026-10-11 against the live notary: six names were duplicated and
+    each read back as two byte-identical copies (1484 = 2 x 742). ``json.loads``
+    rejects that as trailing data, so the verifier reported it as "not JSON" —
+    which reads as tampering. The content is intact twice over; the name is
+    ambiguous. Naming that correctly is the difference between an operator
+    auditing the remote and one hunting a corruption that did not happen.
+    """
+    try:
+        text = data.decode()
+    except UnicodeDecodeError:
+        return 0
+    decoder = json.JSONDecoder()
+    index = 0
+    count = 0
+    while True:
+        while index < len(text) and text[index] in " \t\r\n":
+            index += 1
+        if index >= len(text):
+            return count
+        try:
+            _, index = decoder.raw_decode(text, index)
+        except json.JSONDecodeError:
+            return 0
+        count += 1
+
+
 # ── sinks ───────────────────────────────────────────────────────────────────
 
 
@@ -377,14 +411,32 @@ class NotaryService:
             try:
                 entry = json.loads(data.decode())
             except json.JSONDecodeError:
-                invalid.append(f"{name}: not JSON")
+                # Two different faults used to be reported identically as
+                # "not JSON": an ambiguous remote name (several objects sharing
+                # it, so the read is their concatenation) and a genuinely
+                # unparseable payload. Only the second is corruption.
+                copies = _count_json_documents(data)
+                if copies > 1:
+                    invalid.append(
+                        f"{name}: name resolves to {copies} objects on the remote "
+                        f"(duplicate push — content intact, name ambiguous)"
+                    )
+                else:
+                    invalid.append(f"{name}: not JSON")
                 continue
             check = self.anchor.verify_notary_entry(entry, self.chain)
             if not check.get("valid"):
                 invalid.append(f"{name}: {check.get('reason')}")
         if invalid:
             result["verdict"] = "REMOTE_INVALID"
-            result["detail"] = "remote notary entries failed verification: " + "; ".join(invalid[:5])
+            result["invalid_count"] = len(invalid)
+            # Report the real total. The live alert on 2026-10-11 named exactly
+            # five failures because of this slice, while six names were in fact
+            # duplicated — the cap hid the sixth and made the set look complete.
+            shown = "; ".join(invalid[:5])
+            if len(invalid) > 5:
+                shown += f"; and {len(invalid) - 5} more (invalid_count={len(invalid)})"
+            result["detail"] = "remote notary entries failed verification: " + shown
             return result
 
         head_seq = max(remote_seqs)
