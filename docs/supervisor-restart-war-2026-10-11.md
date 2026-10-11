@@ -123,6 +123,25 @@ that caused the war.
   `/tmp/factory_gate_daily_run.log` (overridable via `MSB_GATE_STDOUT`) and the
   message now names both the raw output and the real artifact,
   `artifacts/hygiene/factory_gate.json`.
+- **The intermittent `vault-check.py --fresh` exit 2 is root-caused.** It was
+  listed here twice as an unexplained transient; it is a **client-side timeout
+  misreported as a server verdict**. `freshness()` called `/rag/index/status`
+  with a 10s bound, and that endpoint measured **6.5s / 12.8s / 28.3s / 8.2s**
+  on four consecutive calls — every one of them returning `VERIFIED_CURRENT` —
+  so 3 of 4 calls failed the bound and were reported as
+  `index_status: "BLOCKED"`, which reads as "the server blocked the index". It
+  never was. The bound is now 60s with one retry, a transport failure gets its
+  own `STATUS_UNAVAILABLE` status so `BLOCKED` keeps its meaning, and the
+  message says plainly that a slow status endpoint is not a stale index.
+  Verified: 8/8 `--fresh` runs exit 0 / `VERIFIED_CURRENT`, and a genuinely
+  unreachable service still exits 2 with the real reason.
+
+  **Correction (redress):** my first hypothesis was that the *health* probe was
+  timing out on a busy app, and I recorded that. Measured, it was wrong —
+  `/health` answers in 0.006-0.3s, even under concurrent search. The slow
+  endpoint is `/rag/index/status`. I did separately measure one 29.7s `/health`
+  sample during heavy concurrent search; that stall is real, but it is not what
+  produced the exit 2.
 - **Lesson recorded, not just fixed:** the first version of the detector
   silently returned "not running" because bash's `pwd` is *logical* — it returns
   `/tmp/...` while `lsof` reports the physical `/private/tmp/...`, so the two can
@@ -159,31 +178,27 @@ that caused the war.
    reports MET either way. The war is fixed, so the probe should record again on
    the next 06:15 run — **not yet confirmed**.
 5. **The audit-chain anchor still reads STALE.** Not investigated.
-6. **One unexplained transient:** a single `vault-check.py --fresh` returned
-   exit 2 ("service unreachable") while `/health` answered 200 immediately
-   before and after, with no restart recorded. Six subsequent runs all exited 0.
-   Not reproduced, not diagnosed — recorded rather than dismissed.
-7. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
+6. **Local `main` cannot be pushed as-is.** It is ahead of `origin/main` with
    **11 of its commits marked `[do-not-push]`** (BLOCKED gate evidence,
    2026-09-28 → 10-09), and this repo's `.git/hooks/pre-push` has **no**
    `[do-not-push]` guard — the guard that exists in the PZS repo
    (`scripts/lib/held_commits.sh`) is not present here. A naive `git push` would
    publish deliberately-held evidence. The fix was therefore pushed on a branch
    based on `origin/main`, not on `main`.
-8. **The pre-push hook gates the working tree, not the commits**, and this
+7. **The pre-push hook gates the working tree, not the commits**, and this
     working tree carries 48 unrelated modified files — so any push from this
     checkout is entangled with edits that have nothing to do with it.
-9. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
+8. **The record layer gates docs counts.** `scripts/doc_records.py` cross-checks
     a claimed "Markdown under `docs/`: N files / M lines" in
     `docs/what-msb-v3-is.md` against the live tree, so adding *any* record changes
     those numbers and blocks a push until the claim is updated. Updating the claim
     is part of adding a record — not a bypass, and not a reason to reach for
     `MSB_SKIP_PORTABILITY=1`.
-10. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
+9. **Local `main`'s copy of `docs/what-msb-v3-is.md` is dirty** with a different
     set of numbers (155 files / 37,218 lines, dated 2026-09-26) that already
     disagrees with the live tree, so the lint gate fails on `main` independently
     of this change.
-11. **`scripts/test-ops.sh` is red on `origin/main`, green on local `main`.**
+10. **`scripts/test-ops.sh` is red on `origin/main`, green on local `main`.**
     Run on a clean `origin/main` worktree (none of this session's changes
     present): `47 passed, 1 failed` — `ops-audit: success path wrong: rc=1`,
     expecting rc=0. The identical run on local `main` is green, so whatever
@@ -192,3 +207,9 @@ that caused the war.
     all pass, 47 + 13 = 60). Worth knowing: the ops suite is **not** part of the
     pre-push gate (that runs lint + the pytest portability suite), so a red ops
     suite does not block a push and stays invisible.
+
+11. **The status endpoint is slow on every call (6-28s, measured).**
+    `/rag/index/status` re-checks the committed manifest against the source
+    tree each time, so it cannot be made fast by retrying. This is the
+    underlying cause of the false `exit 2` above; the client-side bound only
+    treats the symptom. Unfixed — it needs caching or a cheap fast-path.
