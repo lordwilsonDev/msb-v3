@@ -295,12 +295,33 @@ that caused the war.
    returns. Deliberate: running the child in the background would break
    `reclaim-port.sh`'s documented foreground-child assumption. Consequence:
    failover is correct but not instantaneous.
-3. **Identity-shadow criterion 1 reported "MET" from 32 stale records.** Now
-   root-caused as a **symptom of this incident**: the 2026-10-11 06:15 probe died
-   with `POST http://127.0.0.1:8766/mcp/proxy failed: [Errno 61] Connection
-   refused` — it landed in a down-window of the 14.3s restart cycle, so no
-   runtime record was written while the criterion kept reporting MET off older
-   records.
+3. **Identity-shadow criterion 1's Oct-11 event read zero new records.** Now
+   root-caused as a **symptom of this incident**: the 2026-10-11 06:15 probe
+   completed its **chat** exercise — the server wrote a runtime-origin record
+   at 11:15:07 UTC (`session=identity-shadow-probe`, actor `chat.agent`,
+   kernel `REJECTED/unknown-actor`) — then **crashed on mcp-bridge** with
+   `POST http://127.0.0.1:8766/mcp/proxy failed: [Errno 61] Connection
+   refused`, landing in a down-window of the 14.3s restart cycle. Two
+   consequences, both measured:
+
+   - The step that judges the probe composes its event from the probe's JSON;
+     a probe that died has none, so the event read `probe_ok=false /
+     new_records=0` **even though the corpus gained a fresh actor record
+     seconds before**. The zero is the probe-output delta, not a corpus miss —
+     an earlier version of this entry said "no runtime record was written",
+     which was wrong (corrected here).
+   - That record itself is a **kernel REJECTED with `unknown actor:
+     chat.agent`**: the probe faithfully exercised the surface, and the live
+     server does not currently *accept* the probe's actor. Criterion 1 counts
+     records that "carry an actor" — this one carries one — so the tally
+     scrolls on regardless of the REJECTED kernel state. Whether a surface
+     whose only actor-evidence is a rejection should count as satisfying
+     "carries an actor" is the same freshness/semantics question already
+     BLOCKED_APPROVAL below.
+
+   **Earlier rounds' concern is thereby closed — the probe records again** on
+   Oct-10 and Oct-11 alike (daily ~11:15 UTC, one record per successful day,
+   7 runtime records ≤ 7 days as of this evening).
 
    **The underlying mechanism is now proven with controls, not inferred.**
    `k22_status` reads the whole corpus with **no age window** — the criterion
@@ -315,9 +336,10 @@ that caused the war.
 
    **Live corpus today is genuinely fresh, but thinly so:** 2,902 records,
    ages 0.1–21.6 days, median 18.4; **86 records ≤ 48 h but only 2 of them
-   runtime-origin**. So today's MET is honest, and the flaw is not misreporting
-   *now* — it is the missing freshness semantics that made the down-window
-   invisible and would let it stay invisible.
+   runtime-origin** (7 within 7 days — one per daily probe). So today's MET is
+   honest, and the flaw is not misreporting *now* — it is the missing freshness
+   semantics that made the down-window invisible and would let it stay
+   invisible.
 
    **Deliberately not fixed — BLOCKED_APPROVAL:** changing criterion 1's verdict
    semantics (a freshness window, dated verdicts, or alerting on zero new
