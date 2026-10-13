@@ -15,8 +15,12 @@ rsync -a "${EXCL[@]}" "$VAULT"/ "$DEST"/
 mkdir -p "$DEST/Backups" && touch "$DEST/Backups/.gitkeep"
 
 cd "$REPO"
+# Secret scan of the copied files BEFORE staging (repo families + broader vault shapes).
+if ! python3 scripts/vault-secret-scan.py vault-template; then
+  echo "SECRETS FOUND - nothing staged. Remove them from the vault notes and re-run." >&2
+  exit 1
+fi
 git add -A vault-template
-# Secret scan on exactly what is about to be committed.
 if ! python3 scripts/scan-secrets.py --staged; then
   git reset -q vault-template
   echo "SECRETS FOUND - nothing committed. Remove them from the vault notes and re-run." >&2
