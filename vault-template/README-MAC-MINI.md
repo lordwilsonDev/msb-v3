@@ -25,4 +25,6 @@ make provision-models       # ornith:9b + nomic-embed-text via Ollama
 Then index the vault into Qdrant (collection `tenant_wilson-vault`) and open
 `http://127.0.0.1:8766/cockpit`. Open the folder in Obsidian as a vault.
 
+Publishing the full vault: on the Mac Mini run `scripts/vault-export.sh` (secret-scans first), then commit and push.
+
 Notes: the vault stays **outside** the repo (user data). Secrets never go in notes.
