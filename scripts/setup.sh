@@ -20,6 +20,17 @@ PY="${PY:-/opt/homebrew/Caskroom/miniforge/base/bin/python}"
 
 echo "[setup] 1/6 repo verified (MANIFEST.md present at $REPO)"
 
+# Pre-push gate activation (source of record: scripts/hooks/pre-push).
+# .git/hooks is never cloned or pushed, so a fresh clone has no hook until
+# this installs it via the documented target. setup runs on a fresh main
+# checkout; linked worktrees inherit the hook from the shared gitdir and
+# can refresh it with `make hooks-install` from the main checkout.
+if [ -f Makefile ]; then
+  make hooks-install
+else
+  echo "[setup] WARNING: no Makefile — pre-push gate not installed" >&2
+fi
+
 echo "[setup] 2/6 installing python deps ($PY)"
 "$PY" -m pip install -e . --quiet
 

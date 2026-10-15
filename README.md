@@ -208,7 +208,10 @@ make lint                     # ruff + mypy + lock/claim checks + policy drift g
 make policy-gate              # detection-policy validation + coverage diff vs baseline
 ```
 
-Pre-push gate — install once per clone:
+Pre-push gate — the hook's source of record is versioned at
+`scripts/hooks/pre-push`; `.git/hooks` is never cloned, so a fresh clone has
+no hook until it is installed. `make setup` installs it automatically; to
+(re)install by hand:
 
 ```bash
 make hooks-install
@@ -216,7 +219,8 @@ make hooks-install
 
 This installs a pre-push hook that runs `make lint` (ruff + mypy + the MoIE
 policy drift gate) and `make portability` (full suite from a foreign checkout
-path) before every push, blocking on failure. Bypass explicitly with
+path) before every push, blocking on failure. The gate runs in the working
+tree the push is made from — for linked worktrees too. Bypass explicitly with
 `MSB_SKIP_PORTABILITY=1 git push`; remove with `make hooks-uninstall`.
 
 ## Endpoints

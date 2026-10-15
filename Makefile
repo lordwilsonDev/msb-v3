@@ -152,12 +152,17 @@ env-drift:
 # so every future push runs the portability gate first. Git hooks aren't
 # versioned, so each fresh clone needs this once. Idempotent; overwrites an
 # existing pre-push hook. Remove with `make hooks-uninstall`.
+# Worktree-safe: the hook lives in the SHARED gitdir, and a linked worktree
+# has a .git FILE (not a directory), so a hardcoded .git/hooks path fails
+# with "Not a directory". Resolve the common dir instead: from the main
+# checkout this is .git/hooks/pre-push; from a linked worktree it is the
+# shared absolute path every worktree of this clone inherits.
 hooks-install:
-	install -m 755 scripts/hooks/pre-push .git/hooks/pre-push
-	@echo "pre-push hook installed (.git/hooks/pre-push)"
+	install -m 755 scripts/hooks/pre-push "$$(git rev-parse --git-common-dir)/hooks/pre-push"
+	@echo "pre-push hook installed ($$(git rev-parse --git-common-dir)/hooks/pre-push)"
 
 hooks-uninstall:
-	rm -f .git/hooks/pre-push
+	rm -f "$$(git rev-parse --git-common-dir)/hooks/pre-push"
 	@echo "pre-push hook removed"
 
 # Full engineering hygiene battery, then sweep the test-named Qdrant
